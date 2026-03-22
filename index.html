@@ -644,10 +644,34 @@
         return;
       }
 
-      const labels = history.map(h => new Date(h.timestamp));
-      const borrowed = history.map(h => h.fusionBorrowed || 0);
-      const totalLoans = history.map(h => h.totalLoans || 0);
-      const remainder = totalLoans.map((t, i) => Math.max(0, t - borrowed[i]));
+      // Build 24-hour timeline with hourly slots
+      const SLOTS = 24;
+      const now = new Date();
+      now.setMinutes(0, 0, 0);
+      const slots = [];
+      for (let i = SLOTS - 1; i >= 0; i--) {
+        const t = new Date(now.getTime() - i * 3600000);
+        slots.push({ time: t, borrowed: null, totalLoans: null });
+      }
+      // Fill slots with closest matching history entry
+      for (const entry of history) {
+        const et = new Date(entry.timestamp);
+        et.setMinutes(0, 0, 0);
+        const key = et.getTime();
+        const slot = slots.find(s => s.time.getTime() === key);
+        if (slot) {
+          slot.borrowed = entry.fusionBorrowed || 0;
+          slot.totalLoans = entry.totalLoans || 0;
+        }
+      }
+
+      const labels = slots.map(s => s.time);
+      const borrowed = slots.map(s => s.borrowed);
+      const totalLoansArr = slots.map(s => s.totalLoans);
+      const remainder = slots.map(s => s.totalLoans !== null ? Math.max(0, s.totalLoans - s.borrowed) : null);
+      // Placeholder height for empty slots (use max of existing data or a default)
+      const maxTotal = Math.max(...totalLoansArr.filter(v => v !== null), 1);
+      const placeholder = slots.map(s => s.totalLoans === null ? maxTotal : null);
 
       if (shareChart) shareChart.destroy();
 
@@ -660,15 +684,28 @@
               label: 'Fusion Borrowed',
               data: borrowed,
               backgroundColor: '#8429FF',
-              borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 6, bottomRight: 6 },
+              borderRadius: 4,
               borderSkipped: false,
+              barPercentage: 0.5,
+              categoryPercentage: 0.7,
             },
             {
               label: 'Other Morpho Loans',
               data: remainder,
               backgroundColor: '#3B82F6',
-              borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 6, bottomRight: 6 },
+              borderRadius: 4,
               borderSkipped: false,
+              barPercentage: 0.5,
+              categoryPercentage: 0.7,
+            },
+            {
+              label: '_placeholder',
+              data: placeholder,
+              backgroundColor: '#E5E5E5',
+              borderRadius: 4,
+              borderSkipped: false,
+              barPercentage: 0.5,
+              categoryPercentage: 0.7,
             }
           ]
         },
@@ -707,10 +744,12 @@
                 boxHeight: 12,
                 padding: 16,
                 font: { size: 12, family: 'Poppins' },
-                color: '#70747A'
+                color: '#70747A',
+                filter: item => item.text !== '_placeholder'
               }
             },
             tooltip: {
+              filter: item => item.dataset.label !== '_placeholder',
               callbacks: {
                 title: items => {
                   const d = new Date(items[0].parsed.x);
@@ -718,16 +757,17 @@
                 },
                 label: item => {
                   const idx = item.dataIndex;
-                  const share = totalLoans[idx] > 0
-                    ? (borrowed[idx] / totalLoans[idx] * 100).toFixed(2) : '0.00';
+                  const b = borrowed[idx] || 0;
+                  const t = totalLoansArr[idx] || 0;
+                  const share = t > 0 ? (b / t * 100).toFixed(2) : '0.00';
                   if (item.datasetIndex === 0) {
-                    return `Fusion: ${formatUsd(borrowed[idx])} (${share}%)`;
+                    return `Fusion: ${formatUsd(b)} (${share}%)`;
                   }
-                  return `Other Morpho: ${formatUsd(remainder[idx])}`;
+                  return `Other Morpho: ${formatUsd(remainder[idx] || 0)}`;
                 },
                 afterBody: items => {
                   const idx = items[0].dataIndex;
-                  return `Total: ${formatUsd(totalLoans[idx])}`;
+                  return `Total: ${formatUsd(totalLoansArr[idx] || 0)}`;
                 }
               }
             }
