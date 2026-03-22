@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fusion Stats — Morpho Mainnet</title>
+  <title>Fusion Stats — Morpho Demand Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -43,14 +43,9 @@
       top: 1px;
     }
 
-    .container {
-      max-width: 960px;
-      margin: 0 auto;
-    }
+    .container { max-width: 960px; margin: 0 auto; }
 
-    header {
-      margin-bottom: 2rem;
-    }
+    header { margin-bottom: 2rem; }
 
     header h1 {
       font-size: 1.5rem;
@@ -63,10 +58,7 @@
       background-clip: text;
     }
 
-    header p {
-      color: var(--text-body);
-      font-size: 0.875rem;
-    }
+    header p { color: var(--text-body); font-size: 0.875rem; }
 
     .stats-row {
       display: grid;
@@ -156,10 +148,7 @@
       border-bottom: 1px solid var(--stroke);
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    table { width: 100%; border-collapse: collapse; }
 
     th {
       text-align: left;
@@ -179,18 +168,10 @@
       color: var(--text-body);
     }
 
-    tr:last-child td {
-      border-bottom: none;
-    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--accent-bg); }
 
-    tr:hover td {
-      background: var(--accent-bg);
-    }
-
-    .vault-name {
-      font-weight: 500;
-      color: var(--text);
-    }
+    .vault-name { font-weight: 500; color: var(--text); }
 
     .vault-address {
       color: var(--text-secondary);
@@ -199,32 +180,30 @@
       font-weight: 400;
     }
 
-    .bar-cell {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
+    .vault-address a {
+      color: var(--text-secondary);
+      text-decoration: none;
     }
 
+    .vault-address a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .bar-cell { display: flex; align-items: center; gap: 0.75rem; }
+
     .bar-bg {
-      flex: 1;
-      height: 6px;
-      background: var(--bg-alt);
-      border-radius: 3px;
-      overflow: hidden;
+      flex: 1; height: 6px;
+      background: var(--bg-alt); border-radius: 3px; overflow: hidden;
     }
 
     .bar-fill {
       height: 100%;
       background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 3px;
-      transition: width 0.3s;
+      border-radius: 3px; transition: width 0.3s;
     }
 
-    .bar-value {
-      min-width: 4rem;
-      text-align: right;
-      color: var(--text);
-    }
+    .bar-value { min-width: 4rem; text-align: right; color: var(--text); }
 
     .loading {
       color: var(--text-secondary);
@@ -233,13 +212,22 @@
       padding: 2rem;
     }
 
-    .error-msg {
-      color: var(--red);
+    .error-msg { color: var(--red); font-size: 0.8rem; }
+
+    .info-box {
+      background: var(--accent-bg);
+      border: 1px solid rgba(132, 41, 255, 0.2);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
       font-size: 0.8rem;
+      color: var(--text-body);
+      line-height: 1.6;
+      margin-bottom: 2rem;
     }
 
-    /* Diagnostic section */
-    .diag-section {
+    .info-box strong { color: var(--text); }
+
+    .debug-log {
       background: var(--surface);
       border: 1px solid var(--stroke);
       border-radius: 12px;
@@ -247,63 +235,22 @@
       margin-bottom: 2rem;
     }
 
-    .diag-section h2 {
-      font-size: 1rem;
+    .debug-log h2 {
+      font-size: 0.875rem;
       font-weight: 500;
-      margin-bottom: 0.5rem;
-      color: var(--accent);
-    }
-
-    .diag-section p {
-      font-size: 0.8rem;
-      color: var(--text-body);
-      margin-bottom: 1rem;
-    }
-
-    .diag-section .vault-list {
-      max-height: 400px;
-      overflow-y: auto;
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      line-height: 1.8;
-      color: var(--text-body);
-    }
-
-    .diag-section .vault-list .vault-entry {
-      padding: 0.25rem 0.5rem;
-      border-bottom: 1px solid var(--bg-alt);
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    .diag-section .vault-list .vault-entry:hover {
-      background: var(--accent-bg);
-    }
-
-    .diag-section .vault-list .vault-entry .vname {
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    .diag-section .vault-list .vault-entry .vtvl {
-      color: var(--accent);
-      white-space: nowrap;
-    }
-
-    #searchInput {
-      width: 100%;
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--stroke);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.8rem;
+      color: var(--text-secondary);
       margin-bottom: 0.75rem;
-      outline: none;
     }
 
-    #searchInput:focus {
-      border-color: var(--accent);
+    .debug-log pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      line-height: 1.6;
+      color: var(--text-body);
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
 
     @media (max-width: 640px) {
@@ -318,8 +265,14 @@
   <div class="container">
     <header>
       <h1>Fusion Stats</h1>
-      <p>Morpho Protocol — Ethereum Mainnet</p>
+      <p>IPOR Fusion Demand on Morpho — Ethereum Mainnet</p>
     </header>
+
+    <div class="info-box">
+      <strong>How it works:</strong> IPOR Fusion vaults use leveraged looping strategies that borrow from Morpho markets.
+      This dashboard queries the Morpho API for each Fusion vault's on-chain positions to measure how much
+      loan demand Fusion generates on Morpho.
+    </div>
 
     <div class="stats-row">
       <div class="stat-card">
@@ -328,14 +281,14 @@
         <div class="sub" id="totalLoansSub">loading...</div>
       </div>
       <div class="stat-card">
-        <div class="label">Loan Demand via Fusion Vaults</div>
-        <div class="value num-bold" id="fusionLoans">—</div>
-        <div class="sub" id="fusionLoansSub">loading...</div>
+        <div class="label">Fusion Borrowed on Morpho</div>
+        <div class="value num-bold" id="fusionBorrowed">—</div>
+        <div class="sub" id="fusionBorrowedSub">loading...</div>
       </div>
     </div>
 
     <div class="share-banner">
-      <span class="share-label">Fusion Share of Mainnet Demand</span>
+      <span class="share-label">Fusion Share of Morpho Demand</span>
       <div class="share-bar-outer">
         <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
       </div>
@@ -343,40 +296,65 @@
     </div>
 
     <div class="vault-table">
-      <h2>Fusion Vaults — Mainnet</h2>
+      <h2>Fusion Vault Positions on Morpho</h2>
       <table>
         <thead>
           <tr>
             <th>Vault</th>
-            <th>Total Supply</th>
-            <th style="width: 35%">Share of Fusion Demand</th>
+            <th>Borrowed on Morpho</th>
+            <th>Collateral on Morpho</th>
+            <th style="width: 25%">Share</th>
           </tr>
         </thead>
         <tbody id="vaultTableBody">
-          <tr><td colspan="3" class="loading">Loading vault data...</td></tr>
+          <tr><td colspan="4" class="loading">Querying Morpho API for vault positions...</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="diag-section" id="diagSection">
-      <h2>All Morpho Mainnet Vaults</h2>
-      <p>Search below to find Fusion/IPOR vault names. Once identified, we'll hardcode the correct filter.</p>
-      <input type="text" id="searchInput" placeholder="Search vault names (e.g. fusion, ipor, steakhouse...)" />
-      <div class="vault-list" id="allVaultsList">Loading all vaults...</div>
+    <div class="debug-log">
+      <h2>API Log</h2>
+      <pre id="debugLog">Initializing...</pre>
     </div>
   </div>
 
   <script>
     const MORPHO_API = 'https://api.morpho.org/graphql';
 
+    // Known IPOR Fusion vault addresses on Ethereum Mainnet
+    // Source: https://github.com/IPOR-Labs/ipor-abi/blob/main/mainnet/addresses.json
+    const FUSION_VAULTS = [
+      { name: 'IPOR stETH Ethereum', address: '0x0552E28123A19FF2853D1ED3BE75Ef1329BB6ca8', asset: 'stETH' },
+      { name: 'IPOR weETH Ethereum', address: '0x981a6c7cA4496ACC3FF7bCDcC3B834fe0C4Db5Bc', asset: 'weETH' },
+      { name: 'IPOR USDC Optimizer', address: '0x43Ee0243eA8CF02f7087d8B16C8D2007CC9c7cA2', asset: 'USDC' },
+      // Additional known addresses from app.ipor.io URL
+      { name: 'IPOR stETH (alt)', address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', asset: 'stETH' },
+      // Wrapped/referral versions
+      { name: 'Reservoir ETH Yield', address: '0xf6cD9E8415162C8fb3C52393f8F9E5AcE1D4A1E68', asset: 'WETH' },
+      { name: 'Reservoir BTC Yield', address: '0xE47358eae04719f3CF7025E95d0AD202e68BD9b2', asset: 'BTC' },
+    ];
+
+    const debugLines = [];
+    function log(msg) {
+      const ts = new Date().toLocaleTimeString();
+      debugLines.push(`[${ts}] ${msg}`);
+      document.getElementById('debugLog').textContent = debugLines.join('\n');
+    }
+
     function formatUsd(value) {
       if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-      if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+      if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
       if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
       return `$${value.toFixed(0)}`;
     }
 
+    function shortAddr(addr) {
+      return addr.slice(0, 6) + '...' + addr.slice(-4);
+    }
+
+    // Fetch total Morpho mainnet borrow
     async function fetchTotalMainnetLoans() {
+      log('Fetching total Morpho mainnet loans...');
       const res = await fetch(MORPHO_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -401,145 +379,169 @@
       const json = await res.json();
       const { items, pageInfo } = json.data.markets;
       const total = items.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
+      log(`Total Morpho loans: ${formatUsd(total)} across ${items.length}/${pageInfo.countTotal} markets`);
       return { total, fetched: items.length, countTotal: pageInfo.countTotal };
     }
 
-    async function fetchAllVaults() {
+    // Fetch Morpho positions for a single vault address
+    async function fetchVaultMorphoPositions(vault) {
+      log(`Querying Morpho positions for ${vault.name} (${shortAddr(vault.address)})...`);
       const res = await fetch(MORPHO_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: `{
-            vaults(
-              first: 500
-              orderBy: TotalAssetsUsd
-              orderDirection: Desc
-              where: { chainId_in: [1] }
+            userByAddress(
+              chainId: 1
+              address: "${vault.address}"
             ) {
-              items {
-                address
-                name
-                symbol
-                asset { symbol }
-                state { totalAssetsUsd }
-                metadata { curators { name } }
+              address
+              marketPositions {
+                market {
+                  uniqueKey
+                  loanAsset { symbol }
+                  collateralAsset { symbol }
+                }
+                borrowAssetsUsd
+                supplyAssetsUsd
+                state {
+                  borrowAssetsUsd
+                  supplyAssetsUsd
+                  collateralUsd
+                  collateral
+                }
               }
-              pageInfo { count countTotal }
             }
           }`
         })
       });
       const json = await res.json();
+
       if (json.errors) {
-        console.error('GraphQL errors:', json.errors);
-        throw new Error(json.errors[0]?.message || 'GraphQL query failed');
+        log(`  Error for ${vault.name}: ${json.errors[0]?.message}`);
+        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0 };
       }
-      return json.data.vaults.items || [];
-    }
 
-    function isFusionVault(v) {
-      const name = (v.name || '').toLowerCase();
-      const symbol = (v.symbol || '').toLowerCase();
-      const curators = (v.metadata?.curators || []).map(c => (c.name || '').toLowerCase());
-      const allText = [name, symbol, ...curators].join(' ');
-      return allText.includes('fusion') || allText.includes('ipor');
-    }
-
-    function renderAllVaultsList(vaults, filter) {
-      const container = document.getElementById('allVaultsList');
-      const filtered = filter
-        ? vaults.filter(v => {
-            const text = [v.name, v.symbol, v.address, ...(v.metadata?.curators || []).map(c => c.name)].join(' ').toLowerCase();
-            return text.includes(filter.toLowerCase());
-          })
-        : vaults;
-
-      container.innerHTML = filtered.map(v => {
-        const curators = (v.metadata?.curators || []).map(c => c.name).filter(Boolean).join(', ');
-        const curatorStr = curators ? ` [${curators}]` : '';
-        return `<div class="vault-entry">
-          <span><span class="vname">${v.name || v.symbol || '?'}</span>${curatorStr} <span style="color:var(--text-secondary)">${v.address.slice(0,6)}...${v.address.slice(-4)}</span></span>
-          <span class="vtvl">${formatUsd(v.state?.totalAssetsUsd || 0)}</span>
-        </div>`;
-      }).join('');
-
-      if (filtered.length === 0) {
-        container.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-secondary)">No vaults match your search</div>';
+      const user = json.data?.userByAddress;
+      if (!user || !user.marketPositions || user.marketPositions.length === 0) {
+        log(`  ${vault.name}: No Morpho positions found`);
+        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0 };
       }
+
+      const positions = user.marketPositions.filter(p => {
+        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
+        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
+        const collateral = p.state?.collateralUsd || 0;
+        return borrowed > 0 || supplied > 0 || collateral > 0;
+      });
+
+      const totalBorrowed = positions.reduce((sum, p) =>
+        sum + (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0), 0);
+      const totalCollateral = positions.reduce((sum, p) =>
+        sum + (p.state?.collateralUsd || 0), 0);
+
+      log(`  ${vault.name}: ${positions.length} active positions, borrowed=${formatUsd(totalBorrowed)}, collateral=${formatUsd(totalCollateral)}`);
+
+      positions.forEach(p => {
+        const market = p.market;
+        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
+        const collateral = p.state?.collateralUsd || 0;
+        if (borrowed > 0 || collateral > 0) {
+          log(`    Market ${market.collateralAsset?.symbol || '?'}/${market.loanAsset?.symbol || '?'}: borrowed=${formatUsd(borrowed)}, collateral=${formatUsd(collateral)}`);
+        }
+      });
+
+      return { vault, positions, totalBorrowed, totalCollateral };
     }
 
     async function init() {
       try {
-        const [loansData, allVaults] = await Promise.all([
-          fetchTotalMainnetLoans(),
-          fetchAllVaults()
-        ]);
+        // Fetch all data in parallel
+        const loansPromise = fetchTotalMainnetLoans();
+        const positionPromises = FUSION_VAULTS.map(v => fetchVaultMorphoPositions(v));
+
+        const [loansData, ...vaultResults] = await Promise.all([loansPromise, ...positionPromises]);
 
         // Total Morpho Loans
         document.getElementById('totalLoans').textContent = formatUsd(loansData.total);
         document.getElementById('totalLoansSub').textContent =
           `${loansData.fetched}/${loansData.countTotal} markets · live`;
 
-        // Filter Fusion vaults
-        const fusionVaults = allVaults.filter(isFusionVault);
+        // Aggregate Fusion borrowed
+        const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
+        const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
+        const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
 
-        // Fusion total
-        const fusionTotal = fusionVaults.reduce((sum, v) => sum + (v.state?.totalAssetsUsd || 0), 0);
-        document.getElementById('fusionLoans').textContent = formatUsd(fusionTotal);
-        document.getElementById('fusionLoansSub').textContent =
-          fusionVaults.length > 0
-            ? `${fusionVaults.length} vault${fusionVaults.length !== 1 ? 's' : ''} · live`
-            : 'no vaults found — check list below';
+        document.getElementById('fusionBorrowed').textContent = formatUsd(fusionTotalBorrowed);
+        document.getElementById('fusionBorrowedSub').textContent =
+          fusionTotalBorrowed > 0
+            ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} active · collateral: ${formatUsd(fusionTotalCollateral)}`
+            : `checked ${FUSION_VAULTS.length} vaults · no Morpho positions found`;
 
         // Share
-        const share = loansData.total > 0 ? (fusionTotal / loansData.total * 100) : 0;
-        document.getElementById('shareValue').textContent = share.toFixed(1) + '%';
-        document.getElementById('shareBar').style.width = Math.min(share, 100) + '%';
+        const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
+        document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
+        document.getElementById('shareBar').style.width = Math.min(share * 5, 100) + '%'; // Scale up for visibility
 
         // Vault table
         const tbody = document.getElementById('vaultTableBody');
         tbody.innerHTML = '';
 
-        if (fusionVaults.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="3" class="loading">
-            No vaults matched "fusion" or "ipor".<br>
-            Use the search below to find the right vault names, then tell me what to filter for.
+        if (activeVaults.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="loading">
+            No active Morpho positions found for ${FUSION_VAULTS.length} checked Fusion vault addresses.<br>
+            <span style="font-size:0.75rem">Check the API Log below for details. Vaults may be using other lending protocols (Spark, Aave) instead of Morpho right now.</span>
           </td></tr>`;
-        } else {
-          const sortedVaults = fusionVaults.sort((a, b) =>
-            (b.state?.totalAssetsUsd || 0) - (a.state?.totalAssetsUsd || 0)
-          );
-          const maxAssets = sortedVaults[0]?.state?.totalAssetsUsd || 1;
-
-          sortedVaults.forEach(v => {
-            const assets = v.state?.totalAssetsUsd || 0;
-            const vaultShare = fusionTotal > 0 ? (assets / fusionTotal * 100) : 0;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>
-                <div class="vault-name">${v.name || v.symbol || 'Unknown'}</div>
-                <div class="vault-address">${v.address.slice(0, 6)}...${v.address.slice(-4)} · ${v.asset?.symbol || '?'}</div>
-              </td>
-              <td class="num-bold">${formatUsd(assets)}</td>
-              <td>
-                <div class="bar-cell">
-                  <div class="bar-bg"><div class="bar-fill" style="width: ${(assets / maxAssets) * 100}%"></div></div>
-                  <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-                </div>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
+          log('');
+          log('=== SUMMARY ===');
+          log(`Total Morpho Loans: ${formatUsd(loansData.total)}`);
+          log(`Fusion Borrowed on Morpho: ${formatUsd(fusionTotalBorrowed)}`);
+          log(`Fusion Share: ${share.toFixed(4)}%`);
+          log(`Active vaults on Morpho: ${activeVaults.length}/${FUSION_VAULTS.length}`);
+          return;
         }
 
-        // Diagnostic: show all vaults
-        renderAllVaultsList(allVaults, '');
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-          renderAllVaultsList(allVaults, e.target.value);
+        // Sort by borrowed amount
+        const sorted = [...vaultResults]
+          .filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0)
+          .sort((a, b) => b.totalBorrowed - a.totalBorrowed);
+
+        const maxBorrowed = sorted[0]?.totalBorrowed || 1;
+
+        sorted.forEach(r => {
+          const vaultShare = fusionTotalBorrowed > 0
+            ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>
+              <div class="vault-name">${r.vault.name}</div>
+              <div class="vault-address">
+                <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
+                · ${r.vault.asset}
+              </div>
+            </td>
+            <td class="num-bold">${formatUsd(r.totalBorrowed)}</td>
+            <td class="num-bold">${formatUsd(r.totalCollateral)}</td>
+            <td>
+              <div class="bar-cell">
+                <div class="bar-bg"><div class="bar-fill" style="width: ${(r.totalBorrowed / maxBorrowed) * 100}%"></div></div>
+                <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
         });
+
+        log('');
+        log('=== SUMMARY ===');
+        log(`Total Morpho Loans: ${formatUsd(loansData.total)}`);
+        log(`Fusion Borrowed on Morpho: ${formatUsd(fusionTotalBorrowed)}`);
+        log(`Fusion Share: ${share.toFixed(4)}%`);
+        log(`Active vaults on Morpho: ${activeVaults.length}/${FUSION_VAULTS.length}`);
 
       } catch (err) {
         console.error('Init error:', err);
+        log(`ERROR: ${err.message}`);
         document.getElementById('totalLoans').textContent = 'Error';
         document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
       }
