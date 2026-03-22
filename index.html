@@ -253,6 +253,31 @@
       word-break: break-all;
     }
 
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-card h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 260px;
+    }
+
+    .chart-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.75rem;
+    }
+
     @media (max-width: 640px) {
       body { padding: 1rem; }
       .stats-row { grid-template-columns: 1fr; }
@@ -295,6 +320,14 @@
       <span class="share-value num-bold" id="shareValue">—</span>
     </div>
 
+    <div class="chart-card">
+      <h2>Fusion Share Over Time</h2>
+      <div class="chart-wrap">
+        <canvas id="shareChart"></canvas>
+      </div>
+      <div class="chart-sub" id="chartSub">Loading history...</div>
+    </div>
+
     <div class="vault-table">
       <h2>Fusion Vault Positions on Morpho</h2>
       <table>
@@ -318,8 +351,11 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script>
     const MORPHO_API = 'https://api.morpho.org/graphql';
+    const HISTORY_FILE = 'history.json';
 
     // All IPOR Fusion vault addresses on Ethereum Mainnet
     // Source: app.ipor.io/fusion/ethereum + beta.ipor.io/fusion/ethereum
@@ -520,9 +556,7 @@
         // Share
         const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
         document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
-        // Scale bar: if share < 20%, multiply for visibility
-        const barWidth = share >= 20 ? share : Math.min(share * 5, 100);
-        document.getElementById('shareBar').style.width = barWidth + '%';
+        document.getElementById('shareBar').style.width = share + '%';
 
         // Vault table
         const tbody = document.getElementById('vaultTableBody');
@@ -586,7 +620,104 @@
       }
     }
 
-    init();
+    // --- History chart ---
+    let shareChart = null;
+
+    async function loadHistory() {
+      // Try loading from history.json (written by collector script)
+      let history = [];
+      try {
+        const res = await fetch(HISTORY_FILE + '?t=' + Date.now());
+        if (res.ok) history = await res.json();
+      } catch (e) { /* file doesn't exist yet */ }
+      return history;
+    }
+
+    function renderChart(history) {
+      const ctx = document.getElementById('shareChart').getContext('2d');
+      const sub = document.getElementById('chartSub');
+
+      if (history.length === 0) {
+        sub.textContent = 'No historical data yet. Run the collector (node collect.js) to start tracking.';
+        return;
+      }
+
+      const labels = history.map(h => new Date(h.timestamp));
+      const shares = history.map(h => h.sharePercent);
+      const borrowed = history.map(h => h.fusionBorrowed);
+      const totalLoans = history.map(h => h.totalLoans);
+
+      if (shareChart) shareChart.destroy();
+
+      shareChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Fusion Share %',
+            data: shares,
+            borderColor: '#8429FF',
+            backgroundColor: 'rgba(132, 41, 255, 0.08)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'hour', displayFormats: { hour: 'MMM d, HH:mm' } },
+              grid: { display: false },
+              ticks: { font: { size: 11 }, color: '#9BA3AF' }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: v => v.toFixed(1) + '%',
+                font: { size: 11 },
+                color: '#9BA3AF'
+              },
+              grid: { color: 'rgba(0,0,0,0.04)' }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: items => {
+                  const d = new Date(items[0].parsed.x);
+                  return d.toLocaleString();
+                },
+                label: item => {
+                  const idx = item.dataIndex;
+                  const s = shares[idx].toFixed(2);
+                  const b = formatUsd(borrowed[idx]);
+                  const t = formatUsd(totalLoans[idx]);
+                  return [`Share: ${s}%`, `Fusion Borrowed: ${b}`, `Total Morpho: ${t}`];
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const span = ((labels[labels.length - 1] - labels[0]) / 3600000).toFixed(0);
+      sub.textContent = `${history.length} data points · ${span}h span · updated every hour by collector`;
+    }
+
+    async function run() {
+      const history = await loadHistory();
+      renderChart(history);
+      await init();
+    }
+
+    run();
   </script>
 </body>
 </html>
