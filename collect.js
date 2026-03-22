@@ -70,16 +70,16 @@ async function fetchVaultBorrowed(address) {
     userByAddress(chainId: 1, address: "${address}") {
       marketPositions {
         borrowAssetsUsd
-        state { borrowAssetsUsd collateralUsd }
+        supplyAssetsUsd
       }
     }
   }`);
   const user = data?.userByAddress;
   if (!user?.marketPositions) return { borrowed: 0, collateral: 0 };
   const borrowed = user.marketPositions.reduce((s, p) =>
-    s + (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0), 0);
+    s + (p.borrowAssetsUsd || 0), 0);
   const collateral = user.marketPositions.reduce((s, p) =>
-    s + (p.state?.collateralUsd || 0), 0);
+    s + (p.supplyAssetsUsd || 0), 0);
   return { borrowed, collateral };
 }
 
