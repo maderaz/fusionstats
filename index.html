@@ -352,7 +352,7 @@
     }
 
     .chart-bar-slot:hover .chart-bar-track {
-      width: 8px;
+      width: 14px;
     }
 
     .chart-bar-slot:hover .chart-bar-fill {
@@ -394,9 +394,9 @@
       transform: translateX(-50%);
       background: rgba(0, 0, 0, 0.85);
       color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.65rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
       white-space: nowrap;
       z-index: 10;
       pointer-events: none;
@@ -753,9 +753,9 @@
           const tip = document.createElement('div');
           tip.className = 'chart-bar-tooltip';
           tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
-            + `Fusion: ${formatUsd(s.borrowed)} (${share}%)<br>`
-            + `Other: ${formatUsd(s.totalLoans - s.borrowed)}<br>`
-            + `Total: ${formatUsd(s.totalLoans)}`;
+            + `Fusion: ${formatUsdFull(s.borrowed)} (${share}%)<br>`
+            + `Other: ${formatUsdFull(s.totalLoans - s.borrowed)}<br>`
+            + `Total: ${formatUsdFull(s.totalLoans)}`;
           slot.appendChild(tip);
         }
 
