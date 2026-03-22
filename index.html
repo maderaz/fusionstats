@@ -86,6 +86,7 @@
     .stat-card .value {
       font-size: 2rem;
       letter-spacing: -0.02em;
+      white-space: nowrap;
     }
 
     .stat-card .sub {
@@ -269,7 +270,7 @@
 
     .chart-wrap {
       position: relative;
-      height: 260px;
+      height: 300px;
     }
 
     .chart-sub {
@@ -321,7 +322,7 @@
     </div>
 
     <div class="chart-card">
-      <h2>Fusion Share Over Time</h2>
+      <h2>Morpho Loans — Fusion vs Rest</h2>
       <div class="chart-wrap">
         <canvas id="shareChart"></canvas>
       </div>
@@ -394,9 +395,9 @@
     }
 
     function formatUsd(value) {
-      if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-      if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-      if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
+      if (value >= 1e9) return `$${(value / 1e9).toFixed(0)}B`;
+      if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
+      if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
       return `$${value.toFixed(0)}`;
     }
 
@@ -644,27 +645,32 @@
       }
 
       const labels = history.map(h => new Date(h.timestamp));
-      const shares = history.map(h => h.sharePercent);
-      const borrowed = history.map(h => h.fusionBorrowed);
-      const totalLoans = history.map(h => h.totalLoans);
+      const borrowed = history.map(h => h.fusionBorrowed || 0);
+      const totalLoans = history.map(h => h.totalLoans || 0);
+      const remainder = totalLoans.map((t, i) => Math.max(0, t - borrowed[i]));
 
       if (shareChart) shareChart.destroy();
 
       shareChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
           labels,
-          datasets: [{
-            label: 'Fusion Share %',
-            data: shares,
-            borderColor: '#8429FF',
-            backgroundColor: 'rgba(132, 41, 255, 0.08)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            borderWidth: 2,
-          }]
+          datasets: [
+            {
+              label: 'Fusion Borrowed',
+              data: borrowed,
+              backgroundColor: '#8429FF',
+              borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 6, bottomRight: 6 },
+              borderSkipped: false,
+            },
+            {
+              label: 'Other Morpho Loans',
+              data: remainder,
+              backgroundColor: '#3B82F6',
+              borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 6, bottomRight: 6 },
+              borderSkipped: false,
+            }
+          ]
         },
         options: {
           responsive: true,
@@ -673,14 +679,16 @@
           scales: {
             x: {
               type: 'time',
-              time: { unit: 'hour', displayFormats: { hour: 'MMM d, HH:mm' } },
+              time: { unit: 'hour', displayFormats: { hour: 'HH:mm', day: 'MMM d' } },
+              stacked: true,
               grid: { display: false },
-              ticks: { font: { size: 11 }, color: '#9BA3AF' }
+              ticks: { font: { size: 11 }, color: '#9BA3AF', maxRotation: 0 }
             },
             y: {
+              stacked: true,
               beginAtZero: true,
               ticks: {
-                callback: v => v.toFixed(1) + '%',
+                callback: v => formatUsd(v),
                 font: { size: 11 },
                 color: '#9BA3AF'
               },
@@ -688,7 +696,20 @@
             }
           },
           plugins: {
-            legend: { display: false },
+            legend: {
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                usePointStyle: true,
+                pointStyle: 'rectRounded',
+                boxWidth: 12,
+                boxHeight: 12,
+                padding: 16,
+                font: { size: 12, family: 'Poppins' },
+                color: '#70747A'
+              }
+            },
             tooltip: {
               callbacks: {
                 title: items => {
@@ -697,10 +718,16 @@
                 },
                 label: item => {
                   const idx = item.dataIndex;
-                  const s = shares[idx].toFixed(2);
-                  const b = formatUsd(borrowed[idx]);
-                  const t = formatUsd(totalLoans[idx]);
-                  return [`Share: ${s}%`, `Fusion Borrowed: ${b}`, `Total Morpho: ${t}`];
+                  const share = totalLoans[idx] > 0
+                    ? (borrowed[idx] / totalLoans[idx] * 100).toFixed(2) : '0.00';
+                  if (item.datasetIndex === 0) {
+                    return `Fusion: ${formatUsd(borrowed[idx])} (${share}%)`;
+                  }
+                  return `Other Morpho: ${formatUsd(remainder[idx])}`;
+                },
+                afterBody: items => {
+                  const idx = items[0].dataIndex;
+                  return `Total: ${formatUsd(totalLoans[idx])}`;
                 }
               }
             }
