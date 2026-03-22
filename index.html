@@ -291,7 +291,7 @@
   <div class="container">
     <header>
       <h1>Fusion Stats</h1>
-      <p>IPOR Fusion Demand on Morpho — Ethereum Mainnet</p>
+      <p>Tracking IPOR Fusion vault borrowing activity on Morpho protocol, Ethereum Mainnet</p>
     </header>
 
     <div class="info-box">
@@ -314,7 +314,7 @@
     </div>
 
     <div class="share-banner">
-      <span class="share-label">Fusion Share of Morpho Demand</span>
+      <span class="share-label">Fusion Share of Morpho Demand<br><span style="font-size: 0.7rem; color: var(--text-secondary);">Ethereum Mainnet</span></span>
       <div class="share-bar-outer">
         <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
       </div>
@@ -395,7 +395,8 @@
     }
 
     function formatUsd(value) {
-      if (value >= 1e9) return `$${(value / 1e9).toFixed(0)}B`;
+      if (value >= 1e9) return `$${(value / 1e9).toFixed(value % 1e9 === 0 ? 0 : 1).replace(/\.0$/, '')}B`;
+      if (value >= 1e8) return `$${(value / 1e9).toFixed(1)}B`;
       if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
       if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
       return `$${value.toFixed(0)}`;
@@ -585,14 +586,22 @@
       }
 
       const labels = slots.map(s => s.time);
-      const borrowed = slots.map(s => s.borrowed);
       const totalLoansArr = slots.map(s => s.totalLoans);
-      const remainder = slots.map(s => s.totalLoans !== null ? Math.max(0, s.totalLoans - s.borrowed) : null);
-      // Placeholder height for empty slots (use max of existing data or a default)
+      // Every slot gets a full-height bar (blue = Other Morpho, purple = Fusion on top)
       const maxTotal = Math.max(...totalLoansArr.filter(v => v !== null), 1);
-      const placeholder = slots.map(s => s.totalLoans === null ? maxTotal : null);
+      const borrowed = slots.map(s => s.borrowed !== null ? s.borrowed : 0);
+      // "Other" = remainder of total; for empty slots show full bar as blue placeholder
+      const other = slots.map(s => {
+        if (s.totalLoans !== null) return Math.max(0, s.totalLoans - (s.borrowed || 0));
+        return maxTotal; // empty slot: full blue bar
+      });
 
       if (shareChart) shareChart.destroy();
+
+      // Gradient for Fusion bars (purple, matching share banner)
+      const gradient = ctx.createLinearGradient(0, 300, 0, 0);
+      gradient.addColorStop(0, '#8429FF');
+      gradient.addColorStop(1, '#6C00FF');
 
       shareChart = new Chart(ctx, {
         type: 'bar',
@@ -600,31 +609,22 @@
           labels,
           datasets: [
             {
-              label: 'Fusion Borrowed',
-              data: borrowed,
-              backgroundColor: '#8429FF',
-              borderRadius: 4,
-              borderSkipped: false,
-              barPercentage: 0.5,
-              categoryPercentage: 0.7,
-            },
-            {
               label: 'Other Morpho Loans',
-              data: remainder,
+              data: other,
               backgroundColor: '#3B82F6',
               borderRadius: 4,
               borderSkipped: false,
-              barPercentage: 0.5,
-              categoryPercentage: 0.7,
+              barPercentage: 0.4,
+              categoryPercentage: 0.8,
             },
             {
-              label: '_placeholder',
-              data: placeholder,
-              backgroundColor: '#E5E5E5',
+              label: 'Fusion Borrowed',
+              data: borrowed,
+              backgroundColor: gradient,
               borderRadius: 4,
               borderSkipped: false,
-              barPercentage: 0.5,
-              categoryPercentage: 0.7,
+              barPercentage: 0.4,
+              categoryPercentage: 0.8,
             }
           ]
         },
@@ -663,12 +663,10 @@
                 boxHeight: 12,
                 padding: 16,
                 font: { size: 12, family: 'Poppins' },
-                color: '#70747A',
-                filter: item => item.text !== '_placeholder'
+                color: '#70747A'
               }
             },
             tooltip: {
-              filter: item => item.dataset.label !== '_placeholder',
               callbacks: {
                 title: items => {
                   const d = new Date(items[0].parsed.x);
@@ -679,14 +677,15 @@
                   const b = borrowed[idx] || 0;
                   const t = totalLoansArr[idx] || 0;
                   const share = t > 0 ? (b / t * 100).toFixed(2) : '0.00';
-                  if (item.datasetIndex === 0) {
+                  if (item.datasetIndex === 1) {
                     return `Fusion: ${formatUsd(b)} (${share}%)`;
                   }
-                  return `Other Morpho: ${formatUsd(remainder[idx] || 0)}`;
+                  return `Other Morpho: ${formatUsd(other[idx] || 0)}`;
                 },
                 afterBody: items => {
                   const idx = items[0].dataIndex;
-                  return `Total: ${formatUsd(totalLoansArr[idx] || 0)}`;
+                  const t = totalLoansArr[idx] || (other[idx] + borrowed[idx]);
+                  return `Total: ${formatUsd(t)}`;
                 }
               }
             }
