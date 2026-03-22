@@ -401,6 +401,10 @@
       return `$${value.toFixed(0)}`;
     }
 
+    function formatUsdFull(value) {
+      return '$' + Math.round(value).toLocaleString('en-US');
+    }
+
     function shortAddr(addr) {
       return addr.slice(0, 6) + '...' + addr.slice(-4);
     }
@@ -542,11 +546,11 @@
       return history;
     }
 
-    function renderChart(history) {
+    function renderChart(history, liveData) {
       const ctx = document.getElementById('shareChart').getContext('2d');
       const sub = document.getElementById('chartSub');
 
-      if (history.length === 0) {
+      if (history.length === 0 && !liveData) {
         sub.textContent = 'No historical data yet. Run the collector (node collect.js) to start tracking.';
         return;
       }
@@ -569,6 +573,14 @@
         if (slot) {
           slot.borrowed = entry.fusionBorrowed || 0;
           slot.totalLoans = entry.totalLoans || 0;
+        }
+      }
+      // Inject live API data into the current hour slot if empty
+      if (liveData) {
+        const currentSlot = slots[slots.length - 1];
+        if (currentSlot.totalLoans === null) {
+          currentSlot.borrowed = liveData.fusionBorrowed;
+          currentSlot.totalLoans = liveData.totalLoans;
         }
       }
 
@@ -712,7 +724,7 @@
 
     function renderDashboard(loansData, vaultResults, fromCache) {
       // Total Morpho Loans
-      document.getElementById('totalLoans').textContent = formatUsd(loansData.total);
+      document.getElementById('totalLoans').textContent = formatUsdFull(loansData.total);
       const cacheLabel = fromCache ? ' · cached' : ' · live';
       document.getElementById('totalLoansSub').textContent =
         `${loansData.fetched}/${loansData.countTotal} markets` + cacheLabel;
@@ -724,10 +736,10 @@
       const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
       const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
 
-      document.getElementById('fusionBorrowed').textContent = formatUsd(fusionTotalBorrowed);
+      document.getElementById('fusionBorrowed').textContent = formatUsdFull(fusionTotalBorrowed);
       document.getElementById('fusionBorrowedSub').textContent =
         fusionTotalBorrowed > 0
-          ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsd(fusionTotalCollateral)}`
+          ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsdFull(fusionTotalCollateral)}`
           : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
 
       // Share
@@ -791,13 +803,18 @@
       }
     }
 
+    function getLiveDataForChart(loansData, vaultResults) {
+      const fusionBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
+      return { fusionBorrowed, totalLoans: loansData.total };
+    }
+
     async function run() {
       const history = await loadHistory();
-      renderChart(history);
 
       const cached = getCachedData();
       if (cached) {
         log('Using cached data (< 15 min old). Skipping API calls.');
+        renderChart(history, getLiveDataForChart(cached.loansData, cached.vaultResults));
         renderDashboard(cached.loansData, cached.vaultResults, true);
         return;
       }
@@ -809,10 +826,12 @@
           fetchAllVaultPositions(FUSION_VAULTS)
         ]);
         setCachedData(loansData, vaultResults);
+        renderChart(history, getLiveDataForChart(loansData, vaultResults));
         renderDashboard(loansData, vaultResults, false);
       } catch (err) {
         console.error('Init error:', err);
         log(`ERROR: ${err.message}`);
+        renderChart(history, null);
         document.getElementById('totalLoans').textContent = 'Error';
         document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
       }
