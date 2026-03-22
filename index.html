@@ -319,7 +319,7 @@
               first: 1000
               orderBy: BorrowAssetsUsd
               orderDirection: Desc
-              where: { chainId_in: [1] }
+              where: { chainId_in: [1], whitelisted: true }
             ) {
               items {
                 uniqueKey
@@ -376,7 +376,8 @@
       const fusionVaults = allVaults.filter(v => {
         const name = (v.name || '').toLowerCase();
         const symbol = (v.symbol || '').toLowerCase();
-        return name.includes('fusion') || symbol.includes('fusion');
+        return name.includes('fusion') || symbol.includes('fusion')
+          || name.includes('ipor') || symbol.includes('ipor');
       });
 
       console.log('All mainnet vaults:', allVaults.length, 'of', json.data.vaults.pageInfo.countTotal);
