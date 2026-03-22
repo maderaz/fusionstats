@@ -72,7 +72,6 @@ async function fetchVaultSupply(address) {
       name
       state {
         totalAssetsUsd
-        allocationUsd
         allocation {
           supplyAssetsUsd
           market {
