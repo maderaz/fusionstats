@@ -12,7 +12,8 @@ const path = require('path');
 
 const MORPHO_API = 'https://api.morpho.org/graphql';
 const HISTORY_FILE = path.join(__dirname, 'history.json');
-const MAX_ENTRIES = 720; // ~30 days of hourly data
+const HOURLY_WINDOW_MS = 7 * 24 * 3600 * 1000; // keep hourly data for 7 days
+const MAX_DAILY_ENTRIES = 365; // keep up to 1 year of daily averages
 
 const FUSION_VAULTS = [
   '0xb8a451107a9f87fde481d4d686247d6e43ed715e',
@@ -142,10 +143,36 @@ async function collect() {
     vaultCount: FUSION_VAULTS.length,
   });
 
-  // Trim to max entries
-  if (history.length > MAX_ENTRIES) {
-    history = history.slice(history.length - MAX_ENTRIES);
+  // Compact: entries older than 7 days get averaged into daily snapshots
+  const cutoff = Date.now() - HOURLY_WINDOW_MS;
+  const recent = [];
+  const oldByDay = {};
+  for (const entry of history) {
+    if (new Date(entry.timestamp).getTime() >= cutoff) {
+      recent.push(entry);
+    } else {
+      const day = entry.timestamp.slice(0, 10); // YYYY-MM-DD
+      if (!oldByDay[day]) oldByDay[day] = [];
+      oldByDay[day].push(entry);
+    }
   }
+  // Average old entries per day
+  const dailyEntries = Object.entries(oldByDay).sort().map(([day, entries]) => {
+    const avg = (field) => entries.reduce((s, e) => s + (e[field] || 0), 0) / entries.length;
+    return {
+      timestamp: day + 'T12:00:00.000Z',
+      totalLoans: avg('totalLoans'),
+      fusionBorrowed: avg('fusionBorrowed'),
+      fusionCollateral: avg('fusionCollateral'),
+      sharePercent: avg('sharePercent'),
+      vaultCount: entries[entries.length - 1].vaultCount,
+    };
+  });
+  // Trim daily to max
+  const trimmedDaily = dailyEntries.length > MAX_DAILY_ENTRIES
+    ? dailyEntries.slice(dailyEntries.length - MAX_DAILY_ENTRIES)
+    : dailyEntries;
+  history = [...trimmedDaily, ...recent];
 
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
   console.log(`  Saved to ${HISTORY_FILE} (${history.length} entries)`);
