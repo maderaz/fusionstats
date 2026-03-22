@@ -292,7 +292,7 @@
         body: JSON.stringify({
           query: `{
             markets(
-              first: 500
+              first: 1000
               orderBy: BorrowAssetsUsd
               orderDirection: Desc
               where: { chainId_in: [1, 8453], whitelisted: true }
