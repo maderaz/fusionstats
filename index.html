@@ -236,9 +236,9 @@
 
     <div class="stats-row">
       <div class="stat-card">
-        <div class="label">Total Borrow Demand</div>
-        <div class="value">$482M</div>
-        <div class="change up">+3.2% 7d</div>
+        <div class="label">Active Loans</div>
+        <div class="value" id="totalLoans">—</div>
+        <div class="change" id="totalLoansSource" style="color: var(--text-dim)">loading...</div>
       </div>
       <div class="stat-card">
         <div class="label">Tracked Vaults Share</div>
@@ -282,6 +282,51 @@
   </div>
 
   <script>
+    // Morpho API
+    const MORPHO_API = 'https://api.morpho.org/graphql';
+
+    async function fetchAllMarketsBorrow() {
+      let allItems = [];
+      let skip = 0;
+      const batchSize = 100;
+
+      while (true) {
+        const res = await fetch(MORPHO_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `{
+              markets(first: ${batchSize}, skip: ${skip}, orderBy: SupplyAssetsUsd, orderDirection: Desc) {
+                items { state { borrowAssetsUsd } }
+                pageInfo { count countTotal }
+              }
+            }`
+          })
+        });
+        const json = await res.json();
+        const { items, pageInfo } = json.data.markets;
+        allItems = allItems.concat(items);
+        skip += batchSize;
+        if (skip >= pageInfo.countTotal) break;
+      }
+
+      return allItems.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
+    }
+
+    function formatUsd(value) {
+      if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+      if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+      return `$${value.toFixed(1)}`;
+    }
+
+    fetchAllMarketsBorrow().then(total => {
+      document.getElementById('totalLoans').textContent = formatUsd(total);
+      document.getElementById('totalLoansSource').textContent = 'live from Morpho API';
+    }).catch(err => {
+      document.getElementById('totalLoans').textContent = 'Error';
+      document.getElementById('totalLoansSource').textContent = err.message;
+    });
+
     // Dummy data
     const vaults = [
       { name: 'Steakhouse USDC', address: '0x beef...1234', demand: 58.2, share: 12.1 },
