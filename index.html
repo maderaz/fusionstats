@@ -328,10 +328,10 @@
       { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', source: 'prod', name: 'IPOR stETH Ethereum' },
       { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', source: 'prod', name: 'K3 Leveraged syrupUSDT Strategy' },
       { address: '0x604117f0c94561231060f56cd2ddd16245d434c5', source: 'prod', name: 'AavEthena Loop Mainnet' },
-      { address: '0xd36f53497507e948df9f277cf8c3ececb09a1c1d', source: 'prod' },
+      { address: '0xd36f53497507e948df9f277cf8c3ececb09a1c1d', source: 'prod', name: 'TAU InfiniFi Pointsmaxx - Silo' },
       { address: '0xbfa9d6ec0e04b6691fcae5f8b48838c3918ec117', source: 'prod' },
       { address: '0x63103375659d0aa94e9f35df15be01a3dd1ae9c0', source: 'prod' },
-      { address: '0xe9385eff3f937fcb0f0085da9a3f53d6c2b4fb5f', source: 'prod' },
+      { address: '0xe9385eff3f937fcb0f0085da9a3f53d6c2b4fb5f', source: 'prod', name: 'Reservoir wsrUSD Looping' },
       { address: '0xb0f56bb0bf13ee05fef8cd2d8df5ffdfcac7a74f', source: 'prod' },
       { address: '0xf6cd9e8415162c8fb3c52676c7ca68812a34f76e', source: 'prod' },
       { address: '0x6f66b845604dad6e80b2a1472e6cacbbe66a8c40', source: 'prod' },
@@ -528,44 +528,44 @@
         const tbody = document.getElementById('vaultTableBody');
         tbody.innerHTML = '';
 
-        if (withPositions.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="loading">
-            No active Morpho positions found across ${FUSION_VAULTS.length} Fusion vaults.<br>
-            <span style="font-size:0.75rem">Vaults may currently allocate to Spark, Aave, or other protocols. Check API Log below.</span>
-          </td></tr>`;
-        } else {
-          // Sort by borrowed amount (borrowers first, then suppliers)
-          const sorted = withPositions.sort((a, b) => b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied);
-          const maxBorrowed = sorted[0]?.totalBorrowed || 1;
+        // Show ALL vaults — active ones first (sorted by borrowed), then inactive
+        const sorted = vaultResults.slice().sort((a, b) => {
+          const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
+          const bActive = b.totalBorrowed > 0 || b.totalCollateral > 0 || b.totalSupplied > 0 ? 1 : 0;
+          if (bActive !== aActive) return bActive - aActive;
+          return b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied;
+        });
+        const maxBorrowed = sorted[0]?.totalBorrowed || 1;
 
-          sorted.forEach(r => {
-            const vaultShare = fusionTotalBorrowed > 0
-              ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
-            // Auto-label from market pairs or source tag
-            const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
-            const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
-            const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>
-                <div class="vault-name">${displayName}</div>
-                <div class="vault-address">
-                  <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-                  · ${marketsLabel}
-                </div>
-              </td>
-              <td class="num-bold">${formatUsd(r.totalBorrowed)}</td>
-              <td class="num-bold">${formatUsd(r.totalCollateral)}</td>
-              <td>
-                <div class="bar-cell">
-                  <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
-                  <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-                </div>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
+        sorted.forEach(r => {
+          const vaultShare = fusionTotalBorrowed > 0
+            ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
+          const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
+          // Auto-label from market pairs or source tag
+          const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
+          const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
+          const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
+          const tr = document.createElement('tr');
+          if (!hasPosition) tr.style.opacity = '0.5';
+          tr.innerHTML = `
+            <td>
+              <div class="vault-name">${displayName}</div>
+              <div class="vault-address">
+                <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
+                · ${hasPosition ? marketsLabel : 'no Morpho positions'}
+              </div>
+            </td>
+            <td class="num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</td>
+            <td class="num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</td>
+            <td>
+              <div class="bar-cell">
+                <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
+                <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
 
         log('');
         log('=== SUMMARY ===');
