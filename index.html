@@ -325,9 +325,9 @@
     // Source: app.ipor.io/fusion/ethereum + beta.ipor.io/fusion/ethereum
     const FUSION_VAULTS = [
       // Production vaults (app.ipor.io)
-      { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', source: 'prod' },
-      { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', source: 'prod' },
-      { address: '0x604117f0c94561231060f56cd2ddd16245d434c5', source: 'prod' },
+      { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', source: 'prod', name: 'IPOR stETH Ethereum' },
+      { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', source: 'prod', name: 'K3 Leveraged syrupUSDT Strategy' },
+      { address: '0x604117f0c94561231060f56cd2ddd16245d434c5', source: 'prod', name: 'AavEthena Loop Mainnet' },
       { address: '0xd36f53497507e948df9f277cf8c3ececb09a1c1d', source: 'prod' },
       { address: '0xbfa9d6ec0e04b6691fcae5f8b48838c3918ec117', source: 'prod' },
       { address: '0x63103375659d0aa94e9f35df15be01a3dd1ae9c0', source: 'prod' },
@@ -400,8 +400,8 @@
 
     // Fetch Morpho positions for a single vault address
     async function fetchVaultMorphoPositions(vault) {
-      const label = shortAddr(vault.address);
-      log(`Querying Morpho positions for ${label} [${vault.source}]...`);
+      const label = vault.name || shortAddr(vault.address);
+      log(`Querying ${label} (${shortAddr(vault.address)}) [${vault.source}]...`);
       const res = await fetch(MORPHO_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -544,10 +544,11 @@
             // Auto-label from market pairs or source tag
             const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
             const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
+            const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td>
-                <div class="vault-name">Fusion Vault${sourceTag}</div>
+                <div class="vault-name">${displayName}</div>
                 <div class="vault-address">
                   <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
                   · ${marketsLabel}
