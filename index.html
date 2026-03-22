@@ -749,9 +749,9 @@
           const tip = document.createElement('div');
           tip.className = 'chart-bar-tooltip';
           tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
-            + `Fusion: ${formatUsdFull(s.borrowed)} (${share}%)<br>`
-            + `Other: ${formatUsdFull(s.totalLoans - s.borrowed)}<br>`
-            + `Total: ${formatUsdFull(s.totalLoans)}`;
+            + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
+            + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
+            + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
           slot.appendChild(tip);
         }
 
