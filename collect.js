@@ -38,6 +38,7 @@ const FUSION_VAULTS = [
   '0x60e36a79c3d21120350e39b5ea59ae26b75ae74c',
   '0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3',
   '0xc2a119ea6de75e4b1451330321cb2474eb8d82d4',
+  '0xdab31950ddcc814c49e6bbd5153dd2062e44f368',
 ];
 
 async function gql(query) {

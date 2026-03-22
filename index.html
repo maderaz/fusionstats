@@ -265,18 +265,146 @@
     .chart-card h2 {
       font-size: 1rem;
       font-weight: 500;
-      margin-bottom: 1rem;
+      margin-bottom: 0.25rem;
     }
 
-    .chart-wrap {
+    .chart-legend {
+      display: flex;
+      gap: 1.25rem;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-body);
+    }
+
+    .chart-legend span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .chart-legend .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .chart-area {
+      display: flex;
+      align-items: stretch;
+      height: 260px;
+      gap: 0;
+    }
+
+    .chart-y-axis {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-right: 0.75rem;
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      font-family: 'Source Sans 3', sans-serif;
+      text-align: right;
+      min-width: 48px;
+    }
+
+    .chart-y-axis span {
+      line-height: 1;
+    }
+
+    .chart-bars-container {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
       position: relative;
-      height: 300px;
+    }
+
+    .chart-bar-slot {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      position: relative;
+    }
+
+    .chart-bar-track {
+      width: 6px;
+      flex: 1;
+      background: var(--bg-alt);
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      position: relative;
+    }
+
+    .chart-bar-fill {
+      width: 100%;
+      border-radius: 3px;
+      background: linear-gradient(to top, var(--accent), var(--accent-end));
+      transition: height 0.4s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chart-bar-slot:hover .chart-bar-track {
+      width: 8px;
+    }
+
+    .chart-bar-slot:hover .chart-bar-fill {
+      filter: brightness(1.1);
+    }
+
+    .chart-x-labels {
+      flex: 1;
+      display: flex;
+      gap: 2px;
+    }
+
+    .chart-x-row {
+      display: flex;
+      gap: 2px;
+      padding-left: 48px;
+      margin-top: 0.5rem;
+    }
+
+    .chart-x-row span {
+      flex: 1;
+      text-align: center;
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      font-family: 'Source Sans 3', sans-serif;
     }
 
     .chart-sub {
       font-size: 0.75rem;
       color: var(--text-secondary);
       margin-top: 0.75rem;
+    }
+
+    .chart-bar-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+
+    .chart-bar-slot:hover .chart-bar-tooltip {
+      display: block;
     }
 
     @media (max-width: 640px) {
@@ -295,9 +423,9 @@
     </header>
 
     <div class="info-box">
-      <strong>How it works:</strong> IPOR Fusion vaults use leveraged looping strategies that borrow from Morpho markets.
-      This dashboard queries the Morpho API for each Fusion vault's on-chain positions to measure how much
-      loan demand Fusion generates on Morpho.
+      <strong>What is this?</strong> IPOR Fusion vaults borrow money from Morpho lending markets.
+      This page shows how much of all Morpho lending is coming from Fusion vaults.
+      The numbers update every hour automatically. The table below breaks it down vault by vault.
     </div>
 
     <div class="stats-row">
@@ -323,9 +451,15 @@
 
     <div class="chart-card">
       <h2>Morpho Loans — Fusion vs Rest</h2>
-      <div class="chart-wrap">
-        <canvas id="shareChart"></canvas>
+      <div class="chart-legend">
+        <span><span class="dot" style="background: linear-gradient(135deg, var(--accent), var(--accent-end));"></span> Fusion Borrowed</span>
+        <span><span class="dot" style="background: var(--bg-alt);"></span> Other Morpho Loans</span>
       </div>
+      <div class="chart-area">
+        <div class="chart-y-axis" id="chartYAxis"></div>
+        <div class="chart-bars-container" id="chartBars"></div>
+      </div>
+      <div class="chart-x-row" id="chartXLabels"></div>
       <div class="chart-sub" id="chartSub">Loading history...</div>
     </div>
 
@@ -352,8 +486,6 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script>
     const MORPHO_API = 'https://api.morpho.org/graphql';
     const HISTORY_FILE = 'history.json';
@@ -378,13 +510,14 @@
       { address: '0xe48cdd5ecec5aa53e630a7b4df12f79067b68dac', source: 'prod', name: 'TAU InfiniFi BTC Carry' },
       { address: '0x20e934c725b6703f0ac696f1689008057db9ac44', source: 'prod', name: 'IPOR DAI Prime' },
       { address: '0xef53663bb775a51181f04d590f88fc38d6bd5751', source: 'prod', name: 'Sentinel stcUSD Adaptive Looping' },
-      // Beta vaults (beta.ipor.io)
-      { address: '0xad685fec2066d7f5436f5804882998ba79725706', source: 'beta' },
-      { address: '0x87428d886f43068a44d7bdeef106d3c42e1d6f23', source: 'beta' },
-      { address: '0x9824dcdac89f208bf8b5cb5c4dc41f04a0878607', source: 'beta' },
-      { address: '0x60e36a79c3d21120350e39b5ea59ae26b75ae74c', source: 'beta' },
-      { address: '0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3', source: 'beta' },
-      { address: '0xc2a119ea6de75e4b1451330321cb2474eb8d82d4', source: 'beta' },
+      // Private vaults (beta.ipor.io)
+      { address: '0xad685fec2066d7f5436f5804882998ba79725706', source: 'beta', name: 'Magnus Lending Optimizer', private: true },
+      { address: '0x87428d886f43068a44d7bdeef106d3c42e1d6f23', source: 'beta', name: 'AlchemistCS', private: true },
+      { address: '0x9824dcdac89f208bf8b5cb5c4dc41f04a0878607', source: 'beta', name: 'Tesseract Managed ETH', private: true },
+      { address: '0xc2a119ea6de75e4b1451330321cb2474eb8d82d4', source: 'beta', name: 'Tesseract USDC Lending Optimizer', private: true },
+      { address: '0x60e36a79c3d21120350e39b5ea59ae26b75ae74c', source: 'beta', name: 'TAU InfiniFi cbBTC Carry', private: true },
+      { address: '0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3', source: 'beta', name: 'Hyperithm mHYPER Looping', private: true },
+      { address: '0xdab31950ddcc814c49e6bbd5153dd2062e44f368', source: 'beta', name: 'Tesseract Managed BTC', private: true },
     ];
 
     const debugLines = [];
@@ -534,11 +667,9 @@
 
     // init() is no longer used — data fetching + rendering moved to run()/renderDashboard()
 
-    // --- History chart ---
-    let shareChart = null;
+    // --- History chart (CSS bars, matching share-banner style) ---
 
     async function loadHistory() {
-      // Try loading from history.json (written by collector script)
       let history = [];
       try {
         const res = await fetch(HISTORY_FILE + '?t=' + Date.now());
@@ -548,24 +679,24 @@
     }
 
     function renderChart(history, liveData) {
-      const ctx = document.getElementById('shareChart').getContext('2d');
       const sub = document.getElementById('chartSub');
+      const barsEl = document.getElementById('chartBars');
+      const yAxisEl = document.getElementById('chartYAxis');
+      const xLabelsEl = document.getElementById('chartXLabels');
 
       if (history.length === 0 && !liveData) {
         sub.textContent = 'No historical data yet. Run the collector (node collect.js) to start tracking.';
         return;
       }
 
-      // Build 24-hour timeline with hourly slots
+      // Build 24-hour timeline
       const SLOTS = 24;
       const now = new Date();
       now.setMinutes(0, 0, 0);
       const slots = [];
       for (let i = SLOTS - 1; i >= 0; i--) {
-        const t = new Date(now.getTime() - i * 3600000);
-        slots.push({ time: t, borrowed: null, totalLoans: null });
+        slots.push({ time: new Date(now.getTime() - i * 3600000), borrowed: null, totalLoans: null });
       }
-      // Fill slots with closest matching history entry
       for (const entry of history) {
         const et = new Date(entry.timestamp);
         et.setMinutes(0, 0, 0);
@@ -576,7 +707,6 @@
           slot.totalLoans = entry.totalLoans || 0;
         }
       }
-      // Inject live API data into the current hour slot if empty
       if (liveData) {
         const currentSlot = slots[slots.length - 1];
         if (currentSlot.totalLoans === null) {
@@ -585,116 +715,63 @@
         }
       }
 
-      const labels = slots.map(s => s.time);
-      const totalLoansArr = slots.map(s => s.totalLoans);
-      // Every slot gets a full-height bar (blue = Other Morpho, purple = Fusion on top)
-      const maxTotal = Math.max(...totalLoansArr.filter(v => v !== null), 1);
-      const borrowed = slots.map(s => s.borrowed !== null ? s.borrowed : 0);
-      // "Other" = remainder of total; for empty slots show full bar as blue placeholder
-      const other = slots.map(s => {
-        if (s.totalLoans !== null) return Math.max(0, s.totalLoans - (s.borrowed || 0));
-        return maxTotal; // empty slot: full blue bar
-      });
+      const maxTotal = Math.max(...slots.map(s => s.totalLoans).filter(v => v !== null), 1);
 
-      if (shareChart) shareChart.destroy();
+      // Y-axis labels (5 ticks)
+      yAxisEl.innerHTML = '';
+      const ticks = 5;
+      for (let i = ticks; i >= 0; i--) {
+        const val = (maxTotal / ticks) * i;
+        const span = document.createElement('span');
+        span.textContent = formatUsd(val);
+        yAxisEl.appendChild(span);
+      }
 
-      // Gradient for Fusion bars (purple, matching share banner)
-      const gradient = ctx.createLinearGradient(0, 300, 0, 0);
-      gradient.addColorStop(0, '#8429FF');
-      gradient.addColorStop(1, '#6C00FF');
+      // Bars
+      barsEl.innerHTML = '';
+      slots.forEach(s => {
+        const slot = document.createElement('div');
+        slot.className = 'chart-bar-slot';
 
-      shareChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Other Morpho Loans',
-              data: other,
-              backgroundColor: '#3B82F6',
-              borderRadius: 4,
-              borderSkipped: false,
-              barPercentage: 0.4,
-              categoryPercentage: 0.8,
-            },
-            {
-              label: 'Fusion Borrowed',
-              data: borrowed,
-              backgroundColor: gradient,
-              borderRadius: 4,
-              borderSkipped: false,
-              barPercentage: 0.4,
-              categoryPercentage: 0.8,
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          scales: {
-            x: {
-              type: 'time',
-              time: { unit: 'hour', displayFormats: { hour: 'HH:mm', day: 'MMM d' } },
-              stacked: true,
-              grid: { display: false },
-              ticks: { font: { size: 11 }, color: '#9BA3AF', maxRotation: 0 }
-            },
-            y: {
-              stacked: true,
-              beginAtZero: true,
-              ticks: {
-                callback: v => formatUsd(v),
-                font: { size: 11 },
-                color: '#9BA3AF'
-              },
-              grid: { color: 'rgba(0,0,0,0.04)' }
-            }
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              align: 'end',
-              labels: {
-                usePointStyle: true,
-                pointStyle: 'rectRounded',
-                boxWidth: 12,
-                boxHeight: 12,
-                padding: 16,
-                font: { size: 12, family: 'Poppins' },
-                color: '#70747A'
-              }
-            },
-            tooltip: {
-              callbacks: {
-                title: items => {
-                  const d = new Date(items[0].parsed.x);
-                  return d.toLocaleString();
-                },
-                label: item => {
-                  const idx = item.dataIndex;
-                  const b = borrowed[idx] || 0;
-                  const t = totalLoansArr[idx] || 0;
-                  const share = t > 0 ? (b / t * 100).toFixed(2) : '0.00';
-                  if (item.datasetIndex === 1) {
-                    return `Fusion: ${formatUsd(b)} (${share}%)`;
-                  }
-                  return `Other Morpho: ${formatUsd(other[idx] || 0)}`;
-                },
-                afterBody: items => {
-                  const idx = items[0].dataIndex;
-                  const t = totalLoansArr[idx] || (other[idx] + borrowed[idx]);
-                  return `Total: ${formatUsd(t)}`;
-                }
-              }
-            }
-          }
+        const track = document.createElement('div');
+        track.className = 'chart-bar-track';
+
+        const fillPct = s.totalLoans !== null
+          ? Math.min(100, (s.borrowed / maxTotal) * 100)
+          : 0;
+
+        const fill = document.createElement('div');
+        fill.className = 'chart-bar-fill';
+        fill.style.height = fillPct + '%';
+
+        track.appendChild(fill);
+        slot.appendChild(track);
+
+        // Tooltip
+        if (s.totalLoans !== null) {
+          const share = s.totalLoans > 0 ? (s.borrowed / s.totalLoans * 100).toFixed(2) : '0.00';
+          const tip = document.createElement('div');
+          tip.className = 'chart-bar-tooltip';
+          tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
+            + `Fusion: ${formatUsd(s.borrowed)} (${share}%)<br>`
+            + `Other: ${formatUsd(s.totalLoans - s.borrowed)}<br>`
+            + `Total: ${formatUsd(s.totalLoans)}`;
+          slot.appendChild(tip);
         }
+
+        barsEl.appendChild(slot);
       });
 
-      const span = ((labels[labels.length - 1] - labels[0]) / 3600000).toFixed(0);
-      sub.textContent = `${history.length} data points · ${span}h span · updated every hour by collector`;
+      // X-axis labels (every 3rd hour)
+      xLabelsEl.innerHTML = '';
+      slots.forEach((s, i) => {
+        const span = document.createElement('span');
+        span.textContent = (i % 3 === 0) ? s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        xLabelsEl.appendChild(span);
+      });
+
+      const dataCount = slots.filter(s => s.totalLoans !== null).length;
+      sub.textContent = `${dataCount} data points · 24h window · updated every hour`;
     }
 
     // --- LocalStorage cache (15 min TTL) ---
@@ -763,8 +840,9 @@
           ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
         const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
         const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
-        const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
-        const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
+        const displayName = r.vault.private
+          ? 'Fusion Vault (Private)'
+          : (r.vault.name || ('Fusion Vault' + (r.vault.source === 'beta' ? ' [beta]' : '')));
         const tr = document.createElement('tr');
         if (!hasPosition) tr.style.opacity = '0.5';
         tr.innerHTML = `
