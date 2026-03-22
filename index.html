@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morpho Vault Demand Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #1e1e2e;
+      --text: #e0e0e6;
+      --text-dim: #6b6b80;
+      --accent: #6366f1;
+      --accent-dim: rgba(99, 102, 241, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    header p {
+      color: var(--text-dim);
+      font-size: 0.875rem;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-card .change {
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+    }
+
+    .change.up { color: var(--green); }
+    .change.down { color: var(--red); }
+
+    .chart-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .period-toggle {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 2px;
+    }
+
+    .period-toggle button {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .period-toggle button.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .period-toggle button:hover:not(.active) {
+      color: var(--text);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+
+    .vault-table {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .vault-table h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.875rem 1.5rem;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .vault-name {
+      font-weight: 500;
+    }
+
+    .vault-address {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .bar-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .bar-bg {
+      flex: 1;
+      height: 6px;
+      background: var(--bg);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.3s;
+    }
+
+    .bar-value {
+      font-weight: 600;
+      min-width: 3rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .stats-row { grid-template-columns: 1fr; }
+      .chart-container { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Morpho Vault Demand Tracker</h1>
+      <p>% of total borrowing demand attributed to tracked vaults</p>
+    </header>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">Total Borrow Demand</div>
+        <div class="value">$482M</div>
+        <div class="change up">+3.2% 7d</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tracked Vaults Share</div>
+        <div class="value">34.7%</div>
+        <div class="change up">+1.1% 7d</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Tracked Vaults</div>
+        <div class="value">6</div>
+        <div class="change" style="color: var(--text-dim)">of 42 total</div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-header">
+        <h2>Vault Share of Borrow Demand Over Time</h2>
+        <div class="period-toggle">
+          <button>7D</button>
+          <button class="active">30D</button>
+          <button>90D</button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="demandChart"></canvas>
+      </div>
+    </div>
+
+    <div class="vault-table">
+      <h2>Tracked Vaults Breakdown</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Vault</th>
+            <th>Borrow Demand</th>
+            <th style="width: 40%">Share of Total</th>
+          </tr>
+        </thead>
+        <tbody id="vaultTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Dummy data
+    const vaults = [
+      { name: 'Steakhouse USDC', address: '0x beef...1234', demand: 58.2, share: 12.1 },
+      { name: 'Gauntlet WETH Prime', address: '0x cafe...5678', demand: 41.7, share: 8.7 },
+      { name: 'Re7 wstETH', address: '0x dead...9abc', demand: 22.3, share: 4.6 },
+      { name: 'MEV Capital USDT', address: '0x face...def0', demand: 18.9, share: 3.9 },
+      { name: 'Gauntlet USDC Core', address: '0x babe...3456', demand: 14.5, share: 3.0 },
+      { name: 'Steakhouse PYUSD', address: '0x deed...7890', demand: 11.6, share: 2.4 },
+    ];
+
+    // Render table
+    const tbody = document.getElementById('vaultTableBody');
+    vaults.forEach(v => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="vault-name">${v.name}</div>
+          <div class="vault-address">${v.address}</div>
+        </td>
+        <td>$${v.demand}M</td>
+        <td>
+          <div class="bar-cell">
+            <div class="bar-bg"><div class="bar-fill" style="width: ${(v.share / 15) * 100}%"></div></div>
+            <span class="bar-value">${v.share}%</span>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Chart
+    const labels = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - 29 + i);
+      return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+    });
+
+    // Generate smooth dummy data
+    function smoothLine(base, variance, points) {
+      const data = [base];
+      for (let i = 1; i < points; i++) {
+        const delta = (Math.random() - 0.45) * variance;
+        data.push(Math.max(0, Math.min(100, data[i - 1] + delta)));
+      }
+      return data.map(v => +v.toFixed(1));
+    }
+
+    const trackedShare = smoothLine(32, 1.8, 30);
+    const restShare = trackedShare.map(v => +(100 - v).toFixed(1));
+
+    const ctx = document.getElementById('demandChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Tracked Vaults',
+            data: trackedShare,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            borderWidth: 2,
+          },
+          {
+            label: 'Other Vaults',
+            data: restShare,
+            borderColor: '#334155',
+            backgroundColor: 'rgba(51, 65, 85, 0.05)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            borderWidth: 1.5,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: {
+              color: '#6b6b80',
+              font: { size: 11 },
+              boxWidth: 12,
+              boxHeight: 2,
+              padding: 16,
+            },
+          },
+          tooltip: {
+            backgroundColor: '#1e1e2e',
+            titleColor: '#e0e0e6',
+            bodyColor: '#e0e0e6',
+            borderColor: '#2e2e3e',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: false,
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255,255,255,0.03)' },
+            ticks: { color: '#6b6b80', font: { size: 10 }, maxTicksLimit: 8 },
+            border: { display: false },
+          },
+          y: {
+            min: 0,
+            max: 100,
+            grid: { color: 'rgba(255,255,255,0.03)' },
+            ticks: {
+              color: '#6b6b80',
+              font: { size: 10 },
+              callback: v => v + '%',
+              stepSize: 25,
+            },
+            border: { display: false },
+          },
+        },
+      },
+    });
+
+    // Period toggle interaction (visual only for now)
+    document.querySelectorAll('.period-toggle button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelector('.period-toggle .active').classList.remove('active');
+        btn.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
