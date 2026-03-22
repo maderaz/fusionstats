@@ -527,100 +527,7 @@
       return results;
     }
 
-    async function init() {
-      try {
-        log(`Starting — ${FUSION_VAULTS.length} Fusion vaults to check`);
-
-        // Fetch total loans while querying vault positions
-        const [loansData, vaultResults] = await Promise.all([
-          fetchTotalMainnetLoans(),
-          fetchAllVaultPositions(FUSION_VAULTS)
-        ]);
-
-        // Total Morpho Loans
-        document.getElementById('totalLoans').textContent = formatUsd(loansData.total);
-        document.getElementById('totalLoansSub').textContent =
-          `${loansData.fetched}/${loansData.countTotal} markets · live`;
-
-        // Aggregate Fusion borrowed
-        const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
-        const withPositions = vaultResults.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0);
-        const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
-        const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
-        const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
-
-        document.getElementById('fusionBorrowed').textContent = formatUsd(fusionTotalBorrowed);
-        document.getElementById('fusionBorrowedSub').textContent =
-          fusionTotalBorrowed > 0
-            ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsd(fusionTotalCollateral)}`
-            : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
-
-        // Share
-        const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
-        document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
-        document.getElementById('shareBar').style.width = share + '%';
-
-        // Vault table
-        const tbody = document.getElementById('vaultTableBody');
-        tbody.innerHTML = '';
-
-        // Show ALL vaults — active ones first (sorted by borrowed), then inactive
-        const sorted = vaultResults.slice().sort((a, b) => {
-          const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
-          const bActive = b.totalBorrowed > 0 || b.totalCollateral > 0 || b.totalSupplied > 0 ? 1 : 0;
-          if (bActive !== aActive) return bActive - aActive;
-          return b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied;
-        });
-        const maxBorrowed = sorted[0]?.totalBorrowed || 1;
-
-        sorted.forEach(r => {
-          const vaultShare = fusionTotalBorrowed > 0
-            ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
-          const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
-          // Auto-label from market pairs or source tag
-          const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
-          const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
-          const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
-          const tr = document.createElement('tr');
-          if (!hasPosition) tr.style.opacity = '0.5';
-          tr.innerHTML = `
-            <td>
-              <div class="vault-name">${displayName}</div>
-              <div class="vault-address">
-                <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-                · ${hasPosition ? marketsLabel : 'no Morpho positions'}
-              </div>
-            </td>
-            <td class="num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</td>
-            <td class="num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</td>
-            <td>
-              <div class="bar-cell">
-                <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
-                <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-              </div>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        log('');
-        log('=== SUMMARY ===');
-        log(`Total Morpho Loans (mainnet): ${formatUsd(loansData.total)}`);
-        log(`Fusion Borrowed on Morpho:    ${formatUsd(fusionTotalBorrowed)}`);
-        log(`Fusion Collateral on Morpho:  ${formatUsd(fusionTotalCollateral)}`);
-        log(`Fusion Supplied to Morpho:    ${formatUsd(fusionTotalSupplied)}`);
-        log(`Fusion Share of Morpho Demand: ${share.toFixed(4)}%`);
-        log(`Vaults checked: ${FUSION_VAULTS.length} (${FUSION_VAULTS.filter(v => v.source === 'prod').length} prod, ${FUSION_VAULTS.filter(v => v.source === 'beta').length} beta)`);
-        log(`Vaults with Morpho positions: ${withPositions.length}`);
-        log(`Vaults actively borrowing:    ${activeVaults.length}`);
-
-      } catch (err) {
-        console.error('Init error:', err);
-        log(`ERROR: ${err.message}`);
-        document.getElementById('totalLoans').textContent = 'Error';
-        document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
-      }
-    }
+    // init() is no longer used — data fetching + rendering moved to run()/renderDashboard()
 
     // --- History chart ---
     let shareChart = null;
@@ -779,10 +686,136 @@
       sub.textContent = `${history.length} data points · ${span}h span · updated every hour by collector`;
     }
 
+    // --- LocalStorage cache (15 min TTL) ---
+    const CACHE_KEY = 'fusionstats_cache';
+    const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+    function getCachedData() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (Date.now() - cached.ts > CACHE_TTL) return null;
+        return cached;
+      } catch { return null; }
+    }
+
+    function setCachedData(loansData, vaultResults) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          ts: Date.now(),
+          loansData,
+          vaultResults
+        }));
+      } catch { /* storage full or unavailable */ }
+    }
+
+    function renderDashboard(loansData, vaultResults, fromCache) {
+      // Total Morpho Loans
+      document.getElementById('totalLoans').textContent = formatUsd(loansData.total);
+      const cacheLabel = fromCache ? ' · cached' : ' · live';
+      document.getElementById('totalLoansSub').textContent =
+        `${loansData.fetched}/${loansData.countTotal} markets` + cacheLabel;
+
+      // Aggregate Fusion borrowed
+      const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
+      const withPositions = vaultResults.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0);
+      const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
+      const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
+      const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
+
+      document.getElementById('fusionBorrowed').textContent = formatUsd(fusionTotalBorrowed);
+      document.getElementById('fusionBorrowedSub').textContent =
+        fusionTotalBorrowed > 0
+          ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsd(fusionTotalCollateral)}`
+          : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
+
+      // Share
+      const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
+      document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
+      document.getElementById('shareBar').style.width = share + '%';
+
+      // Vault table
+      const tbody = document.getElementById('vaultTableBody');
+      tbody.innerHTML = '';
+
+      const sorted = vaultResults.slice().sort((a, b) => {
+        const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
+        const bActive = b.totalBorrowed > 0 || b.totalCollateral > 0 || b.totalSupplied > 0 ? 1 : 0;
+        if (bActive !== aActive) return bActive - aActive;
+        return b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied;
+      });
+      const maxBorrowed = sorted[0]?.totalBorrowed || 1;
+
+      sorted.forEach(r => {
+        const vaultShare = fusionTotalBorrowed > 0
+          ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
+        const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
+        const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
+        const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
+        const displayName = r.vault.name || ('Fusion Vault' + sourceTag);
+        const tr = document.createElement('tr');
+        if (!hasPosition) tr.style.opacity = '0.5';
+        tr.innerHTML = `
+          <td>
+            <div class="vault-name">${displayName}</div>
+            <div class="vault-address">
+              <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
+              · ${hasPosition ? marketsLabel : 'no Morpho positions'}
+            </div>
+          </td>
+          <td class="num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</td>
+          <td class="num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</td>
+          <td>
+            <div class="bar-cell">
+              <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
+              <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      log(fromCache ? '=== LOADED FROM CACHE ===' : '=== FRESH DATA ===');
+      log(`Total Morpho Loans (mainnet): ${formatUsd(loansData.total)}`);
+      log(`Fusion Borrowed on Morpho:    ${formatUsd(fusionTotalBorrowed)}`);
+      log(`Fusion Collateral on Morpho:  ${formatUsd(fusionTotalCollateral)}`);
+      log(`Fusion Supplied to Morpho:    ${formatUsd(fusionTotalSupplied)}`);
+      log(`Fusion Share of Morpho Demand: ${share.toFixed(4)}%`);
+      log(`Vaults checked: ${FUSION_VAULTS.length}`);
+      log(`Vaults with Morpho positions: ${withPositions.length}`);
+      log(`Vaults actively borrowing:    ${activeVaults.length}`);
+      if (fromCache) {
+        const age = Math.round((Date.now() - getCachedData()?.ts) / 1000);
+        log(`Cache age: ${age}s (TTL: ${CACHE_TTL / 1000}s)`);
+      }
+    }
+
     async function run() {
       const history = await loadHistory();
       renderChart(history);
-      await init();
+
+      const cached = getCachedData();
+      if (cached) {
+        log('Using cached data (< 15 min old). Skipping API calls.');
+        renderDashboard(cached.loansData, cached.vaultResults, true);
+        return;
+      }
+
+      try {
+        log(`Starting — ${FUSION_VAULTS.length} Fusion vaults to check`);
+        const [loansData, vaultResults] = await Promise.all([
+          fetchTotalMainnetLoans(),
+          fetchAllVaultPositions(FUSION_VAULTS)
+        ]);
+        setCachedData(loansData, vaultResults);
+        renderDashboard(loansData, vaultResults, false);
+      } catch (err) {
+        console.error('Init error:', err);
+        log(`ERROR: ${err.message}`);
+        document.getElementById('totalLoans').textContent = 'Error';
+        document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
+      }
     }
 
     run();
