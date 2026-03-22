@@ -65,30 +65,46 @@ async function fetchTotalLoans() {
   return data.markets.items.reduce((s, m) => s + (m.state?.borrowAssetsUsd || 0), 0);
 }
 
-async function fetchVaultSupply(address) {
+async function fetchFusionVaults(addresses) {
+  const quoted = addresses.map(a => `"${a}"`).join(', ');
   const data = await gql(`{
-    vaultByAddress(chainId: 1, address: "${address}") {
-      address
-      name
-      state {
-        totalAssetsUsd
-        allocation {
-          supplyAssetsUsd
-          market {
-            uniqueKey
-            state { borrowAssetsUsd }
+    vaults(
+      first: ${addresses.length}
+      where: { address_in: [${quoted}], chainId_in: [1] }
+    ) {
+      items {
+        address
+        name
+        state {
+          totalAssetsUsd
+          allocation {
+            supplyAssetsUsd
+            market {
+              uniqueKey
+              state { borrowAssetsUsd }
+            }
           }
         }
       }
+      pageInfo { count countTotal }
     }
   }`);
-  const vault = data?.vaultByAddress;
-  if (!vault?.state) return { totalAssetsUsd: 0, borrowInMarkets: 0 };
-  const totalAssetsUsd = vault.state.totalAssetsUsd || 0;
-  // Sum up borrow demand in markets where this vault allocates
-  const borrowInMarkets = (vault.state.allocation || []).reduce((s, a) =>
-    s + (a.market?.state?.borrowAssetsUsd || 0), 0);
-  return { totalAssetsUsd, borrowInMarkets };
+  const vaults = data?.vaults?.items || [];
+  let totalAssetsUsd = 0;
+  let borrowInMarkets = 0;
+  const seenMarkets = new Set();
+  for (const vault of vaults) {
+    totalAssetsUsd += vault.state?.totalAssetsUsd || 0;
+    for (const alloc of vault.state?.allocation || []) {
+      const key = alloc.market?.uniqueKey;
+      if (key && !seenMarkets.has(key)) {
+        seenMarkets.add(key);
+        borrowInMarkets += alloc.market?.state?.borrowAssetsUsd || 0;
+      }
+    }
+  }
+  console.log(`  Found ${vaults.length}/${addresses.length} vaults`);
+  return { totalAssetsUsd, borrowInMarkets, vaultCount: vaults.length };
 }
 
 async function collect() {
@@ -98,17 +114,9 @@ async function collect() {
   const totalLoans = await fetchTotalLoans();
   console.log(`  Total Morpho loans: $${(totalLoans / 1e6).toFixed(2)}M`);
 
-  // Fetch all vault data in batches of 5
-  let fusionTotalAssets = 0;
-  let fusionBorrowInMarkets = 0;
-  for (let i = 0; i < FUSION_VAULTS.length; i += 5) {
-    const batch = FUSION_VAULTS.slice(i, i + 5);
-    const results = await Promise.all(batch.map(a => fetchVaultSupply(a)));
-    for (const r of results) {
-      fusionTotalAssets += r.totalAssetsUsd;
-      fusionBorrowInMarkets += r.borrowInMarkets;
-    }
-  }
+  // Fetch all Fusion vault data in one query
+  const { totalAssetsUsd: fusionTotalAssets, borrowInMarkets: fusionBorrowInMarkets, vaultCount } =
+    await fetchFusionVaults(FUSION_VAULTS);
 
   const sharePercent = totalLoans > 0 ? (fusionTotalAssets / totalLoans * 100) : 0;
 
@@ -129,7 +137,7 @@ async function collect() {
     fusionTotalAssets,
     fusionBorrowInMarkets,
     sharePercent,
-    vaultCount: FUSION_VAULTS.length,
+    vaultCount,
   });
 
   // Trim to max entries
