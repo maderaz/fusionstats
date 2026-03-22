@@ -321,17 +321,32 @@
   <script>
     const MORPHO_API = 'https://api.morpho.org/graphql';
 
-    // Known IPOR Fusion vault addresses on Ethereum Mainnet
-    // Source: https://github.com/IPOR-Labs/ipor-abi/blob/main/mainnet/addresses.json
+    // All IPOR Fusion vault addresses on Ethereum Mainnet
+    // Source: app.ipor.io/fusion/ethereum + beta.ipor.io/fusion/ethereum
     const FUSION_VAULTS = [
-      { name: 'IPOR stETH Ethereum', address: '0x0552E28123A19FF2853D1ED3BE75Ef1329BB6ca8', asset: 'stETH' },
-      { name: 'IPOR weETH Ethereum', address: '0x981a6c7cA4496ACC3FF7bCDcC3B834fe0C4Db5Bc', asset: 'weETH' },
-      { name: 'IPOR USDC Optimizer', address: '0x43Ee0243eA8CF02f7087d8B16C8D2007CC9c7cA2', asset: 'USDC' },
-      // Additional known addresses from app.ipor.io URL
-      { name: 'IPOR stETH (alt)', address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', asset: 'stETH' },
-      // Wrapped/referral versions
-      { name: 'Reservoir ETH Yield', address: '0xf6cD9E8415162C8fb3C52393f8F9E5AcE1D4A1E68', asset: 'WETH' },
-      { name: 'Reservoir BTC Yield', address: '0xE47358eae04719f3CF7025E95d0AD202e68BD9b2', asset: 'BTC' },
+      // Production vaults (app.ipor.io)
+      { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', source: 'prod' },
+      { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', source: 'prod' },
+      { address: '0x604117f0c94561231060f56cd2ddd16245d434c5', source: 'prod' },
+      { address: '0xd36f53497507e948df9f277cf8c3ececb09a1c1d', source: 'prod' },
+      { address: '0xbfa9d6ec0e04b6691fcae5f8b48838c3918ec117', source: 'prod' },
+      { address: '0x63103375659d0aa94e9f35df15be01a3dd1ae9c0', source: 'prod' },
+      { address: '0xe9385eff3f937fcb0f0085da9a3f53d6c2b4fb5f', source: 'prod' },
+      { address: '0xb0f56bb0bf13ee05fef8cd2d8df5ffdfcac7a74f', source: 'prod' },
+      { address: '0xf6cd9e8415162c8fb3c52676c7ca68812a34f76e', source: 'prod' },
+      { address: '0x6f66b845604dad6e80b2a1472e6cacbbe66a8c40', source: 'prod' },
+      { address: '0xe47358eae04719f3cf7025e95d0ad202e68bd9b2', source: 'prod' },
+      { address: '0xc50b2d51fd1e2ac67a9c09eaf63c24ea2465c64b', source: 'prod' },
+      { address: '0xe48cdd5ecec5aa53e630a7b4df12f79067b68dac', source: 'prod' },
+      { address: '0x20e934c725b6703f0ac696f1689008057db9ac44', source: 'prod' },
+      { address: '0xef53663bb775a51181f04d590f88fc38d6bd5751', source: 'prod' },
+      // Beta vaults (beta.ipor.io)
+      { address: '0xad685fec2066d7f5436f5804882998ba79725706', source: 'beta' },
+      { address: '0x87428d886f43068a44d7bdeef106d3c42e1d6f23', source: 'beta' },
+      { address: '0x9824dcdac89f208bf8b5cb5c4dc41f04a0878607', source: 'beta' },
+      { address: '0x60e36a79c3d21120350e39b5ea59ae26b75ae74c', source: 'beta' },
+      { address: '0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3', source: 'beta' },
+      { address: '0xc2a119ea6de75e4b1451330321cb2474eb8d82d4', source: 'beta' },
     ];
 
     const debugLines = [];
@@ -385,7 +400,8 @@
 
     // Fetch Morpho positions for a single vault address
     async function fetchVaultMorphoPositions(vault) {
-      log(`Querying Morpho positions for ${vault.name} (${shortAddr(vault.address)})...`);
+      const label = shortAddr(vault.address);
+      log(`Querying Morpho positions for ${label} [${vault.source}]...`);
       const res = await fetch(MORPHO_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -418,14 +434,14 @@
       const json = await res.json();
 
       if (json.errors) {
-        log(`  Error for ${vault.name}: ${json.errors[0]?.message}`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0 };
+        log(`  ${label}: Error — ${json.errors[0]?.message}`);
+        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
       }
 
       const user = json.data?.userByAddress;
       if (!user || !user.marketPositions || user.marketPositions.length === 0) {
-        log(`  ${vault.name}: No Morpho positions found`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0 };
+        log(`  ${label}: No Morpho positions`);
+        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
       }
 
       const positions = user.marketPositions.filter(p => {
@@ -439,28 +455,49 @@
         sum + (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0), 0);
       const totalCollateral = positions.reduce((sum, p) =>
         sum + (p.state?.collateralUsd || 0), 0);
+      const totalSupplied = positions.reduce((sum, p) =>
+        sum + (p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0), 0);
 
-      log(`  ${vault.name}: ${positions.length} active positions, borrowed=${formatUsd(totalBorrowed)}, collateral=${formatUsd(totalCollateral)}`);
+      // Derive a descriptive name from the markets this vault touches
+      const marketPairs = positions
+        .filter(p => (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0) > 0 || (p.state?.collateralUsd || 0) > 0)
+        .map(p => `${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}`);
+      const uniquePairs = [...new Set(marketPairs)];
 
+      log(`  ${label}: ${positions.length} positions — borrowed=${formatUsd(totalBorrowed)}, collateral=${formatUsd(totalCollateral)}, supplied=${formatUsd(totalSupplied)}`);
       positions.forEach(p => {
-        const market = p.market;
         const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
         const collateral = p.state?.collateralUsd || 0;
-        if (borrowed > 0 || collateral > 0) {
-          log(`    Market ${market.collateralAsset?.symbol || '?'}/${market.loanAsset?.symbol || '?'}: borrowed=${formatUsd(borrowed)}, collateral=${formatUsd(collateral)}`);
+        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
+        if (borrowed > 0 || collateral > 0 || supplied > 0) {
+          log(`    ${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}: borrow=${formatUsd(borrowed)}, coll=${formatUsd(collateral)}, supply=${formatUsd(supplied)}`);
         }
       });
 
-      return { vault, positions, totalBorrowed, totalCollateral };
+      return { vault, positions, totalBorrowed, totalCollateral, totalSupplied, markets: uniquePairs };
+    }
+
+    // Query vaults in batches to avoid rate limits
+    async function fetchAllVaultPositions(vaults, batchSize = 7) {
+      const results = [];
+      for (let i = 0; i < vaults.length; i += batchSize) {
+        const batch = vaults.slice(i, i + batchSize);
+        log(`Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vaults.length / batchSize)}: querying ${batch.length} vaults...`);
+        const batchResults = await Promise.all(batch.map(v => fetchVaultMorphoPositions(v)));
+        results.push(...batchResults);
+      }
+      return results;
     }
 
     async function init() {
       try {
-        // Fetch all data in parallel
-        const loansPromise = fetchTotalMainnetLoans();
-        const positionPromises = FUSION_VAULTS.map(v => fetchVaultMorphoPositions(v));
+        log(`Starting — ${FUSION_VAULTS.length} Fusion vaults to check`);
 
-        const [loansData, ...vaultResults] = await Promise.all([loansPromise, ...positionPromises]);
+        // Fetch total loans while querying vault positions
+        const [loansData, vaultResults] = await Promise.all([
+          fetchTotalMainnetLoans(),
+          fetchAllVaultPositions(FUSION_VAULTS)
+        ]);
 
         // Total Morpho Loans
         document.getElementById('totalLoans').textContent = formatUsd(loansData.total);
@@ -469,75 +506,76 @@
 
         // Aggregate Fusion borrowed
         const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
+        const withPositions = vaultResults.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0);
         const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
         const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
+        const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
 
         document.getElementById('fusionBorrowed').textContent = formatUsd(fusionTotalBorrowed);
         document.getElementById('fusionBorrowedSub').textContent =
           fusionTotalBorrowed > 0
-            ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} active · collateral: ${formatUsd(fusionTotalCollateral)}`
-            : `checked ${FUSION_VAULTS.length} vaults · no Morpho positions found`;
+            ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsd(fusionTotalCollateral)}`
+            : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
 
         // Share
         const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
         document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
-        document.getElementById('shareBar').style.width = Math.min(share * 5, 100) + '%'; // Scale up for visibility
+        // Scale bar: if share < 20%, multiply for visibility
+        const barWidth = share >= 20 ? share : Math.min(share * 5, 100);
+        document.getElementById('shareBar').style.width = barWidth + '%';
 
         // Vault table
         const tbody = document.getElementById('vaultTableBody');
         tbody.innerHTML = '';
 
-        if (activeVaults.length === 0) {
+        if (withPositions.length === 0) {
           tbody.innerHTML = `<tr><td colspan="4" class="loading">
-            No active Morpho positions found for ${FUSION_VAULTS.length} checked Fusion vault addresses.<br>
-            <span style="font-size:0.75rem">Check the API Log below for details. Vaults may be using other lending protocols (Spark, Aave) instead of Morpho right now.</span>
+            No active Morpho positions found across ${FUSION_VAULTS.length} Fusion vaults.<br>
+            <span style="font-size:0.75rem">Vaults may currently allocate to Spark, Aave, or other protocols. Check API Log below.</span>
           </td></tr>`;
-          log('');
-          log('=== SUMMARY ===');
-          log(`Total Morpho Loans: ${formatUsd(loansData.total)}`);
-          log(`Fusion Borrowed on Morpho: ${formatUsd(fusionTotalBorrowed)}`);
-          log(`Fusion Share: ${share.toFixed(4)}%`);
-          log(`Active vaults on Morpho: ${activeVaults.length}/${FUSION_VAULTS.length}`);
-          return;
+        } else {
+          // Sort by borrowed amount (borrowers first, then suppliers)
+          const sorted = withPositions.sort((a, b) => b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied);
+          const maxBorrowed = sorted[0]?.totalBorrowed || 1;
+
+          sorted.forEach(r => {
+            const vaultShare = fusionTotalBorrowed > 0
+              ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
+            // Auto-label from market pairs or source tag
+            const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
+            const sourceTag = r.vault.source === 'beta' ? ' [beta]' : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>
+                <div class="vault-name">Fusion Vault${sourceTag}</div>
+                <div class="vault-address">
+                  <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
+                  · ${marketsLabel}
+                </div>
+              </td>
+              <td class="num-bold">${formatUsd(r.totalBorrowed)}</td>
+              <td class="num-bold">${formatUsd(r.totalCollateral)}</td>
+              <td>
+                <div class="bar-cell">
+                  <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
+                  <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
         }
-
-        // Sort by borrowed amount
-        const sorted = [...vaultResults]
-          .filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0)
-          .sort((a, b) => b.totalBorrowed - a.totalBorrowed);
-
-        const maxBorrowed = sorted[0]?.totalBorrowed || 1;
-
-        sorted.forEach(r => {
-          const vaultShare = fusionTotalBorrowed > 0
-            ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>
-              <div class="vault-name">${r.vault.name}</div>
-              <div class="vault-address">
-                <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-                · ${r.vault.asset}
-              </div>
-            </td>
-            <td class="num-bold">${formatUsd(r.totalBorrowed)}</td>
-            <td class="num-bold">${formatUsd(r.totalCollateral)}</td>
-            <td>
-              <div class="bar-cell">
-                <div class="bar-bg"><div class="bar-fill" style="width: ${(r.totalBorrowed / maxBorrowed) * 100}%"></div></div>
-                <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-              </div>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
 
         log('');
         log('=== SUMMARY ===');
-        log(`Total Morpho Loans: ${formatUsd(loansData.total)}`);
-        log(`Fusion Borrowed on Morpho: ${formatUsd(fusionTotalBorrowed)}`);
-        log(`Fusion Share: ${share.toFixed(4)}%`);
-        log(`Active vaults on Morpho: ${activeVaults.length}/${FUSION_VAULTS.length}`);
+        log(`Total Morpho Loans (mainnet): ${formatUsd(loansData.total)}`);
+        log(`Fusion Borrowed on Morpho:    ${formatUsd(fusionTotalBorrowed)}`);
+        log(`Fusion Collateral on Morpho:  ${formatUsd(fusionTotalCollateral)}`);
+        log(`Fusion Supplied to Morpho:    ${formatUsd(fusionTotalSupplied)}`);
+        log(`Fusion Share of Morpho Demand: ${share.toFixed(4)}%`);
+        log(`Vaults checked: ${FUSION_VAULTS.length} (${FUSION_VAULTS.filter(v => v.source === 'prod').length} prod, ${FUSION_VAULTS.filter(v => v.source === 'beta').length} beta)`);
+        log(`Vaults with Morpho positions: ${withPositions.length}`);
+        log(`Vaults actively borrowing:    ${activeVaults.length}`);
 
       } catch (err) {
         console.error('Init error:', err);
