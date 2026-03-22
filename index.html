@@ -285,32 +285,23 @@
     // Morpho API
     const MORPHO_API = 'https://api.morpho.org/graphql';
 
-    async function fetchAllMarketsBorrow() {
-      let allItems = [];
-      let skip = 0;
-      const batchSize = 100;
-
-      while (true) {
-        const res = await fetch(MORPHO_API, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `{
-              markets(first: ${batchSize}, skip: ${skip}, orderBy: SupplyAssetsUsd, orderDirection: Desc) {
-                items { state { borrowAssetsUsd } }
-                pageInfo { count countTotal }
-              }
-            }`
-          })
-        });
-        const json = await res.json();
-        const { items, pageInfo } = json.data.markets;
-        allItems = allItems.concat(items);
-        skip += batchSize;
-        if (skip >= pageInfo.countTotal) break;
-      }
-
-      return allItems.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
+    async function fetchTotalLoans() {
+      const res = await fetch(MORPHO_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `{
+            markets(first: 1000, orderBy: BorrowAssetsUsd, orderDirection: Desc) {
+              items { state { borrowAssetsUsd } }
+              pageInfo { countTotal }
+            }
+          }`
+        })
+      });
+      const json = await res.json();
+      const { items, pageInfo } = json.data.markets;
+      const total = items.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
+      return { total, fetched: items.length, countTotal: pageInfo.countTotal };
     }
 
     function formatUsd(value) {
@@ -319,9 +310,10 @@
       return `$${value.toFixed(1)}`;
     }
 
-    fetchAllMarketsBorrow().then(total => {
+    fetchTotalLoans().then(({ total, fetched, countTotal }) => {
       document.getElementById('totalLoans').textContent = formatUsd(total);
-      document.getElementById('totalLoansSource').textContent = 'live from Morpho API';
+      document.getElementById('totalLoansSource').textContent =
+        `${fetched}/${countTotal} markets · live`;
     }).catch(err => {
       document.getElementById('totalLoans').textContent = 'Error';
       document.getElementById('totalLoansSource').textContent = err.message;
