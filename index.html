@@ -788,34 +788,29 @@
         return;
       }
 
-      // Build 24-hour timeline
-      const SLOTS = 24;
-      const now = new Date();
-      now.setMinutes(0, 0, 0);
-      const slots = [];
-      for (let i = SLOTS - 1; i >= 0; i--) {
-        slots.push({ time: new Date(now.getTime() - i * 3600000), borrowed: null, totalLoans: null });
-      }
-      for (const entry of history) {
-        const et = new Date(entry.timestamp);
-        et.setMinutes(0, 0, 0);
-        const key = et.getTime();
-        const slot = slots.find(s => s.time.getTime() === key);
-        if (slot) {
-          slot.borrowed = entry.fusionBorrowed || entry.fusionBorrowInMarkets || 0;
-          slot.totalLoans = entry.totalLoans || 0;
-        }
-      }
-      if (liveData) {
-        const currentSlot = slots[slots.length - 1];
-        if (currentSlot.totalLoans === null) {
-          currentSlot.borrowed = liveData.fusionBorrowed;
-          currentSlot.totalLoans = liveData.totalLoans;
+      // Build data points from ALL history entries (no 24h limit)
+      const dataPoints = history
+        .filter(e => (e.totalLoans || 0) > 0)
+        .map(e => ({
+          time: new Date(e.timestamp),
+          borrowed: e.fusionBorrowed || e.fusionBorrowInMarkets || 0,
+          totalLoans: e.totalLoans || 0,
+        }));
+
+      // Append live data if not already covered
+      if (liveData && liveData.totalLoans > 0) {
+        const lastTime = dataPoints.length > 0 ? dataPoints[dataPoints.length - 1].time.getTime() : 0;
+        if (Date.now() - lastTime > 30 * 60 * 1000) {
+          dataPoints.push({
+            time: new Date(),
+            borrowed: liveData.fusionBorrowed,
+            totalLoans: liveData.totalLoans,
+          });
         }
       }
 
-      const maxTotal = Math.max(...slots.map(s => s.totalLoans).filter(v => v !== null), 1);
-      const filledSlots = slots.filter(s => s.totalLoans !== null && s.totalLoans > 0);
+      const maxTotal = Math.max(...dataPoints.map(s => s.totalLoans), 1);
+      const filledSlots = dataPoints;
 
       // Y-axis labels (5 ticks)
       yAxisEl.innerHTML = '';
@@ -827,66 +822,62 @@
         yAxisEl.appendChild(span);
       }
 
-      // Bars — render ALL 24 slots (empty ones shown as empty columns)
+      // Bars — render only data points (no empty slots)
       barsEl.innerHTML = '';
-      slots.forEach(s => {
+      dataPoints.forEach(s => {
         const slot = document.createElement('div');
         slot.className = 'chart-bar-slot';
-
-        const hasData = s.totalLoans !== null && s.totalLoans > 0;
 
         const track = document.createElement('div');
         track.className = 'chart-bar-track';
 
-        if (hasData) {
-          const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
-          track.style.height = trackPct + '%';
+        const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
+        track.style.height = trackPct + '%';
 
-          const fillPct = s.borrowed > 0
-            ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
-            : 0;
+        const fillPct = s.borrowed > 0
+          ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
+          : 0;
 
-          const fill = document.createElement('div');
-          fill.className = 'chart-bar-fill';
-          fill.style.height = fillPct + '%';
-          track.appendChild(fill);
-        } else {
-          track.style.height = '0%';
-        }
+        const fill = document.createElement('div');
+        fill.className = 'chart-bar-fill';
+        fill.style.height = fillPct + '%';
+        track.appendChild(fill);
 
         slot.appendChild(track);
 
         // Tooltip
-        if (hasData) {
-          const share = (s.borrowed / s.totalLoans * 100).toFixed(2);
-          const tip = document.createElement('div');
-          tip.className = 'chart-bar-tooltip';
-          tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
-            + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
-            + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
-            + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
-          slot.appendChild(tip);
-        } else {
-          const tip = document.createElement('div');
-          tip.className = 'chart-bar-tooltip';
-          tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
-            + `<span style="color:#A8B8D8;">No data</span>`;
-          slot.appendChild(tip);
-        }
+        const share = (s.borrowed / s.totalLoans * 100).toFixed(2);
+        const tip = document.createElement('div');
+        tip.className = 'chart-bar-tooltip';
+        const timeStr = s.time.toLocaleDateString([], { month: 'short', day: 'numeric' })
+          + ' ' + s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        tip.innerHTML = `<strong>${timeStr}</strong><br>`
+          + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
+          + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
+          + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
+        slot.appendChild(tip);
 
         barsEl.appendChild(slot);
       });
 
-      // X-axis labels — all 24 slots, show every 3rd
+      // X-axis labels — show evenly spaced labels
       xLabelsEl.innerHTML = '';
-      slots.forEach((s, i) => {
+      const labelStep = Math.max(1, Math.floor(dataPoints.length / 8));
+      dataPoints.forEach((s, i) => {
         const span = document.createElement('span');
-        span.textContent = (i % 3 === 0) ? s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        if (i % labelStep === 0 || i === dataPoints.length - 1) {
+          span.textContent = s.time.toLocaleDateString([], { month: 'short', day: 'numeric' })
+            + ' ' + s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
         xLabelsEl.appendChild(span);
       });
 
-      const dataCount = filledSlots.length;
-      sub.textContent = `${dataCount} data points · 24h window · updated every 30 min`;
+      const dataCount = dataPoints.length;
+      const oldest = dataPoints[0].time;
+      const newest = dataPoints[dataPoints.length - 1].time;
+      const spanHours = Math.round((newest - oldest) / 3600000);
+      const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
+      sub.textContent = `${dataCount} data points · ${spanLabel} span · updated every 30 min`;
     }
 
     // --- LocalStorage cache (15 min TTL) ---
