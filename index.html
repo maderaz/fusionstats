@@ -913,7 +913,7 @@
       } catch { /* storage full or unavailable */ }
     }
 
-    function renderDashboard(loansData, vaultResults, fromCache) {
+    async function renderDashboard(loansData, vaultResults, fromCache) {
       // Total Morpho Loans
       document.getElementById('totalLoans').textContent = formatUsdFull(loansData.total);
       const cacheLabel = fromCache ? ' · cached' : ' · live';
@@ -1038,7 +1038,7 @@
       if (cached) {
         log('Using cached data (< 15 min old). Skipping API calls.');
         renderChart(history, getLiveDataForChart(cached.loansData, cached.vaultResults));
-        renderDashboard(cached.loansData, cached.vaultResults, true);
+        await renderDashboard(cached.loansData, cached.vaultResults, true);
         return;
       }
 
@@ -1050,7 +1050,7 @@
         ]);
         setCachedData(loansData, vaultResults);
         renderChart(history, getLiveDataForChart(loansData, vaultResults));
-        renderDashboard(loansData, vaultResults, false);
+        await renderDashboard(loansData, vaultResults, false);
       } catch (err) {
         console.error('Init error:', err);
         log(`ERROR: ${err.message}`);
