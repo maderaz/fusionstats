@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Logs — Fusion Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --red: #dc2626;
+      --warn: #d97706;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --warn: #f59e0b;
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    header { margin-bottom: 2rem; }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p { color: var(--text-body); font-size: 0.875rem; }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      z-index: 100;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .log-filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .log-filters button {
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .log-filters button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .log-filters button.active {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .log-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .log-entry {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+      font-size: 0.8rem;
+      transition: background 0.15s;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry:hover { background: var(--accent-bg); }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .log-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 500;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .log-badge.info { background: var(--accent-bg); color: var(--accent); }
+    .log-badge.warn { background: rgba(217, 119, 6, 0.12); color: var(--warn); }
+    .log-badge.error { background: rgba(220, 38, 38, 0.12); color: var(--red); }
+
+    .log-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .log-duration {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    .log-body {
+      color: var(--text-body);
+      line-height: 1.6;
+    }
+
+    .log-body .log-stat {
+      display: inline-block;
+      margin-right: 1.25rem;
+    }
+
+    .log-body .log-stat strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .log-errors {
+      margin-top: 0.4rem;
+      color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .log-warnings {
+      margin-top: 0.4rem;
+      color: var(--warn);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .num-bold {
+      font-family: 'Source Sans 3', 'Source Sans Pro', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="index.html">Dashboard</a>
+      <a href="logs.html" class="active">Logs</a>
+    </nav>
+
+    <header>
+      <h1>Admin Logs</h1>
+      <p>Collector run history and diagnostics</p>
+    </header>
+
+    <div class="log-filters">
+      <button class="active" data-filter="all">All</button>
+      <button data-filter="info">Info</button>
+      <button data-filter="warn">Warnings</button>
+      <button data-filter="error">Errors</button>
+    </div>
+
+    <div class="log-card" id="logContainer">
+      <div class="empty-state">Loading logs...</div>
+    </div>
+  </div>
+
+  <script>
+    // Dark mode
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    document.getElementById('themeToggle').addEventListener('click', function() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+        this.innerHTML = '&#9790;';
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        this.innerHTML = '&#9788;';
+      }
+    });
+
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      document.getElementById('themeToggle').innerHTML = '&#9788;';
+    }
+
+    // Format helpers
+    function formatUsd(v) {
+      if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+      if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+      if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+      return '$' + v.toFixed(2);
+    }
+
+    function timeAgo(ts) {
+      const diff = Date.now() - new Date(ts).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return mins + 'm ago';
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + 'h ago';
+      const days = Math.floor(hrs / 24);
+      return days + 'd ago';
+    }
+
+    let allLogs = [];
+    let currentFilter = 'all';
+
+    function renderLogs() {
+      const container = document.getElementById('logContainer');
+      const filtered = currentFilter === 'all'
+        ? allLogs
+        : allLogs.filter(l => l.level === currentFilter);
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">No logs found. Run <code>node collect.js</code> to generate log entries.</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.slice().reverse().map(entry => {
+        const time = new Date(entry.timestamp).toLocaleString();
+        const badge = `<span class="log-badge ${entry.level}">${entry.level}</span>`;
+        const duration = entry.durationMs ? `<span class="log-duration">${(entry.durationMs / 1000).toFixed(1)}s</span>` : '';
+
+        let body = '';
+        if (entry.event === 'collect' && entry.totalLoans !== undefined) {
+          body = `<div class="log-body">`
+            + `<span class="log-stat">Loans: <strong>${formatUsd(entry.totalLoans)}</strong></span>`
+            + `<span class="log-stat">Fusion: <strong>${formatUsd(entry.fusionBorrowed || 0)}</strong></span>`
+            + `<span class="log-stat">Share: <strong>${(entry.sharePercent || 0).toFixed(2)}%</strong></span>`
+            + `<span class="log-stat">Vaults: <strong>${entry.activeVaults || 0}/${entry.totalVaults || '?'}</strong></span>`
+            + (entry.vaultErrors > 0 ? `<span class="log-stat" style="color:var(--warn);">Errors: <strong>${entry.vaultErrors}</strong></span>` : '')
+            + `</div>`;
+        } else if (entry.event === 'collect_crash') {
+          body = `<div class="log-errors">${entry.message}</div>`;
+        }
+
+        let errorsHtml = '';
+        if (entry.errors && entry.errors.length > 0) {
+          errorsHtml = `<div class="log-errors">${entry.errors.map(e => `${e.step}: ${e.message}`).join('<br>')}</div>`;
+        }
+
+        let warningsHtml = '';
+        if (entry.warnings && entry.warnings.length > 0) {
+          warningsHtml = `<div class="log-warnings">${entry.warnings.map(w => `${w.vault ? w.vault.slice(0, 10) + '...' : w.step}: ${w.message}`).join('<br>')}</div>`;
+        }
+
+        return `<div class="log-entry">
+          <div class="log-header">
+            ${badge}
+            <span class="log-time">${time} · ${timeAgo(entry.timestamp)}</span>
+            ${duration}
+          </div>
+          ${body}${errorsHtml}${warningsHtml}
+        </div>`;
+      }).join('');
+    }
+
+    // Filter buttons
+    document.querySelectorAll('.log-filters button').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.log-filters button').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentFilter = this.dataset.filter;
+        renderLogs();
+      });
+    });
+
+    // Load logs
+    fetch('logs.json?t=' + Date.now())
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { allLogs = data; renderLogs(); })
+      .catch(() => {
+        document.getElementById('logContainer').innerHTML =
+          '<div class="empty-state">No logs file found. Run <code>node collect.js</code> to start logging.</div>';
+      });
+  </script>
+</body>
+</html>

@@ -12,8 +12,10 @@ const path = require('path');
 
 const MORPHO_API = 'https://api.morpho.org/graphql';
 const HISTORY_FILE = path.join(__dirname, 'history.json');
+const LOGS_FILE = path.join(__dirname, 'logs.json');
 const HOURLY_WINDOW_MS = 7 * 24 * 3600 * 1000; // keep hourly data for 7 days
 const MAX_DAILY_ENTRIES = 365; // keep up to 1 year of daily averages
+const MAX_LOG_ENTRIES = 500; // keep last 500 log entries
 
 const FUSION_VAULTS = [
   '0xb8a451107a9f87fde481d4d686247d6e43ed715e',
@@ -100,20 +102,48 @@ async function fetchVaultPositions(address) {
   return { borrowed, collateral };
 }
 
+function appendLog(entry) {
+  let logs = [];
+  try { logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8')); } catch { }
+  logs.push({ ...entry, timestamp: new Date().toISOString() });
+  if (logs.length > MAX_LOG_ENTRIES) logs = logs.slice(-MAX_LOG_ENTRIES);
+  fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2));
+}
+
 async function collect() {
+  const runStart = Date.now();
+  const logEntry = { level: 'info', event: 'collect', errors: [], warnings: [] };
   console.log(`[${new Date().toISOString()}] Collecting Fusion stats...`);
 
   // Fetch total loans
-  const totalLoans = await fetchTotalLoans();
-  console.log(`  Total Morpho loans: $${(totalLoans / 1e6).toFixed(2)}M`);
+  let totalLoans = 0;
+  try {
+    totalLoans = await fetchTotalLoans();
+    logEntry.totalLoans = totalLoans;
+    console.log(`  Total Morpho loans: $${(totalLoans / 1e6).toFixed(2)}M`);
+  } catch (err) {
+    logEntry.level = 'error';
+    logEntry.errors.push({ step: 'fetchTotalLoans', message: err.message });
+    console.error(`  ERROR fetching total loans: ${err.message}`);
+    appendLog(logEntry);
+    throw err;
+  }
 
   // Fetch all vault positions in batches of 7
   let fusionBorrowed = 0;
   let fusionCollateral = 0;
   let activeCount = 0;
+  const vaultErrors = [];
   for (let i = 0; i < FUSION_VAULTS.length; i += 7) {
     const batch = FUSION_VAULTS.slice(i, i + 7);
-    const results = await Promise.all(batch.map(a => fetchVaultPositions(a)));
+    const results = await Promise.all(batch.map(async (a) => {
+      try {
+        return await fetchVaultPositions(a);
+      } catch (err) {
+        vaultErrors.push({ vault: a, message: err.message });
+        return { borrowed: 0, collateral: 0 };
+      }
+    }));
     for (const r of results) {
       fusionBorrowed += r.borrowed;
       fusionCollateral += r.collateral;
@@ -121,7 +151,22 @@ async function collect() {
     }
   }
 
+  if (vaultErrors.length > 0) {
+    logEntry.warnings.push(...vaultErrors.map(e => ({ step: 'fetchVaultPositions', ...e })));
+    if (vaultErrors.length > FUSION_VAULTS.length / 2) {
+      logEntry.level = 'warn';
+    }
+  }
+
   const sharePercent = totalLoans > 0 ? (fusionBorrowed / totalLoans * 100) : 0;
+
+  logEntry.fusionBorrowed = fusionBorrowed;
+  logEntry.fusionCollateral = fusionCollateral;
+  logEntry.sharePercent = sharePercent;
+  logEntry.activeVaults = activeCount;
+  logEntry.totalVaults = FUSION_VAULTS.length;
+  logEntry.vaultErrors = vaultErrors.length;
+  logEntry.durationMs = Date.now() - runStart;
 
   console.log(`  Fusion borrowed: $${(fusionBorrowed / 1e6).toFixed(2)}M`);
   console.log(`  Fusion collateral: $${(fusionCollateral / 1e6).toFixed(2)}M`);
@@ -177,9 +222,14 @@ async function collect() {
 
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
   console.log(`  Saved to ${HISTORY_FILE} (${history.length} entries)`);
+
+  logEntry.historyEntries = history.length;
+  appendLog(logEntry);
+  console.log(`  Log appended to ${LOGS_FILE}`);
 }
 
 collect().catch(err => {
   console.error('Collection failed:', err.message);
+  appendLog({ level: 'error', event: 'collect_crash', message: err.message, stack: err.stack });
   process.exit(1);
 });

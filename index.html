@@ -343,13 +343,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-end;
       height: 100%;
       position: relative;
     }
 
     .chart-bar-track {
       width: 6px;
-      flex: 1;
       background: #A8B8D8;
       border-radius: 3px;
       overflow: hidden;
@@ -357,6 +357,7 @@
       flex-direction: column;
       justify-content: flex-end;
       position: relative;
+      transition: height 0.4s ease;
     }
 
     .chart-bar-fill {
@@ -420,6 +421,34 @@
       display: block;
     }
 
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
     .theme-toggle {
       position: fixed;
       top: 1.25rem;
@@ -455,6 +484,11 @@
 <body>
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
   <div class="container">
+    <nav class="top-nav">
+      <a href="index.html" class="active">Dashboard</a>
+      <a href="logs.html">Logs</a>
+    </nav>
+
     <header>
       <h1>Fusion Stats</h1>
       <p>Tracking IPOR Fusion vault borrowing activity on Morpho protocol, Ethereum Mainnet</p>
@@ -768,7 +802,7 @@
         const key = et.getTime();
         const slot = slots.find(s => s.time.getTime() === key);
         if (slot) {
-          slot.borrowed = entry.fusionBorrowed || 0;
+          slot.borrowed = entry.fusionBorrowed || entry.fusionBorrowInMarkets || 0;
           slot.totalLoans = entry.totalLoans || 0;
         }
       }
@@ -801,15 +835,22 @@
         const track = document.createElement('div');
         track.className = 'chart-bar-track';
 
-        const fillPct = s.totalLoans !== null
-          ? Math.min(100, (s.borrowed / maxTotal) * 100)
-          : 0;
+        if (s.totalLoans !== null && s.totalLoans > 0) {
+          const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
+          track.style.height = trackPct + '%';
 
-        const fill = document.createElement('div');
-        fill.className = 'chart-bar-fill';
-        fill.style.height = fillPct + '%';
+          const fillPct = s.borrowed > 0
+            ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
+            : 0;
 
-        track.appendChild(fill);
+          const fill = document.createElement('div');
+          fill.className = 'chart-bar-fill';
+          fill.style.height = fillPct + '%';
+          track.appendChild(fill);
+        } else {
+          track.style.height = '0%';
+        }
+
         slot.appendChild(track);
 
         // Tooltip
