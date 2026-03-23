@@ -815,6 +815,7 @@
       }
 
       const maxTotal = Math.max(...slots.map(s => s.totalLoans).filter(v => v !== null), 1);
+      const filledSlots = slots.filter(s => s.totalLoans !== null && s.totalLoans > 0);
 
       // Y-axis labels (5 ticks)
       yAxisEl.innerHTML = '';
@@ -826,57 +827,51 @@
         yAxisEl.appendChild(span);
       }
 
-      // Bars
+      // Bars — only render slots that have data
       barsEl.innerHTML = '';
-      slots.forEach(s => {
+      filledSlots.forEach(s => {
         const slot = document.createElement('div');
         slot.className = 'chart-bar-slot';
 
         const track = document.createElement('div');
         track.className = 'chart-bar-track';
 
-        if (s.totalLoans !== null && s.totalLoans > 0) {
-          const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
-          track.style.height = trackPct + '%';
+        const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
+        track.style.height = trackPct + '%';
 
-          const fillPct = s.borrowed > 0
-            ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
-            : 0;
+        const fillPct = s.borrowed > 0
+          ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
+          : 0;
 
-          const fill = document.createElement('div');
-          fill.className = 'chart-bar-fill';
-          fill.style.height = fillPct + '%';
-          track.appendChild(fill);
-        } else {
-          track.style.height = '0%';
-        }
+        const fill = document.createElement('div');
+        fill.className = 'chart-bar-fill';
+        fill.style.height = fillPct + '%';
+        track.appendChild(fill);
 
         slot.appendChild(track);
 
         // Tooltip
-        if (s.totalLoans !== null) {
-          const share = s.totalLoans > 0 ? (s.borrowed / s.totalLoans * 100).toFixed(2) : '0.00';
-          const tip = document.createElement('div');
-          tip.className = 'chart-bar-tooltip';
-          tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
-            + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
-            + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
-            + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
-          slot.appendChild(tip);
-        }
+        const share = s.totalLoans > 0 ? (s.borrowed / s.totalLoans * 100).toFixed(2) : '0.00';
+        const tip = document.createElement('div');
+        tip.className = 'chart-bar-tooltip';
+        tip.innerHTML = `<strong>${s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong><br>`
+          + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
+          + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
+          + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
+        slot.appendChild(tip);
 
         barsEl.appendChild(slot);
       });
 
-      // X-axis labels (every 3rd hour)
+      // X-axis labels — only for filled slots, show every 3rd
       xLabelsEl.innerHTML = '';
-      slots.forEach((s, i) => {
+      filledSlots.forEach((s, i) => {
         const span = document.createElement('span');
         span.textContent = (i % 3 === 0) ? s.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         xLabelsEl.appendChild(span);
       });
 
-      const dataCount = slots.filter(s => s.totalLoans !== null).length;
+      const dataCount = filledSlots.length;
       sub.textContent = `${dataCount} data points · 24h window · updated every hour`;
     }
 
