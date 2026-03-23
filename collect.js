@@ -179,6 +179,19 @@ async function collect() {
     history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
   } catch (e) { /* first run */ }
 
+  // Deduplicate: skip if last entry is < 45 min old (handles 30-min cron redundancy)
+  const MIN_INTERVAL_MS = 45 * 60 * 1000;
+  if (history.length > 0) {
+    const lastTs = new Date(history[history.length - 1].timestamp).getTime();
+    if (Date.now() - lastTs < MIN_INTERVAL_MS) {
+      console.log(`  Skipping — last entry is ${Math.round((Date.now() - lastTs) / 60000)}min old (< 45min)`);
+      logEntry.event = 'collect_skipped';
+      logEntry.reason = 'dedup';
+      appendLog(logEntry);
+      return;
+    }
+  }
+
   // Append new data point
   history.push({
     timestamp: new Date().toISOString(),
