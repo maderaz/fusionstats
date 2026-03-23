@@ -514,7 +514,7 @@
     </div>
 
     <div class="share-banner">
-      <span class="share-label">Fusion Share of Morpho Demand<br><span style="font-size: 0.7rem; color: var(--text-secondary);">Ethereum Mainnet</span></span>
+      <span class="share-label">Fusion Share of Morpho Demand<br><span style="font-size: 0.7rem; color: var(--text-secondary);">Ethereum Mainnet · <span id="dataTimestamp">loading...</span></span></span>
       <div class="share-bar-outer">
         <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
       </div>
@@ -923,6 +923,13 @@
       const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
       document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
       document.getElementById('shareBar').style.width = share + '%';
+
+      // Data timestamp
+      const dataTs = fromCache ? new Date(getCachedData()?.ts || Date.now()) : new Date();
+      document.getElementById('dataTimestamp').textContent = dataTs.toLocaleString([], {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
 
       // Vault table
       const tbody = document.getElementById('vaultTableBody');
