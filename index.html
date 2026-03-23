@@ -135,6 +135,14 @@
       white-space: nowrap;
     }
 
+    .share-banner .share-ath-atl {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      text-align: right;
+      line-height: 1.5;
+    }
+
     .share-banner .share-bar-outer {
       flex: 1;
       margin: 0 1.5rem;
@@ -519,6 +527,7 @@
         <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
       </div>
       <span class="share-value num-bold" id="shareValue">—</span>
+      <span class="share-ath-atl" id="shareAthAtl"></span>
     </div>
 
     <div class="chart-card">
@@ -928,6 +937,29 @@
       const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
       document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
       document.getElementById('shareBar').style.width = share + '%';
+
+      // ATH / ATL from history
+      const athAtlEl = document.getElementById('shareAthAtl');
+      try {
+        const hist = await loadHistory();
+        const shares = hist
+          .filter(e => (e.totalLoans || 0) > 0)
+          .map(e => ({
+            pct: ((e.fusionBorrowed || e.fusionBorrowInMarkets || 0) / e.totalLoans) * 100,
+            time: new Date(e.timestamp),
+          }));
+        // Include current live value
+        if (share > 0) shares.push({ pct: share, time: new Date() });
+        if (shares.length > 0) {
+          const ath = shares.reduce((a, b) => b.pct > a.pct ? b : a);
+          const atl = shares.reduce((a, b) => b.pct < a.pct ? b : a);
+          athAtlEl.innerHTML =
+            `ATH <strong style="color:#4ADE80">${ath.pct.toFixed(2)}%</strong> `
+            + `<span style="font-size:0.6rem">${ath.time.toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' })}</span>`
+            + `<br>ATL <strong style="color:#F87171">${atl.pct.toFixed(2)}%</strong> `
+            + `<span style="font-size:0.6rem">${atl.time.toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' })}</span>`;
+        }
+      } catch (e) { /* no history yet */ }
 
       // Data timestamp
       const dataTs = fromCache ? new Date(getCachedData()?.ts || Date.now()) : new Date();
