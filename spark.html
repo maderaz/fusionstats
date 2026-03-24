@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spark wstETH — Fusion Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --red: #dc2626;
+      --spark-orange: #F77725;
+      --spark-orange-bg: rgba(247, 119, 37, 0.10);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --spark-orange: #FF9147;
+      --spark-orange-bg: rgba(255, 145, 71, 0.15);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .num-bold {
+      font-family: 'Source Sans 3', 'Source Sans Pro', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      position: relative;
+      top: 1px;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    header { margin-bottom: 2rem; }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(90deg, var(--spark-orange), #FF5500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p { color: var(--text-body); font-size: 0.875rem; }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      z-index: 100;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .info-box {
+      background: var(--spark-orange-bg);
+      border: 1px solid var(--spark-orange);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-size: 0.8rem;
+      color: var(--text-body);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-box strong { color: var(--text); }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stats-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: var(--text-body);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .stat-card .value-sm {
+      font-size: 1.4rem;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+
+    .stat-card .sub {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+    }
+
+    .stat-card.highlight {
+      border-color: var(--spark-orange);
+      background: var(--spark-orange-bg);
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .position-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .position-card h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .position-card h2 .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--spark-orange);
+      background: var(--spark-orange-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .position-cell {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .position-cell:nth-child(odd) {
+      border-right: 1px solid var(--stroke);
+    }
+
+    .position-cell .pos-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .position-cell .pos-value {
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+
+    .position-cell .pos-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .rank-table {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .rank-table h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.75rem 1.5rem;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--stroke);
+      color: var(--text-body);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr.is-vault {
+      background: var(--spark-orange-bg);
+    }
+
+    tr.is-vault td {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .addr-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .addr-link:hover { text-decoration: underline; }
+
+    .loading-msg {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--red);
+      font-size: 0.85rem;
+    }
+
+    .data-ts {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .stats-row, .stats-row-3 { grid-template-columns: 1fr; }
+      .position-grid { grid-template-columns: 1fr; }
+      .position-cell:nth-child(odd) { border-right: none; }
+      .stat-card .value { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="index.html">Dashboard</a>
+      <a href="spark.html" class="active">Spark</a>
+      <a href="logs.html">Logs</a>
+    </nav>
+
+    <header>
+      <h1>Spark wstETH Market</h1>
+      <p>Tracking IPOR stETH Looping Vault position on SparkLend wstETH market</p>
+    </header>
+
+    <div class="info-box">
+      <strong>What is this?</strong> The IPOR stETH Ethereum vault runs a looping strategy on SparkLend —
+      supplying wstETH as collateral and borrowing WETH against it. This page tracks the vault's position
+      and its rank among the top suppliers on the wstETH market.
+    </div>
+
+    <div id="mainContent">
+      <div class="loading-msg" id="loadingMsg">Fetching on-chain data from SparkLend...</div>
+    </div>
+
+    <div id="errorContent" style="display:none"></div>
+  </div>
+
+  <script>
+    // — Theme toggle (shared) —
+    const themeToggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('fusionstats_theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
+    });
+
+    // — Constants —
+    const RPC = 'https://eth.llamarpc.com';
+    const WSTETH = '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0';
+    const WETH   = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+    const SPARK_POOL = '0xC13e21B648A5Ee794902342038FF3aDAB66BE987';
+    const POOL_DATA_PROVIDER = '0xFc21d6d146E6086B8359705C8b28512a983db0cb';
+    const UI_POOL_DATA_PROVIDER = '0x30375522F67a6308630d49A694ca1491fA2D3BC6';
+    const POOL_ADDRESSES_PROVIDER = '0x02C3eA4e34C0cBd694D2adFa2c690EECbC1793eE';
+
+    // IPOR stETH vault (tracked on Morpho dashboard too)
+    const VAULT_ADDRESS = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
+    const VAULT_NAME = 'IPOR stETH Ethereum';
+
+    // wstETH aToken on Spark (spWSTETH)
+    const SP_WSTETH = '0x12B54025C112Aa61fAce2CDB7118740875A566E9';
+
+    // — Helpers —
+    function pad32(hex) {
+      return hex.replace(/^0x/, '').padStart(64, '0');
+    }
+
+    function formatUsd(n) {
+      if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+      return '$' + n.toFixed(2);
+    }
+
+    function formatEth(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
+      return n.toFixed(2);
+    }
+
+    function shortAddr(a) {
+      return a.slice(0, 6) + '...' + a.slice(-4);
+    }
+
+    async function ethCall(to, data) {
+      const res = await fetch(RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0', id: 1, method: 'eth_call',
+          params: [{ to, data }, 'latest']
+        })
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      return json.result;
+    }
+
+    function decodeUint(hex, offset) {
+      // Each slot is 32 bytes = 64 hex chars
+      const start = 2 + offset * 64;
+      return BigInt('0x' + (hex.slice(start, start + 64) || '0'));
+    }
+
+    function decodeAddress(hex, offset) {
+      const start = 2 + offset * 64;
+      return '0x' + hex.slice(start + 24, start + 64);
+    }
+
+    // — Data fetching —
+
+    // Get wstETH reserve data from PoolDataProvider
+    // getReserveData(address) => lots of uint256 fields
+    async function getReserveData(asset) {
+      const selector = '0x35ea6a75'; // getReserveData(address)
+      const data = selector + pad32(asset);
+      const result = await ethCall(POOL_DATA_PROVIDER, data);
+
+      // Returns: unbacked, accruedToTreasuryScaled, totalAToken, totalStableDebt,
+      // totalVariableDebt, liquidityRate, variableBorrowRate, stableBorrowRate,
+      // averageStableBorrowRate, liquidityIndex, variableBorrowIndex, lastUpdateTimestamp
+      return {
+        totalAToken: Number(decodeUint(result, 2)) / 1e18,
+        totalStableDebt: Number(decodeUint(result, 3)) / 1e18,
+        totalVariableDebt: Number(decodeUint(result, 4)) / 1e18,
+        liquidityRate: Number(decodeUint(result, 5)),       // ray (1e27)
+        variableBorrowRate: Number(decodeUint(result, 6)),  // ray
+        stableBorrowRate: Number(decodeUint(result, 7)),    // ray
+      };
+    }
+
+    // Get reserve configuration (LTV, liquidation threshold, etc.)
+    // getReserveConfigurationData(address)
+    async function getReserveConfig(asset) {
+      const selector = '0x3e150141'; // getReserveConfigurationData(address)
+      const data = selector + pad32(asset);
+      const result = await ethCall(POOL_DATA_PROVIDER, data);
+
+      return {
+        decimals: Number(decodeUint(result, 0)),
+        ltv: Number(decodeUint(result, 1)) / 100,           // basis points -> %
+        liquidationThreshold: Number(decodeUint(result, 2)) / 100,
+        liquidationBonus: Number(decodeUint(result, 3)) / 100,
+        reserveFactor: Number(decodeUint(result, 4)) / 100,
+        usageAsCollateralEnabled: decodeUint(result, 5) !== 0n,
+        borrowingEnabled: decodeUint(result, 6) !== 0n,
+        stableBorrowRateEnabled: decodeUint(result, 7) !== 0n,
+        isActive: decodeUint(result, 8) !== 0n,
+        isFrozen: decodeUint(result, 9) !== 0n,
+      };
+    }
+
+    // Get user reserve data
+    // getUserReserveData(address asset, address user)
+    async function getUserReserveData(asset, user) {
+      const selector = '0x28dd2d01';
+      const data = selector + pad32(asset) + pad32(user);
+      const result = await ethCall(POOL_DATA_PROVIDER, data);
+
+      return {
+        currentATokenBalance: Number(decodeUint(result, 0)) / 1e18,
+        currentStableDebt: Number(decodeUint(result, 1)) / 1e18,
+        currentVariableDebt: Number(decodeUint(result, 2)) / 1e18,
+        principalStableDebt: Number(decodeUint(result, 3)) / 1e18,
+        scaledVariableDebt: Number(decodeUint(result, 4)) / 1e18,
+        stableBorrowRate: Number(decodeUint(result, 5)),
+        liquidityRate: Number(decodeUint(result, 6)),
+        usageAsCollateralEnabled: decodeUint(result, 8) !== 0n,
+      };
+    }
+
+    // Get user account data from Pool
+    // getUserAccountData(address) => totalCollateralBase, totalDebtBase, availableBorrowsBase,
+    //   currentLiquidationThreshold, ltv, healthFactor
+    async function getUserAccountData(user) {
+      const selector = '0xbf92857c';
+      const data = selector + pad32(user);
+      const result = await ethCall(SPARK_POOL, data);
+
+      return {
+        totalCollateralBase: Number(decodeUint(result, 0)) / 1e8, // USD with 8 decimals
+        totalDebtBase: Number(decodeUint(result, 1)) / 1e8,
+        availableBorrowsBase: Number(decodeUint(result, 2)) / 1e8,
+        currentLiquidationThreshold: Number(decodeUint(result, 3)) / 100,
+        ltv: Number(decodeUint(result, 4)) / 100,
+        healthFactor: Number(decodeUint(result, 5)) / 1e18,
+      };
+    }
+
+    // Get total supply of spWSTETH (aToken) to determine total wstETH supplied
+    async function getTotalSupply(token) {
+      const selector = '0x18160ddd'; // totalSupply()
+      const result = await ethCall(token, selector);
+      return Number(decodeUint(result, 0)) / 1e18;
+    }
+
+    // Get balance of aToken for a user (for ranking)
+    async function getBalanceOf(token, user) {
+      const selector = '0x70a08231'; // balanceOf(address)
+      const data = selector + pad32(user);
+      const result = await ethCall(token, data);
+      return Number(decodeUint(result, 0)) / 1e18;
+    }
+
+    // Get wstETH price from Chainlink (or we derive from reserve data)
+    async function getAssetPrice() {
+      // Use the Spark oracle: getAssetPrice(address) on the Oracle contract
+      // First get oracle address from PoolAddressesProvider
+      const selector = '0xa614f803'; // getPriceOracle()
+      const oracleResult = await ethCall(POOL_ADDRESSES_PROVIDER, selector);
+      const oracleAddr = decodeAddress(oracleResult, 0);
+
+      // getAssetPrice(address) => uint256 (price in base currency, 8 decimals)
+      const priceSelector = '0xb3596f07';
+      const priceResult = await ethCall(oracleAddr, priceSelector + pad32(WSTETH));
+      const wstethPrice = Number(decodeUint(priceResult, 0)) / 1e8;
+
+      const ethPriceResult = await ethCall(oracleAddr, priceSelector + pad32(WETH));
+      const ethPrice = Number(decodeUint(ethPriceResult, 0)) / 1e8;
+
+      return { wstethPrice, ethPrice };
+    }
+
+    // Fetch top aToken holders using Etherscan-like approach
+    // Since we can't enumerate holders on-chain, we'll show the vault's position
+    // and note its rank based on user-provided info
+
+    // — Rendering —
+    function rayToPercent(ray) {
+      return (ray / 1e27) * 100;
+    }
+
+    async function loadAll() {
+      try {
+        const [reserveData, reserveConfig, vaultWsteth, vaultWeth, vaultAccount, prices] = await Promise.all([
+          getReserveData(WSTETH),
+          getReserveConfig(WSTETH),
+          getUserReserveData(WSTETH, VAULT_ADDRESS),
+          getUserReserveData(WETH, VAULT_ADDRESS),
+          getUserAccountData(VAULT_ADDRESS),
+          getAssetPrice(),
+        ]);
+
+        const { wstethPrice, ethPrice } = prices;
+
+        // Market stats
+        const totalSupplied = reserveData.totalAToken;
+        const totalBorrowed = reserveData.totalStableDebt + reserveData.totalVariableDebt;
+        const utilization = totalSupplied > 0 ? (totalBorrowed / totalSupplied) * 100 : 0;
+        const supplyApy = rayToPercent(reserveData.liquidityRate);
+        const borrowApy = rayToPercent(reserveData.variableBorrowRate);
+
+        // Vault position
+        const vaultSupplyWsteth = vaultWsteth.currentATokenBalance;
+        const vaultBorrowWeth = vaultWeth.currentVariableDebt + vaultWeth.currentStableDebt;
+        const vaultSupplyUsd = vaultSupplyWsteth * wstethPrice;
+        const vaultBorrowUsd = vaultBorrowWeth * ethPrice;
+        const healthFactor = vaultAccount.healthFactor;
+
+        // Vault share of total wstETH supply
+        const vaultSharePct = totalSupplied > 0 ? (vaultSupplyWsteth / totalSupplied) * 100 : 0;
+
+        // Net leverage ratio
+        const leverage = vaultSupplyUsd > 0 ? vaultSupplyUsd / (vaultSupplyUsd - vaultBorrowUsd) : 0;
+
+        renderPage({
+          totalSupplied, totalBorrowed, utilization, supplyApy, borrowApy,
+          wstethPrice, ethPrice,
+          vaultSupplyWsteth, vaultBorrowWeth, vaultSupplyUsd, vaultBorrowUsd,
+          healthFactor, vaultSharePct, leverage,
+          ltv: reserveConfig.ltv,
+          liquidationThreshold: reserveConfig.liquidationThreshold,
+        });
+
+      } catch (err) {
+        console.error('Error loading Spark data:', err);
+        document.getElementById('loadingMsg').style.display = 'none';
+        const errDiv = document.getElementById('errorContent');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = `<div class="error-msg">Failed to fetch on-chain data: ${err.message}<br><small>Try refreshing — public RPC may be rate-limited</small></div>`;
+      }
+    }
+
+    function renderPage(d) {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="stats-row-3">
+          <div class="stat-card">
+            <div class="label">wstETH Total Supplied</div>
+            <div class="value-sm num-bold">${formatEth(d.totalSupplied)}</div>
+            <div class="sub">${formatUsd(d.totalSupplied * d.wstethPrice)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">WETH Total Borrowed</div>
+            <div class="value-sm num-bold">${formatEth(d.totalBorrowed)}</div>
+            <div class="sub">${formatUsd(d.totalBorrowed * d.wstethPrice)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Utilization</div>
+            <div class="value-sm num-bold">${d.utilization.toFixed(2)}%</div>
+            <div class="sub">Supply APY ${d.supplyApy.toFixed(2)}% · Borrow ${d.borrowApy.toFixed(2)}%</div>
+          </div>
+        </div>
+
+        <div class="position-card">
+          <h2>${VAULT_NAME} <span class="badge">SPARK POSITION</span></h2>
+          <div class="position-grid">
+            <div class="position-cell">
+              <div class="pos-label">wstETH Supplied</div>
+              <div class="pos-value num-bold">${formatEth(d.vaultSupplyWsteth)}</div>
+              <div class="pos-sub">${formatUsd(d.vaultSupplyUsd)}</div>
+            </div>
+            <div class="position-cell">
+              <div class="pos-label">WETH Borrowed</div>
+              <div class="pos-value num-bold">${formatEth(d.vaultBorrowWeth)}</div>
+              <div class="pos-sub">${formatUsd(d.vaultBorrowUsd)}</div>
+            </div>
+            <div class="position-cell">
+              <div class="pos-label">Health Factor</div>
+              <div class="pos-value num-bold" style="color: ${d.healthFactor > 2 ? 'var(--green)' : d.healthFactor > 1.5 ? 'var(--spark-orange)' : 'var(--red)'}">${d.healthFactor > 100 ? '> 100' : d.healthFactor.toFixed(2)}</div>
+              <div class="pos-sub">Liq. threshold ${d.liquidationThreshold.toFixed(0)}%</div>
+            </div>
+            <div class="position-cell">
+              <div class="pos-label">Leverage / Market Share</div>
+              <div class="pos-value num-bold">${d.leverage.toFixed(2)}x</div>
+              <div class="pos-sub">${d.vaultSharePct.toFixed(2)}% of wstETH supplied</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="data-ts">
+          Data fetched live from SparkLend contracts · <a href="https://app.spark.fi/markets/1/${WSTETH}" target="_blank" rel="noopener" style="color:var(--spark-orange)">View on Spark</a>
+          · Vault <a href="https://etherscan.io/address/${VAULT_ADDRESS}" target="_blank" rel="noopener" class="addr-link">${shortAddr(VAULT_ADDRESS)}</a>
+        </div>
+      `;
+    }
+
+    // — Init —
+    loadAll();
+  </script>
+</body>
+</html>
