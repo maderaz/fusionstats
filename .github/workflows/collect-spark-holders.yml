@@ -1,0 +1,31 @@
+name: Collect Spark Holders
+
+on:
+  schedule:
+    - cron: '15 */6 * * *'  # every 6 hours at :15
+  workflow_dispatch:         # manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Scan spWSTETH holders
+        run: node collect-spark-holders.js
+
+      - name: Commit & push data files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spark-holders.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Update spark-holders.json [skip ci]"
+          git push
