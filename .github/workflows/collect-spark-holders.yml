@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
 
       - uses: actions/setup-node@v4
         with:
@@ -30,5 +28,5 @@ jobs:
           git add spark-holders.json spark-rank-history.json
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update spark-holders.json [skip ci]"
-          git pull --rebase origin main
-          git push origin main
+          git pull --rebase
+          git push
