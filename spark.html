@@ -422,8 +422,8 @@
 
     // Transfer event topic for ERC-20
     const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-    // How many blocks back to scan for Transfer events (~30 days at 12s/block)
-    const SCAN_BLOCKS = 220000;
+    // spWSTETH deployment block (SparkLend launch, May 2023)
+    const SP_WSTETH_DEPLOY_BLOCK = 17210000;
 
     // — Helpers —
     function pad32(hex) {
@@ -628,72 +628,62 @@
       }
     }
 
-    // — Discover top holders dynamically via Transfer events —
+    // — Discover top holders by scanning ALL Transfer events since deployment —
     async function discoverHolders() {
-      log('Discovering holders via Transfer events...');
+      const status = document.getElementById('loadingMsg');
+      log('Discovering holders via Transfer events (full history)...');
       const currentBlock = await getBlockNumber();
-      const fromBlock = currentBlock - SCAN_BLOCKS;
+      const fromBlock = SP_WSTETH_DEPLOY_BLOCK;
+      const totalBlocks = currentBlock - fromBlock;
 
-      // Collect unique addresses that received spWSTETH
       const addresses = new Set();
-      // Scan in chunks of ~50k blocks (most RPCs limit getLogs range)
-      const CHUNK = 50000;
-      for (let start = fromBlock; start < currentBlock; start += CHUNK) {
-        const end = Math.min(start + CHUNK - 1, currentBlock);
+
+      // Helper: extract addresses from a batch of logs
+      function extractAddresses(logs) {
+        for (const entry of logs) {
+          if (entry.topics?.[2]) {
+            const addr = '0x' + entry.topics[2].slice(26).toLowerCase();
+            if (addr !== '0x0000000000000000000000000000000000000000') addresses.add(addr);
+          }
+          if (entry.topics?.[1]) {
+            const addr = '0x' + entry.topics[1].slice(26).toLowerCase();
+            if (addr !== '0x0000000000000000000000000000000000000000') addresses.add(addr);
+          }
+        }
+      }
+
+      // Recursive scan with adaptive chunk sizing
+      async function scanRange(from, to) {
+        const range = to - from;
         try {
           const logs = await getLogs({
             address: SP_WSTETH,
             topics: [TRANSFER_TOPIC],
-            fromBlock: '0x' + start.toString(16),
-            toBlock: '0x' + end.toString(16),
+            fromBlock: '0x' + from.toString(16),
+            toBlock: '0x' + to.toString(16),
           });
-          for (const entry of logs) {
-            // topic[2] = recipient (to address)
-            if (entry.topics && entry.topics[2]) {
-              const addr = '0x' + entry.topics[2].slice(26).toLowerCase();
-              if (addr !== '0x0000000000000000000000000000000000000000') {
-                addresses.add(addr);
-              }
-            }
-            // topic[1] = sender (from address) — they may still hold tokens
-            if (entry.topics && entry.topics[1]) {
-              const addr = '0x' + entry.topics[1].slice(26).toLowerCase();
-              if (addr !== '0x0000000000000000000000000000000000000000') {
-                addresses.add(addr);
-              }
-            }
-          }
-          log(`Scanned blocks ${start}-${end}: ${logs.length} transfers, ${addresses.size} unique addrs`);
+          extractAddresses(logs);
+          const pct = Math.round(((to - fromBlock) / totalBlocks) * 100);
+          status.textContent = `Scanning Transfer events... ${pct}% (${addresses.size} addresses found)`;
+          log(`Blocks ${from}-${to}: ${logs.length} transfers, ${addresses.size} addrs total`);
         } catch (e) {
-          log(`getLogs chunk ${start}-${end} failed: ${e.message}`);
-          // Try smaller chunks on failure
-          if (CHUNK > 10000) {
-            const SMALL = 10000;
-            for (let s2 = start; s2 <= end; s2 += SMALL) {
-              const e2 = Math.min(s2 + SMALL - 1, end);
-              try {
-                const logs2 = await getLogs({
-                  address: SP_WSTETH,
-                  topics: [TRANSFER_TOPIC],
-                  fromBlock: '0x' + s2.toString(16),
-                  toBlock: '0x' + e2.toString(16),
-                });
-                for (const entry of logs2) {
-                  if (entry.topics?.[2]) {
-                    const addr = '0x' + entry.topics[2].slice(26).toLowerCase();
-                    if (addr !== '0x0000000000000000000000000000000000000000') addresses.add(addr);
-                  }
-                  if (entry.topics?.[1]) {
-                    const addr = '0x' + entry.topics[1].slice(26).toLowerCase();
-                    if (addr !== '0x0000000000000000000000000000000000000000') addresses.add(addr);
-                  }
-                }
-              } catch (e2) {
-                log(`getLogs small chunk ${s2}-${e2} also failed, skipping`);
-              }
-            }
+          // If range is already small, give up on this chunk
+          if (range <= 2000) {
+            log(`Skipping blocks ${from}-${to}: ${e.message}`);
+            return;
           }
+          // Split in half and retry (handles RPC range limits)
+          const mid = from + Math.floor(range / 2);
+          await scanRange(from, mid);
+          await scanRange(mid + 1, to);
         }
+      }
+
+      // Start with large chunks (~500k blocks) — split adaptively on failure
+      const CHUNK = 500000;
+      for (let start = fromBlock; start < currentBlock; start += CHUNK) {
+        const end = Math.min(start + CHUNK - 1, currentBlock);
+        await scanRange(start, end);
       }
 
       // Always include the vault
@@ -703,13 +693,14 @@
     }
 
     async function loadHolders(spWstethSupply) {
+      const status = document.getElementById('loadingMsg');
       const addresses = await discoverHolders();
 
-      // Check balances — 3 at a time to be gentle on RPC
+      // Check balances — 5 at a time for speed, with progress
       const results = [];
-      const addrArray = Array.from(addresses);
-      for (let i = 0; i < addrArray.length; i += 3) {
-        const batch = addrArray.slice(i, i + 3);
+      const BATCH = 5;
+      for (let i = 0; i < addresses.length; i += BATCH) {
+        const batch = addresses.slice(i, i + BATCH);
         const balances = await Promise.all(
           batch.map(a => balanceOf(SP_WSTETH, a).catch(() => 0))
         );
@@ -723,9 +714,10 @@
             });
           }
         }
-        // Status update every 15 addresses
-        if (i % 15 === 0 && i > 0) {
-          log(`Checked ${i}/${addrArray.length} balances, found ${results.length} holders`);
+        if (i % 20 === 0) {
+          const pct = Math.round((i / addresses.length) * 100);
+          status.textContent = `Checking balances... ${pct}% (${results.length} holders found)`;
+          log(`Checked ${i}/${addresses.length} balances, found ${results.length} holders`);
         }
       }
 
