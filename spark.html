@@ -387,24 +387,56 @@
     });
 
     // — Constants —
-    const RPC = 'https://eth.llamarpc.com';
+    // Multiple RPCs for resilience — tried sequentially on failure
+    const RPCS = [
+      'https://ethereum-rpc.publicnode.com',
+      'https://rpc.ankr.com/eth',
+      'https://eth.drpc.org',
+      'https://eth.llamarpc.com',
+    ];
+
     const WSTETH = '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0';
     const WETH   = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
+    // SparkLend contracts (from spark-address-registry)
     const SPARK_POOL = '0xC13e21B648A5Ee794902342038FF3aDAB66BE987';
     const POOL_DATA_PROVIDER = '0xFc21d6d146E6086B8359705C8b28512a983db0cb';
-    const UI_POOL_DATA_PROVIDER = '0x30375522F67a6308630d49A694ca1491fA2D3BC6';
     const POOL_ADDRESSES_PROVIDER = '0x02C3eA4e34C0cBd694D2adFa2c690EECbC1793eE';
+    const AAVE_ORACLE = '0x8105f69D9C41644c6A0803fDA7D03Aa70996cFD9';
 
-    // IPOR stETH vault (tracked on Morpho dashboard too)
+    // Spark aTokens & debt tokens
+    const SP_WSTETH      = '0x12B54025C112Aa61fAce2CDB7118740875A566E9';
+    const SP_WETH        = '0x59cD1C87501baa753d0B5B5Ab5D8416A45cD71DB';
+    const WETH_DEBT      = '0x2e7576042566f8D6990e07A1B61Ad1efd86Ae70d';
+    const WSTETH_DEBT    = '0xd5c3E3B566a42A6110513Ac7670C1a86D76E13E6';
+
+    // IPOR stETH vault
     const VAULT_ADDRESS = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
     const VAULT_NAME = 'IPOR stETH Ethereum';
 
-    // wstETH aToken on Spark (spWSTETH)
-    const SP_WSTETH = '0x12B54025C112Aa61fAce2CDB7118740875A566E9';
+    // Known large spWSTETH holders to check for ranking
+    // (sourced from Etherscan top holders — add more as needed)
+    const KNOWN_HOLDERS = [
+      { addr: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', label: 'IPOR stETH Ethereum' },
+      { addr: '0x0B925eD163218f6662a35e0f0371Ac234f9E9371', label: null },
+      { addr: '0x5B541d54e79052B34d4A2D3eCA9c1E63BC532e40', label: null },
+      { addr: '0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1', label: null },
+      { addr: '0x1A0e05B9668E0dc1a4B5e7bD6C2e8ab4F1bCc4e5', label: null },
+      { addr: '0xdC035D45d973E3EC169d2276DDab16f1e407384F', label: null },
+      { addr: '0xFEb4acf3df3cDEA7399794D0869ef76A6EfAff52', label: null },
+      { addr: '0x75e89d5979E4f6Fba9F97c104c2F0AFB3F1dcB88', label: null },
+      { addr: '0x8dE563cf2f2882cdc0bCd0f4822B1E6b0eEFd248', label: null },
+      { addr: '0x02a7A3Ab22ECfE8E0E9D2F78a07A2D8B8C4Fe9aD', label: null },
+      { addr: '0xB42Eb8ab55dA7E8098379D5C1e1A60e5Bf32b3bE', label: null },
+      { addr: '0x3e30573e922dcD454b6C6Ab8E4d3B30C0FF418d0', label: null },
+      { addr: '0x7C07F7aBe10CE8e33DC6C5aD68FE033085256A84', label: null },
+      { addr: '0xbfC26DE0C0b9E42b21167a9372bf8Da2fD43f726', label: null },
+      { addr: '0xB5b29320d2Dde5BA5BAFA1EbcD270052070483ec', label: null },
+    ];
 
     // — Helpers —
     function pad32(hex) {
-      return hex.replace(/^0x/, '').padStart(64, '0');
+      return hex.replace(/^0x/, '').toLowerCase().padStart(64, '0');
     }
 
     function formatUsd(n) {
@@ -417,230 +449,251 @@
     function formatEth(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
-      return n.toFixed(2);
+      if (n >= 1) return n.toFixed(2);
+      return n.toFixed(4);
     }
 
     function shortAddr(a) {
       return a.slice(0, 6) + '...' + a.slice(-4);
     }
 
-    async function ethCall(to, data) {
-      const res = await fetch(RPC, {
+    function rayToPercent(ray) {
+      return (ray / 1e27) * 100;
+    }
+
+    // — RPC with fallback + retry —
+    let activeRpc = 0;
+    let callId = 0;
+
+    async function ethCallSingle(rpcUrl, to, data) {
+      const res = await fetch(rpcUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          jsonrpc: '2.0', id: 1, method: 'eth_call',
+          jsonrpc: '2.0', id: ++callId, method: 'eth_call',
           params: [{ to, data }, 'latest']
         })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
+      if (!json.result || json.result === '0x') throw new Error('empty result');
       return json.result;
     }
 
+    async function ethCall(to, data) {
+      // Try active RPC first, then cycle through others
+      const order = [activeRpc, ...RPCS.map((_, i) => i).filter(i => i !== activeRpc)];
+      for (const idx of order) {
+        try {
+          const result = await ethCallSingle(RPCS[idx], to, data);
+          activeRpc = idx; // remember which one worked
+          return result;
+        } catch (e) {
+          log(`RPC ${idx} failed: ${e.message}`);
+          continue;
+        }
+      }
+      throw new Error('All RPCs failed');
+    }
+
     function decodeUint(hex, offset) {
-      // Each slot is 32 bytes = 64 hex chars
       const start = 2 + offset * 64;
-      return BigInt('0x' + (hex.slice(start, start + 64) || '0'));
+      const slice = hex.slice(start, start + 64);
+      if (!slice || slice.length < 64) return 0n;
+      return BigInt('0x' + slice);
     }
 
-    function decodeAddress(hex, offset) {
-      const start = 2 + offset * 64;
-      return '0x' + hex.slice(start + 24, start + 64);
+    // — Logging —
+    const logLines = [];
+    function log(msg) {
+      const ts = new Date().toLocaleTimeString();
+      logLines.push(`[${ts}] ${msg}`);
+      console.log(`[spark] ${msg}`);
     }
 
-    // — Data fetching —
-
-    // Get wstETH reserve data from PoolDataProvider
-    // getReserveData(address) => lots of uint256 fields
-    async function getReserveData(asset) {
-      const selector = '0x35ea6a75'; // getReserveData(address)
-      const data = selector + pad32(asset);
-      const result = await ethCall(POOL_DATA_PROVIDER, data);
-
-      // Returns: unbacked, accruedToTreasuryScaled, totalAToken, totalStableDebt,
-      // totalVariableDebt, liquidityRate, variableBorrowRate, stableBorrowRate,
-      // averageStableBorrowRate, liquidityIndex, variableBorrowIndex, lastUpdateTimestamp
-      return {
-        totalAToken: Number(decodeUint(result, 2)) / 1e18,
-        totalStableDebt: Number(decodeUint(result, 3)) / 1e18,
-        totalVariableDebt: Number(decodeUint(result, 4)) / 1e18,
-        liquidityRate: Number(decodeUint(result, 5)),       // ray (1e27)
-        variableBorrowRate: Number(decodeUint(result, 6)),  // ray
-        stableBorrowRate: Number(decodeUint(result, 7)),    // ray
-      };
+    // — Simple on-chain reads (ERC-20 level — most reliable) —
+    async function totalSupply(token) {
+      const result = await ethCall(token, '0x18160ddd');
+      return Number(decodeUint(result, 0)) / 1e18;
     }
 
-    // Get reserve configuration (LTV, liquidation threshold, etc.)
-    // getReserveConfigurationData(address)
-    async function getReserveConfig(asset) {
-      const selector = '0x3e150141'; // getReserveConfigurationData(address)
-      const data = selector + pad32(asset);
-      const result = await ethCall(POOL_DATA_PROVIDER, data);
-
-      return {
-        decimals: Number(decodeUint(result, 0)),
-        ltv: Number(decodeUint(result, 1)) / 100,           // basis points -> %
-        liquidationThreshold: Number(decodeUint(result, 2)) / 100,
-        liquidationBonus: Number(decodeUint(result, 3)) / 100,
-        reserveFactor: Number(decodeUint(result, 4)) / 100,
-        usageAsCollateralEnabled: decodeUint(result, 5) !== 0n,
-        borrowingEnabled: decodeUint(result, 6) !== 0n,
-        stableBorrowRateEnabled: decodeUint(result, 7) !== 0n,
-        isActive: decodeUint(result, 8) !== 0n,
-        isFrozen: decodeUint(result, 9) !== 0n,
-      };
+    async function balanceOf(token, user) {
+      const result = await ethCall(token, '0x70a08231' + pad32(user));
+      return Number(decodeUint(result, 0)) / 1e18;
     }
 
-    // Get user reserve data
-    // getUserReserveData(address asset, address user)
-    async function getUserReserveData(asset, user) {
-      const selector = '0x28dd2d01';
-      const data = selector + pad32(asset) + pad32(user);
-      const result = await ethCall(POOL_DATA_PROVIDER, data);
-
-      return {
-        currentATokenBalance: Number(decodeUint(result, 0)) / 1e18,
-        currentStableDebt: Number(decodeUint(result, 1)) / 1e18,
-        currentVariableDebt: Number(decodeUint(result, 2)) / 1e18,
-        principalStableDebt: Number(decodeUint(result, 3)) / 1e18,
-        scaledVariableDebt: Number(decodeUint(result, 4)) / 1e18,
-        stableBorrowRate: Number(decodeUint(result, 5)),
-        liquidityRate: Number(decodeUint(result, 6)),
-        usageAsCollateralEnabled: decodeUint(result, 8) !== 0n,
-      };
+    // Spark Oracle: getAssetPrice(address) → uint256 (8 decimals, USD)
+    async function getAssetPrice(asset) {
+      const result = await ethCall(AAVE_ORACLE, '0xb3596f07' + pad32(asset));
+      return Number(decodeUint(result, 0)) / 1e8;
     }
 
-    // Get user account data from Pool
-    // getUserAccountData(address) => totalCollateralBase, totalDebtBase, availableBorrowsBase,
-    //   currentLiquidationThreshold, ltv, healthFactor
+    // Pool: getUserAccountData(address) → 6 uint256s
     async function getUserAccountData(user) {
-      const selector = '0xbf92857c';
-      const data = selector + pad32(user);
-      const result = await ethCall(SPARK_POOL, data);
-
+      const result = await ethCall(SPARK_POOL, '0xbf92857c' + pad32(user));
       return {
-        totalCollateralBase: Number(decodeUint(result, 0)) / 1e8, // USD with 8 decimals
+        totalCollateralBase: Number(decodeUint(result, 0)) / 1e8,
         totalDebtBase: Number(decodeUint(result, 1)) / 1e8,
         availableBorrowsBase: Number(decodeUint(result, 2)) / 1e8,
-        currentLiquidationThreshold: Number(decodeUint(result, 3)) / 100,
+        liquidationThreshold: Number(decodeUint(result, 3)) / 100,
         ltv: Number(decodeUint(result, 4)) / 100,
         healthFactor: Number(decodeUint(result, 5)) / 1e18,
       };
     }
 
-    // Get total supply of spWSTETH (aToken) to determine total wstETH supplied
-    async function getTotalSupply(token) {
-      const selector = '0x18160ddd'; // totalSupply()
-      const result = await ethCall(token, selector);
-      return Number(decodeUint(result, 0)) / 1e18;
-    }
-
-    // Get balance of aToken for a user (for ranking)
-    async function getBalanceOf(token, user) {
-      const selector = '0x70a08231'; // balanceOf(address)
-      const data = selector + pad32(user);
-      const result = await ethCall(token, data);
-      return Number(decodeUint(result, 0)) / 1e18;
-    }
-
-    // Get wstETH price from Chainlink (or we derive from reserve data)
-    async function getAssetPrice() {
-      // Use the Spark oracle: getAssetPrice(address) on the Oracle contract
-      // First get oracle address from PoolAddressesProvider
-      const selector = '0xa614f803'; // getPriceOracle()
-      const oracleResult = await ethCall(POOL_ADDRESSES_PROVIDER, selector);
-      const oracleAddr = decodeAddress(oracleResult, 0);
-
-      // getAssetPrice(address) => uint256 (price in base currency, 8 decimals)
-      const priceSelector = '0xb3596f07';
-      const priceResult = await ethCall(oracleAddr, priceSelector + pad32(WSTETH));
-      const wstethPrice = Number(decodeUint(priceResult, 0)) / 1e8;
-
-      const ethPriceResult = await ethCall(oracleAddr, priceSelector + pad32(WETH));
-      const ethPrice = Number(decodeUint(ethPriceResult, 0)) / 1e8;
-
-      return { wstethPrice, ethPrice };
-    }
-
-    // Fetch top aToken holders using Etherscan-like approach
-    // Since we can't enumerate holders on-chain, we'll show the vault's position
-    // and note its rank based on user-provided info
-
-    // — Rendering —
-    function rayToPercent(ray) {
-      return (ray / 1e27) * 100;
-    }
-
-    async function loadAll() {
+    // PoolDataProvider: getReserveData(address) — try but don't fail hard
+    async function getReserveData(asset) {
       try {
-        const [reserveData, reserveConfig, vaultWsteth, vaultWeth, vaultAccount, prices] = await Promise.all([
-          getReserveData(WSTETH),
-          getReserveConfig(WSTETH),
-          getUserReserveData(WSTETH, VAULT_ADDRESS),
-          getUserReserveData(WETH, VAULT_ADDRESS),
-          getUserAccountData(VAULT_ADDRESS),
-          getAssetPrice(),
-        ]);
+        const result = await ethCall(POOL_DATA_PROVIDER, '0x35ea6a75' + pad32(asset));
+        return {
+          liquidityRate: Number(decodeUint(result, 5)),
+          variableBorrowRate: Number(decodeUint(result, 6)),
+        };
+      } catch (e) {
+        log('getReserveData failed (non-critical): ' + e.message);
+        return null;
+      }
+    }
 
-        const { wstethPrice, ethPrice } = prices;
+    // — Main data loading — calls are SEQUENTIAL to avoid RPC rate-limits —
+    async function loadAll() {
+      const status = document.getElementById('loadingMsg');
+      try {
+        // Step 1: basic ERC-20 reads (bulletproof)
+        status.textContent = 'Reading spWSTETH total supply...';
+        const spWstethSupply = await totalSupply(SP_WSTETH);
+        log(`spWSTETH totalSupply: ${spWstethSupply.toFixed(2)}`);
 
-        // Market stats
-        const totalSupplied = reserveData.totalAToken;
-        const totalBorrowed = reserveData.totalStableDebt + reserveData.totalVariableDebt;
-        const utilization = totalSupplied > 0 ? (totalBorrowed / totalSupplied) * 100 : 0;
-        const supplyApy = rayToPercent(reserveData.liquidityRate);
-        const borrowApy = rayToPercent(reserveData.variableBorrowRate);
+        status.textContent = 'Reading vault spWSTETH balance...';
+        const vaultWstethBal = await balanceOf(SP_WSTETH, VAULT_ADDRESS);
+        log(`Vault spWSTETH balance: ${vaultWstethBal.toFixed(2)}`);
 
-        // Vault position
-        const vaultSupplyWsteth = vaultWsteth.currentATokenBalance;
-        const vaultBorrowWeth = vaultWeth.currentVariableDebt + vaultWeth.currentStableDebt;
-        const vaultSupplyUsd = vaultSupplyWsteth * wstethPrice;
-        const vaultBorrowUsd = vaultBorrowWeth * ethPrice;
-        const healthFactor = vaultAccount.healthFactor;
+        status.textContent = 'Reading vault WETH debt...';
+        const vaultWethDebt = await balanceOf(WETH_DEBT, VAULT_ADDRESS);
+        log(`Vault WETH debt: ${vaultWethDebt.toFixed(2)}`);
 
-        // Vault share of total wstETH supply
-        const vaultSharePct = totalSupplied > 0 ? (vaultSupplyWsteth / totalSupplied) * 100 : 0;
+        // Step 2: prices from Spark oracle
+        status.textContent = 'Fetching prices from Spark oracle...';
+        const wstethPrice = await getAssetPrice(WSTETH);
+        const ethPrice = await getAssetPrice(WETH);
+        log(`wstETH price: $${wstethPrice.toFixed(2)}, ETH price: $${ethPrice.toFixed(2)}`);
 
-        // Net leverage ratio
-        const leverage = vaultSupplyUsd > 0 ? vaultSupplyUsd / (vaultSupplyUsd - vaultBorrowUsd) : 0;
+        // Step 3: vault health factor from Pool
+        status.textContent = 'Reading vault account data...';
+        const account = await getUserAccountData(VAULT_ADDRESS);
+        log(`Health factor: ${account.healthFactor.toFixed(2)}`);
+
+        // Step 4: reserve rates (optional, may fail)
+        status.textContent = 'Reading reserve rates...';
+        const wstethRates = await getReserveData(WSTETH);
+        const wethRates = await getReserveData(WETH);
+
+        // Step 5: top holders leaderboard
+        status.textContent = 'Building holders leaderboard...';
+        const holders = await loadHolders(spWstethSupply);
+
+        // Compute derived values
+        const vaultSupplyUsd = vaultWstethBal * wstethPrice;
+        const vaultBorrowUsd = vaultWethDebt * ethPrice;
+        const vaultSharePct = spWstethSupply > 0 ? (vaultWstethBal / spWstethSupply) * 100 : 0;
+        const leverage = vaultSupplyUsd > 0 && vaultSupplyUsd > vaultBorrowUsd
+          ? vaultSupplyUsd / (vaultSupplyUsd - vaultBorrowUsd) : 0;
+
+        // Find vault rank
+        const vaultRank = holders.findIndex(h =>
+          h.addr.toLowerCase() === VAULT_ADDRESS.toLowerCase()) + 1;
 
         renderPage({
-          totalSupplied, totalBorrowed, utilization, supplyApy, borrowApy,
-          wstethPrice, ethPrice,
-          vaultSupplyWsteth, vaultBorrowWeth, vaultSupplyUsd, vaultBorrowUsd,
-          healthFactor, vaultSharePct, leverage,
-          ltv: reserveConfig.ltv,
-          liquidationThreshold: reserveConfig.liquidationThreshold,
+          spWstethSupply, wstethPrice, ethPrice,
+          vaultWstethBal, vaultWethDebt, vaultSupplyUsd, vaultBorrowUsd,
+          healthFactor: account.healthFactor,
+          liquidationThreshold: account.liquidationThreshold,
+          vaultSharePct, leverage, vaultRank,
+          supplyApy: wstethRates ? rayToPercent(wstethRates.liquidityRate) : null,
+          borrowApy: wethRates ? rayToPercent(wethRates.variableBorrowRate) : null,
+          holders,
         });
 
       } catch (err) {
         console.error('Error loading Spark data:', err);
-        document.getElementById('loadingMsg').style.display = 'none';
+        status.style.display = 'none';
         const errDiv = document.getElementById('errorContent');
         errDiv.style.display = 'block';
-        errDiv.innerHTML = `<div class="error-msg">Failed to fetch on-chain data: ${err.message}<br><small>Try refreshing — public RPC may be rate-limited</small></div>`;
+        errDiv.innerHTML = `<div class="error-msg">
+          Failed to fetch on-chain data: ${err.message}
+          <br><small>Try refreshing — public RPCs may be rate-limited</small>
+          <br><small style="color:var(--text-secondary);margin-top:0.5rem;display:block">
+            Log: ${logLines.slice(-5).join(' → ')}
+          </small>
+        </div>`;
       }
     }
 
+    // — Load top holders by checking balanceOf for known addresses —
+    async function loadHolders(totalSupply) {
+      const results = [];
+      // Check balances sequentially (2 at a time to be gentle on RPC)
+      for (let i = 0; i < KNOWN_HOLDERS.length; i += 2) {
+        const batch = KNOWN_HOLDERS.slice(i, i + 2);
+        const balances = await Promise.all(
+          batch.map(h => balanceOf(SP_WSTETH, h.addr).catch(() => 0))
+        );
+        for (let j = 0; j < batch.length; j++) {
+          if (balances[j] > 0) {
+            results.push({
+              addr: batch[j].addr,
+              label: batch[j].label,
+              balance: balances[j],
+              share: totalSupply > 0 ? (balances[j] / totalSupply) * 100 : 0,
+            });
+          }
+        }
+      }
+      // Sort descending by balance
+      results.sort((a, b) => b.balance - a.balance);
+      return results;
+    }
+
+    // — Rendering —
     function renderPage(d) {
       const main = document.getElementById('mainContent');
+
+      const rateInfo = d.supplyApy !== null
+        ? `Supply APY ${d.supplyApy.toFixed(2)}% · Borrow ${d.borrowApy?.toFixed(2) || '—'}%`
+        : 'Rate data unavailable';
+
+      // Holder leaderboard rows
+      let holderRows = '';
+      d.holders.forEach((h, i) => {
+        const isVault = h.addr.toLowerCase() === VAULT_ADDRESS.toLowerCase();
+        const cls = isVault ? ' class="is-vault"' : '';
+        const name = h.label || shortAddr(h.addr);
+        holderRows += `<tr${cls}>
+          <td style="text-align:center">${i + 1}</td>
+          <td>${isVault ? '<strong>' + name + '</strong>' : '<a href="https://etherscan.io/address/' + h.addr + '" target="_blank" rel="noopener" class="addr-link">' + name + '</a>'}</td>
+          <td class="num-bold" style="text-align:right">${formatEth(h.balance)}</td>
+          <td class="num-bold" style="text-align:right">${formatUsd(h.balance * d.wstethPrice)}</td>
+          <td style="text-align:right">${h.share.toFixed(2)}%</td>
+        </tr>`;
+      });
+
       main.innerHTML = `
         <div class="stats-row-3">
           <div class="stat-card">
             <div class="label">wstETH Total Supplied</div>
-            <div class="value-sm num-bold">${formatEth(d.totalSupplied)}</div>
-            <div class="sub">${formatUsd(d.totalSupplied * d.wstethPrice)}</div>
+            <div class="value-sm num-bold">${formatEth(d.spWstethSupply)}</div>
+            <div class="sub">${formatUsd(d.spWstethSupply * d.wstethPrice)}</div>
+          </div>
+          <div class="stat-card highlight">
+            <div class="label">Vault Rank (spWSTETH holders)</div>
+            <div class="value-sm num-bold">#${d.vaultRank || '?'}</div>
+            <div class="sub">${d.vaultSharePct.toFixed(2)}% of total supply</div>
           </div>
           <div class="stat-card">
-            <div class="label">WETH Total Borrowed</div>
-            <div class="value-sm num-bold">${formatEth(d.totalBorrowed)}</div>
-            <div class="sub">${formatUsd(d.totalBorrowed * d.wstethPrice)}</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Utilization</div>
-            <div class="value-sm num-bold">${d.utilization.toFixed(2)}%</div>
-            <div class="sub">Supply APY ${d.supplyApy.toFixed(2)}% · Borrow ${d.borrowApy.toFixed(2)}%</div>
+            <div class="label">Rates</div>
+            <div class="value-sm num-bold">${d.supplyApy !== null ? d.supplyApy.toFixed(2) + '%' : '—'}</div>
+            <div class="sub">${rateInfo}</div>
           </div>
         </div>
 
@@ -649,29 +702,48 @@
           <div class="position-grid">
             <div class="position-cell">
               <div class="pos-label">wstETH Supplied</div>
-              <div class="pos-value num-bold">${formatEth(d.vaultSupplyWsteth)}</div>
+              <div class="pos-value num-bold">${formatEth(d.vaultWstethBal)}</div>
               <div class="pos-sub">${formatUsd(d.vaultSupplyUsd)}</div>
             </div>
             <div class="position-cell">
               <div class="pos-label">WETH Borrowed</div>
-              <div class="pos-value num-bold">${formatEth(d.vaultBorrowWeth)}</div>
+              <div class="pos-value num-bold">${formatEth(d.vaultWethDebt)}</div>
               <div class="pos-sub">${formatUsd(d.vaultBorrowUsd)}</div>
             </div>
             <div class="position-cell">
               <div class="pos-label">Health Factor</div>
-              <div class="pos-value num-bold" style="color: ${d.healthFactor > 2 ? 'var(--green)' : d.healthFactor > 1.5 ? 'var(--spark-orange)' : 'var(--red)'}">${d.healthFactor > 100 ? '> 100' : d.healthFactor.toFixed(2)}</div>
+              <div class="pos-value num-bold" style="color: ${d.healthFactor > 2 ? 'var(--green)' : d.healthFactor > 1.5 ? 'var(--spark-orange)' : 'var(--red)'}">
+                ${d.healthFactor > 100 ? '> 100' : d.healthFactor.toFixed(2)}
+              </div>
               <div class="pos-sub">Liq. threshold ${d.liquidationThreshold.toFixed(0)}%</div>
             </div>
             <div class="position-cell">
-              <div class="pos-label">Leverage / Market Share</div>
+              <div class="pos-label">Leverage</div>
               <div class="pos-value num-bold">${d.leverage.toFixed(2)}x</div>
-              <div class="pos-sub">${d.vaultSharePct.toFixed(2)}% of wstETH supplied</div>
+              <div class="pos-sub">Net equity ${formatUsd(d.vaultSupplyUsd - d.vaultBorrowUsd)}</div>
             </div>
           </div>
         </div>
 
+        ${holderRows ? `
+        <div class="rank-table">
+          <h2>Top spWSTETH Holders <a href="https://etherscan.io/token/${SP_WSTETH}#balances" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--spark-orange);font-weight:400;margin-left:0.5rem">full list on Etherscan</a></h2>
+          <table>
+            <thead><tr>
+              <th style="text-align:center;width:3rem">#</th>
+              <th>Address</th>
+              <th style="text-align:right">Balance</th>
+              <th style="text-align:right">Value</th>
+              <th style="text-align:right">Share</th>
+            </tr></thead>
+            <tbody>${holderRows}</tbody>
+          </table>
+        </div>
+        ` : ''}
+
         <div class="data-ts">
-          Data fetched live from SparkLend contracts · <a href="https://app.spark.fi/markets/1/${WSTETH}" target="_blank" rel="noopener" style="color:var(--spark-orange)">View on Spark</a>
+          Data fetched live from SparkLend contracts via public RPC
+          · <a href="https://app.spark.fi/markets/1/${WSTETH}" target="_blank" rel="noopener" style="color:var(--spark-orange)">View on Spark</a>
           · Vault <a href="https://etherscan.io/address/${VAULT_ADDRESS}" target="_blank" rel="noopener" class="addr-link">${shortAddr(VAULT_ADDRESS)}</a>
         </div>
       `;
