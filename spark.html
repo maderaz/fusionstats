@@ -332,6 +332,108 @@
       font-size: 0.85rem;
     }
 
+    /* Rank history chart */
+    .rank-chart-card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .rank-chart-card h2 {
+      margin: 0 0 0.25rem 0;
+      font-size: 1rem;
+    }
+
+    .rank-chart-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+
+    .rank-chart-area {
+      display: flex;
+      align-items: stretch;
+      height: 200px;
+      gap: 0;
+    }
+
+    .rank-chart-y {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding-right: 0.75rem;
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      text-align: right;
+      min-width: 32px;
+    }
+
+    .rank-chart-bars {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      position: relative;
+    }
+
+    .rank-bar-slot {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+      position: relative;
+    }
+
+    .rank-bar {
+      width: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to top, var(--spark-orange), #FFB366);
+      transition: height 0.4s ease;
+    }
+
+    .rank-bar-slot:hover .rank-bar {
+      filter: brightness(1.15);
+    }
+
+    .rank-bar-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      z-index: 10;
+      pointer-events: none;
+      line-height: 1.5;
+    }
+
+    .rank-bar-slot:hover .rank-bar-tooltip {
+      display: block;
+    }
+
+    .rank-chart-x {
+      display: flex;
+      gap: 2px;
+      padding-left: 32px;
+      margin-top: 0.5rem;
+    }
+
+    .rank-chart-x span {
+      flex: 1;
+      text-align: center;
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+    }
+
     .data-ts {
       text-align: center;
       font-size: 0.7rem;
@@ -746,6 +848,16 @@
           </div>
         </div>
 
+        <div class="rank-chart-card">
+          <h2>Vault Rank History</h2>
+          <div class="rank-chart-sub" id="rankChartSub">Loading rank history...</div>
+          <div class="rank-chart-area">
+            <div class="rank-chart-y" id="rankChartY"></div>
+            <div class="rank-chart-bars" id="rankChartBars"></div>
+          </div>
+          <div class="rank-chart-x" id="rankChartX"></div>
+        </div>
+
         ${holderRows ? `
         <div class="rank-table">
           <h2>Top spWSTETH Holders ${d.holdersUpdatedAt ? `<span style="font-size:0.7rem;color:var(--text-secondary);font-weight:400;margin-left:0.25rem">(list updated ${new Date(d.holdersUpdatedAt).toLocaleDateString()}, balances live)</span>` : ''} <a href="https://etherscan.io/token/${SP_WSTETH}#balances" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--spark-orange);font-weight:400;margin-left:0.5rem">Etherscan</a></h2>
@@ -770,8 +882,96 @@
       `;
     }
 
+    // — Rank history chart —
+    async function loadRankChart() {
+      try {
+        const res = await fetch('spark-rank-history.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const history = await res.json();
+        renderRankChart(history);
+      } catch (e) {
+        const sub = document.getElementById('rankChartSub');
+        if (sub) sub.textContent = 'No rank history yet — run collect-spark-holders.js to start tracking.';
+        log('Rank history unavailable: ' + e.message);
+      }
+    }
+
+    function renderRankChart(history) {
+      const sub = document.getElementById('rankChartSub');
+      const barsEl = document.getElementById('rankChartBars');
+      const yAxisEl = document.getElementById('rankChartY');
+      const xLabelsEl = document.getElementById('rankChartX');
+
+      if (!history.length || !barsEl) return;
+
+      const points = history
+        .filter(e => e.rank != null)
+        .map(e => ({ time: new Date(e.t), rank: e.rank, balance: e.balance, share: e.share, totalHolders: e.totalHolders }));
+
+      if (!points.length) {
+        sub.textContent = 'No rank data available yet.';
+        return;
+      }
+
+      // For rank chart: lower rank = better. Invert so rank 1 is tallest bar.
+      const maxRank = Math.max(...points.map(p => p.rank), 10);
+      const yMax = Math.ceil(maxRank / 5) * 5; // round up to nearest 5
+
+      // Y-axis labels (rank — inverted: top=1, bottom=maxRank)
+      yAxisEl.innerHTML = '';
+      const ticks = [1, Math.round(yMax * 0.25), Math.round(yMax * 0.5), Math.round(yMax * 0.75), yMax];
+      ticks.forEach(val => {
+        const span = document.createElement('span');
+        span.textContent = '#' + val;
+        span.style.lineHeight = '1';
+        yAxisEl.appendChild(span);
+      });
+
+      // Bars
+      barsEl.innerHTML = '';
+      points.forEach(p => {
+        const slot = document.createElement('div');
+        slot.className = 'rank-bar-slot';
+
+        const bar = document.createElement('div');
+        bar.className = 'rank-bar';
+        // Higher bar = better rank (rank 1 = 100%, rank maxRank = ~5%)
+        const pct = Math.max(5, ((yMax - p.rank + 1) / yMax) * 100);
+        bar.style.height = pct + '%';
+        slot.appendChild(bar);
+
+        // Tooltip
+        const tip = document.createElement('div');
+        tip.className = 'rank-bar-tooltip';
+        const timeStr = p.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+          + ' ' + p.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+        tip.innerHTML = `<strong>${timeStr}</strong><br>`
+          + `<span style="color:var(--spark-orange);font-weight:700;">Rank #${p.rank}</span><br>`
+          + `<span>Balance: ${formatEth(p.balance)} spWSTETH</span><br>`
+          + `<span>Share: ${p.share}%</span>`;
+        slot.appendChild(tip);
+
+        barsEl.appendChild(slot);
+      });
+
+      // X-axis labels
+      xLabelsEl.innerHTML = '';
+      const labelStep = Math.max(1, Math.floor(points.length / 8));
+      points.forEach((p, i) => {
+        const span = document.createElement('span');
+        if (i % labelStep === 0 || i === points.length - 1) {
+          span.textContent = p.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        }
+        xLabelsEl.appendChild(span);
+      });
+
+      const spanHours = Math.round((points[points.length - 1].time - points[0].time) / 3600000);
+      const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
+      sub.textContent = `${points.length} data points · ${spanLabel} span · updated every 6h`;
+    }
+
     // — Init —
-    loadAll();
+    loadAll().then(() => loadRankChart());
   </script>
 </body>
 </html>

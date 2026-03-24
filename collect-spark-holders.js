@@ -14,6 +14,8 @@ const fs = require('fs');
 const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'spark-holders.json');
+const RANK_HISTORY_FILE = path.join(__dirname, 'spark-rank-history.json');
+const MAX_RANK_ENTRIES = 365 * 4; // ~1 year at 4x/day (every 6h)
 
 const SP_WSTETH = '0x12B54025C112Aa61fAce2CDB7118740875A566E9';
 const DEPLOY_BLOCK = 17210000; // SparkLend launch, May 2023
@@ -27,8 +29,10 @@ const RPCS = [
   'https://eth.llamarpc.com',
 ];
 
+const VAULT_ADDRESS = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
+
 const KNOWN_LABELS = {
-  '0xb8a451107a9f87fde481d4d686247d6e43ed715e': 'IPOR stETH Ethereum',
+  [VAULT_ADDRESS]: 'IPOR stETH Ethereum',
 };
 
 let activeRpc = 0;
@@ -176,6 +180,37 @@ async function main() {
   top.slice(0, 10).forEach(h =>
     console.log(`  #${h.rank} ${h.label || h.address} — ${h.balance.toLocaleString()} spWSTETH`)
   );
+
+  // Step 4: append vault rank to rank history
+  const vaultHolder = holders.find(h => h.address === VAULT_ADDRESS);
+  const vaultRank = vaultHolder
+    ? holders.indexOf(vaultHolder) + 1
+    : null;
+  const vaultBalance = vaultHolder ? vaultHolder.balance : 0;
+  const vaultShare = totalSupply > 0 ? (vaultBalance / totalSupply) * 100 : 0;
+
+  let rankHistory = [];
+  try {
+    rankHistory = JSON.parse(fs.readFileSync(RANK_HISTORY_FILE, 'utf8'));
+  } catch {}
+
+  rankHistory.push({
+    t: new Date().toISOString(),
+    rank: vaultRank,
+    balance: Math.round(vaultBalance * 100) / 100,
+    share: Math.round(vaultShare * 100) / 100,
+    totalHolders: holders.length,
+    totalSupply: Math.round(totalSupply * 100) / 100,
+  });
+
+  // Trim to max entries
+  if (rankHistory.length > MAX_RANK_ENTRIES) {
+    rankHistory = rankHistory.slice(-MAX_RANK_ENTRIES);
+  }
+
+  fs.writeFileSync(RANK_HISTORY_FILE, JSON.stringify(rankHistory, null, 2) + '\n');
+  console.log(`\nVault rank: #${vaultRank} (${vaultBalance.toFixed(2)} spWSTETH, ${vaultShare.toFixed(2)}%)`);
+  console.log(`Rank history: ${rankHistory.length} entries saved`);
 }
 
 main().catch(e => {
