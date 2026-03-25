@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v8 - inner 3D cube with grain + icon uploads -->
+<!-- v9 - inner cube faces inside cube-pivot for proper 3D nesting -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -563,17 +563,8 @@
     }
 
     /* === Inner 3D Square (nested cube inside glass cube) === */
-    .inner-cube-wrap {
-      position: absolute;
-      width: 0; height: 0;
-      left: 100px; top: 100px;
-      transform-style: preserve-3d;
-      display: none;
-    }
-
-    .inner-cube-wrap.visible { display: block; }
-
     .inner-cube-face {
+      display: none;
       position: absolute;
       backface-visibility: visible;
       overflow: hidden;
@@ -851,9 +842,7 @@
             <div class="inner-plane" id="plane1" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
-          </div>
-          <!-- Inner 3D Square -->
-          <div class="inner-cube-wrap" id="innerCubeWrap">
+            <!-- Inner 3D Square (inside cube-pivot for shared 3D context) -->
             <div class="inner-cube-face ic-front" data-face="front">
               <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
             </div>
@@ -1199,8 +1188,8 @@
       btn.disabled = false;
     });
 
-    // Inner 3D Cube
-    const innerCubeWrap = document.getElementById('innerCubeWrap');
+    // Inner 3D Cube — faces are direct children of cube-pivot
+    const icFaces = document.querySelectorAll('.inner-cube-face');
     const innerCubeToggle = document.getElementById('innerCubeToggle');
     const innerCubeSizeSl = document.getElementById('innerCubeSize');
     const innerCubeSizeValEl = document.getElementById('innerCubeSizeVal');
@@ -1216,20 +1205,26 @@
 
     function applyInnerCube() {
       const on = innerCubeToggle.value === 'on';
-      innerCubeWrap.classList.toggle('visible', on);
-      if (!on) return;
+
+      if (!on) {
+        icFaces.forEach(f => f.style.display = 'none');
+        return;
+      }
 
       const pct = parseInt(innerCubeSizeSl.value);
       innerCubeSizeValEl.textContent = pct;
 
+      // Inner cube: size as % of outer cube (200px faces, half=100px)
       const sz = Math.round(200 * pct / 100);
       const half = sz / 2;
       const rad = Math.round(sz * 0.16) + 'px';
       const theme = document.getElementById('colorTheme').value;
       const grad = icGradients[theme] || icGradients.purple;
 
-      // Position & size each face as a proper 3D cube
-      const faces = innerCubeWrap.querySelectorAll('.inner-cube-face');
+      // Offset to center within the 200x200 cube-pivot
+      const off = Math.round((200 - sz) / 2);
+
+      // 3D transforms — same pattern as outer faces but smaller translateZ
       const transforms = [
         `translateZ(${half}px)`,                       // front
         `rotateY(180deg) translateZ(${half}px)`,       // back
@@ -1239,11 +1234,13 @@
         `rotateX(-90deg) translateZ(${half}px)`,       // bottom
       ];
 
-      faces.forEach((f, i) => {
+      icFaces.forEach((f, i) => {
+        f.style.display = 'block';
+        f.style.position = 'absolute';
         f.style.width = sz + 'px';
         f.style.height = sz + 'px';
-        f.style.left = -half + 'px';
-        f.style.top = -half + 'px';
+        f.style.left = off + 'px';
+        f.style.top = off + 'px';
         f.style.borderRadius = rad;
         f.style.transform = transforms[i];
         f.querySelector('.ic-bg').style.background = grad;
