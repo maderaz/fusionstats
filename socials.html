@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socials · IPOR Fusion Stats</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --red: #dc2626;
+      --card: var(--surface);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --card: var(--surface);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 1.2rem;
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    header { margin-bottom: 2rem; }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: var(--text-body);
+      margin-top: 0.25rem;
+    }
+
+    /* Generator card */
+    .generator-card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .generator-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    /* Controls */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-end;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .control-group label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .control-group input[type="range"] {
+      width: 120px;
+      accent-color: var(--accent);
+    }
+
+    .control-group input[type="text"] {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      width: 200px;
+    }
+
+    .control-group select {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .btn {
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-end));
+      color: #fff;
+    }
+
+    .btn-primary:hover { filter: brightness(1.1); }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text-body);
+      border: 1px solid var(--stroke);
+    }
+
+    .btn-secondary:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Canvas area */
+    .canvas-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 1.5rem 0;
+    }
+
+    .cube-canvas {
+      width: 520px;
+      height: 520px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+    }
+
+    /* 3D Scene */
+    .scene-bg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .scene {
+      width: 100%;
+      height: 100%;
+      perspective: 900px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .cube-pivot {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateX(-25deg) rotateY(-35deg);
+      transition: transform 0.6s ease;
+    }
+
+    .cube-pivot.spinning {
+      animation: cubeRotate 12s linear infinite;
+    }
+
+    @keyframes cubeRotate {
+      from { transform: rotateX(-25deg) rotateY(0deg); }
+      to   { transform: rotateX(-25deg) rotateY(360deg); }
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border: 1.5px solid rgba(132, 41, 255, 0.6);
+      backface-visibility: visible;
+    }
+
+    /* Grid pattern on each face */
+    .cube-face::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Inner glow layer */
+    .cube-face::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.2), transparent 70%);
+    }
+
+    .face-front  { transform: translateZ(100px); }
+    .face-back   { transform: rotateY(180deg) translateZ(100px); }
+    .face-right  { transform: rotateY(90deg)  translateZ(100px); }
+    .face-left   { transform: rotateY(-90deg) translateZ(100px); }
+    .face-top    { transform: rotateX(90deg)  translateZ(100px); }
+    .face-bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+    /* Wireframe outer cube (slightly larger) */
+    .wire-pivot {
+      width: 240px;
+      height: 240px;
+      position: absolute;
+      transform-style: preserve-3d;
+      pointer-events: none;
+    }
+
+    .wire-face {
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border: 1px solid rgba(132, 41, 255, 0.3);
+      background: none;
+      backface-visibility: visible;
+    }
+
+    .wire-front  { transform: translateZ(120px); }
+    .wire-back   { transform: rotateY(180deg) translateZ(120px); }
+    .wire-right  { transform: rotateY(90deg)  translateZ(120px); }
+    .wire-left   { transform: rotateY(-90deg) translateZ(120px); }
+    .wire-top    { transform: rotateX(90deg)  translateZ(120px); }
+    .wire-bottom { transform: rotateX(-90deg) translateZ(120px); }
+
+    /* Inner floating planes */
+    .inner-plane {
+      position: absolute;
+      width: 200px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(135deg, rgba(132, 41, 255, 0.06), rgba(255, 255, 255, 0.08));
+      backface-visibility: visible;
+    }
+
+    .inner-plane::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Ground grid */
+    .ground-grid {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      transform: rotateX(90deg) translateZ(110px);
+      background-image:
+        linear-gradient(rgba(132, 41, 255, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(132, 41, 255, 0.15) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Text overlay */
+    .cube-text-overlay {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(132, 41, 255, 0.6);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .cube-text-sub {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      color: rgba(255, 255, 255, 0.5);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Download info */
+    .download-info {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.75rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .cube-canvas { width: 340px; height: 340px; }
+      .controls-row { flex-direction: column; }
+      .control-group input[type="text"] { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle">&#9790;</button>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="index.html">Dashboard</a>
+      <a href="spark.html">Spark</a>
+      <a href="logs.html">Logs</a>
+      <a href="socials.html" class="active">Socials</a>
+    </nav>
+
+    <header>
+      <h1>Social Image Generator</h1>
+      <p>Generate branded 3D cube images for social media posts</p>
+    </header>
+
+    <div class="generator-card">
+      <h2>Customize</h2>
+      <div class="controls-row">
+        <div class="control-group">
+          <label>Title Text</label>
+          <input type="text" id="titleText" value="IPOR Fusion" placeholder="Title text...">
+        </div>
+        <div class="control-group">
+          <label>Subtitle</label>
+          <input type="text" id="subText" value="DeFi Yield Vault" placeholder="Subtitle...">
+        </div>
+        <div class="control-group">
+          <label>Color Theme</label>
+          <select id="colorTheme">
+            <option value="purple">Purple (IPOR)</option>
+            <option value="orange">Orange (Spark)</option>
+            <option value="blue">Blue (Sky)</option>
+            <option value="green">Green (Matrix)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Size</label>
+          <select id="imgSize">
+            <option value="512">512 x 512</option>
+            <option value="1024" selected>1024 x 1024</option>
+            <option value="1200">1200 x 630 (OG)</option>
+          </select>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="control-group">
+          <label>Rotation Y: <span id="rotYVal">-35</span>&deg;</label>
+          <input type="range" id="rotY" min="-180" max="180" value="-35">
+        </div>
+        <div class="control-group">
+          <label>Rotation X: <span id="rotXVal">-25</span>&deg;</label>
+          <input type="range" id="rotX" min="-60" max="60" value="-25">
+        </div>
+        <div class="control-group">
+          <label>Spin</label>
+          <button class="btn btn-secondary" id="spinBtn">Start Spin</button>
+        </div>
+        <button class="btn btn-primary" id="downloadBtn">Download PNG</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <div class="cube-canvas" id="cubeCanvas">
+        <svg class="scene-bg" id="sceneBg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="scene">
+          <div class="ground-grid" id="groundGrid"></div>
+          <div class="cube-pivot" id="cubePivot">
+            <!-- Wireframe outer -->
+            <div class="wire-pivot" id="wirePivot" style="position:absolute;left:-20px;top:-20px;transform-style:preserve-3d;">
+              <div class="wire-face wire-front"></div>
+              <div class="wire-face wire-back"></div>
+              <div class="wire-face wire-right"></div>
+              <div class="wire-face wire-left"></div>
+              <div class="wire-face wire-top"></div>
+              <div class="wire-face wire-bottom"></div>
+            </div>
+            <!-- Solid faces -->
+            <div class="cube-face face-front" id="faceFront"></div>
+            <div class="cube-face face-back"></div>
+            <div class="cube-face face-right" id="faceRight"></div>
+            <div class="cube-face face-left"></div>
+            <div class="cube-face face-top" id="faceTop"></div>
+            <div class="cube-face face-bottom"></div>
+            <!-- Inner horizontal planes -->
+            <div class="inner-plane" id="plane1" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+            <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+            <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+          </div>
+          <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
+          <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
+        </div>
+      </div>
+    </div>
+    <div class="download-info">Click "Download PNG" to render the scene to a high-res PNG via html2canvas</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      themeToggle.textContent = '\u2600';
+    }
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      themeToggle.textContent = isDark ? '\u263E' : '\u2600';
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      applyThemeColors();
+    });
+
+    // Color palettes
+    const palettes = {
+      purple: {
+        main: [132, 41, 255],
+        end: [108, 0, 255],
+        bg1: '#d8b4fe', bg2: '#c084fc', bg3: '#a855f7',
+        darkBg1: '#2d1b69', darkBg2: '#1e1145', darkBg3: '#0f0a2a',
+      },
+      orange: {
+        main: [247, 119, 37],
+        end: [255, 145, 71],
+        bg1: '#fed7aa', bg2: '#fdba74', bg3: '#fb923c',
+        darkBg1: '#6b2f0a', darkBg2: '#451a06', darkBg3: '#1c0a02',
+      },
+      blue: {
+        main: [59, 130, 246],
+        end: [37, 99, 235],
+        bg1: '#bfdbfe', bg2: '#93c5fd', bg3: '#60a5fa',
+        darkBg1: '#1e3a5f', darkBg2: '#0f2340', darkBg3: '#091520',
+      },
+      green: {
+        main: [34, 197, 94],
+        end: [22, 163, 74],
+        bg1: '#bbf7d0', bg2: '#86efac', bg3: '#4ade80',
+        darkBg1: '#14532d', darkBg2: '#0a3419', darkBg3: '#041f0e',
+      },
+    };
+
+    function getColors() {
+      const key = document.getElementById('colorTheme').value;
+      return palettes[key];
+    }
+
+    function isDark() {
+      return document.documentElement.getAttribute('data-theme') === 'dark';
+    }
+
+    function applyThemeColors() {
+      const c = getColors();
+      const [r, g, b] = c.main;
+      const dark = isDark();
+
+      // Background gradient SVG
+      const bg = document.getElementById('sceneBg');
+      if (dark) {
+        bg.innerHTML = `<defs><radialGradient id="glow" cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stop-color="${c.darkBg1}"/>
+          <stop offset="60%" stop-color="${c.darkBg2}"/>
+          <stop offset="100%" stop-color="${c.darkBg3}"/>
+        </radialGradient></defs><rect width="100%" height="100%" fill="url(#glow)"/>`;
+      } else {
+        bg.innerHTML = `<defs><radialGradient id="glow" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#fff"/>
+          <stop offset="40%" stop-color="${c.bg1}"/>
+          <stop offset="75%" stop-color="${c.bg2}"/>
+          <stop offset="100%" stop-color="${c.bg3}"/>
+        </radialGradient></defs><rect width="100%" height="100%" fill="url(#glow)"/>`;
+      }
+
+      // Face styling
+      const faceAlpha = dark ? 0.12 : 0.18;
+      const borderAlpha = dark ? 0.7 : 0.6;
+      const faces = document.querySelectorAll('.cube-face');
+      faces.forEach(f => {
+        f.style.background = `linear-gradient(135deg, rgba(${r},${g},${b},${faceAlpha}), rgba(255,255,255,${dark ? 0.03 : 0.12}))`;
+        f.style.borderColor = `rgba(${r},${g},${b},${borderAlpha})`;
+      });
+
+      // Wire faces
+      document.querySelectorAll('.wire-face').forEach(w => {
+        w.style.borderColor = `rgba(${r},${g},${b},${dark ? 0.25 : 0.3})`;
+      });
+
+      // Inner planes
+      document.querySelectorAll('.inner-plane').forEach(p => {
+        p.style.borderColor = `rgba(255,255,255,${dark ? 0.08 : 0.12})`;
+        p.style.background = `linear-gradient(135deg, rgba(${r},${g},${b},0.06), rgba(255,255,255,${dark ? 0.03 : 0.08}))`;
+      });
+
+      // Ground grid
+      const gg = document.getElementById('groundGrid');
+      gg.style.backgroundImage = `linear-gradient(rgba(${r},${g},${b},${dark ? 0.2 : 0.15}) 1px, transparent 1px), linear-gradient(90deg, rgba(${r},${g},${b},${dark ? 0.2 : 0.15}) 1px, transparent 1px)`;
+
+      // Text
+      document.getElementById('cubeTitle').style.textShadow = `0 2px 12px rgba(${r},${g},${b},0.6)`;
+    }
+
+    // Controls
+    const rotY = document.getElementById('rotY');
+    const rotX = document.getElementById('rotX');
+    const rotYVal = document.getElementById('rotYVal');
+    const rotXVal = document.getElementById('rotXVal');
+    const pivot = document.getElementById('cubePivot');
+    const titleInput = document.getElementById('titleText');
+    const subInput = document.getElementById('subText');
+    const spinBtn = document.getElementById('spinBtn');
+    let spinning = false;
+
+    function updateRotation() {
+      if (!spinning) {
+        pivot.style.transform = `rotateX(${rotX.value}deg) rotateY(${rotY.value}deg)`;
+      }
+      rotYVal.textContent = rotY.value;
+      rotXVal.textContent = rotX.value;
+    }
+
+    function updateInnerPlanes() {
+      const planes = [
+        document.getElementById('plane1'),
+        document.getElementById('plane2'),
+        document.getElementById('plane3'),
+      ];
+      const offsets = [-50, 0, 50];
+      planes.forEach((p, i) => {
+        p.style.transform = `rotateX(90deg) translateZ(${offsets[i]}px)`;
+        p.style.width = '200px';
+        p.style.left = '0';
+      });
+    }
+
+    rotY.addEventListener('input', updateRotation);
+    rotX.addEventListener('input', updateRotation);
+
+    titleInput.addEventListener('input', () => {
+      document.getElementById('cubeTitle').textContent = titleInput.value;
+    });
+
+    subInput.addEventListener('input', () => {
+      document.getElementById('cubeSub').textContent = subInput.value;
+    });
+
+    document.getElementById('colorTheme').addEventListener('change', applyThemeColors);
+
+    spinBtn.addEventListener('click', () => {
+      spinning = !spinning;
+      pivot.classList.toggle('spinning', spinning);
+      spinBtn.textContent = spinning ? 'Stop Spin' : 'Start Spin';
+      if (!spinning) updateRotation();
+    });
+
+    // Download
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('downloadBtn');
+      btn.textContent = 'Rendering...';
+      btn.disabled = true;
+
+      // Pause spin for clean capture
+      const wasSpinning = spinning;
+      if (wasSpinning) {
+        pivot.classList.remove('spinning');
+      }
+
+      const sizeVal = document.getElementById('imgSize').value;
+      const canvas = document.getElementById('cubeCanvas');
+      let w, h;
+      if (sizeVal === '1200') {
+        w = 1200; h = 630;
+      } else {
+        w = h = parseInt(sizeVal);
+      }
+
+      try {
+        const result = await html2canvas(canvas, {
+          backgroundColor: null,
+          scale: w / canvas.offsetWidth,
+          useCORS: true,
+          logging: false,
+        });
+
+        // If OG size, crop to ratio
+        let finalCanvas = result;
+        if (sizeVal === '1200') {
+          finalCanvas = document.createElement('canvas');
+          finalCanvas.width = 1200;
+          finalCanvas.height = 630;
+          const ctx = finalCanvas.getContext('2d');
+          const srcRatio = result.width / result.height;
+          const dstRatio = 1200 / 630;
+          let sx = 0, sy = 0, sw = result.width, sh = result.height;
+          if (srcRatio < dstRatio) {
+            sh = sw / dstRatio;
+            sy = (result.height - sh) / 2;
+          } else {
+            sw = sh * dstRatio;
+            sx = (result.width - sw) / 2;
+          }
+          ctx.drawImage(result, sx, sy, sw, sh, 0, 0, 1200, 630);
+        }
+
+        const link = document.createElement('a');
+        link.download = `ipor-fusion-${sizeVal}.png`;
+        link.href = finalCanvas.toDataURL('image/png');
+        link.click();
+      } catch (e) {
+        alert('Render failed: ' + e.message);
+      }
+
+      if (wasSpinning) {
+        pivot.classList.add('spinning');
+      }
+      btn.textContent = 'Download PNG';
+      btn.disabled = false;
+    });
+
+    // Init
+    updateRotation();
+    updateInnerPlanes();
+    applyThemeColors();
+  </script>
+</body>
+</html>
