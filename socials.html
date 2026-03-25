@@ -570,6 +570,12 @@
 
     .atom-wrap.visible { display: block; }
 
+    .atom-inner {
+      transform-style: preserve-3d;
+      position: absolute;
+      width: 0; height: 0;
+    }
+
     .atom-core {
       position: absolute;
       width: 56px;
@@ -638,7 +644,7 @@
       to   { transform: rotateY(360deg); }
     }
 
-    .atom-wrap.atom-spin { animation: atomIdle 20s linear infinite; }
+    .atom-wrap.atom-spin.visible { animation: atomIdle 20s linear infinite; }
 
     /* Logo on faces */
     .face-logo {
@@ -868,10 +874,12 @@
           </div>
           <!-- IPOR Fusion Atom -->
           <div class="atom-wrap atom-spin" id="atomWrap">
-            <div class="atom-core"></div>
-            <div class="atom-orbit atom-orbit-1"><div class="atom-dot"></div></div>
-            <div class="atom-orbit atom-orbit-2"><div class="atom-dot"></div></div>
-            <div class="atom-orbit atom-orbit-3"><div class="atom-dot"></div></div>
+            <div class="atom-inner" id="atomInner">
+              <div class="atom-core"></div>
+              <div class="atom-orbit atom-orbit-1"><div class="atom-dot"></div></div>
+              <div class="atom-orbit atom-orbit-2"><div class="atom-dot"></div></div>
+              <div class="atom-orbit atom-orbit-3"><div class="atom-dot"></div></div>
+            </div>
           </div>
           <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
           <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
@@ -1197,7 +1205,7 @@
       if (!on) return;
 
       const scale = atomSizeSl.value / 100;
-      atomWrap.style.transform = `scale(${scale})`;
+      document.getElementById('atomInner').style.transform = `scale(${scale})`;
       atomSizeValEl.textContent = atomSizeSl.value;
 
       let key = atomColorSel.value;
