@@ -668,9 +668,16 @@
         <div class="control-group">
           <label>Size</label>
           <select id="imgSize">
-            <option value="512">512 x 512</option>
-            <option value="1024" selected>1024 x 1024</option>
-            <option value="1200">1200 x 630 (OG)</option>
+            <option value="1024x1024" selected>1024 x 1024 (Square)</option>
+            <option value="512x512">512 x 512 (Square)</option>
+            <option value="1500x500">1500 x 500 (X/Twitter Banner)</option>
+            <option value="1200x675">1200 x 675 (X/Twitter Post)</option>
+            <option value="1200x630">1200 x 630 (OG / Facebook)</option>
+            <option value="1080x1080">1080 x 1080 (Instagram Post)</option>
+            <option value="1080x1920">1080 x 1920 (Story / Reels)</option>
+            <option value="1584x396">1584 x 396 (LinkedIn Banner)</option>
+            <option value="1280x720">1280 x 720 (YouTube Thumb)</option>
+            <option value="3000x1000">3000 x 1000 (Discord Banner)</option>
           </select>
         </div>
       </div>
@@ -1011,44 +1018,39 @@
       }
 
       const sizeVal = document.getElementById('imgSize').value;
+      const [w, h] = sizeVal.split('x').map(Number);
       const canvas = document.getElementById('cubeCanvas');
-      let w, h;
-      if (sizeVal === '1200') {
-        w = 1200; h = 630;
-      } else {
-        w = h = parseInt(sizeVal);
-      }
+
+      // Use higher scale for crisp output
+      const scale = Math.max(w, h) / canvas.offsetWidth;
 
       try {
         const result = await html2canvas(canvas, {
           backgroundColor: null,
-          scale: w / canvas.offsetWidth,
+          scale: scale,
           useCORS: true,
           logging: false,
         });
 
-        // If OG size, crop to ratio
-        let finalCanvas = result;
-        if (sizeVal === '1200') {
-          finalCanvas = document.createElement('canvas');
-          finalCanvas.width = 1200;
-          finalCanvas.height = 630;
-          const ctx = finalCanvas.getContext('2d');
-          const srcRatio = result.width / result.height;
-          const dstRatio = 1200 / 630;
-          let sx = 0, sy = 0, sw = result.width, sh = result.height;
-          if (srcRatio < dstRatio) {
-            sh = sw / dstRatio;
-            sy = (result.height - sh) / 2;
-          } else {
-            sw = sh * dstRatio;
-            sx = (result.width - sw) / 2;
-          }
-          ctx.drawImage(result, sx, sy, sw, sh, 0, 0, 1200, 630);
+        // Crop/fit to target ratio
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = w;
+        finalCanvas.height = h;
+        const ctx = finalCanvas.getContext('2d');
+        const srcRatio = result.width / result.height;
+        const dstRatio = w / h;
+        let sx = 0, sy = 0, sw = result.width, sh = result.height;
+        if (srcRatio < dstRatio) {
+          sh = sw / dstRatio;
+          sy = (result.height - sh) / 2;
+        } else {
+          sw = sh * dstRatio;
+          sx = (result.width - sw) / 2;
         }
+        ctx.drawImage(result, sx, sy, sw, sh, 0, 0, w, h);
 
         const link = document.createElement('a');
-        link.download = `ipor-fusion-${sizeVal}.png`;
+        link.download = `ipor-fusion-${w}x${h}.png`;
         link.href = finalCanvas.toDataURL('image/png');
         link.click();
       } catch (e) {
