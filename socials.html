@@ -559,6 +559,87 @@
       z-index: 5;
     }
 
+    /* === IPOR Fusion Atom (3D orbital logo) === */
+    .atom-wrap {
+      position: absolute;
+      width: 0; height: 0;
+      transform-style: preserve-3d;
+      display: none;
+      z-index: 4;
+    }
+
+    .atom-wrap.visible { display: block; }
+
+    .atom-core {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      left: -28px;
+      top: -28px;
+      border-radius: 14px;
+      border: 1.5px solid var(--atom-color, rgba(132, 41, 255, 0.7));
+      background: var(--atom-fill, rgba(132, 41, 255, 0.08));
+      transform-style: preserve-3d;
+      transform: rotateX(0deg);
+    }
+
+    .atom-orbit {
+      position: absolute;
+      width: 140px;
+      height: 90px;
+      left: -70px;
+      top: -45px;
+      border-radius: 50%;
+      border: 1.2px solid var(--atom-color, rgba(132, 41, 255, 0.5));
+      background: none;
+      transform-style: preserve-3d;
+    }
+
+    /* Three orbits at different angles */
+    .atom-orbit-1 { transform: rotateY(0deg) rotateX(70deg); }
+    .atom-orbit-2 { transform: rotateY(60deg) rotateX(70deg); }
+    .atom-orbit-3 { transform: rotateY(-60deg) rotateX(70deg); }
+
+    /* Orbit glow — faint filled ellipse behind each orbit */
+    .atom-orbit::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--atom-glow, rgba(132, 41, 255, 0.03));
+    }
+
+    /* Animated dot traveling along each orbit */
+    .atom-dot {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--atom-dot, rgba(255, 255, 255, 0.8));
+      box-shadow: 0 0 6px var(--atom-color, rgba(132, 41, 255, 0.6));
+      top: 50%;
+      left: 0;
+      margin-top: -2.5px;
+      margin-left: -2.5px;
+    }
+
+    @keyframes orbitDot {
+      0%   { transform: rotate(0deg)   translateX(70px) rotate(0deg); }
+      100% { transform: rotate(360deg) translateX(70px) rotate(-360deg); }
+    }
+
+    .atom-orbit-1 .atom-dot { animation: orbitDot 4s linear infinite; }
+    .atom-orbit-2 .atom-dot { animation: orbitDot 5s linear infinite; animation-delay: -1.5s; }
+    .atom-orbit-3 .atom-dot { animation: orbitDot 4.5s linear infinite; animation-delay: -3s; }
+
+    /* Slow idle spin for the whole atom */
+    @keyframes atomIdle {
+      from { transform: rotateY(0deg); }
+      to   { transform: rotateY(360deg); }
+    }
+
+    .atom-wrap.atom-spin { animation: atomIdle 20s linear infinite; }
+
     /* Logo on faces */
     .face-logo {
       position: absolute;
@@ -707,6 +788,29 @@
       </div>
       <div class="controls-row">
         <div class="control-group">
+          <label>Fusion Atom</label>
+          <select id="atomToggle">
+            <option value="off">Hidden</option>
+            <option value="on">Show</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Atom Color</label>
+          <select id="atomColor">
+            <option value="purple">Purple</option>
+            <option value="white">White</option>
+            <option value="orange">Orange</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="pink">Pink</option>
+            <option value="theme">Match Theme</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Atom Size: <span id="atomSizeVal">100</span>%</label>
+          <input type="range" id="atomSize" min="50" max="200" value="100">
+        </div>
+        <div class="control-group">
           <label>Surface Effect</label>
           <select id="fxSelect">
             <option value="grid">Static Grid</option>
@@ -761,6 +865,13 @@
             <div class="inner-plane" id="plane1" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+          </div>
+          <!-- IPOR Fusion Atom -->
+          <div class="atom-wrap atom-spin" id="atomWrap">
+            <div class="atom-core"></div>
+            <div class="atom-orbit atom-orbit-1"><div class="atom-dot"></div></div>
+            <div class="atom-orbit atom-orbit-2"><div class="atom-dot"></div></div>
+            <div class="atom-orbit atom-orbit-3"><div class="atom-dot"></div></div>
           </div>
           <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
           <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
@@ -1064,10 +1175,76 @@
       btn.disabled = false;
     });
 
+    // Fusion Atom
+    const atomWrap = document.getElementById('atomWrap');
+    const atomToggle = document.getElementById('atomToggle');
+    const atomColorSel = document.getElementById('atomColor');
+    const atomSizeSl = document.getElementById('atomSize');
+    const atomSizeValEl = document.getElementById('atomSizeVal');
+
+    const atomPalettes = {
+      purple: { c: 'rgba(132,41,255,', dot: 'rgba(200,170,255,0.9)' },
+      white:  { c: 'rgba(255,255,255,', dot: 'rgba(255,255,255,0.9)' },
+      orange: { c: 'rgba(247,119,37,',  dot: 'rgba(255,200,150,0.9)' },
+      blue:   { c: 'rgba(59,130,246,',  dot: 'rgba(150,200,255,0.9)' },
+      green:  { c: 'rgba(34,197,94,',   dot: 'rgba(150,255,180,0.9)' },
+      pink:   { c: 'rgba(236,72,153,',  dot: 'rgba(255,180,210,0.9)' },
+    };
+
+    function applyAtom() {
+      const on = atomToggle.value === 'on';
+      atomWrap.classList.toggle('visible', on);
+      if (!on) return;
+
+      const scale = atomSizeSl.value / 100;
+      atomWrap.style.transform = `scale(${scale})`;
+      atomSizeValEl.textContent = atomSizeSl.value;
+
+      let key = atomColorSel.value;
+      if (key === 'theme') {
+        const themeKey = document.getElementById('colorTheme').value;
+        key = themeKey === 'purple' ? 'purple' : themeKey;
+        if (!atomPalettes[key]) key = 'purple';
+      }
+      const pal = atomPalettes[key];
+      const base = pal.c;
+
+      atomWrap.style.setProperty('--atom-color', base + '0.6)');
+      atomWrap.style.setProperty('--atom-fill', base + '0.08)');
+      atomWrap.style.setProperty('--atom-glow', base + '0.04)');
+      atomWrap.style.setProperty('--atom-dot', pal.dot);
+
+      // Core
+      const core = atomWrap.querySelector('.atom-core');
+      core.style.borderColor = base + '0.7)';
+      core.style.background = base + '0.08)';
+      core.style.boxShadow = `inset 0 0 20px ${base}0.06), 0 0 15px ${base}0.1)`;
+
+      // Orbits
+      atomWrap.querySelectorAll('.atom-orbit').forEach(o => {
+        o.style.borderColor = base + '0.45)';
+      });
+
+      // Dots
+      atomWrap.querySelectorAll('.atom-dot').forEach(d => {
+        d.style.background = pal.dot;
+        d.style.boxShadow = `0 0 8px ${base}0.7)`;
+      });
+    }
+
+    atomToggle.addEventListener('change', applyAtom);
+    atomColorSel.addEventListener('change', applyAtom);
+    atomSizeSl.addEventListener('input', applyAtom);
+
+    // Re-apply atom when theme color changes
+    const origColorChange = document.getElementById('colorTheme');
+    origColorChange.addEventListener('change', () => { applyAtom(); });
+
     // Init
     updateRotation();
     updateInnerPlanes();
     applyThemeColors();
+    applyAtom();
   </script>
 </body>
 </html>
