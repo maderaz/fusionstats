@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v7 - inner card with atom SVG -->
+<!-- v8 - inner 3D cube with grain + icon uploads -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -562,40 +562,64 @@
       z-index: 5;
     }
 
-    /* === Inner Card (3D nested rectangle with atom icon) === */
-    .inner-card {
+    /* === Inner 3D Square (nested cube inside glass cube) === */
+    .inner-cube-wrap {
       position: absolute;
-      width: 120px;
-      height: 120px;
-      left: 40px;
-      top: 40px;
-      border-radius: 22px;
-      background: linear-gradient(160deg, #6B21A8, #7C3AED 40%, #5B21B6 70%, #4C1D95);
-      box-shadow:
-        0 0 30px rgba(124, 58, 237, 0.25),
-        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      width: 0; height: 0;
+      left: 100px; top: 100px;
       transform-style: preserve-3d;
-      transform: translateZ(0px);
       display: none;
+    }
+
+    .inner-cube-wrap.visible { display: block; }
+
+    .inner-cube-face {
+      position: absolute;
+      backface-visibility: visible;
       overflow: hidden;
     }
 
-    .inner-card.visible { display: flex; align-items: center; justify-content: center; }
-
-    .inner-card::before {
-      content: '';
+    .inner-cube-face .ic-bg {
       position: absolute;
       inset: 0;
-      border-radius: 22px;
-      background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.08), transparent 60%);
+    }
+
+    /* Matte grain overlay via SVG noise */
+    .inner-cube-face .ic-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.18;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 128px 128px;
+    }
+
+    /* Subtle highlight on top-left */
+    .inner-cube-face .ic-highlight {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 25% 20%, rgba(255,255,255,0.1), transparent 55%);
       pointer-events: none;
     }
 
-    .inner-card .atom-icon {
-      width: 65%;
-      height: 65%;
-      opacity: 0.92;
-      filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15));
+    /* User-uploaded icon centered on face */
+    .inner-cube-face .ic-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .inner-cube-face .ic-icon img {
+      width: 55%;
+      height: 55%;
+      object-fit: contain;
+      opacity: 0.9;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));
     }
 
     /* Logo on faces */
@@ -746,15 +770,31 @@
       </div>
       <div class="controls-row">
         <div class="control-group">
-          <label>Inner Card</label>
-          <select id="innerCardToggle">
+          <label>Inner Cube</label>
+          <select id="innerCubeToggle">
             <option value="off">Hidden</option>
             <option value="on">Show</option>
           </select>
         </div>
         <div class="control-group">
-          <label>Card Size: <span id="innerCardSizeVal">60</span>%</label>
-          <input type="range" id="innerCardSize" min="30" max="90" value="60">
+          <label>Cube Size: <span id="innerCubeSizeVal">55</span>%</label>
+          <input type="range" id="innerCubeSize" min="25" max="85" value="55">
+        </div>
+        <div class="control-group">
+          <label>Front Icon</label>
+          <div class="logo-upload-wrap">
+            <label class="logo-upload-label" for="icFrontUpload">Upload</label>
+            <input type="file" id="icFrontUpload" accept="image/*" style="display:none">
+            <img class="logo-preview" id="icFrontPreview">
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Side Icon</label>
+          <div class="logo-upload-wrap">
+            <label class="logo-upload-label" for="icSideUpload">Upload</label>
+            <input type="file" id="icSideUpload" accept="image/*" style="display:none">
+            <img class="logo-preview" id="icSidePreview">
+          </div>
         </div>
         <div class="control-group">
           <label>Surface Effect</label>
@@ -812,15 +852,26 @@
             <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
           </div>
-          <!-- Inner Card with atom icon -->
-          <div class="inner-card" id="innerCard">
-            <svg class="atom-icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-              <g fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round">
-                <ellipse cx="100" cy="100" rx="38" ry="82"/>
-                <ellipse cx="100" cy="100" rx="38" ry="82" transform="rotate(60 100 100)"/>
-                <ellipse cx="100" cy="100" rx="38" ry="82" transform="rotate(-60 100 100)"/>
-              </g>
-            </svg>
+          <!-- Inner 3D Square -->
+          <div class="inner-cube-wrap" id="innerCubeWrap">
+            <div class="inner-cube-face ic-front" data-face="front">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
+            <div class="inner-cube-face ic-back" data-face="side">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
+            <div class="inner-cube-face ic-right" data-face="side">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
+            <div class="inner-cube-face ic-left" data-face="side">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
+            <div class="inner-cube-face ic-top" data-face="side">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
+            <div class="inner-cube-face ic-bottom" data-face="side">
+              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+            </div>
           </div>
           <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
           <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
@@ -1148,57 +1199,108 @@
       btn.disabled = false;
     });
 
-    // Inner Card
-    const innerCard = document.getElementById('innerCard');
-    const innerCardToggle = document.getElementById('innerCardToggle');
-    const innerCardSizeSl = document.getElementById('innerCardSize');
-    const innerCardSizeValEl = document.getElementById('innerCardSizeVal');
+    // Inner 3D Cube
+    const innerCubeWrap = document.getElementById('innerCubeWrap');
+    const innerCubeToggle = document.getElementById('innerCubeToggle');
+    const innerCubeSizeSl = document.getElementById('innerCubeSize');
+    const innerCubeSizeValEl = document.getElementById('innerCubeSizeVal');
+    let icFrontUrl = null;
+    let icSideUrl = null;
 
-    function applyInnerCard() {
-      const on = innerCardToggle.value === 'on';
-      innerCard.classList.toggle('visible', on);
+    const icGradients = {
+      purple: 'linear-gradient(160deg, #4C1D95, #6B21A8 30%, #7C3AED 60%, #5B21B6)',
+      orange: 'linear-gradient(160deg, #7C2D12, #C2410C 30%, #EA580C 60%, #9A3412)',
+      blue:   'linear-gradient(160deg, #1E3A8A, #1E40AF 30%, #3B82F6 60%, #1D4ED8)',
+      green:  'linear-gradient(160deg, #14532D, #166534 30%, #22C55E 60%, #15803D)',
+    };
+
+    function applyInnerCube() {
+      const on = innerCubeToggle.value === 'on';
+      innerCubeWrap.classList.toggle('visible', on);
       if (!on) return;
 
-      const pct = parseInt(innerCardSizeSl.value);
-      innerCardSizeValEl.textContent = pct;
+      const pct = parseInt(innerCubeSizeSl.value);
+      innerCubeSizeValEl.textContent = pct;
 
-      // Size relative to cube face (200px)
-      const px = Math.round(200 * pct / 100);
-      const offset = Math.round((200 - px) / 2);
-      const radius = Math.round(px * 0.18);
-      innerCard.style.width = px + 'px';
-      innerCard.style.height = px + 'px';
-      innerCard.style.left = offset + 'px';
-      innerCard.style.top = offset + 'px';
-      innerCard.style.borderRadius = radius + 'px';
-
-      // Match color to theme
+      const sz = Math.round(200 * pct / 100);
+      const half = sz / 2;
+      const rad = Math.round(sz * 0.16) + 'px';
       const theme = document.getElementById('colorTheme').value;
-      const gradients = {
-        purple: 'linear-gradient(160deg, #6B21A8, #7C3AED 40%, #5B21B6 70%, #4C1D95)',
-        orange: 'linear-gradient(160deg, #C2410C, #EA580C 40%, #D97706 70%, #92400E)',
-        blue:   'linear-gradient(160deg, #1E40AF, #3B82F6 40%, #2563EB 70%, #1E3A8A)',
-        green:  'linear-gradient(160deg, #166534, #22C55E 40%, #16A34A 70%, #14532D)',
-      };
-      const shadows = {
-        purple: 'rgba(124, 58, 237, 0.25)',
-        orange: 'rgba(234, 88, 12, 0.25)',
-        blue:   'rgba(59, 130, 246, 0.25)',
-        green:  'rgba(34, 197, 94, 0.25)',
-      };
-      innerCard.style.background = gradients[theme] || gradients.purple;
-      innerCard.style.boxShadow = `0 0 30px ${shadows[theme] || shadows.purple}, inset 0 1px 1px rgba(255,255,255,0.1)`;
+      const grad = icGradients[theme] || icGradients.purple;
+
+      // Position & size each face as a proper 3D cube
+      const faces = innerCubeWrap.querySelectorAll('.inner-cube-face');
+      const transforms = [
+        `translateZ(${half}px)`,                       // front
+        `rotateY(180deg) translateZ(${half}px)`,       // back
+        `rotateY(90deg) translateZ(${half}px)`,        // right
+        `rotateY(-90deg) translateZ(${half}px)`,       // left
+        `rotateX(90deg) translateZ(${half}px)`,        // top
+        `rotateX(-90deg) translateZ(${half}px)`,       // bottom
+      ];
+
+      faces.forEach((f, i) => {
+        f.style.width = sz + 'px';
+        f.style.height = sz + 'px';
+        f.style.left = -half + 'px';
+        f.style.top = -half + 'px';
+        f.style.borderRadius = rad;
+        f.style.transform = transforms[i];
+        f.querySelector('.ic-bg').style.background = grad;
+        f.querySelector('.ic-bg').style.borderRadius = rad;
+        f.querySelector('.ic-grain').style.borderRadius = rad;
+        f.querySelector('.ic-highlight').style.borderRadius = rad;
+
+        // Apply icons
+        const iconWrap = f.querySelector('.ic-icon');
+        iconWrap.innerHTML = '';
+        const isFront = f.dataset.face === 'front';
+        const url = isFront ? icFrontUrl : icSideUrl;
+        if (url) {
+          const img = document.createElement('img');
+          img.src = url;
+          iconWrap.appendChild(img);
+        }
+      });
     }
 
-    innerCardToggle.addEventListener('change', applyInnerCard);
-    innerCardSizeSl.addEventListener('input', applyInnerCard);
-    document.getElementById('colorTheme').addEventListener('change', applyInnerCard);
+    // Front icon upload
+    document.getElementById('icFrontUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (ev) => {
+        icFrontUrl = ev.target.result;
+        document.getElementById('icFrontPreview').src = icFrontUrl;
+        document.getElementById('icFrontPreview').style.display = 'block';
+        applyInnerCube();
+      };
+      r.readAsDataURL(file);
+    });
+
+    // Side icon upload
+    document.getElementById('icSideUpload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (ev) => {
+        icSideUrl = ev.target.result;
+        document.getElementById('icSidePreview').src = icSideUrl;
+        document.getElementById('icSidePreview').style.display = 'block';
+        applyInnerCube();
+      };
+      r.readAsDataURL(file);
+    });
+
+    innerCubeToggle.addEventListener('change', applyInnerCube);
+    innerCubeSizeSl.addEventListener('input', applyInnerCube);
+    document.getElementById('colorTheme').addEventListener('change', applyInnerCube);
 
     // Init
     updateRotation();
     updateInnerPlanes();
     applyThemeColors();
-    applyInnerCard();
+    applyInnerCube();
   </script>
 </body>
 </html>
