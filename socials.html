@@ -561,92 +561,41 @@
       z-index: 5;
     }
 
-    /* === IPOR Fusion Atom (3D orbital logo) === */
-    .atom-wrap {
+    /* === Inner Card (3D nested rectangle with atom icon) === */
+    .inner-card {
       position: absolute;
-      width: 0; height: 0;
+      width: 120px;
+      height: 120px;
+      left: 40px;
+      top: 40px;
+      border-radius: 22px;
+      background: linear-gradient(160deg, #6B21A8, #7C3AED 40%, #5B21B6 70%, #4C1D95);
+      box-shadow:
+        0 0 30px rgba(124, 58, 237, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.1);
       transform-style: preserve-3d;
+      transform: translateZ(0px);
       display: none;
-      z-index: 4;
+      overflow: hidden;
     }
 
-    .atom-wrap.visible { display: block; }
+    .inner-card.visible { display: flex; align-items: center; justify-content: center; }
 
-    .atom-inner {
-      transform-style: preserve-3d;
-      position: absolute;
-      width: 0; height: 0;
-    }
-
-    .atom-core {
-      position: absolute;
-      width: 56px;
-      height: 56px;
-      left: -28px;
-      top: -28px;
-      border-radius: 14px;
-      border: 1.5px solid var(--atom-color, rgba(132, 41, 255, 0.7));
-      background: var(--atom-fill, rgba(132, 41, 255, 0.08));
-      transform-style: preserve-3d;
-      transform: rotateX(0deg);
-    }
-
-    .atom-orbit {
-      position: absolute;
-      width: 140px;
-      height: 90px;
-      left: -70px;
-      top: -45px;
-      border-radius: 50%;
-      border: 1.2px solid var(--atom-color, rgba(132, 41, 255, 0.5));
-      background: none;
-      transform-style: preserve-3d;
-    }
-
-    /* Three orbits at different angles */
-    .atom-orbit-1 { transform: rotateY(0deg) rotateX(70deg); }
-    .atom-orbit-2 { transform: rotateY(60deg) rotateX(70deg); }
-    .atom-orbit-3 { transform: rotateY(-60deg) rotateX(70deg); }
-
-    /* Orbit glow — faint filled ellipse behind each orbit */
-    .atom-orbit::before {
+    .inner-card::before {
       content: '';
       position: absolute;
-      inset: 4px;
-      border-radius: 50%;
-      background: var(--atom-glow, rgba(132, 41, 255, 0.03));
+      inset: 0;
+      border-radius: 22px;
+      background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.08), transparent 60%);
+      pointer-events: none;
     }
 
-    /* Animated dot traveling along each orbit */
-    .atom-dot {
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--atom-dot, rgba(255, 255, 255, 0.8));
-      box-shadow: 0 0 6px var(--atom-color, rgba(132, 41, 255, 0.6));
-      top: 50%;
-      left: 0;
-      margin-top: -2.5px;
-      margin-left: -2.5px;
+    .inner-card .atom-icon {
+      width: 65%;
+      height: 65%;
+      opacity: 0.92;
+      filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15));
     }
-
-    @keyframes orbitDot {
-      0%   { transform: rotate(0deg)   translateX(70px) rotate(0deg); }
-      100% { transform: rotate(360deg) translateX(70px) rotate(-360deg); }
-    }
-
-    .atom-orbit-1 .atom-dot { animation: orbitDot 4s linear infinite; }
-    .atom-orbit-2 .atom-dot { animation: orbitDot 5s linear infinite; animation-delay: -1.5s; }
-    .atom-orbit-3 .atom-dot { animation: orbitDot 4.5s linear infinite; animation-delay: -3s; }
-
-    /* Slow idle spin for the whole atom */
-    @keyframes atomIdle {
-      from { transform: rotateY(0deg); }
-      to   { transform: rotateY(360deg); }
-    }
-
-    .atom-wrap.atom-spin.visible { animation: atomIdle 20s linear infinite; }
 
     /* Logo on faces */
     .face-logo {
@@ -796,27 +745,15 @@
       </div>
       <div class="controls-row">
         <div class="control-group">
-          <label>Fusion Atom</label>
-          <select id="atomToggle">
+          <label>Inner Card</label>
+          <select id="innerCardToggle">
             <option value="off">Hidden</option>
             <option value="on">Show</option>
           </select>
         </div>
         <div class="control-group">
-          <label>Atom Color</label>
-          <select id="atomColor">
-            <option value="purple">Purple</option>
-            <option value="white">White</option>
-            <option value="orange">Orange</option>
-            <option value="blue">Blue</option>
-            <option value="green">Green</option>
-            <option value="pink">Pink</option>
-            <option value="theme">Match Theme</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>Atom Size: <span id="atomSizeVal">100</span>%</label>
-          <input type="range" id="atomSize" min="50" max="200" value="100">
+          <label>Card Size: <span id="innerCardSizeVal">60</span>%</label>
+          <input type="range" id="innerCardSize" min="30" max="90" value="60">
         </div>
         <div class="control-group">
           <label>Surface Effect</label>
@@ -874,14 +811,15 @@
             <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
             <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
           </div>
-          <!-- IPOR Fusion Atom -->
-          <div class="atom-wrap atom-spin" id="atomWrap">
-            <div class="atom-inner" id="atomInner">
-              <div class="atom-core"></div>
-              <div class="atom-orbit atom-orbit-1"><div class="atom-dot"></div></div>
-              <div class="atom-orbit atom-orbit-2"><div class="atom-dot"></div></div>
-              <div class="atom-orbit atom-orbit-3"><div class="atom-dot"></div></div>
-            </div>
+          <!-- Inner Card with atom icon -->
+          <div class="inner-card" id="innerCard">
+            <svg class="atom-icon" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <g fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round">
+                <ellipse cx="100" cy="100" rx="38" ry="82"/>
+                <ellipse cx="100" cy="100" rx="38" ry="82" transform="rotate(60 100 100)"/>
+                <ellipse cx="100" cy="100" rx="38" ry="82" transform="rotate(-60 100 100)"/>
+              </g>
+            </svg>
           </div>
           <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
           <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
@@ -1209,76 +1147,57 @@
       btn.disabled = false;
     });
 
-    // Fusion Atom
-    const atomWrap = document.getElementById('atomWrap');
-    const atomToggle = document.getElementById('atomToggle');
-    const atomColorSel = document.getElementById('atomColor');
-    const atomSizeSl = document.getElementById('atomSize');
-    const atomSizeValEl = document.getElementById('atomSizeVal');
+    // Inner Card
+    const innerCard = document.getElementById('innerCard');
+    const innerCardToggle = document.getElementById('innerCardToggle');
+    const innerCardSizeSl = document.getElementById('innerCardSize');
+    const innerCardSizeValEl = document.getElementById('innerCardSizeVal');
 
-    const atomPalettes = {
-      purple: { c: 'rgba(132,41,255,', dot: 'rgba(200,170,255,0.9)' },
-      white:  { c: 'rgba(255,255,255,', dot: 'rgba(255,255,255,0.9)' },
-      orange: { c: 'rgba(247,119,37,',  dot: 'rgba(255,200,150,0.9)' },
-      blue:   { c: 'rgba(59,130,246,',  dot: 'rgba(150,200,255,0.9)' },
-      green:  { c: 'rgba(34,197,94,',   dot: 'rgba(150,255,180,0.9)' },
-      pink:   { c: 'rgba(236,72,153,',  dot: 'rgba(255,180,210,0.9)' },
-    };
-
-    function applyAtom() {
-      const on = atomToggle.value === 'on';
-      atomWrap.classList.toggle('visible', on);
+    function applyInnerCard() {
+      const on = innerCardToggle.value === 'on';
+      innerCard.classList.toggle('visible', on);
       if (!on) return;
 
-      const scale = atomSizeSl.value / 100;
-      document.getElementById('atomInner').style.transform = `scale(${scale})`;
-      atomSizeValEl.textContent = atomSizeSl.value;
+      const pct = parseInt(innerCardSizeSl.value);
+      innerCardSizeValEl.textContent = pct;
 
-      let key = atomColorSel.value;
-      if (key === 'theme') {
-        const themeKey = document.getElementById('colorTheme').value;
-        key = themeKey === 'purple' ? 'purple' : themeKey;
-        if (!atomPalettes[key]) key = 'purple';
-      }
-      const pal = atomPalettes[key];
-      const base = pal.c;
+      // Size relative to cube face (200px)
+      const px = Math.round(200 * pct / 100);
+      const offset = Math.round((200 - px) / 2);
+      const radius = Math.round(px * 0.18);
+      innerCard.style.width = px + 'px';
+      innerCard.style.height = px + 'px';
+      innerCard.style.left = offset + 'px';
+      innerCard.style.top = offset + 'px';
+      innerCard.style.borderRadius = radius + 'px';
 
-      atomWrap.style.setProperty('--atom-color', base + '0.6)');
-      atomWrap.style.setProperty('--atom-fill', base + '0.08)');
-      atomWrap.style.setProperty('--atom-glow', base + '0.04)');
-      atomWrap.style.setProperty('--atom-dot', pal.dot);
-
-      // Core
-      const core = atomWrap.querySelector('.atom-core');
-      core.style.borderColor = base + '0.7)';
-      core.style.background = base + '0.08)';
-      core.style.boxShadow = `inset 0 0 20px ${base}0.06), 0 0 15px ${base}0.1)`;
-
-      // Orbits
-      atomWrap.querySelectorAll('.atom-orbit').forEach(o => {
-        o.style.borderColor = base + '0.45)';
-      });
-
-      // Dots
-      atomWrap.querySelectorAll('.atom-dot').forEach(d => {
-        d.style.background = pal.dot;
-        d.style.boxShadow = `0 0 8px ${base}0.7)`;
-      });
+      // Match color to theme
+      const theme = document.getElementById('colorTheme').value;
+      const gradients = {
+        purple: 'linear-gradient(160deg, #6B21A8, #7C3AED 40%, #5B21B6 70%, #4C1D95)',
+        orange: 'linear-gradient(160deg, #C2410C, #EA580C 40%, #D97706 70%, #92400E)',
+        blue:   'linear-gradient(160deg, #1E40AF, #3B82F6 40%, #2563EB 70%, #1E3A8A)',
+        green:  'linear-gradient(160deg, #166534, #22C55E 40%, #16A34A 70%, #14532D)',
+      };
+      const shadows = {
+        purple: 'rgba(124, 58, 237, 0.25)',
+        orange: 'rgba(234, 88, 12, 0.25)',
+        blue:   'rgba(59, 130, 246, 0.25)',
+        green:  'rgba(34, 197, 94, 0.25)',
+      };
+      innerCard.style.background = gradients[theme] || gradients.purple;
+      innerCard.style.boxShadow = `0 0 30px ${shadows[theme] || shadows.purple}, inset 0 1px 1px rgba(255,255,255,0.1)`;
     }
 
-    atomToggle.addEventListener('change', applyAtom);
-    atomColorSel.addEventListener('change', applyAtom);
-    atomSizeSl.addEventListener('input', applyAtom);
-
-    // Re-apply atom when theme color changes
-    const origColorChange = document.getElementById('colorTheme');
-    origColorChange.addEventListener('change', () => { applyAtom(); });
+    innerCardToggle.addEventListener('change', applyInnerCard);
+    innerCardSizeSl.addEventListener('input', applyInnerCard);
+    document.getElementById('colorTheme').addEventListener('change', applyInnerCard);
 
     // Init
     updateRotation();
     updateInnerPlanes();
     applyThemeColors();
-    applyAtom();
+    applyInnerCard();
   </script>
 </body>
 </html>
