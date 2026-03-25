@@ -381,6 +381,61 @@
       z-index: 5;
     }
 
+    /* Logo on faces */
+    .face-logo {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .face-logo img {
+      width: 60%;
+      height: 60%;
+      object-fit: contain;
+      opacity: 0.85;
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+    }
+
+    .logo-upload-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-upload-wrap .logo-preview {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid var(--stroke);
+      background: var(--bg-alt);
+      object-fit: contain;
+      display: none;
+    }
+
+    .logo-upload-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--bg);
+      color: var(--text-body);
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .logo-upload-label:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
     /* Download info */
     .download-info {
       text-align: center;
@@ -439,6 +494,30 @@
             <option value="1024" selected>1024 x 1024</option>
             <option value="1200">1200 x 630 (OG)</option>
           </select>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="control-group">
+          <label>Logo</label>
+          <div class="logo-upload-wrap">
+            <label class="logo-upload-label" for="logoUpload">Upload</label>
+            <input type="file" id="logoUpload" accept="image/*" style="display:none">
+            <img class="logo-preview" id="logoPreview">
+            <button class="btn btn-secondary" id="logoClear" style="display:none;padding:0.3rem 0.5rem;font-size:0.7rem;">Clear</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Logo Placement</label>
+          <select id="logoPlacement">
+            <option value="none">None</option>
+            <option value="front">Front Only</option>
+            <option value="sides">Sides Only</option>
+            <option value="all">All Faces</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Logo Size: <span id="logoSizeVal">60</span>%</label>
+          <input type="range" id="logoSize" min="20" max="90" value="60">
         </div>
       </div>
       <div class="controls-row">
@@ -642,6 +721,74 @@
     });
 
     document.getElementById('colorTheme').addEventListener('change', applyThemeColors);
+
+    // Logo management
+    let logoDataUrl = null;
+    const logoUpload = document.getElementById('logoUpload');
+    const logoPreview = document.getElementById('logoPreview');
+    const logoClear = document.getElementById('logoClear');
+    const logoPlacement = document.getElementById('logoPlacement');
+    const logoSizeSlider = document.getElementById('logoSize');
+    const logoSizeVal = document.getElementById('logoSizeVal');
+
+    const faceMap = {
+      front:  ['.face-front'],
+      sides:  ['.face-front', '.face-back', '.face-right', '.face-left'],
+      all:    ['.face-front', '.face-back', '.face-right', '.face-left', '.face-top', '.face-bottom'],
+    };
+
+    logoUpload.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        logoDataUrl = ev.target.result;
+        logoPreview.src = logoDataUrl;
+        logoPreview.style.display = 'block';
+        logoClear.style.display = 'inline-flex';
+        if (logoPlacement.value === 'none') logoPlacement.value = 'front';
+        applyLogo();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    logoClear.addEventListener('click', () => {
+      logoDataUrl = null;
+      logoUpload.value = '';
+      logoPreview.style.display = 'none';
+      logoClear.style.display = 'none';
+      logoPlacement.value = 'none';
+      applyLogo();
+    });
+
+    logoPlacement.addEventListener('change', applyLogo);
+    logoSizeSlider.addEventListener('input', () => {
+      logoSizeVal.textContent = logoSizeSlider.value;
+      applyLogo();
+    });
+
+    function applyLogo() {
+      // Remove all existing logos
+      document.querySelectorAll('.face-logo').forEach(el => el.remove());
+
+      const placement = logoPlacement.value;
+      if (!logoDataUrl || placement === 'none') return;
+
+      const size = logoSizeSlider.value + '%';
+      const selectors = faceMap[placement] || [];
+      selectors.forEach(sel => {
+        const face = document.querySelector(sel);
+        if (!face) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'face-logo';
+        const img = document.createElement('img');
+        img.src = logoDataUrl;
+        img.style.width = size;
+        img.style.height = size;
+        wrap.appendChild(img);
+        face.appendChild(wrap);
+      });
+    }
 
     spinBtn.addEventListener('click', () => {
       spinning = !spinning;
