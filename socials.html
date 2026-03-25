@@ -219,10 +219,12 @@
 
     .cube-canvas {
       width: 520px;
-      height: 520px;
+      max-width: 100%;
+      aspect-ratio: 1 / 1;
       position: relative;
       overflow: hidden;
       border-radius: 16px;
+      transition: aspect-ratio 0.4s ease, width 0.4s ease;
     }
 
     /* 3D Scene */
@@ -711,7 +713,7 @@
 
     @media (max-width: 640px) {
       body { padding: 1rem; }
-      .cube-canvas { width: 340px; height: 340px; }
+      .cube-canvas { width: 100%; }
       .controls-row { flex-direction: column; }
       .control-group input[type="text"] { width: 100%; }
     }
@@ -1048,6 +1050,30 @@
     }
     fxSelect.addEventListener('change', applyFx);
     applyFx();
+
+    // Canvas size / aspect ratio
+    const imgSizeSelect = document.getElementById('imgSize');
+    const cubeCanvas = document.getElementById('cubeCanvas');
+
+    function updateCanvasRatio() {
+      const [w, h] = imgSizeSelect.value.split('x').map(Number);
+      const ratio = w / h;
+      cubeCanvas.style.aspectRatio = `${w} / ${h}`;
+      // For very wide ratios, use full container width; for tall, cap height
+      if (ratio >= 2) {
+        cubeCanvas.style.width = '100%';
+      } else if (ratio > 1) {
+        cubeCanvas.style.width = '620px';
+      } else if (ratio === 1) {
+        cubeCanvas.style.width = '520px';
+      } else {
+        // Portrait (e.g. Story 1080x1920)
+        cubeCanvas.style.width = '320px';
+      }
+    }
+
+    imgSizeSelect.addEventListener('change', updateCanvasRatio);
+    updateCanvasRatio();
 
     // Logo management
     let logoDataUrl = null;
