@@ -295,7 +295,7 @@
     <div id="statsRow" class="stats-row" style="display:none"></div>
 
     <div class="activity-card">
-      <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.8;"></span></h2>
+      <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.4;text-align:right;"></span></h2>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
@@ -440,8 +440,17 @@
 
       // Show last updated in header
       if (updatedAt) {
-        document.getElementById('lastUpdated').textContent =
-          `updated ${new Date(updatedAt).toLocaleString()}`;
+        const el = document.getElementById('lastUpdated');
+        const updatedMs = new Date(updatedAt).getTime();
+        function refreshUpdatedLabel() {
+          const agoMin = Math.floor((Date.now() - updatedMs) / 60000);
+          const agoText = agoMin < 1 ? 'just now' : agoMin + ' min ago';
+          const nextMin = Math.max(0, 20 - (agoMin % 20));
+          el.innerHTML = `updated <span style="color:var(--accent);font-weight:500;">${agoText}</span>`
+            + `<br><span style="font-size:0.6rem;">next update in ~${nextMin} min</span>`;
+        }
+        refreshUpdatedLabel();
+        setInterval(refreshUpdatedLabel, 60000);
       }
     }
 
