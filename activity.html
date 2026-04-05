@@ -298,52 +298,9 @@
       localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
     });
 
-    // Constants
-    const RPCS = [
-      'https://ethereum-rpc.publicnode.com',
-      'https://rpc.ankr.com/eth',
-      'https://eth.drpc.org',
-      'https://eth.llamarpc.com',
-    ];
-
-    const VAULT = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
-    const VAULT_NAME = 'IPOR stETH Ethereum';
-    // wstETH (underlying asset for this vault)
-    const ASSET_SYMBOL = 'wstETH';
-    const ASSET_DECIMALS = 18;
-
-    // ERC-4626 event signatures
-    // Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)
-    const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
-    // Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)
-    const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
-
-    // Scan last ~30 days
-    const SCAN_BLOCKS = 220000;
-
-    let activeRpc = 0;
-    let callId = 0;
-
-    async function rpcCall(method, params) {
-      const order = [activeRpc, ...RPCS.map((_, i) => i).filter(i => i !== activeRpc)];
-      for (const idx of order) {
-        try {
-          const res = await fetch(RPCS[idx], {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
-          });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const json = await res.json();
-          if (json.error) throw new Error(json.error.message);
-          activeRpc = idx;
-          return json.result;
-        } catch (e) {
-          continue;
-        }
-      }
-      throw new Error(`All RPCs failed for ${method}`);
-    }
+    const ASSET_SYMBOLS = {
+      '0xb8a451107a9f87fde481d4d686247d6e43ed715e': 'wstETH',
+    };
 
     function formatEth(n) {
       if (n >= 1e3) return n.toFixed(2);
@@ -367,149 +324,57 @@
       const status = document.getElementById('loadingMsg');
 
       try {
-        // Get current block
-        status.textContent = 'Getting current block...';
-        const blockHex = await rpcCall('eth_blockNumber', []);
-        const currentBlock = parseInt(blockHex, 16);
-        const fromBlock = currentBlock - SCAN_BLOCKS;
+        status.textContent = 'Loading activity data...';
+        const res = await fetch('activity-events.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status} — run collect-activity.js first`);
+        const data = await res.json();
 
-        // Fetch deposit and withdraw events
-        status.textContent = 'Scanning deposit events...';
-        const depositLogs = await scanLogs(fromBlock, currentBlock, DEPOSIT_TOPIC);
+        const events = data.events || [];
+        const symbol = data.vaults?.[0]?.symbol || 'wstETH';
 
-        status.textContent = 'Scanning withdrawal events...';
-        const withdrawLogs = await scanLogs(fromBlock, currentBlock, WITHDRAW_TOPIC);
+        // Stats (last 30 days)
+        const cutoff30d = Math.floor(Date.now() / 1000) - 30 * 86400;
+        const recent = events.filter(e => (e.timestamp || 0) > cutoff30d);
 
-        // Parse events
-        const events = [];
-
-        for (const log of depositLogs) {
-          const sender = '0x' + log.topics[1].slice(26);
-          const owner = '0x' + log.topics[2].slice(26);
-          const assets = Number(BigInt(log.data.slice(0, 66))) / (10 ** ASSET_DECIMALS);
-          const shares = Number(BigInt('0x' + log.data.slice(66, 130))) / (10 ** ASSET_DECIMALS);
-          events.push({
-            type: 'deposit',
-            sender,
-            owner,
-            assets,
-            shares,
-            txHash: log.transactionHash,
-            blockNumber: parseInt(log.blockNumber, 16),
-            logIndex: parseInt(log.logIndex, 16),
-          });
-        }
-
-        for (const log of withdrawLogs) {
-          const sender = '0x' + log.topics[1].slice(26);
-          const receiver = '0x' + log.topics[2].slice(26);
-          const owner = '0x' + log.topics[3].slice(26);
-          const assets = Number(BigInt(log.data.slice(0, 66))) / (10 ** ASSET_DECIMALS);
-          const shares = Number(BigInt('0x' + log.data.slice(66, 130))) / (10 ** ASSET_DECIMALS);
-          events.push({
-            type: 'withdraw',
-            sender,
-            receiver,
-            owner,
-            assets,
-            shares,
-            txHash: log.transactionHash,
-            blockNumber: parseInt(log.blockNumber, 16),
-            logIndex: parseInt(log.logIndex, 16),
-          });
-        }
-
-        // Sort by block descending (newest first)
-        events.sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
-
-        // Fetch block timestamps for the events (batch unique blocks)
-        status.textContent = 'Fetching timestamps...';
-        const uniqueBlocks = [...new Set(events.map(e => e.blockNumber))].slice(0, 50);
-        const timestamps = {};
-        for (let i = 0; i < uniqueBlocks.length; i += 3) {
-          const batch = uniqueBlocks.slice(i, i + 3);
-          const results = await Promise.all(
-            batch.map(b => rpcCall('eth_getBlockByNumber', ['0x' + b.toString(16), false]).catch(() => null))
-          );
-          results.forEach((r, j) => {
-            if (r) timestamps[batch[j]] = parseInt(r.timestamp, 16);
-          });
-        }
-
-        // Compute stats
-        const totalDeposits = events.filter(e => e.type === 'deposit').reduce((s, e) => s + e.assets, 0);
-        const totalWithdrawals = events.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.assets, 0);
-        const depositCount = events.filter(e => e.type === 'deposit').length;
-        const withdrawCount = events.filter(e => e.type === 'withdraw').length;
+        const totalDeposits = recent.filter(e => e.type === 'deposit').reduce((s, e) => s + e.assets, 0);
+        const totalWithdrawals = recent.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.assets, 0);
+        const depositCount = recent.filter(e => e.type === 'deposit').length;
+        const withdrawCount = recent.filter(e => e.type === 'withdraw').length;
         const netFlow = totalDeposits - totalWithdrawals;
-        const uniqueUsers = new Set(events.map(e => e.owner)).size;
+        const uniqueUsers = new Set(recent.map(e => e.owner)).size;
 
-        renderStats({ totalDeposits, totalWithdrawals, depositCount, withdrawCount, netFlow, uniqueUsers });
-        renderTable(events.slice(0, 100), timestamps);
+        renderStats({ totalDeposits, totalWithdrawals, depositCount, withdrawCount, netFlow, uniqueUsers }, symbol);
+        renderTable(events.slice(0, 200), symbol, data.updatedAt);
 
       } catch (err) {
         console.error('Error:', err);
-        document.getElementById('loadingMsg').style.display = 'none';
+        status.style.display = 'none';
         const errDiv = document.getElementById('errorContent');
         errDiv.style.display = 'block';
-        errDiv.innerHTML = `<div class="error-msg">Failed to fetch events: ${err.message}<br><small>Try refreshing</small></div>`;
+        errDiv.innerHTML = `<div class="error-msg">Failed to load activity data: ${err.message}<br><small>The collector may not have run yet</small></div>`;
       }
     }
 
-    async function scanLogs(from, to, topic) {
-      const allLogs = [];
-      const CHUNK = 100000;
-      for (let start = from; start < to; start += CHUNK) {
-        const end = Math.min(start + CHUNK - 1, to);
-        try {
-          const logs = await rpcCall('eth_getLogs', [{
-            address: VAULT,
-            topics: [topic],
-            fromBlock: '0x' + start.toString(16),
-            toBlock: '0x' + end.toString(16),
-          }]);
-          allLogs.push(...logs);
-        } catch (e) {
-          // Split on failure
-          const mid = start + Math.floor((end - start) / 2);
-          if (end - start > 5000) {
-            const logs1 = await rpcCall('eth_getLogs', [{
-              address: VAULT, topics: [topic],
-              fromBlock: '0x' + start.toString(16),
-              toBlock: '0x' + mid.toString(16),
-            }]).catch(() => []);
-            const logs2 = await rpcCall('eth_getLogs', [{
-              address: VAULT, topics: [topic],
-              fromBlock: '0x' + (mid + 1).toString(16),
-              toBlock: '0x' + end.toString(16),
-            }]).catch(() => []);
-            allLogs.push(...logs1, ...logs2);
-          }
-        }
-      }
-      return allLogs;
-    }
-
-    function renderStats(s) {
+    function renderStats(s, symbol) {
       const row = document.getElementById('statsRow');
       row.style.display = 'grid';
       row.innerHTML = `
         <div class="stat-card">
           <div class="label">Deposits (30d)</div>
           <div class="value num-bold">${s.depositCount}</div>
-          <div class="sub">${formatEth(s.totalDeposits)} ${ASSET_SYMBOL}</div>
+          <div class="sub">${formatEth(s.totalDeposits)} ${symbol}</div>
         </div>
         <div class="stat-card">
           <div class="label">Withdrawals (30d)</div>
           <div class="value num-bold">${s.withdrawCount}</div>
-          <div class="sub">${formatEth(s.totalWithdrawals)} ${ASSET_SYMBOL}</div>
+          <div class="sub">${formatEth(s.totalWithdrawals)} ${symbol}</div>
         </div>
         <div class="stat-card">
           <div class="label">Net Flow</div>
           <div class="value num-bold" style="color: ${s.netFlow >= 0 ? 'var(--green)' : 'var(--red)'}">
             ${s.netFlow >= 0 ? '+' : ''}${formatEth(s.netFlow)}
           </div>
-          <div class="sub">${ASSET_SYMBOL}</div>
+          <div class="sub">${symbol}</div>
         </div>
         <div class="stat-card">
           <div class="label">Unique Users</div>
@@ -519,27 +384,25 @@
       `;
     }
 
-    function renderTable(events, timestamps) {
+    function renderTable(events, symbol, updatedAt) {
       const content = document.getElementById('activityContent');
       if (!events.length) {
-        content.innerHTML = '<div class="loading-msg">No events found in the last 30 days</div>';
+        content.innerHTML = '<div class="loading-msg">No events yet — collector may not have run</div>';
         return;
       }
 
       let rows = '';
       events.forEach(e => {
-        const ts = timestamps[e.blockNumber];
-        const time = ts ? timeAgo(ts) : `#${e.blockNumber}`;
+        const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
         const badge = e.type === 'deposit'
           ? '<span class="badge-deposit">DEPOSIT</span>'
           : '<span class="badge-withdraw">WITHDRAW</span>';
-        const user = e.owner;
         rows += `<tr>
           <td>${badge}</td>
-          <td class="num-bold">${formatEth(e.assets)} ${ASSET_SYMBOL}</td>
-          <td><a href="https://etherscan.io/address/${user}" target="_blank" rel="noopener" class="addr-link">${shortAddr(user)}</a></td>
+          <td class="num-bold">${formatEth(e.assets)} ${symbol}</td>
+          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.txHash}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.txHash)}</a></td>
+          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.tx)}</a></td>
         </tr>`;
       });
 
@@ -555,6 +418,14 @@
           <tbody>${rows}</tbody>
         </table>
       `;
+
+      // Show last updated
+      if (updatedAt) {
+        const tsEl = document.createElement('div');
+        tsEl.className = 'data-ts';
+        tsEl.textContent = `Data updated ${new Date(updatedAt).toLocaleString()} · refreshed every 30 min`;
+        content.parentElement.after(tsEl);
+      }
     }
 
     loadActivity();
