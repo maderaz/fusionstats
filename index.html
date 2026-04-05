@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fusion Stats — Morpho Demand Tracker</title>
+  <title>Activity — Fusion Stats</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -23,7 +23,9 @@
       --accent-light: #A37FFF;
       --accent-bg: rgba(132, 41, 255, 0.10);
       --green: #16a34a;
+      --green-bg: rgba(22, 163, 74, 0.08);
       --red: #dc2626;
+      --red-bg: rgba(220, 38, 38, 0.08);
     }
 
     [data-theme="dark"] {
@@ -39,7 +41,9 @@
       --accent-light: #B89AFF;
       --accent-bg: rgba(132, 41, 255, 0.15);
       --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.12);
       --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.12);
     }
 
     body {
@@ -53,395 +57,12 @@
     }
 
     .num-bold {
-      font-family: 'Source Sans 3', 'Source Sans Pro', sans-serif;
+      font-family: 'Source Sans 3', sans-serif;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
-      position: relative;
-      top: 1px;
     }
 
     .container { max-width: 960px; margin: 0 auto; }
-
-    header { margin-bottom: 2rem; }
-
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.25rem;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    header p { color: var(--text-body); font-size: 0.875rem; }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    .stat-card .label {
-      font-size: 0.75rem;
-      color: var(--text-body);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-      font-weight: 500;
-    }
-
-    .stat-card .value {
-      font-size: 2rem;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-    }
-
-    .stat-card .sub {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 0.35rem;
-    }
-
-    .share-banner {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .share-banner .share-label {
-      font-size: 0.875rem;
-      color: var(--text-body);
-      white-space: nowrap;
-    }
-
-    .share-banner .share-value {
-      font-size: 1.5rem;
-      color: var(--accent);
-      white-space: nowrap;
-    }
-
-    .ath-atl-row {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: -0.75rem;
-      margin-bottom: 2rem;
-    }
-
-    .ath-atl-row .ath-atl-item {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .ath-atl-row .ath-atl-item .ath-atl-label {
-      font-weight: 500;
-      letter-spacing: 0.04em;
-    }
-
-    .share-banner .share-bar-outer {
-      flex: 1;
-      margin: 0 1.5rem;
-      height: 8px;
-      background: var(--bg-alt);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .share-banner .share-bar-inner {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-
-    .vault-table {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .vault-table h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th {
-      text-align: left;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-      font-weight: 500;
-    }
-
-    td {
-      padding: 0.875rem 1.5rem;
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--stroke);
-      color: var(--text-body);
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--accent-bg); }
-
-    .vault-name { font-weight: 500; color: var(--text); }
-
-    .vault-address {
-      color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 400;
-    }
-
-    .vault-address a {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    .vault-address a:hover {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .bar-cell { display: flex; align-items: center; gap: 0.75rem; }
-
-    .bar-bg {
-      flex: 1; height: 6px;
-      background: var(--bg-alt); border-radius: 3px; overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 3px; transition: width 0.3s;
-    }
-
-    .bar-value { min-width: 4rem; text-align: right; color: var(--text); }
-
-    .loading {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      text-align: center;
-      padding: 2rem;
-    }
-
-    .error-msg { color: var(--red); font-size: 0.8rem; }
-
-    .info-box {
-      background: var(--accent-bg);
-      border: 1px solid rgba(132, 41, 255, 0.2);
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      font-size: 0.8rem;
-      color: var(--text-body);
-      line-height: 1.6;
-      margin-bottom: 2rem;
-    }
-
-    .info-box strong { color: var(--text); }
-
-    .debug-log {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .debug-log h2 {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      margin-bottom: 0.75rem;
-    }
-
-    .debug-log pre {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      line-height: 1.6;
-      color: var(--text-body);
-      max-height: 300px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      overflow: hidden;
-    }
-
-    .chart-card h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-    }
-
-    .chart-legend {
-      display: flex;
-      gap: 1.25rem;
-      justify-content: flex-end;
-      margin-bottom: 1rem;
-      font-size: 0.75rem;
-      color: var(--text-body);
-    }
-
-    .chart-legend span {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .chart-legend .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 3px;
-      display: inline-block;
-    }
-
-    .chart-area {
-      display: flex;
-      align-items: stretch;
-      height: 260px;
-      gap: 0;
-    }
-
-    .chart-y-axis {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding-right: 0.75rem;
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-      font-family: 'Source Sans 3', sans-serif;
-      text-align: right;
-      min-width: 48px;
-    }
-
-    .chart-y-axis span {
-      line-height: 1;
-    }
-
-    .chart-bars-container {
-      flex: 1;
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      position: relative;
-    }
-
-    .chart-bar-slot {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      height: 100%;
-      position: relative;
-    }
-
-    .chart-bar-track {
-      width: 6px;
-      background: #A8B8D8;
-      border-radius: 3px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      position: relative;
-      transition: height 0.4s ease;
-    }
-
-    .chart-bar-fill {
-      width: 100%;
-      border-radius: 3px;
-      background: linear-gradient(to top, var(--accent), var(--accent-end));
-      transition: height 0.4s ease;
-      position: relative;
-      z-index: 1;
-    }
-
-    .chart-bar-slot:hover .chart-bar-fill {
-      filter: brightness(1.15);
-    }
-
-    .chart-x-labels {
-      flex: 1;
-      display: flex;
-      gap: 2px;
-    }
-
-    .chart-x-row {
-      display: flex;
-      gap: 2px;
-      padding-left: 48px;
-      margin-top: 0.5rem;
-    }
-
-    .chart-x-row span {
-      flex: 1;
-      text-align: center;
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-      font-family: 'Source Sans 3', sans-serif;
-    }
-
-    .chart-sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.75rem;
-    }
-
-    .chart-bar-tooltip {
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      white-space: nowrap;
-      z-index: 10;
-      pointer-events: none;
-      line-height: 1.5;
-    }
-
-    .chart-bar-slot:hover .chart-bar-tooltip {
-      display: block;
-    }
 
     .top-nav {
       display: flex;
@@ -487,19 +108,171 @@
       justify-content: center;
       font-size: 1.1rem;
       z-index: 100;
-      transition: background 0.2s, border-color 0.2s;
     }
 
-    .theme-toggle:hover {
-      border-color: var(--accent);
+    header { margin-bottom: 2rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { color: var(--text-body); font-size: 0.875rem; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .stat-card .label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-card .sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Activity table */
+    .activity-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .activity-card h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid var(--stroke);
+      color: var(--text-body);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .badge-deposit, .badge-withdraw {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .badge-deposit {
+      color: var(--green);
+      background: var(--green-bg);
+    }
+    .badge-deposit:hover { background: rgba(22, 163, 74, 0.18); }
+
+    .badge-withdraw {
+      color: var(--red);
+      background: var(--red-bg);
+    }
+    .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
+
+    .usd-value {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .vault-name {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .addr-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
       color: var(--accent);
+      text-decoration: none;
+    }
+    .addr-link:hover { text-decoration: underline; }
+
+    .tx-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .tx-link:hover { color: var(--accent); }
+
+    .loading-msg {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--red);
+      font-size: 0.85rem;
+    }
+
+    .data-ts {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
     }
 
     @media (max-width: 640px) {
       body { padding: 1rem; }
-      .stats-row { grid-template-columns: 1fr; }
-      .share-banner { flex-direction: column; gap: 0.75rem; text-align: center; }
-      .share-banner .share-bar-outer { margin: 0; width: 100%; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      td, th { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
     }
   </style>
 </head>
@@ -507,584 +280,174 @@
   <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
   <div class="container">
     <nav class="top-nav">
-      <a href="index.html" class="active">Dashboard</a>
+      <a href="index.html" class="active">Activity</a>
+      <a href="dominance.html">Dominance</a>
       <a href="spark.html">Spark</a>
       <a href="logs.html">Logs</a>
       <a href="socials.html">Socials</a>
-      <a href="activity.html">Activity</a>
     </nav>
 
     <header>
-      <h1>Fusion Stats</h1>
-      <p>Tracking IPOR Fusion vault borrowing activity on Morpho protocol, Ethereum Mainnet</p>
+      <h1>Vault Activity</h1>
+      <p>Deposit & withdrawal events across all Fusion vaults</p>
     </header>
 
-    <div class="info-box">
-      <strong>What is this?</strong> IPOR Fusion vaults borrow money from Morpho lending markets.
-      This page shows how much of all Morpho lending is coming from Fusion vaults.
-      The numbers update every hour automatically. The table below breaks it down vault by vault.
-    </div>
+    <div id="statsRow" class="stats-row" style="display:none"></div>
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="label">Total Morpho Loans on Mainnet</div>
-        <div class="value num-bold" id="totalLoans">—</div>
-        <div class="sub" id="totalLoansSub">loading...</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Fusion Borrowed on Morpho Mainnet</div>
-        <div class="value num-bold" id="fusionBorrowed">—</div>
-        <div class="sub" id="fusionBorrowedSub">loading...</div>
+    <div class="activity-card">
+      <h2>Recent Deposits & Withdrawals</h2>
+      <div id="activityContent">
+        <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
     </div>
 
-    <div class="share-banner">
-      <span class="share-label">Fusion Share of Morpho Demand<br><span style="font-size: 0.7rem; color: var(--text-secondary);">Ethereum Mainnet · <span id="dataTimestamp">loading...</span></span></span>
-      <div class="share-bar-outer">
-        <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
-      </div>
-      <span class="share-value num-bold" id="shareValue">—</span>
-    </div>
-    <div class="ath-atl-row" id="shareAthAtl"></div>
-
-    <div class="chart-card">
-      <h2>Morpho Loans — Fusion vs Rest</h2>
-      <div class="chart-legend">
-        <span><span class="dot" style="background: linear-gradient(135deg, var(--accent), var(--accent-end));"></span> Fusion Borrowed</span>
-        <span><span class="dot" style="background: #A8B8D8;"></span> Other Morpho Loans</span>
-      </div>
-      <div class="chart-area">
-        <div class="chart-y-axis" id="chartYAxis"></div>
-        <div class="chart-bars-container" id="chartBars"></div>
-      </div>
-      <div class="chart-x-row" id="chartXLabels"></div>
-      <div class="chart-sub" id="chartSub">Loading history...</div>
-    </div>
-
-    <div class="vault-table">
-      <h2>Fusion Vaults on Mainnet</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Vault</th>
-            <th>Borrowed on Morpho</th>
-            <th>Collateral on Morpho</th>
-            <th style="width: 25%">Share</th>
-          </tr>
-        </thead>
-        <tbody id="vaultTableBody">
-          <tr><td colspan="4" class="loading">Querying Morpho API for vault positions...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="debug-log">
-      <h2>API Log</h2>
-      <pre id="debugLog">Initializing...</pre>
-    </div>
+    <div id="errorContent" style="display:none"></div>
   </div>
 
   <script>
-    // Dark mode toggle
-    (function() {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-
-    document.getElementById('themeToggle').addEventListener('click', function() {
+    // Theme
+    const themeToggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('fusionstats_theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.addEventListener('click', () => {
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        this.innerHTML = '&#9790;';
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        this.innerHTML = '&#9788;';
-      }
+      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
     });
 
-    // Set initial icon
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-      document.getElementById('themeToggle').innerHTML = '&#9788;';
+    function formatAmount(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return n.toFixed(2);
+      if (n >= 1) return n.toFixed(4);
+      return n.toFixed(6);
     }
 
-    const MORPHO_API = 'https://api.morpho.org/graphql';
-    const HISTORY_FILE = 'history.json';
-
-    // All IPOR Fusion vault addresses on Ethereum Mainnet
-    // Source: app.ipor.io/fusion/ethereum + beta.ipor.io/fusion/ethereum
-    const FUSION_VAULTS = [
-      // Production vaults (app.ipor.io)
-      { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', source: 'prod', name: 'IPOR stETH Ethereum' },
-      { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', source: 'prod', name: 'K3 Leveraged syrupUSDT Strategy' },
-      { address: '0x604117f0c94561231060f56cd2ddd16245d434c5', source: 'prod', name: 'AavEthena Loop Mainnet' },
-      { address: '0xd36f53497507e948df9f277cf8c3ececb09a1c1d', source: 'prod', name: 'TAU InfiniFi Pointsmaxx - Silo' },
-      { address: '0xbfa9d6ec0e04b6691fcae5f8b48838c3918ec117', source: 'prod', name: 'LlamaRisk crvUSD Optimizer' },
-      { address: '0x43a32d4f6c582f281c52393f8f9e5ace1d4a1e68', source: 'prod', name: 'TAU Yield Bond ETF' },
-      { address: '0x63103375659d0aa94e9f35df15be01a3dd1ae9c0', source: 'prod', name: 'TAU Lending Optimizer' },
-      { address: '0xe9385eff3f937fcb0f0085da9a3f53d6c2b4fb5f', source: 'prod', name: 'Reservoir wsrUSD Looping' },
-      { address: '0xb0f56bb0bf13ee05fef8cd2d8df5ffdfcac7a74f', source: 'prod', name: 'TAU infiniFi Pointsmax' },
-      { address: '0xf6cd9e8415162c8fb3c52676c7ca68812a34f76e', source: 'prod', name: 'Reservoir ETH Yield' },
-      { address: '0x6f66b845604dad6e80b2a1472e6cacbbe66a8c40', source: 'prod', name: 'TAU Reservoir Pointsmax' },
-      { address: '0xe47358eae04719f3cf7025e95d0ad202e68bd9b2', source: 'prod', name: 'Reservoir BTC Yield' },
-      { address: '0xc50b2d51fd1e2ac67a9c09eaf63c24ea2465c64b', source: 'prod', name: 'TAU InfiniFi ETH Carry' },
-      { address: '0xe48cdd5ecec5aa53e630a7b4df12f79067b68dac', source: 'prod', name: 'TAU InfiniFi BTC Carry' },
-      { address: '0x20e934c725b6703f0ac696f1689008057db9ac44', source: 'prod', name: 'IPOR DAI Prime' },
-      { address: '0xef53663bb775a51181f04d590f88fc38d6bd5751', source: 'prod', name: 'Sentinel stcUSD Adaptive Looping' },
-      // Private vaults (beta.ipor.io)
-      { address: '0xad685fec2066d7f5436f5804882998ba79725706', source: 'beta', name: 'Magnus Lending Optimizer', private: true },
-      { address: '0x87428d886f43068a44d7bdeef106d3c42e1d6f23', source: 'beta', name: 'AlchemistCS', private: true },
-      { address: '0x9824dcdac89f208bf8b5cb5c4dc41f04a0878607', source: 'beta', name: 'Tesseract Managed ETH', private: true },
-      { address: '0xc2a119ea6de75e4b1451330321cb2474eb8d82d4', source: 'beta', name: 'Tesseract USDC Lending Optimizer', private: true },
-      { address: '0x60e36a79c3d21120350e39b5ea59ae26b75ae74c', source: 'beta', name: 'TAU InfiniFi cbBTC Carry', private: true },
-      { address: '0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3', source: 'beta', name: 'Hyperithm mHYPER Looping', private: true },
-      { address: '0xdab31950ddcc814c49e6bbd5153dd2062e44f368', source: 'beta', name: 'Tesseract Managed BTC', private: true },
-    ];
-
-    const debugLines = [];
-    function log(msg) {
-      const ts = new Date().toLocaleTimeString();
-      debugLines.push(`[${ts}] ${msg}`);
-      document.getElementById('debugLog').textContent = debugLines.join('\n');
+    function shortAddr(a) {
+      return a.slice(0, 6) + '...' + a.slice(-4);
     }
 
-    function formatUsd(value) {
-      if (value >= 1e9) return `$${(value / 1e9).toFixed(value % 1e9 === 0 ? 0 : 1).replace(/\.0$/, '')}B`;
-      if (value >= 1e8) return `$${(value / 1e9).toFixed(1)}B`;
-      if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
-      if (value >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-      return `$${value.toFixed(0)}`;
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() / 1000) - ts);
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
     }
 
-    function formatUsdFull(value) {
-      return '$' + Math.round(value).toLocaleString('en-US');
-    }
-
-    function shortAddr(addr) {
-      return addr.slice(0, 6) + '...' + addr.slice(-4);
-    }
-
-    // Fetch total Morpho mainnet borrow
-    async function fetchTotalMainnetLoans() {
-      log('Fetching total Morpho mainnet loans...');
-      const res = await fetch(MORPHO_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `{
-            markets(
-              first: 1000
-              orderBy: BorrowAssetsUsd
-              orderDirection: Desc
-              where: { chainId_in: [1], whitelisted: true }
-            ) {
-              items {
-                uniqueKey
-                loanAsset { symbol }
-                state { borrowAssetsUsd }
-              }
-              pageInfo { count countTotal }
-            }
-          }`
-        })
-      });
-      const json = await res.json();
-      const { items, pageInfo } = json.data.markets;
-      const total = items.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
-      log(`Total Morpho loans: ${formatUsd(total)} across ${items.length}/${pageInfo.countTotal} markets`);
-      return { total, fetched: items.length, countTotal: pageInfo.countTotal };
-    }
-
-    // Fetch Morpho positions for a single vault address
-    async function fetchVaultMorphoPositions(vault) {
-      const label = vault.name || shortAddr(vault.address);
-      log(`Querying ${label} (${shortAddr(vault.address)}) [${vault.source}]...`);
-      const res = await fetch(MORPHO_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `{
-            userByAddress(
-              chainId: 1
-              address: "${vault.address}"
-            ) {
-              address
-              marketPositions {
-                market {
-                  uniqueKey
-                  loanAsset { symbol }
-                  collateralAsset { symbol }
-                }
-                borrowAssetsUsd
-                supplyAssetsUsd
-                state {
-                  borrowAssetsUsd
-                  supplyAssetsUsd
-                  collateralUsd
-                  collateral
-                }
-              }
-            }
-          }`
-        })
-      });
-      const json = await res.json();
-
-      if (json.errors) {
-        log(`  ${label}: Error — ${json.errors[0]?.message}`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
-      }
-
-      const user = json.data?.userByAddress;
-      if (!user || !user.marketPositions || user.marketPositions.length === 0) {
-        log(`  ${label}: No Morpho positions`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
-      }
-
-      const positions = user.marketPositions.filter(p => {
-        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
-        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
-        const collateral = p.state?.collateralUsd || 0;
-        return borrowed > 0 || supplied > 0 || collateral > 0;
-      });
-
-      const totalBorrowed = positions.reduce((sum, p) =>
-        sum + (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0), 0);
-      const totalCollateral = positions.reduce((sum, p) =>
-        sum + (p.state?.collateralUsd || 0), 0);
-      const totalSupplied = positions.reduce((sum, p) =>
-        sum + (p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0), 0);
-
-      // Derive a descriptive name from the markets this vault touches
-      const marketPairs = positions
-        .filter(p => (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0) > 0 || (p.state?.collateralUsd || 0) > 0)
-        .map(p => `${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}`);
-      const uniquePairs = [...new Set(marketPairs)];
-
-      log(`  ${label}: ${positions.length} positions — borrowed=${formatUsd(totalBorrowed)}, collateral=${formatUsd(totalCollateral)}, supplied=${formatUsd(totalSupplied)}`);
-      positions.forEach(p => {
-        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
-        const collateral = p.state?.collateralUsd || 0;
-        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
-        if (borrowed > 0 || collateral > 0 || supplied > 0) {
-          log(`    ${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}: borrow=${formatUsd(borrowed)}, coll=${formatUsd(collateral)}, supply=${formatUsd(supplied)}`);
-        }
-      });
-
-      return { vault, positions, totalBorrowed, totalCollateral, totalSupplied, markets: uniquePairs };
-    }
-
-    // Query vaults in batches to avoid rate limits
-    async function fetchAllVaultPositions(vaults, batchSize = 7) {
-      const results = [];
-      for (let i = 0; i < vaults.length; i += batchSize) {
-        const batch = vaults.slice(i, i + batchSize);
-        log(`Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vaults.length / batchSize)}: querying ${batch.length} vaults...`);
-        const batchResults = await Promise.all(batch.map(v => fetchVaultMorphoPositions(v)));
-        results.push(...batchResults);
-      }
-      return results;
-    }
-
-    // init() is no longer used — data fetching + rendering moved to run()/renderDashboard()
-
-    // --- History chart (CSS bars, matching share-banner style) ---
-
-    async function loadHistory() {
-      let history = [];
-      try {
-        const res = await fetch(HISTORY_FILE + '?t=' + Date.now());
-        if (res.ok) history = await res.json();
-      } catch (e) { /* file doesn't exist yet */ }
-      return history;
-    }
-
-    function renderChart(history, liveData) {
-      const sub = document.getElementById('chartSub');
-      const barsEl = document.getElementById('chartBars');
-      const yAxisEl = document.getElementById('chartYAxis');
-      const xLabelsEl = document.getElementById('chartXLabels');
-
-      if (history.length === 0 && !liveData) {
-        sub.textContent = 'No historical data yet. Run the collector (node collect.js) to start tracking.';
-        return;
-      }
-
-      // Build data points from ALL history entries (no 24h limit)
-      const dataPoints = history
-        .filter(e => (e.totalLoans || 0) > 0)
-        .map(e => ({
-          time: new Date(e.timestamp),
-          borrowed: e.fusionBorrowed || e.fusionBorrowInMarkets || 0,
-          totalLoans: e.totalLoans || 0,
-        }));
-
-      // Append live data if not already covered
-      if (liveData && liveData.totalLoans > 0) {
-        const lastTime = dataPoints.length > 0 ? dataPoints[dataPoints.length - 1].time.getTime() : 0;
-        if (Date.now() - lastTime > 30 * 60 * 1000) {
-          dataPoints.push({
-            time: new Date(),
-            borrowed: liveData.fusionBorrowed,
-            totalLoans: liveData.totalLoans,
-          });
-        }
-      }
-
-      // Show at most 80 bars to fit the chart area
-      const MAX_BARS = 80;
-      if (dataPoints.length > MAX_BARS) {
-        dataPoints.splice(0, dataPoints.length - MAX_BARS);
-      }
-
-      const maxTotal = Math.max(...dataPoints.map(s => s.totalLoans), 1);
-
-      // Y-axis labels (5 ticks)
-      yAxisEl.innerHTML = '';
-      const ticks = 5;
-      for (let i = ticks; i >= 0; i--) {
-        const val = (maxTotal / ticks) * i;
-        const span = document.createElement('span');
-        span.textContent = formatUsd(val);
-        yAxisEl.appendChild(span);
-      }
-
-      // Bars — render only data points (no empty slots)
-      barsEl.innerHTML = '';
-      dataPoints.forEach(s => {
-        const slot = document.createElement('div');
-        slot.className = 'chart-bar-slot';
-
-        const track = document.createElement('div');
-        track.className = 'chart-bar-track';
-
-        const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
-        track.style.height = trackPct + '%';
-
-        const fillPct = s.borrowed > 0
-          ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
-          : 0;
-
-        const fill = document.createElement('div');
-        fill.className = 'chart-bar-fill';
-        fill.style.height = fillPct + '%';
-        track.appendChild(fill);
-
-        slot.appendChild(track);
-
-        // Tooltip
-        const share = (s.borrowed / s.totalLoans * 100).toFixed(2);
-        const tip = document.createElement('div');
-        tip.className = 'chart-bar-tooltip';
-        const timeStr = s.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-          + ' ' + s.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-        tip.innerHTML = `<strong>${timeStr}</strong><br>`
-          + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
-          + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
-          + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
-        slot.appendChild(tip);
-
-        barsEl.appendChild(slot);
-      });
-
-      // X-axis labels — show evenly spaced labels
-      xLabelsEl.innerHTML = '';
-      const labelStep = Math.max(1, Math.floor(dataPoints.length / 8));
-      dataPoints.forEach((s, i) => {
-        const span = document.createElement('span');
-        if (i % labelStep === 0 || i === dataPoints.length - 1) {
-          span.textContent = s.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-            + ' ' + s.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-        }
-        xLabelsEl.appendChild(span);
-      });
-
-      const dataCount = dataPoints.length;
-      const oldest = dataPoints[0].time;
-      const newest = dataPoints[dataPoints.length - 1].time;
-      const spanHours = Math.round((newest - oldest) / 3600000);
-      const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
-      sub.textContent = `${dataCount} data points · ${spanLabel} span · updated every 30 min`;
-    }
-
-    // --- LocalStorage cache (15 min TTL) ---
-    const CACHE_KEY = 'fusionstats_cache';
-    const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-
-    function getCachedData() {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const cached = JSON.parse(raw);
-        if (Date.now() - cached.ts > CACHE_TTL) return null;
-        return cached;
-      } catch { return null; }
-    }
-
-    function setCachedData(loansData, vaultResults) {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          ts: Date.now(),
-          loansData,
-          vaultResults
-        }));
-      } catch { /* storage full or unavailable */ }
-    }
-
-    async function renderDashboard(loansData, vaultResults, fromCache) {
-      // Total Morpho Loans
-      document.getElementById('totalLoans').textContent = formatUsdFull(loansData.total);
-      const cacheLabel = fromCache ? ' · cached' : ' · live';
-      document.getElementById('totalLoansSub').textContent =
-        `${loansData.fetched}/${loansData.countTotal} markets` + cacheLabel;
-
-      // Aggregate Fusion borrowed
-      const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
-      const withPositions = vaultResults.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0);
-      const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
-      const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
-      const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
-
-      document.getElementById('fusionBorrowed').textContent = formatUsdFull(fusionTotalBorrowed);
-      document.getElementById('fusionBorrowedSub').textContent =
-        fusionTotalBorrowed > 0
-          ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsdFull(fusionTotalCollateral)}`
-          : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
-
-      // Share
-      const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
-      document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
-      document.getElementById('shareBar').style.width = share + '%';
-
-      // ATH / ATL from history
-      const athAtlEl = document.getElementById('shareAthAtl');
-      try {
-        const hist = await loadHistory();
-        const shares = hist
-          .filter(e => (e.totalLoans || 0) > 0)
-          .map(e => ({
-            pct: ((e.fusionBorrowed || e.fusionBorrowInMarkets || 0) / e.totalLoans) * 100,
-            time: new Date(e.timestamp),
-          }));
-        // Include current live value
-        if (share > 0) shares.push({ pct: share, time: new Date() });
-        if (shares.length > 0) {
-          const ath = shares.reduce((a, b) => b.pct > a.pct ? b : a);
-          const nonZero = shares.filter(s => s.pct > 0);
-          const atl = nonZero.length > 0 ? nonZero.reduce((a, b) => b.pct < a.pct ? b : a) : null;
-          const dateFmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-          let html = `<span class="ath-atl-item"><span class="ath-atl-label">ATH</span> <strong style="color:var(--green)">${ath.pct.toFixed(2)}%</strong> <span style="font-size:0.65rem">${dateFmt(ath.time)}</span></span>`;
-          if (atl) {
-            html += `<span class="ath-atl-item"><span class="ath-atl-label">ATL</span> <strong style="color:var(--red)">${atl.pct.toFixed(2)}%</strong> <span style="font-size:0.65rem">${dateFmt(atl.time)}</span></span>`;
-          }
-          athAtlEl.innerHTML = html;
-        }
-      } catch (e) { /* no history yet */ }
-
-      // Data timestamp
-      const dataTs = fromCache ? new Date(getCachedData()?.ts || Date.now()) : new Date();
-      document.getElementById('dataTimestamp').textContent = dataTs.toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-        timeZone: 'UTC'
-      }) + ' UTC';
-
-      // Vault table
-      const tbody = document.getElementById('vaultTableBody');
-      tbody.innerHTML = '';
-
-      const sorted = vaultResults.slice().sort((a, b) => {
-        const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
-        const bActive = b.totalBorrowed > 0 || b.totalCollateral > 0 || b.totalSupplied > 0 ? 1 : 0;
-        if (bActive !== aActive) return bActive - aActive;
-        return b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied;
-      });
-      const maxBorrowed = sorted[0]?.totalBorrowed || 1;
-
-      sorted.forEach(r => {
-        const vaultShare = fusionTotalBorrowed > 0
-          ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
-        const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
-        const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
-        const displayName = r.vault.private
-          ? 'Fusion Vault (Private)'
-          : (r.vault.name || ('Fusion Vault' + (r.vault.source === 'beta' ? ' [beta]' : '')));
-        const tr = document.createElement('tr');
-        if (!hasPosition) tr.style.opacity = '0.5';
-        tr.innerHTML = `
-          <td>
-            <div class="vault-name">${displayName}</div>
-            <div class="vault-address">
-              <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-              · ${hasPosition ? marketsLabel : 'no Morpho positions'}
-            </div>
-          </td>
-          <td class="num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</td>
-          <td class="num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</td>
-          <td>
-            <div class="bar-cell">
-              <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
-              <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      log(fromCache ? '=== LOADED FROM CACHE ===' : '=== FRESH DATA ===');
-      log(`Total Morpho Loans (mainnet): ${formatUsd(loansData.total)}`);
-      log(`Fusion Borrowed on Morpho Mainnet:    ${formatUsd(fusionTotalBorrowed)}`);
-      log(`Fusion Collateral on Morpho:  ${formatUsd(fusionTotalCollateral)}`);
-      log(`Fusion Supplied to Morpho:    ${formatUsd(fusionTotalSupplied)}`);
-      log(`Fusion Share of Morpho Demand: ${share.toFixed(4)}%`);
-      log(`Vaults checked: ${FUSION_VAULTS.length}`);
-      log(`Vaults with Morpho positions: ${withPositions.length}`);
-      log(`Vaults actively borrowing:    ${activeVaults.length}`);
-      if (fromCache) {
-        const age = Math.round((Date.now() - getCachedData()?.ts) / 1000);
-        log(`Cache age: ${age}s (TTL: ${CACHE_TTL / 1000}s)`);
-      }
-    }
-
-    function getLiveDataForChart(loansData, vaultResults) {
-      const fusionBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
-      return { fusionBorrowed, totalLoans: loansData.total };
-    }
-
-    async function run() {
-      const history = await loadHistory();
-
-      const cached = getCachedData();
-      if (cached) {
-        log('Using cached data (< 15 min old). Skipping API calls.');
-        renderChart(history, getLiveDataForChart(cached.loansData, cached.vaultResults));
-        await renderDashboard(cached.loansData, cached.vaultResults, true);
-        return;
-      }
+    async function loadActivity() {
+      const status = document.getElementById('loadingMsg');
 
       try {
-        log(`Starting — ${FUSION_VAULTS.length} Fusion vaults to check`);
-        const [loansData, vaultResults] = await Promise.all([
-          fetchTotalMainnetLoans(),
-          fetchAllVaultPositions(FUSION_VAULTS)
-        ]);
-        setCachedData(loansData, vaultResults);
-        renderChart(history, getLiveDataForChart(loansData, vaultResults));
-        await renderDashboard(loansData, vaultResults, false);
+        status.textContent = 'Loading activity data...';
+        const res = await fetch('activity-events.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status} — run collect-activity.js first`);
+        const data = await res.json();
+
+        const events = data.events || [];
+
+        // Always use vault lookup as source of truth for symbol/name
+        const vaultInfo = {};
+        (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
+        events.forEach(e => {
+          const v = vaultInfo[e.vault];
+          if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
+        });
+
+        // Stats (last 30 days)
+        const cutoff30d = Math.floor(Date.now() / 1000) - 30 * 86400;
+        const recent = events.filter(e => (e.timestamp || 0) > cutoff30d);
+
+        const depositCount = recent.filter(e => e.type === 'deposit').length;
+        const withdrawCount = recent.filter(e => e.type === 'withdraw').length;
+        const uniqueUsers = new Set(recent.map(e => e.owner)).size;
+        const activeVaults = new Set(recent.map(e => e.vault)).size;
+
+        renderStats({ depositCount, withdrawCount, uniqueUsers, activeVaults });
+        renderTable(events.slice(0, 500), data.updatedAt);
+
       } catch (err) {
-        console.error('Init error:', err);
-        log(`ERROR: ${err.message}`);
-        renderChart(history, null);
-        document.getElementById('totalLoans').textContent = 'Error';
-        document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
+        console.error('Error:', err);
+        status.style.display = 'none';
+        const errDiv = document.getElementById('errorContent');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = `<div class="error-msg">Failed to load activity data: ${err.message}<br><small>The collector may not have run yet</small></div>`;
       }
     }
 
-    run();
+    function renderStats(s) {
+      const row = document.getElementById('statsRow');
+      row.style.display = 'grid';
+      row.innerHTML = `
+        <div class="stat-card">
+          <div class="label">Deposits (30d)</div>
+          <div class="value num-bold">${s.depositCount}</div>
+          <div class="sub">events</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Withdrawals (30d)</div>
+          <div class="value num-bold">${s.withdrawCount}</div>
+          <div class="sub">events</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Unique Users</div>
+          <div class="value num-bold">${s.uniqueUsers}</div>
+          <div class="sub">in 30 days</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Active Vaults</div>
+          <div class="value num-bold">${s.activeVaults}</div>
+          <div class="sub">with activity</div>
+        </div>
+      `;
+    }
+
+    function renderTable(events, updatedAt) {
+      const content = document.getElementById('activityContent');
+      if (!events.length) {
+        content.innerHTML = '<div class="loading-msg">No events yet — collector may not have run</div>';
+        return;
+      }
+
+      let rows = '';
+      events.forEach(e => {
+        const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
+        const badgeClass = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
+        const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
+        const sym = e.symbol || '?';
+        const name = e.vaultName || shortAddr(e.vault);
+        const usd = e.usdValue != null ? `<span class="usd-value">$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '';
+        rows += `<tr>
+          <td>${time}</td>
+          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
+          <td class="num-bold">${formatAmount(e.assets)} ${sym}${usd ? '<br>' + usd : ''}</td>
+          <td class="vault-name">${name}</td>
+          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
+        </tr>`;
+      });
+
+      content.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>When</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Product</th>
+            <th>User</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      // Show last updated
+      if (updatedAt) {
+        const tsEl = document.createElement('div');
+        tsEl.className = 'data-ts';
+        tsEl.textContent = `Data updated ${new Date(updatedAt).toLocaleString()} · refreshed every 20 min`;
+        content.parentElement.after(tsEl);
+      }
+    }
+
+    loadActivity();
   </script>
 </body>
 </html>
