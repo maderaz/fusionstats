@@ -195,25 +195,27 @@
 
     tr:last-child td { border-bottom: none; }
 
-    .badge-deposit {
+    .badge-deposit, .badge-withdraw {
       display: inline-block;
       font-size: 0.65rem;
       font-weight: 600;
-      color: var(--green);
-      background: var(--green-bg);
       padding: 0.15rem 0.5rem;
       border-radius: 4px;
+      text-decoration: none;
+      cursor: pointer;
     }
 
+    .badge-deposit {
+      color: var(--green);
+      background: var(--green-bg);
+    }
+    .badge-deposit:hover { background: rgba(22, 163, 74, 0.18); }
+
     .badge-withdraw {
-      display: inline-block;
-      font-size: 0.65rem;
-      font-weight: 600;
       color: var(--red);
       background: var(--red-bg);
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
     }
+    .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
 
     .vault-name {
       font-size: 0.7rem;
@@ -337,14 +339,12 @@
 
         const events = data.events || [];
 
-        // Build vault lookup for events missing inline vaultName/symbol
+        // Always use vault lookup as source of truth for symbol/name
         const vaultInfo = {};
         (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
         events.forEach(e => {
-          if (!e.symbol || !e.vaultName) {
-            const v = vaultInfo[e.vault];
-            if (v) { e.symbol = e.symbol || v.symbol; e.vaultName = e.vaultName || v.name; }
-          }
+          const v = vaultInfo[e.vault];
+          if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
         });
 
         // Stats (last 30 days)
@@ -405,13 +405,12 @@
       let rows = '';
       events.forEach(e => {
         const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
-        const badge = e.type === 'deposit'
-          ? '<span class="badge-deposit">DEPOSIT</span>'
-          : '<span class="badge-withdraw">WITHDRAW</span>';
+        const badgeClass = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
+        const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
         rows += `<tr>
-          <td>${badge}<br><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.tx)}</a></td>
+          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
           <td class="num-bold">${formatAmount(e.assets)} ${sym}</td>
           <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
