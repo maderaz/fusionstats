@@ -11,8 +11,6 @@ const fs = require('fs');
 const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
-const MAX_EVENTS = 2000; // keep last 2000 events per vault
-const MAX_AGE_DAYS = 90; // discard events older than 90 days
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
@@ -183,15 +181,8 @@ async function main() {
     data.lastBlock[vault.address] = currentBlock;
   }
 
-  // Filter: keep only events for tracked vaults, remove old, cap count
-  const cutoff = Math.floor(Date.now() / 1000) - MAX_AGE_DAYS * 86400;
-  const vaultAddrs = new Set(VAULTS.map(v => v.address));
-  data.events = data.events
-    .filter(e => vaultAddrs.has(e.vault) && (!e.timestamp || e.timestamp > cutoff))
-    .sort((a, b) => b.block - a.block || b.logIdx - a.logIdx)
-    .slice(0, MAX_EVENTS);
-
-  // Deduplicate by tx+logIdx
+  // Sort newest first, deduplicate by tx+logIdx
+  data.events.sort((a, b) => b.block - a.block || b.logIdx - a.logIdx);
   const seen = new Set();
   data.events = data.events.filter(e => {
     const key = e.tx + ':' + e.logIdx;
