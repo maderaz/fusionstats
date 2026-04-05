@@ -358,12 +358,10 @@
       align-items: flex-end;
       gap: 2px;
       position: relative;
-      overflow-x: auto;
-      min-width: 0;
     }
 
     .chart-bar-slot {
-      flex: 0 0 7px;
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -408,12 +406,10 @@
       gap: 2px;
       padding-left: 48px;
       margin-top: 0.5rem;
-      overflow-x: auto;
-      min-width: 0;
     }
 
     .chart-x-row span {
-      flex: 0 0 7px;
+      flex: 1;
       text-align: center;
       font-size: 0.6rem;
       color: var(--text-secondary);
@@ -839,8 +835,13 @@
         }
       }
 
+      // Show at most 80 bars to fit the chart area
+      const MAX_BARS = 80;
+      if (dataPoints.length > MAX_BARS) {
+        dataPoints.splice(0, dataPoints.length - MAX_BARS);
+      }
+
       const maxTotal = Math.max(...dataPoints.map(s => s.totalLoans), 1);
-      const filledSlots = dataPoints;
 
       // Y-axis labels (5 ticks)
       yAxisEl.innerHTML = '';
