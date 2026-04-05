@@ -125,7 +125,7 @@
     /* Stats row */
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
@@ -353,16 +353,20 @@
           if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
         });
 
-        // Stats (last 30 days)
-        const cutoff30d = Math.floor(Date.now() / 1000) - 30 * 86400;
-        const recent = events.filter(e => (e.timestamp || 0) > cutoff30d);
+        // Net inflows (deposits - withdrawals) in USD
+        function netFlowUsd(evts, seconds) {
+          const cutoff = Math.floor(Date.now() / 1000) - seconds;
+          const filtered = evts.filter(e => (e.timestamp || 0) > cutoff && e.usdValue != null);
+          let net = 0;
+          filtered.forEach(e => { net += e.type === 'deposit' ? e.usdValue : -e.usdValue; });
+          return net;
+        }
 
-        const depositCount = recent.filter(e => e.type === 'deposit').length;
-        const withdrawCount = recent.filter(e => e.type === 'withdraw').length;
-        const uniqueUsers = new Set(recent.map(e => e.owner)).size;
-        const activeVaults = new Set(recent.map(e => e.vault)).size;
+        const net24h = netFlowUsd(events, 86400);
+        const net7d = netFlowUsd(events, 7 * 86400);
+        const net30d = netFlowUsd(events, 30 * 86400);
 
-        renderStats({ depositCount, withdrawCount, uniqueUsers, activeVaults });
+        renderStats({ net24h, net7d, net30d });
         renderTable(events.slice(0, 500), data.updatedAt);
 
       } catch (err) {
@@ -374,31 +378,30 @@
       }
     }
 
+    function formatUsdCompact(n) {
+      const abs = Math.abs(n);
+      const sign = n >= 0 ? '+' : '-';
+      if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
+      if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
+      return sign + '$' + abs.toFixed(2);
+    }
+
     function renderStats(s) {
       const row = document.getElementById('statsRow');
       row.style.display = 'grid';
-      row.innerHTML = `
-        <div class="stat-card">
-          <div class="label">Deposits (30d)</div>
-          <div class="value num-bold">${s.depositCount}</div>
-          <div class="sub">events</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Withdrawals (30d)</div>
-          <div class="value num-bold">${s.withdrawCount}</div>
-          <div class="sub">events</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Unique Users</div>
-          <div class="value num-bold">${s.uniqueUsers}</div>
-          <div class="sub">in 30 days</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Active Vaults</div>
-          <div class="value num-bold">${s.activeVaults}</div>
-          <div class="sub">with activity</div>
-        </div>
-      `;
+
+      function flowCard(label, val) {
+        const color = val >= 0 ? 'var(--green)' : 'var(--red)';
+        return `<div class="stat-card">
+          <div class="label">${label}</div>
+          <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
+          <div class="sub">net inflow</div>
+        </div>`;
+      }
+
+      row.innerHTML = flowCard('24h', s.net24h)
+        + flowCard('7d', s.net7d)
+        + flowCard('30d', s.net30d);
     }
 
     function renderTable(events, updatedAt) {
