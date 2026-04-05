@@ -215,6 +215,15 @@
       border-radius: 4px;
     }
 
+    .vault-name {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .addr-link {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.7rem;
@@ -272,7 +281,7 @@
 
     <header>
       <h1>Vault Activity</h1>
-      <p>Deposit & withdrawal events for IPOR stETH Ethereum vault</p>
+      <p>Deposit & withdrawal events across all Fusion vaults</p>
     </header>
 
     <div id="statsRow" class="stats-row" style="display:none"></div>
@@ -298,11 +307,8 @@
       localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
     });
 
-    const ASSET_SYMBOLS = {
-      '0xb8a451107a9f87fde481d4d686247d6e43ed715e': 'wstETH',
-    };
-
-    function formatEth(n) {
+    function formatAmount(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return n.toFixed(2);
       if (n >= 1) return n.toFixed(4);
       return n.toFixed(6);
@@ -330,21 +336,18 @@
         const data = await res.json();
 
         const events = data.events || [];
-        const symbol = data.vaults?.[0]?.symbol || 'wstETH';
 
         // Stats (last 30 days)
         const cutoff30d = Math.floor(Date.now() / 1000) - 30 * 86400;
         const recent = events.filter(e => (e.timestamp || 0) > cutoff30d);
 
-        const totalDeposits = recent.filter(e => e.type === 'deposit').reduce((s, e) => s + e.assets, 0);
-        const totalWithdrawals = recent.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.assets, 0);
         const depositCount = recent.filter(e => e.type === 'deposit').length;
         const withdrawCount = recent.filter(e => e.type === 'withdraw').length;
-        const netFlow = totalDeposits - totalWithdrawals;
         const uniqueUsers = new Set(recent.map(e => e.owner)).size;
+        const activeVaults = new Set(recent.map(e => e.vault)).size;
 
-        renderStats({ totalDeposits, totalWithdrawals, depositCount, withdrawCount, netFlow, uniqueUsers }, symbol);
-        renderTable(events.slice(0, 200), symbol, data.updatedAt);
+        renderStats({ depositCount, withdrawCount, uniqueUsers, activeVaults });
+        renderTable(events.slice(0, 500), data.updatedAt);
 
       } catch (err) {
         console.error('Error:', err);
@@ -355,36 +358,34 @@
       }
     }
 
-    function renderStats(s, symbol) {
+    function renderStats(s) {
       const row = document.getElementById('statsRow');
       row.style.display = 'grid';
       row.innerHTML = `
         <div class="stat-card">
           <div class="label">Deposits (30d)</div>
           <div class="value num-bold">${s.depositCount}</div>
-          <div class="sub">${formatEth(s.totalDeposits)} ${symbol}</div>
+          <div class="sub">events</div>
         </div>
         <div class="stat-card">
           <div class="label">Withdrawals (30d)</div>
           <div class="value num-bold">${s.withdrawCount}</div>
-          <div class="sub">${formatEth(s.totalWithdrawals)} ${symbol}</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Net Flow</div>
-          <div class="value num-bold" style="color: ${s.netFlow >= 0 ? 'var(--green)' : 'var(--red)'}">
-            ${s.netFlow >= 0 ? '+' : ''}${formatEth(s.netFlow)}
-          </div>
-          <div class="sub">${symbol}</div>
+          <div class="sub">events</div>
         </div>
         <div class="stat-card">
           <div class="label">Unique Users</div>
           <div class="value num-bold">${s.uniqueUsers}</div>
           <div class="sub">in 30 days</div>
         </div>
+        <div class="stat-card">
+          <div class="label">Active Vaults</div>
+          <div class="value num-bold">${s.activeVaults}</div>
+          <div class="sub">with activity</div>
+        </div>
       `;
     }
 
-    function renderTable(events, symbol, updatedAt) {
+    function renderTable(events, updatedAt) {
       const content = document.getElementById('activityContent');
       if (!events.length) {
         content.innerHTML = '<div class="loading-msg">No events yet — collector may not have run</div>';
@@ -397,9 +398,12 @@
         const badge = e.type === 'deposit'
           ? '<span class="badge-deposit">DEPOSIT</span>'
           : '<span class="badge-withdraw">WITHDRAW</span>';
+        const sym = e.symbol || '?';
+        const name = e.vaultName || shortAddr(e.vault);
         rows += `<tr>
           <td>${badge}</td>
-          <td class="num-bold">${formatEth(e.assets)} ${symbol}</td>
+          <td class="num-bold">${formatAmount(e.assets)} ${sym}</td>
+          <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td>${time}</td>
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.tx)}</a></td>
@@ -411,6 +415,7 @@
           <thead><tr>
             <th>Type</th>
             <th>Amount</th>
+            <th>Product</th>
             <th>User</th>
             <th>When</th>
             <th>Tx</th>
