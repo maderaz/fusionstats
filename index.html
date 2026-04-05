@@ -445,8 +445,9 @@
         function refreshUpdatedLabel() {
           const agoMin = Math.floor((Date.now() - updatedMs) / 60000);
           const agoText = agoMin < 1 ? 'just now' : agoMin + ' min ago';
-          const sinceLastCron = agoMin % 20;
-          const nextMin = sinceLastCron === 0 && agoMin > 0 ? 20 : 20 - sinceLastCron;
+          const nowMin = new Date().getMinutes();
+          const nextCronMin = Math.ceil((nowMin + 1) / 20) * 20;
+          const nextMin = nextCronMin - nowMin;
           const nextText = nextMin <= 1 ? 'any moment now' : `in ~${nextMin} min`;
           el.innerHTML = `updated <span style="color:var(--accent);font-weight:500;">${agoText}</span>`
             + `<br><span style="font-size:0.6rem;">next update ${nextText}</span>`;
