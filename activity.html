@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity — Fusion Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --green-bg: rgba(22, 163, 74, 0.08);
+      --red: #dc2626;
+      --red-bg: rgba(220, 38, 38, 0.08);
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --green-bg: rgba(34, 197, 94, 0.12);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.12);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .num-bold {
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      z-index: 100;
+    }
+
+    header { margin-bottom: 2rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { color: var(--text-body); font-size: 0.875rem; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+
+    .stat-card .label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-card .sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    /* Activity table */
+    .activity-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .activity-card h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      text-align: left;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 0.65rem 1rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid var(--stroke);
+      color: var(--text-body);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .badge-deposit {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--green);
+      background: var(--green-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .badge-withdraw {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--red);
+      background: var(--red-bg);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .addr-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .addr-link:hover { text-decoration: underline; }
+
+    .tx-link {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .tx-link:hover { color: var(--accent); }
+
+    .loading-msg {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .error-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--red);
+      font-size: 0.85rem;
+    }
+
+    .data-ts {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      td, th { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="index.html">Dashboard</a>
+      <a href="spark.html">Spark</a>
+      <a href="logs.html">Logs</a>
+      <a href="socials.html">Socials</a>
+      <a href="activity.html" class="active">Activity</a>
+    </nav>
+
+    <header>
+      <h1>Vault Activity</h1>
+      <p>Deposit & withdrawal events for IPOR stETH Ethereum vault</p>
+    </header>
+
+    <div id="statsRow" class="stats-row" style="display:none"></div>
+
+    <div class="activity-card">
+      <h2>Recent Deposits & Withdrawals</h2>
+      <div id="activityContent">
+        <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
+      </div>
+    </div>
+
+    <div id="errorContent" style="display:none"></div>
+  </div>
+
+  <script>
+    // Theme
+    const themeToggle = document.getElementById('themeToggle');
+    const saved = localStorage.getItem('fusionstats_theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
+    });
+
+    // Constants
+    const RPCS = [
+      'https://ethereum-rpc.publicnode.com',
+      'https://rpc.ankr.com/eth',
+      'https://eth.drpc.org',
+      'https://eth.llamarpc.com',
+    ];
+
+    const VAULT = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
+    const VAULT_NAME = 'IPOR stETH Ethereum';
+    // wstETH (underlying asset for this vault)
+    const ASSET_SYMBOL = 'wstETH';
+    const ASSET_DECIMALS = 18;
+
+    // ERC-4626 event signatures
+    // Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares)
+    const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
+    // Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares)
+    const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
+
+    // Scan last ~30 days
+    const SCAN_BLOCKS = 220000;
+
+    let activeRpc = 0;
+    let callId = 0;
+
+    async function rpcCall(method, params) {
+      const order = [activeRpc, ...RPCS.map((_, i) => i).filter(i => i !== activeRpc)];
+      for (const idx of order) {
+        try {
+          const res = await fetch(RPCS[idx], {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const json = await res.json();
+          if (json.error) throw new Error(json.error.message);
+          activeRpc = idx;
+          return json.result;
+        } catch (e) {
+          continue;
+        }
+      }
+      throw new Error(`All RPCs failed for ${method}`);
+    }
+
+    function formatEth(n) {
+      if (n >= 1e3) return n.toFixed(2);
+      if (n >= 1) return n.toFixed(4);
+      return n.toFixed(6);
+    }
+
+    function shortAddr(a) {
+      return a.slice(0, 6) + '...' + a.slice(-4);
+    }
+
+    function timeAgo(ts) {
+      const diff = Math.floor((Date.now() / 1000) - ts);
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    async function loadActivity() {
+      const status = document.getElementById('loadingMsg');
+
+      try {
+        // Get current block
+        status.textContent = 'Getting current block...';
+        const blockHex = await rpcCall('eth_blockNumber', []);
+        const currentBlock = parseInt(blockHex, 16);
+        const fromBlock = currentBlock - SCAN_BLOCKS;
+
+        // Fetch deposit and withdraw events
+        status.textContent = 'Scanning deposit events...';
+        const depositLogs = await scanLogs(fromBlock, currentBlock, DEPOSIT_TOPIC);
+
+        status.textContent = 'Scanning withdrawal events...';
+        const withdrawLogs = await scanLogs(fromBlock, currentBlock, WITHDRAW_TOPIC);
+
+        // Parse events
+        const events = [];
+
+        for (const log of depositLogs) {
+          const sender = '0x' + log.topics[1].slice(26);
+          const owner = '0x' + log.topics[2].slice(26);
+          const assets = Number(BigInt(log.data.slice(0, 66))) / (10 ** ASSET_DECIMALS);
+          const shares = Number(BigInt('0x' + log.data.slice(66, 130))) / (10 ** ASSET_DECIMALS);
+          events.push({
+            type: 'deposit',
+            sender,
+            owner,
+            assets,
+            shares,
+            txHash: log.transactionHash,
+            blockNumber: parseInt(log.blockNumber, 16),
+            logIndex: parseInt(log.logIndex, 16),
+          });
+        }
+
+        for (const log of withdrawLogs) {
+          const sender = '0x' + log.topics[1].slice(26);
+          const receiver = '0x' + log.topics[2].slice(26);
+          const owner = '0x' + log.topics[3].slice(26);
+          const assets = Number(BigInt(log.data.slice(0, 66))) / (10 ** ASSET_DECIMALS);
+          const shares = Number(BigInt('0x' + log.data.slice(66, 130))) / (10 ** ASSET_DECIMALS);
+          events.push({
+            type: 'withdraw',
+            sender,
+            receiver,
+            owner,
+            assets,
+            shares,
+            txHash: log.transactionHash,
+            blockNumber: parseInt(log.blockNumber, 16),
+            logIndex: parseInt(log.logIndex, 16),
+          });
+        }
+
+        // Sort by block descending (newest first)
+        events.sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
+
+        // Fetch block timestamps for the events (batch unique blocks)
+        status.textContent = 'Fetching timestamps...';
+        const uniqueBlocks = [...new Set(events.map(e => e.blockNumber))].slice(0, 50);
+        const timestamps = {};
+        for (let i = 0; i < uniqueBlocks.length; i += 3) {
+          const batch = uniqueBlocks.slice(i, i + 3);
+          const results = await Promise.all(
+            batch.map(b => rpcCall('eth_getBlockByNumber', ['0x' + b.toString(16), false]).catch(() => null))
+          );
+          results.forEach((r, j) => {
+            if (r) timestamps[batch[j]] = parseInt(r.timestamp, 16);
+          });
+        }
+
+        // Compute stats
+        const totalDeposits = events.filter(e => e.type === 'deposit').reduce((s, e) => s + e.assets, 0);
+        const totalWithdrawals = events.filter(e => e.type === 'withdraw').reduce((s, e) => s + e.assets, 0);
+        const depositCount = events.filter(e => e.type === 'deposit').length;
+        const withdrawCount = events.filter(e => e.type === 'withdraw').length;
+        const netFlow = totalDeposits - totalWithdrawals;
+        const uniqueUsers = new Set(events.map(e => e.owner)).size;
+
+        renderStats({ totalDeposits, totalWithdrawals, depositCount, withdrawCount, netFlow, uniqueUsers });
+        renderTable(events.slice(0, 100), timestamps);
+
+      } catch (err) {
+        console.error('Error:', err);
+        document.getElementById('loadingMsg').style.display = 'none';
+        const errDiv = document.getElementById('errorContent');
+        errDiv.style.display = 'block';
+        errDiv.innerHTML = `<div class="error-msg">Failed to fetch events: ${err.message}<br><small>Try refreshing</small></div>`;
+      }
+    }
+
+    async function scanLogs(from, to, topic) {
+      const allLogs = [];
+      const CHUNK = 100000;
+      for (let start = from; start < to; start += CHUNK) {
+        const end = Math.min(start + CHUNK - 1, to);
+        try {
+          const logs = await rpcCall('eth_getLogs', [{
+            address: VAULT,
+            topics: [topic],
+            fromBlock: '0x' + start.toString(16),
+            toBlock: '0x' + end.toString(16),
+          }]);
+          allLogs.push(...logs);
+        } catch (e) {
+          // Split on failure
+          const mid = start + Math.floor((end - start) / 2);
+          if (end - start > 5000) {
+            const logs1 = await rpcCall('eth_getLogs', [{
+              address: VAULT, topics: [topic],
+              fromBlock: '0x' + start.toString(16),
+              toBlock: '0x' + mid.toString(16),
+            }]).catch(() => []);
+            const logs2 = await rpcCall('eth_getLogs', [{
+              address: VAULT, topics: [topic],
+              fromBlock: '0x' + (mid + 1).toString(16),
+              toBlock: '0x' + end.toString(16),
+            }]).catch(() => []);
+            allLogs.push(...logs1, ...logs2);
+          }
+        }
+      }
+      return allLogs;
+    }
+
+    function renderStats(s) {
+      const row = document.getElementById('statsRow');
+      row.style.display = 'grid';
+      row.innerHTML = `
+        <div class="stat-card">
+          <div class="label">Deposits (30d)</div>
+          <div class="value num-bold">${s.depositCount}</div>
+          <div class="sub">${formatEth(s.totalDeposits)} ${ASSET_SYMBOL}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Withdrawals (30d)</div>
+          <div class="value num-bold">${s.withdrawCount}</div>
+          <div class="sub">${formatEth(s.totalWithdrawals)} ${ASSET_SYMBOL}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Net Flow</div>
+          <div class="value num-bold" style="color: ${s.netFlow >= 0 ? 'var(--green)' : 'var(--red)'}">
+            ${s.netFlow >= 0 ? '+' : ''}${formatEth(s.netFlow)}
+          </div>
+          <div class="sub">${ASSET_SYMBOL}</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Unique Users</div>
+          <div class="value num-bold">${s.uniqueUsers}</div>
+          <div class="sub">in 30 days</div>
+        </div>
+      `;
+    }
+
+    function renderTable(events, timestamps) {
+      const content = document.getElementById('activityContent');
+      if (!events.length) {
+        content.innerHTML = '<div class="loading-msg">No events found in the last 30 days</div>';
+        return;
+      }
+
+      let rows = '';
+      events.forEach(e => {
+        const ts = timestamps[e.blockNumber];
+        const time = ts ? timeAgo(ts) : `#${e.blockNumber}`;
+        const badge = e.type === 'deposit'
+          ? '<span class="badge-deposit">DEPOSIT</span>'
+          : '<span class="badge-withdraw">WITHDRAW</span>';
+        const user = e.owner;
+        rows += `<tr>
+          <td>${badge}</td>
+          <td class="num-bold">${formatEth(e.assets)} ${ASSET_SYMBOL}</td>
+          <td><a href="https://etherscan.io/address/${user}" target="_blank" rel="noopener" class="addr-link">${shortAddr(user)}</a></td>
+          <td>${time}</td>
+          <td><a href="https://etherscan.io/tx/${e.txHash}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.txHash)}</a></td>
+        </tr>`;
+      });
+
+      content.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>User</th>
+            <th>When</th>
+            <th>Tx</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    loadActivity();
+  </script>
+</body>
+</html>
