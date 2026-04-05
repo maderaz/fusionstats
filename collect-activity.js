@@ -23,6 +23,27 @@ const RPCS = [
 const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
 const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
 
+// Token addresses on Ethereum (for DeFi Llama price lookups)
+const TOKEN_ADDRESSES = {
+  'stETH':    '0xae7ab96520de3a18e5e111b5eaab095312d7fe84',
+  'wstETH':   '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
+  'WETH':     '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+  'USDC':     '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+  'USDT':     '0xdac17f958d2ee523a2206206994597c13d831ec7',
+  'DAI':      '0x6b175474e89094c44da98b954eedeac495271d0f',
+  'WBTC':     '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+  'cbBTC':    '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf',
+  'USDe':     '0x4c9edd5852cd905f086c759e8383e09bff1e68b3',
+  'crvUSD':   '0xf939e0a03fb07f59a73314e73794be0e57ac1b4e',
+  'syrupUSDT':'0x7760305304cb8e395285e67a0385da55e43a09b1',
+  'wsrUSD':   '0x1bee4f735062cd00841d6929b9c6b2b0034d8542',
+  'stcUSD':   '0x252d4a2e5ec1db0c0e1153c7a23e1b12f1f4a422',
+  'mHYPER':   '0xc3116259dff84f0abe9def1c912aff40116647b3',
+};
+
+// Stablecoins always ~$1, skip price lookups
+const STABLECOINS = new Set(['USDC', 'USDT', 'DAI', 'USDe', 'crvUSD', 'syrupUSDT', 'stcUSD', 'wsrUSD']);
+
 // Vaults to track
 const VAULTS = [
   // Production vaults
@@ -84,6 +105,54 @@ async function getBlockNumber() {
 async function getBlockTimestamp(blockNum) {
   const block = await rpcCall('eth_getBlockByNumber', ['0x' + blockNum.toString(16), false]);
   return block ? parseInt(block.timestamp, 16) : 0;
+}
+
+// DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
+async function fetchHistoricalPrice(symbol, timestamp) {
+  if (STABLECOINS.has(symbol)) return 1.0;
+  const tokenAddr = TOKEN_ADDRESSES[symbol];
+  if (!tokenAddr) return null;
+  try {
+    const url = `https://coins.llama.fi/prices/historical/${timestamp}/ethereum:${tokenAddr}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const key = `ethereum:${tokenAddr}`;
+    return json.coins?.[key]?.price || null;
+  } catch {
+    return null;
+  }
+}
+
+// Batch price lookups: group events by symbol+day, fetch one price per group
+async function enrichWithPrices(events) {
+  // Group by symbol + day (don't need per-second precision)
+  const groups = {};
+  for (const e of events) {
+    if (e.usdValue != null) continue; // already has price
+    if (!e.timestamp) continue;
+    const day = Math.floor(e.timestamp / 86400) * 86400; // round to day
+    const key = `${e.symbol}:${day}`;
+    if (!groups[key]) groups[key] = { symbol: e.symbol, timestamp: day + 43200, events: [] }; // midday
+    groups[key].events.push(e);
+  }
+
+  const keys = Object.keys(groups);
+  console.log(`  Fetching prices for ${keys.length} symbol/day groups...`);
+
+  for (let i = 0; i < keys.length; i += 3) {
+    const batch = keys.slice(i, i + 3);
+    const results = await Promise.all(
+      batch.map(k => fetchHistoricalPrice(groups[k].symbol, groups[k].timestamp))
+    );
+    results.forEach((price, j) => {
+      if (price == null) return;
+      for (const e of groups[batch[j]].events) {
+        e.usdPrice = Math.round(price * 100) / 100;
+        e.usdValue = Math.round(e.assets * price * 100) / 100;
+      }
+    });
+  }
 }
 
 async function scanLogs(address, topic, fromBlock, toBlock) {
@@ -205,8 +274,18 @@ async function main() {
       e.shares = Math.round(e.shares * 1e6) / 1e6;
     });
 
+    // Fetch USD prices at time of each event
+    await enrichWithPrices(newEvents);
+
     data.events.push(...newEvents);
     data.lastBlock[vault.address] = currentBlock;
+  }
+
+  // Backfill prices for any old events still missing usdValue
+  const needPrices = data.events.filter(e => e.usdValue == null && e.timestamp);
+  if (needPrices.length > 0) {
+    console.log(`\nBackfilling prices for ${needPrices.length} old events...`);
+    await enrichWithPrices(needPrices);
   }
 
   // Sort newest first, deduplicate by tx+logIdx

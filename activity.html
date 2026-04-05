@@ -197,7 +197,7 @@
 
     .badge-deposit, .badge-withdraw {
       display: inline-block;
-      font-size: 0.65rem;
+      font-size: 0.8rem;
       font-weight: 600;
       padding: 0.15rem 0.5rem;
       border-radius: 4px;
@@ -217,8 +217,14 @@
     }
     .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
 
-    .vault-name {
+    .usd-value {
       font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .vault-name {
+      font-size: 0.8rem;
       color: var(--text-secondary);
       max-width: 160px;
       white-space: nowrap;
@@ -228,7 +234,7 @@
 
     .addr-link {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
+      font-size: 0.8rem;
       color: var(--accent);
       text-decoration: none;
     }
@@ -409,10 +415,11 @@
         const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
+        const usd = e.usdValue != null ? `<span class="usd-value">$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '';
         rows += `<tr>
           <td>${time}</td>
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
-          <td class="num-bold">${formatAmount(e.assets)} ${sym}</td>
+          <td class="num-bold">${formatAmount(e.assets)} ${sym}${usd ? '<br>' + usd : ''}</td>
           <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
         </tr>`;
