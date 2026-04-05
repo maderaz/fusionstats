@@ -30,5 +30,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add history.json logs.json activity-events.json
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Update history.json + logs.json [skip ci]"
+          git commit -m "Update data files [skip ci]"
           git push

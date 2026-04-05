@@ -227,64 +227,68 @@ async function main() {
     data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8'));
   } catch {}
 
-  const currentBlock = await getBlockNumber();
-  console.log(`Current block: ${currentBlock}`);
-
+  // Scan new events from chain (may fail if RPCs are unavailable)
   let newEventsTotal = 0;
+  try {
+    const currentBlock = await getBlockNumber();
+    console.log(`Current block: ${currentBlock}`);
 
-  for (const vault of VAULTS) {
-    const lastBlock = data.lastBlock[vault.address] || (currentBlock - 220000); // default: 30 days back
-    const fromBlock = lastBlock + 1;
+    for (const vault of VAULTS) {
+      const lastBlock = data.lastBlock[vault.address] || (currentBlock - 220000); // default: 30 days back
+      const fromBlock = lastBlock + 1;
 
-    if (fromBlock > currentBlock) {
-      console.log(`${vault.name}: already up to date`);
-      continue;
-    }
+      if (fromBlock > currentBlock) {
+        console.log(`${vault.name}: already up to date`);
+        continue;
+      }
 
-    console.log(`\n${vault.name}: scanning blocks ${fromBlock} to ${currentBlock}...`);
+      console.log(`\n${vault.name}: scanning blocks ${fromBlock} to ${currentBlock}...`);
 
-    // Scan deposits
-    const depositLogs = await scanLogs(vault.address, DEPOSIT_TOPIC, fromBlock, currentBlock);
-    const deposits = depositLogs.map(l => parseDepositLog(l, vault));
-    console.log(`  ${deposits.length} deposits found`);
+      // Scan deposits
+      const depositLogs = await scanLogs(vault.address, DEPOSIT_TOPIC, fromBlock, currentBlock);
+      const deposits = depositLogs.map(l => parseDepositLog(l, vault));
+      console.log(`  ${deposits.length} deposits found`);
 
-    // Scan withdrawals
-    const withdrawLogs = await scanLogs(vault.address, WITHDRAW_TOPIC, fromBlock, currentBlock);
-    const withdrawals = withdrawLogs.map(l => parseWithdrawLog(l, vault));
-    console.log(`  ${withdrawals.length} withdrawals found`);
+      // Scan withdrawals
+      const withdrawLogs = await scanLogs(vault.address, WITHDRAW_TOPIC, fromBlock, currentBlock);
+      const withdrawals = withdrawLogs.map(l => parseWithdrawLog(l, vault));
+      console.log(`  ${withdrawals.length} withdrawals found`);
 
-    const newEvents = [...deposits, ...withdrawals];
-    newEventsTotal += newEvents.length;
+      const newEvents = [...deposits, ...withdrawals];
+      newEventsTotal += newEvents.length;
 
-    // Fetch timestamps for new events
-    const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
-    console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
-    for (let i = 0; i < uniqueBlocks.length; i += 5) {
-      const batch = uniqueBlocks.slice(i, i + 5);
-      const results = await Promise.all(batch.map(b => getBlockTimestamp(b).catch(() => 0)));
-      results.forEach((ts, j) => {
-        const block = batch[j];
-        newEvents.filter(e => e.block === block).forEach(e => e.timestamp = ts);
+      // Fetch timestamps for new events
+      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
+      console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
+      for (let i = 0; i < uniqueBlocks.length; i += 5) {
+        const batch = uniqueBlocks.slice(i, i + 5);
+        const results = await Promise.all(batch.map(b => getBlockTimestamp(b).catch(() => 0)));
+        results.forEach((ts, j) => {
+          const block = batch[j];
+          newEvents.filter(e => e.block === block).forEach(e => e.timestamp = ts);
+        });
+      }
+
+      // Round asset amounts
+      newEvents.forEach(e => {
+        e.assets = Math.round(e.assets * 1e6) / 1e6;
+        e.shares = Math.round(e.shares * 1e6) / 1e6;
       });
+
+      // Fetch USD prices at time of each event
+      await enrichWithPrices(newEvents);
+
+      data.events.push(...newEvents);
+      data.lastBlock[vault.address] = currentBlock;
     }
-
-    // Round asset amounts
-    newEvents.forEach(e => {
-      e.assets = Math.round(e.assets * 1e6) / 1e6;
-      e.shares = Math.round(e.shares * 1e6) / 1e6;
-    });
-
-    // Fetch USD prices at time of each event
-    await enrichWithPrices(newEvents);
-
-    data.events.push(...newEvents);
-    data.lastBlock[vault.address] = currentBlock;
+  } catch (e) {
+    console.log(`\nRPC scan failed (${e.message}), continuing with price backfill...`);
   }
 
-  // Backfill prices for any old events still missing usdValue
+  // Backfill prices for any events still missing usdValue (works without RPC)
   const needPrices = data.events.filter(e => e.usdValue == null && e.timestamp);
   if (needPrices.length > 0) {
-    console.log(`\nBackfilling prices for ${needPrices.length} old events...`);
+    console.log(`\nBackfilling prices for ${needPrices.length} events...`);
     await enrichWithPrices(needPrices);
   }
 
