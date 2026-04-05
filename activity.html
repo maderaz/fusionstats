@@ -401,12 +401,11 @@
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
         rows += `<tr>
-          <td>${badge}</td>
+          <td>${badge}<br><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.tx)}</a></td>
           <td class="num-bold">${formatAmount(e.assets)} ${sym}</td>
           <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="tx-link">${shortAddr(e.tx)}</a></td>
         </tr>`;
       });
 
@@ -418,7 +417,6 @@
             <th>Product</th>
             <th>User</th>
             <th>When</th>
-            <th>Tx</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -428,7 +426,7 @@
       if (updatedAt) {
         const tsEl = document.createElement('div');
         tsEl.className = 'data-ts';
-        tsEl.textContent = `Data updated ${new Date(updatedAt).toLocaleString()} · refreshed every 30 min`;
+        tsEl.textContent = `Data updated ${new Date(updatedAt).toLocaleString()} · refreshed every 20 min`;
         content.parentElement.after(tsEl);
       }
     }
