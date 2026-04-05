@@ -295,7 +295,7 @@
     <div id="statsRow" class="stats-row" style="display:none"></div>
 
     <div class="activity-card">
-      <h2>Recent Deposits & Withdrawals</h2>
+      <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.8;"></span></h2>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
@@ -438,12 +438,10 @@
         </table>
       `;
 
-      // Show last updated
+      // Show last updated in header
       if (updatedAt) {
-        const tsEl = document.createElement('div');
-        tsEl.className = 'data-ts';
-        tsEl.textContent = `Data updated ${new Date(updatedAt).toLocaleString()} · refreshed every 20 min`;
-        content.parentElement.after(tsEl);
+        document.getElementById('lastUpdated').textContent =
+          `updated ${new Date(updatedAt).toLocaleString()}`;
       }
     }
 
