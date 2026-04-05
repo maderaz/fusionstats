@@ -410,22 +410,22 @@
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
         rows += `<tr>
+          <td>${time}</td>
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
           <td class="num-bold">${formatAmount(e.assets)} ${sym}</td>
           <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
-          <td>${time}</td>
         </tr>`;
       });
 
       content.innerHTML = `
         <table>
           <thead><tr>
+            <th>When</th>
             <th>Type</th>
             <th>Amount</th>
             <th>Product</th>
             <th>User</th>
-            <th>When</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
