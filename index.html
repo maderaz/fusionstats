@@ -289,7 +289,10 @@
 
     <header>
       <h1>Vault Activity</h1>
-      <p>Deposit & withdrawal events across all Fusion vaults</p>
+      <p style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        Deposit & withdrawal events across all Fusion vaults
+        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap"></span>
+      </p>
     </header>
 
     <div id="statsRow" class="stats-row" style="display:none"></div>
@@ -365,6 +368,14 @@
         const net24h = netFlowUsd(events, 86400);
         const net7d = netFlowUsd(events, 7 * 86400);
         const net30d = netFlowUsd(events, 30 * 86400);
+
+        // Show vault count badge
+        const vaultCountEl = document.getElementById('vaultCount');
+        const vaultCount = (data.vaults || []).length;
+        if (vaultCount > 0) {
+          vaultCountEl.textContent = `Vaults Tracked: ${vaultCount}`;
+          vaultCountEl.style.display = 'inline-block';
+        }
 
         renderStats({ net24h, net7d, net30d });
         renderTable(events.slice(0, 500), data.updatedAt);
