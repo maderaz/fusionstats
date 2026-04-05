@@ -117,8 +117,10 @@ async function fetchHistoricalPrice(symbol, timestamp) {
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = await res.json();
-    const key = `ethereum:${tokenAddr}`;
-    return json.coins?.[key]?.price || null;
+    // DeFi Llama may return keys in different case — match case-insensitively
+    const coins = json.coins || {};
+    const match = Object.keys(coins).find(k => k.toLowerCase() === `ethereum:${tokenAddr.toLowerCase()}`);
+    return match ? coins[match].price : null;
   } catch {
     return null;
   }
