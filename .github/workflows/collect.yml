@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Discover vaults from factory
+        run: node collect-vaults.js
+
       - name: Run collector
         run: node collect.js
 
@@ -28,7 +31,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add history.json logs.json activity-events.json
+          git add vaults.json history.json logs.json activity-events.json
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update data files [skip ci]"
           git push
