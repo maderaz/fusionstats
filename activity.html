@@ -337,6 +337,16 @@
 
         const events = data.events || [];
 
+        // Build vault lookup for events missing inline vaultName/symbol
+        const vaultInfo = {};
+        (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
+        events.forEach(e => {
+          if (!e.symbol || !e.vaultName) {
+            const v = vaultInfo[e.vault];
+            if (v) { e.symbol = e.symbol || v.symbol; e.vaultName = e.vaultName || v.name; }
+          }
+        });
+
         // Stats (last 30 days)
         const cutoff30d = Math.floor(Date.now() / 1000) - 30 * 86400;
         const recent = events.filter(e => (e.timestamp || 0) > cutoff30d);
