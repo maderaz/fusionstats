@@ -14,9 +14,9 @@ const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
-  'https://eth.merkle.io',
-  'https://rpc.flashbots.net',
-  'https://1rpc.io/eth',
+  'https://eth.drpc.org',
+  'https://eth.llamarpc.com',
+  'https://cloudflare-eth.com',
 ];
 
 // ERC-4626 event topics

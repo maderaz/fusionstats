@@ -14,9 +14,9 @@ const OUTPUT_FILE = path.join(__dirname, 'vaults.json');
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
-  'https://eth.merkle.io',
-  'https://rpc.flashbots.net',
-  'https://1rpc.io/eth',
+  'https://eth.drpc.org',
+  'https://eth.llamarpc.com',
+  'https://cloudflare-eth.com',
 ];
 
 const FACTORY_ADDRESS = '0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852';
