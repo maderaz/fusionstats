@@ -385,7 +385,7 @@
     });
 
     // Load logs
-    fetch('logs.json?t=' + Date.now())
+    fetch('../logs.json?t=' + Date.now())
       .then(r => r.ok ? r.json() : [])
       .then(data => { allLogs = data; renderLogs(); })
       .catch(() => {
