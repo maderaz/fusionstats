@@ -207,6 +207,8 @@ async function main() {
 }
 
 main().catch(e => {
-  console.error('Fatal error:', e);
-  process.exit(1);
+  console.error('Fatal error:', e.message);
+  // Don't exit(1) — allow workflow to continue even if vault discovery fails
+  // Other collectors will use existing vaults.json or operate with empty vault list
+  process.exit(0);
 });
