@@ -14,9 +14,9 @@ const OUTPUT_FILE = path.join(__dirname, 'vaults.json');
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
-  'https://rpc.ankr.com/eth',
-  'https://eth.drpc.org',
-  'https://eth.llamarpc.com',
+  'https://eth.merkle.io',
+  'https://rpc.flashbots.net',
+  'https://1rpc.io/eth',
 ];
 
 const FACTORY_ADDRESS = '0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852';
@@ -155,7 +155,7 @@ async function scanLogs(fromBlock, toBlock) {
     }
   }
 
-  const CHUNK = 500000;
+  const CHUNK = 50000;
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
     await scan(start, end);

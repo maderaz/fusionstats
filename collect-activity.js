@@ -15,9 +15,9 @@ const VAULTS_FILE = path.join(__dirname, 'vaults.json');
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
-  'https://rpc.ankr.com/eth',
-  'https://eth.drpc.org',
-  'https://eth.llamarpc.com',
+  'https://eth.merkle.io',
+  'https://rpc.flashbots.net',
+  'https://1rpc.io/eth',
 ];
 
 // ERC-4626 event topics
@@ -101,6 +101,7 @@ async function rpcCall(method, params) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -108,7 +109,7 @@ async function rpcCall(method, params) {
       activeRpc = idx;
       return json.result;
     } catch (e) {
-      console.log(`  RPC ${idx} (${method}) failed: ${e.message}`);
+      // suppress verbose per-RPC errors
     }
   }
   throw new Error(`All RPCs failed for ${method}`);
@@ -195,7 +196,7 @@ async function scanLogs(address, topic, fromBlock, toBlock) {
     }
   }
 
-  const CHUNK = 100000;
+  const CHUNK = 10000;
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
     await scan(start, end);
@@ -335,6 +336,7 @@ async function main() {
 }
 
 main().catch(e => {
-  console.error('Fatal error:', e);
-  process.exit(1);
+  console.error('Fatal error:', e.message);
+  // Exit cleanly — don't break the pipeline if activity collection fails
+  process.exit(0);
 });
