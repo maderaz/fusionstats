@@ -22,13 +22,20 @@ const RPCS = [
 const FACTORY_ADDRESS = '0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852';
 // keccak256("FusionInstanceCreated(uint256,uint256,string,string,uint8,address,string,uint8,address,address,address,address)")
 const FUSION_INSTANCE_CREATED_TOPIC = '0x9c0af8f185eba94f5cd30afcaee7c849a3ce40571f1f27677b1de7383aa9e78f';
-// Factory was deployed around this block (safe starting point)
+// First known Fusion vault activity is around block 24,500,000 — factory deployed before that
 const FACTORY_DEPLOY_BLOCK = 21000000;
 
 let activeRpc = 0;
 let callId = 0;
 
+// Global timeout — abort after 90 seconds to avoid blocking the pipeline
+const GLOBAL_TIMEOUT_MS = 90_000;
+const startTime = Date.now();
+
 async function rpcCall(method, params) {
+  if (Date.now() - startTime > GLOBAL_TIMEOUT_MS) {
+    throw new Error('Global timeout exceeded');
+  }
   const order = [activeRpc, ...RPCS.map((_, i) => i).filter(i => i !== activeRpc)];
   for (const idx of order) {
     try {
@@ -36,6 +43,7 @@ async function rpcCall(method, params) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
