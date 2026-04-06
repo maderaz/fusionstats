@@ -77,6 +77,7 @@ function loadVaults() {
 
 // Stablecoin detection: symbol contains USD/DAI
 function isStablecoin(symbol) {
+  if (!symbol) return false;
   const s = symbol.toUpperCase();
   return s.includes('USD') || s.includes('DAI') || s === 'FRAX';
 }
@@ -302,7 +303,7 @@ async function main() {
   }
 
   // Backfill prices for any events still missing usdValue (works without RPC)
-  const needPrices = data.events.filter(e => e.usdValue == null && e.timestamp);
+  const needPrices = data.events.filter(e => e.usdValue == null && e.timestamp && e.symbol);
   if (needPrices.length > 0) {
     console.log(`\nBackfilling prices for ${needPrices.length} events...`);
     await enrichWithPrices(needPrices);
