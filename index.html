@@ -379,6 +379,7 @@
 
         renderStats({ net24h, net7d, net30d });
         renderTable(events.slice(0, 500), data.updatedAt);
+        checkForFireEvents(events);
 
       } catch (err) {
         console.error('Error:', err);
@@ -469,7 +470,82 @@
       }
     }
 
+    // --- Fire favicon: alert for significant new activity ---
+    const FIRE_THRESHOLD_USD = 10000;
+    const LAST_SEEN_KEY = 'fusionstats_last_seen';
+    let fireActive = false;
+
+    function setFavicon(emoji) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.font = '56px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(emoji, 32, 36);
+      link.href = canvas.toDataURL();
+    }
+
+    function clearFire() {
+      if (!fireActive) return;
+      fireActive = false;
+      document.title = 'Activity \u2014 Fusion Stats';
+      setFavicon('\u26d4'); // default: no-entry circle (neutral)
+      // remove favicon entirely to revert to default
+      const link = document.querySelector("link[rel~='icon']");
+      if (link) link.remove();
+    }
+
+    function checkForFireEvents(events) {
+      const lastSeen = parseInt(localStorage.getItem(LAST_SEEN_KEY) || '0', 10);
+      const now = Math.floor(Date.now() / 1000);
+
+      // Find significant events since last visit
+      const newBig = events.filter(e =>
+        (e.timestamp || 0) > lastSeen &&
+        e.usdValue != null &&
+        Math.abs(e.usdValue) >= FIRE_THRESHOLD_USD
+      );
+
+      if (newBig.length > 0 && !document.hasFocus()) {
+        fireActive = true;
+        const totalUsd = newBig.reduce((s, e) => s + Math.abs(e.usdValue), 0);
+        const label = totalUsd >= 1e6
+          ? '$' + (totalUsd / 1e6).toFixed(1) + 'M'
+          : '$' + (totalUsd / 1e3).toFixed(0) + 'K';
+        document.title = `\uD83D\uDD25 ${label} new \u2014 Fusion Stats`;
+        setFavicon('\uD83D\uDD25');
+      }
+    }
+
+    // Mark as seen on click
+    document.addEventListener('click', () => {
+      localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
+      clearFire();
+    }, { once: false });
+
+    // Also clear when tab gains focus + user clicks
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && fireActive) {
+        // Don't clear immediately — wait for a click to confirm they saw it
+      }
+    });
+
+    // On first load, set last_seen if never set
+    if (!localStorage.getItem(LAST_SEEN_KEY)) {
+      localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
+    }
+
     loadActivity();
+
+    // Re-fetch every 5 minutes to detect new events while tab is open
+    setInterval(loadActivity, 5 * 60 * 1000);
   </script>
 </body>
 </html>
