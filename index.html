@@ -270,9 +270,83 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 1rem; }
-      .stats-row { grid-template-columns: 1fr 1fr; }
-      td, th { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.5rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Stats row: horizontal scroll snap on mobile */
+      .stats-row {
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+        gap: 0.5rem;
+      }
+      .stat-card { padding: 0.75rem 0.9rem; }
+      .stat-card .value { font-size: 1.1rem; }
+      .stat-card .label { font-size: 0.6rem; }
+      .stat-card .sub { font-size: 0.65rem; }
+
+      /* Activity card */
+      .activity-card h2 {
+        padding: 1rem 1rem;
+        font-size: 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      .activity-card h2 > span { float: none !important; text-align: left !important; }
+
+      /* Hide table, show card list instead */
+      .activity-card table { display: none; }
+      .mobile-events { display: block; }
+    }
+
+    /* Mobile event cards (hidden on desktop) */
+    .mobile-events { display: none; padding: 0.5rem; }
+    .mobile-event {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid var(--stroke);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .mobile-event:last-child { border-bottom: none; }
+    .mobile-event-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .mobile-event-when {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+    .mobile-event-amount {
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .mobile-event-usd {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+    .mobile-event-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      color: var(--text-body);
+      gap: 0.5rem;
+    }
+    .mobile-event-product {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mobile-event-user {
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
     }
   </style>
 </head>
@@ -424,6 +498,7 @@
       }
 
       let rows = '';
+      let mobileRows = '';
       events.forEach(e => {
         const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
         const badgeClass = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
@@ -431,6 +506,7 @@
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
         const usd = e.usdValue != null ? `<span class="usd-value">$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '';
+        const usdMobile = e.usdValue != null ? `$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '';
         rows += `<tr>
           <td>${time}</td>
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
@@ -438,6 +514,20 @@
           <td class="vault-name">${name}</td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
         </tr>`;
+        mobileRows += `<div class="mobile-event">
+          <div class="mobile-event-top">
+            <a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>
+            <span class="mobile-event-when">${time}</span>
+          </div>
+          <div class="mobile-event-top">
+            <span class="mobile-event-amount">${formatAmount(e.assets)} ${sym}</span>
+            <span class="mobile-event-usd">${usdMobile}</span>
+          </div>
+          <div class="mobile-event-meta">
+            <span class="mobile-event-product" title="${name}">${name}</span>
+            <a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>
+          </div>
+        </div>`;
       });
 
       content.innerHTML = `
@@ -451,6 +541,7 @@
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
+        <div class="mobile-events">${mobileRows}</div>
       `;
 
       // Show last updated in header
