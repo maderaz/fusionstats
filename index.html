@@ -269,6 +269,52 @@
       margin-bottom: 2rem;
     }
 
+    /* Activity filters */
+    .activity-filters {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--stroke);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 0 1 auto;
+      min-width: 0;
+    }
+    .filter-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .activity-filters select {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.4rem 1.8rem 0.4rem 0.7rem;
+      background: var(--bg);
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      color: var(--text);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%239BA3AF' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      max-width: 100%;
+      text-overflow: ellipsis;
+    }
+    .activity-filters select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
     /* Mobile event cards (hidden on desktop by default) */
     .mobile-events { display: none; }
     .mobile-event {
@@ -357,6 +403,23 @@
         margin-top: 0.35rem;
       }
 
+      /* Filters: stack on mobile, full-width selects */
+      .activity-filters {
+        padding: 0.75rem 1rem;
+        gap: 0.6rem;
+      }
+      .filter-group {
+        flex: 1 1 100%;
+        min-width: 0;
+      }
+      .activity-filters select {
+        flex: 1;
+        min-width: 0;
+      }
+      .filter-label {
+        min-width: 5.5rem;
+      }
+
       /* Swap table → cards */
       .activity-card table { display: none; }
       .mobile-events { display: block; }
@@ -386,6 +449,23 @@
 
     <div class="activity-card">
       <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.4;text-align:right;"></span></h2>
+      <div class="activity-filters">
+        <label class="filter-group">
+          <span class="filter-label">Min amount</span>
+          <select id="filterAmount">
+            <option value="0">All</option>
+            <option value="1000" selected>≥ $1K</option>
+            <option value="10000">≥ $10K</option>
+            <option value="100000">≥ $100K</option>
+          </select>
+        </label>
+        <label class="filter-group">
+          <span class="filter-label">Product</span>
+          <select id="filterProduct">
+            <option value="">All products</option>
+          </select>
+        </label>
+      </div>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
@@ -422,6 +502,40 @@
       if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
       if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
       return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    // Filter state (persisted in localStorage)
+    let allEvents = [];
+    let lastUpdatedAt = null;
+    const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
+    const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
+
+    function applyFilters() {
+      const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
+      const product = document.getElementById('filterProduct').value;
+      localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
+      localStorage.setItem(FILTER_PRODUCT_KEY, product);
+
+      const filtered = allEvents.filter(e => {
+        if (minAmount > 0) {
+          const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+          if (usd < minAmount) return false;
+        }
+        if (product && e.vaultName !== product) return false;
+        return true;
+      });
+      renderTable(filtered.slice(0, 500), lastUpdatedAt);
+    }
+
+    function populateProductFilter() {
+      const select = document.getElementById('filterProduct');
+      const current = select.value;
+      const names = [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
+      select.innerHTML = '<option value="">All products</option>'
+        + names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+      // Restore previous selection if still valid
+      const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
+      if (stored && names.includes(stored)) select.value = stored;
     }
 
     async function loadActivity() {
@@ -464,8 +578,21 @@
           vaultCountEl.style.display = 'inline-block';
         }
 
+        allEvents = events;
+        lastUpdatedAt = data.updatedAt;
+        populateProductFilter();
+
+        // Restore stored amount filter (default $1K = already selected in HTML)
+        const storedAmount = localStorage.getItem(FILTER_AMOUNT_KEY);
+        if (storedAmount !== null) {
+          const amountSel = document.getElementById('filterAmount');
+          if ([...amountSel.options].some(o => o.value === storedAmount)) {
+            amountSel.value = storedAmount;
+          }
+        }
+
         renderStats({ net24h, net7d, net30d });
-        renderTable(events.slice(0, 500), data.updatedAt);
+        applyFilters();
         checkForFireEvents(events);
 
       } catch (err) {
@@ -506,7 +633,10 @@
     function renderTable(events, updatedAt) {
       const content = document.getElementById('activityContent');
       if (!events.length) {
-        content.innerHTML = '<div class="loading-msg">No events yet — collector may not have run</div>';
+        const msg = allEvents.length > 0
+          ? 'No events match the current filters'
+          : 'No events yet — collector may not have run';
+        content.innerHTML = `<div class="loading-msg">${msg}</div>`;
         return;
       }
 
@@ -645,6 +775,10 @@
     if (!localStorage.getItem(LAST_SEEN_KEY)) {
       localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
     }
+
+    // Filter change handlers
+    document.getElementById('filterAmount').addEventListener('change', applyFilters);
+    document.getElementById('filterProduct').addEventListener('change', applyFilters);
 
     loadActivity();
 
