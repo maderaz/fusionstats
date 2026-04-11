@@ -68,6 +68,7 @@
 
     .top-nav {
       display: flex;
+      align-items: center;
       gap: 0.25rem;
       margin-bottom: 1.5rem;
     }
@@ -110,12 +111,10 @@
     header p { color: var(--text-body); font-size: 0.875rem; }
 
     .theme-toggle {
-      position: fixed;
-      top: 1.25rem;
-      right: 1.25rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      margin-left: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       border: 1px solid var(--stroke);
       background: var(--surface);
       color: var(--text-body);
@@ -123,9 +122,75 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      z-index: 100;
+      font-size: 1rem;
+      flex-shrink: 0;
       transition: background 0.2s, border-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Mobile holder cards (hidden on desktop) */
+    .holders-mobile { display: none; }
+
+    .holder-card-mobile {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .holder-card-mobile.is-vault {
+      background: var(--spark-orange-bg);
+      border-color: var(--spark-orange);
+    }
+
+    .holder-card-mobile .hcm-top {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .holder-card-mobile .hcm-rank {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .holder-card-mobile .hcm-name {
+      font-size: 0.85rem;
+      color: var(--text);
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .holder-card-mobile .hcm-name a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .holder-card-mobile .hcm-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    .holder-card-mobile .hcm-stats .hcm-label {
+      font-size: 0.6rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .holder-card-mobile .hcm-stats .hcm-val {
+      font-size: 0.8rem;
+      color: var(--text);
     }
 
     .info-box {
@@ -442,16 +507,48 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 1rem; }
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Top nav: horizontal scroll on narrow screens */
+      .top-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+
       .stats-row, .stats-row-3 { grid-template-columns: 1fr; }
       .position-grid { grid-template-columns: 1fr; }
       .position-cell:nth-child(odd) { border-right: none; }
+      .stat-card { padding: 1.1rem 1.2rem; }
       .stat-card .value { font-size: 1.5rem; }
+      .stat-card .value-sm { font-size: 1.25rem; }
+      .info-box { padding: 0.85rem 1rem; font-size: 0.75rem; }
+
+      .position-card h2,
+      .rank-table h2 { padding: 1rem 1.1rem; font-size: 0.9rem; }
+      .position-cell { padding: 1rem 1.1rem; }
+      .position-cell .pos-value { font-size: 1.1rem; }
+
+      /* Swap holder table for stacked cards */
+      .rank-table { display: none; }
+      .holders-mobile { display: block; margin-bottom: 2rem; }
+
+      /* Rank chart scales down */
+      .rank-chart-card { padding: 1rem 0.9rem; }
+      .rank-chart-area { height: 150px; }
+      .rank-chart-y { min-width: 28px; font-size: 0.6rem; padding-right: 0.5rem; }
+      .rank-chart-x { padding-left: 28px; }
+      .rank-chart-x span { font-size: 0.55rem; }
     }
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
   <div class="container">
     <nav class="top-nav">
       <a href="/">Activity</a>
@@ -459,6 +556,7 @@
       <a href="/spark" class="active">Spark</a>
       <a href="/logs">Logs</a>
       <a href="/socials">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
@@ -788,19 +886,43 @@
         ? `Supply APY ${d.supplyApy.toFixed(2)}% · Borrow ${d.borrowApy?.toFixed(2) || '—'}%`
         : 'Rate data unavailable';
 
-      // Holder leaderboard rows
+      // Holder leaderboard rows (desktop table + mobile cards)
       let holderRows = '';
+      let holderCards = '';
       d.holders.forEach((h, i) => {
         const isVault = h.addr.toLowerCase() === VAULT_ADDRESS.toLowerCase();
         const cls = isVault ? ' class="is-vault"' : '';
         const name = h.label || shortAddr(h.addr);
+        const nameCell = isVault
+          ? '<strong>' + name + '</strong>'
+          : '<a href="https://etherscan.io/address/' + h.addr + '" target="_blank" rel="noopener" class="addr-link">' + name + '</a>';
         holderRows += `<tr${cls}>
           <td style="text-align:center">${i + 1}</td>
-          <td>${isVault ? '<strong>' + name + '</strong>' : '<a href="https://etherscan.io/address/' + h.addr + '" target="_blank" rel="noopener" class="addr-link">' + name + '</a>'}</td>
+          <td>${nameCell}</td>
           <td class="num-bold" style="text-align:right">${formatEth(h.balance)}</td>
           <td class="num-bold" style="text-align:right">${formatUsd(h.balance * d.wstethPrice)}</td>
           <td style="text-align:right">${h.share.toFixed(2)}%</td>
         </tr>`;
+        holderCards += `<div class="holder-card-mobile${isVault ? ' is-vault' : ''}">
+          <div class="hcm-top">
+            <span class="hcm-rank">#${i + 1}</span>
+            <span class="hcm-name">${nameCell}</span>
+          </div>
+          <div class="hcm-stats">
+            <div>
+              <div class="hcm-label">Balance</div>
+              <div class="hcm-val num-bold">${formatEth(h.balance)}</div>
+            </div>
+            <div>
+              <div class="hcm-label">Value</div>
+              <div class="hcm-val num-bold">${formatUsd(h.balance * d.wstethPrice)}</div>
+            </div>
+            <div>
+              <div class="hcm-label">Share</div>
+              <div class="hcm-val num-bold">${h.share.toFixed(2)}%</div>
+            </div>
+          </div>
+        </div>`;
       });
 
       main.innerHTML = `
@@ -874,6 +996,7 @@
             <tbody>${holderRows}</tbody>
           </table>
         </div>
+        <div class="holders-mobile">${holderCards}</div>
         ` : ''}
 
         <div class="data-ts">

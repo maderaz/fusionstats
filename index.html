@@ -68,6 +68,14 @@
       display: flex;
       gap: 0.25rem;
       margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .top-nav-links {
+      display: flex;
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
     }
 
     .top-nav a {
@@ -93,12 +101,9 @@
     }
 
     .theme-toggle {
-      position: fixed;
-      top: 1.25rem;
-      right: 1.25rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       border: 1px solid var(--stroke);
       background: var(--surface);
       color: var(--text-body);
@@ -106,8 +111,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      z-index: 100;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
 
     header { margin-bottom: 2rem; }
@@ -371,15 +376,17 @@
       h1 { font-size: 1.65rem; }
       header p { font-size: 0.8rem; }
 
-      /* Top nav: allow horizontal scroll on narrow screens */
-      .top-nav {
+      /* Top nav: links scroll horizontally, theme toggle stays pinned right */
+      .top-nav { gap: 0.5rem; }
+      .top-nav-links {
         overflow-x: auto;
         flex-wrap: nowrap;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
       }
-      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav-links::-webkit-scrollbar { display: none; }
       .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
 
       /* Stats row: 3 columns but narrower cards */
       .stats-row {
@@ -427,14 +434,16 @@
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
   <div class="container">
     <nav class="top-nav">
-      <a href="/" class="active">Activity</a>
-      <a href="/dominance">Dominance</a>
-      <a href="/spark">Spark</a>
-      <a href="/logs">Logs</a>
-      <a href="/socials">Socials</a>
+      <div class="top-nav-links">
+        <a href="/" class="active">Activity</a>
+        <a href="/dominance">Dominance</a>
+        <a href="/spark">Spark</a>
+        <a href="/logs">Logs</a>
+        <a href="/socials">Socials</a>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>

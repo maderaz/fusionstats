@@ -445,6 +445,7 @@
 
     .top-nav {
       display: flex;
+      align-items: center;
       gap: 0.25rem;
       margin-bottom: 1.5rem;
     }
@@ -472,12 +473,10 @@
     }
 
     .theme-toggle {
-      position: fixed;
-      top: 1.25rem;
-      right: 1.25rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      margin-left: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       border: 1px solid var(--stroke);
       background: var(--surface);
       color: var(--text-body);
@@ -485,8 +484,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
-      z-index: 100;
+      font-size: 1rem;
+      flex-shrink: 0;
       transition: background 0.2s, border-color 0.2s;
     }
 
@@ -495,16 +494,125 @@
       color: var(--accent);
     }
 
+    /* Mobile vault cards (hidden on desktop) */
+    .vaults-mobile { display: none; }
+
+    .vault-card-mobile {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .vault-card-mobile .vcm-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.15rem;
+    }
+
+    .vault-card-mobile .vcm-addr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+      word-break: break-all;
+    }
+
+    .vault-card-mobile .vcm-addr a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .vault-card-mobile .vcm-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .vault-card-mobile .vcm-stat-label {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.15rem;
+    }
+
+    .vault-card-mobile .vcm-stat-value {
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    .vault-card-mobile .vcm-share-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .vault-card-mobile .vcm-share-row .bar-bg {
+      flex: 1;
+      height: 6px;
+      background: var(--bg-alt);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .vault-card-mobile .vcm-share-row .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      border-radius: 3px;
+    }
+
+    .vault-card-mobile .vcm-share-row .vcm-share-pct {
+      min-width: 3.5rem;
+      text-align: right;
+      color: var(--text);
+      font-size: 0.85rem;
+    }
+
     @media (max-width: 640px) {
-      body { padding: 1rem; }
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Top nav: horizontal scroll on narrow screens */
+      .top-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+
       .stats-row { grid-template-columns: 1fr; }
-      .share-banner { flex-direction: column; gap: 0.75rem; text-align: center; }
+      .share-banner { flex-direction: column; gap: 0.75rem; text-align: center; padding: 1rem 1.1rem; }
       .share-banner .share-bar-outer { margin: 0; width: 100%; }
+      .stat-card { padding: 1.1rem 1.2rem; }
+      .stat-card .value { font-size: 1.6rem; }
+      .info-box { padding: 0.85rem 1rem; font-size: 0.75rem; }
+
+      /* Swap vault table for stacked cards */
+      .vault-table { display: none; }
+      .vaults-mobile { display: block; margin-bottom: 2rem; }
+
+      /* Chart scales down */
+      .chart-card { padding: 1rem 0.9rem; }
+      .chart-area { height: 180px; }
+      .chart-y-axis { min-width: 38px; font-size: 0.6rem; padding-right: 0.5rem; }
+      .chart-x-row { padding-left: 38px; }
+      .chart-x-row span { font-size: 0.55rem; }
+      .chart-legend { gap: 0.75rem; font-size: 0.65rem; flex-wrap: wrap; }
+
+      .debug-log { padding: 1rem; }
+      .debug-log pre { font-size: 0.65rem; max-height: 220px; }
     }
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
   <div class="container">
     <nav class="top-nav">
       <a href="/">Activity</a>
@@ -512,6 +620,7 @@
       <a href="/spark">Spark</a>
       <a href="/logs">Logs</a>
       <a href="/socials">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
@@ -577,6 +686,8 @@
         </tbody>
       </table>
     </div>
+
+    <div class="vaults-mobile" id="vaultsMobile"></div>
 
     <div class="debug-log">
       <h2>API Log</h2>
@@ -994,6 +1105,8 @@
       // Vault table
       const tbody = document.getElementById('vaultTableBody');
       tbody.innerHTML = '';
+      const mobileContainer = document.getElementById('vaultsMobile');
+      if (mobileContainer) mobileContainer.innerHTML = '';
 
       const sorted = vaultResults.slice().sort((a, b) => {
         const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
@@ -1031,6 +1144,36 @@
           </td>
         `;
         tbody.appendChild(tr);
+
+        // Mobile card
+        if (mobileContainer) {
+          const card = document.createElement('div');
+          card.className = 'vault-card-mobile';
+          if (!hasPosition) card.style.opacity = '0.5';
+          const sharePct = maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0;
+          card.innerHTML = `
+            <div class="vcm-name">${displayName}</div>
+            <div class="vcm-addr">
+              <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
+              · ${hasPosition ? marketsLabel : 'no Morpho positions'}
+            </div>
+            <div class="vcm-stats">
+              <div>
+                <div class="vcm-stat-label">Borrowed</div>
+                <div class="vcm-stat-value num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</div>
+              </div>
+              <div>
+                <div class="vcm-stat-label">Collateral</div>
+                <div class="vcm-stat-value num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</div>
+              </div>
+            </div>
+            <div class="vcm-share-row">
+              <div class="bar-bg"><div class="bar-fill" style="width: ${sharePct}%"></div></div>
+              <span class="vcm-share-pct num-bold">${vaultShare.toFixed(1)}%</span>
+            </div>
+          `;
+          mobileContainer.appendChild(card);
+        }
       });
 
       log(fromCache ? '=== LOADED FROM CACHE ===' : '=== FRESH DATA ===');
