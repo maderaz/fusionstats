@@ -187,28 +187,23 @@
       flex: 1;
       height: 100%;
       position: relative;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
       z-index: 1;
     }
     .flow-bar {
-      width: 100%;
+      position: absolute;
+      left: 0;
+      right: 0;
       min-height: 2px;
       border-radius: 3px;
       transition: opacity 0.15s;
     }
     .flow-bar.positive {
       background: var(--green);
-      align-self: flex-end;
-      margin-top: auto;
-      margin-bottom: 50%;
+      bottom: 50%;
     }
     .flow-bar.negative {
       background: var(--red);
-      align-self: flex-start;
-      margin-top: 50%;
-      margin-bottom: auto;
+      top: 50%;
     }
     .flow-bar-slot:hover .flow-bar { opacity: 0.7; }
     .flow-bar-slot .flow-bar-tooltip {
