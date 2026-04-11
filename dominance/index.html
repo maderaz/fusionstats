@@ -358,6 +358,8 @@
       align-items: flex-end;
       gap: 2px;
       position: relative;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .chart-bar-slot {
@@ -602,10 +604,12 @@
       /* Chart scales down */
       .chart-card { padding: 1rem 0.9rem; }
       .chart-area { height: 180px; }
-      .chart-y-axis { min-width: 38px; font-size: 0.6rem; padding-right: 0.5rem; }
-      .chart-x-row { padding-left: 38px; }
+      .chart-y-axis { min-width: 34px; font-size: 0.55rem; padding-right: 0.4rem; }
+      .chart-x-row { padding-left: 34px; }
       .chart-x-row span { font-size: 0.55rem; }
       .chart-legend { gap: 0.75rem; font-size: 0.65rem; flex-wrap: wrap; }
+      .chart-bars-container { gap: 1px; }
+      .chart-bar-track { width: 3px; }
 
       .debug-log { padding: 1rem; }
       .debug-log pre { font-size: 0.65rem; max-height: 220px; }
@@ -945,8 +949,16 @@
         }
       }
 
-      // Show at most 80 bars to fit the chart area
-      const MAX_BARS = 80;
+      // Figure out how many bars fit in the current chart width.
+      // Read the actual container width and divide by (bar width + gap).
+      // Falls back to 80 when the container isn't laid out yet.
+      const containerWidth = barsEl.clientWidth || barsEl.parentElement?.clientWidth || 0;
+      const isNarrow = window.matchMedia('(max-width: 640px)').matches;
+      const barPitch = isNarrow ? 4 : 8; // track width + gap
+      const fitBars = containerWidth > 0
+        ? Math.max(10, Math.floor(containerWidth / barPitch))
+        : 80;
+      const MAX_BARS = Math.min(80, fitBars);
       if (dataPoints.length > MAX_BARS) {
         dataPoints.splice(0, dataPoints.length - MAX_BARS);
       }
@@ -1197,13 +1209,29 @@
       return { fusionBorrowed, totalLoans: loansData.total };
     }
 
+    // Cache the latest history + liveData so resize handlers can re-render
+    // the bar chart with a new bar count without refetching anything.
+    let _lastHistory = [];
+    let _lastLiveData = null;
+    let _resizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(() => {
+        if (_lastHistory.length > 0 || _lastLiveData) {
+          renderChart(_lastHistory, _lastLiveData);
+        }
+      }, 150);
+    });
+
     async function run() {
       const history = await loadHistory();
 
       const cached = getCachedData();
       if (cached) {
         log('Using cached data (< 15 min old). Skipping API calls.');
-        renderChart(history, getLiveDataForChart(cached.loansData, cached.vaultResults));
+        _lastHistory = history;
+        _lastLiveData = getLiveDataForChart(cached.loansData, cached.vaultResults);
+        renderChart(_lastHistory, _lastLiveData);
         await renderDashboard(cached.loansData, cached.vaultResults, true);
         return;
       }
@@ -1215,12 +1243,16 @@
           fetchAllVaultPositions(FUSION_VAULTS)
         ]);
         setCachedData(loansData, vaultResults);
-        renderChart(history, getLiveDataForChart(loansData, vaultResults));
+        _lastHistory = history;
+        _lastLiveData = getLiveDataForChart(loansData, vaultResults);
+        renderChart(_lastHistory, _lastLiveData);
         await renderDashboard(loansData, vaultResults, false);
       } catch (err) {
         console.error('Init error:', err);
         log(`ERROR: ${err.message}`);
-        renderChart(history, null);
+        _lastHistory = history;
+        _lastLiveData = null;
+        renderChart(_lastHistory, _lastLiveData);
         document.getElementById('totalLoans').textContent = 'Error';
         document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
       }
