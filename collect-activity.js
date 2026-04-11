@@ -11,6 +11,20 @@ const fs = require('fs');
 const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
+const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
+
+// Only scan Ethereum mainnet vaults (we only have mainnet RPC infrastructure).
+// Activity scanning across other chains would require per-chain RPCs.
+const SCAN_CHAIN = 'ethereum';
+const SCAN_CHAIN_ID = 1;
+
+// Minimum TVL ($) for a vault to be actively scanned.
+// Filters out test/clone vaults with no real activity — we still KEEP them
+// in the list but skip RPC scans for them until they have TVL.
+const MIN_TVL_USD = 1000;
+
+// Initial backfill window for newly-discovered vaults
+const NEW_VAULT_BACKFILL_BLOCKS = 50_000; // ~7 days on mainnet
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
@@ -68,11 +82,53 @@ const FALLBACK_VAULTS = [
   { address: '0xdab31950ddcc814c49e6bbd5153dd2062e44f368', name: 'Tesseract Managed BTC', symbol: 'WBTC', decimals: 8 },
 ];
 
-// Always use curated vault list for activity scanning (RPC-intensive).
-// The full factory list (90+ vaults) includes test/empty vaults and is too
-// expensive to scan via free RPCs. New production vaults should be added here.
+// Decimals lookup by underlying token symbol (used when ipor-vaults.json
+// doesn't supply decimals). Covers common tokens. Unknown tokens default to 18.
+const DECIMALS_BY_SYMBOL = {
+  USDC: 6, USDT: 6, DAI: 18, USDe: 18, crvUSD: 18, sUSDe: 18, GHO: 18,
+  syrupUSDT: 6, syrupUSDC: 6, stcUSD: 18, wsrUSD: 18, rUSD: 18, srUSD: 18,
+  WETH: 18, stETH: 18, wstETH: 18, weETH: 18, cbETH: 18, rETH: 18,
+  WBTC: 8, cbBTC: 8, tBTC: 18, PAXG: 18, XAUt: 6,
+  BOLD: 18, mHYPER: 18, EURC: 6, ZCHF: 18, slvlUSD: 18, csUSDL: 18, sUSDf: 18,
+};
+
+function decimalsFor(symbol) {
+  if (symbol && DECIMALS_BY_SYMBOL[symbol] != null) return DECIMALS_BY_SYMBOL[symbol];
+  return 18;
+}
+
+// Load vaults from ipor-vaults.json (populated by collect-ipor-vaults.js).
+// Falls back to FALLBACK_VAULTS if the file doesn't exist.
+// Filters to SCAN_CHAIN only — activity scanning is Ethereum-mainnet only.
 function loadVaults() {
-  return FALLBACK_VAULTS;
+  let iporData = null;
+  try {
+    iporData = JSON.parse(fs.readFileSync(IPOR_VAULTS_FILE, 'utf8'));
+  } catch (e) {
+    console.log(`ipor-vaults.json unavailable (${e.message}), using fallback list`);
+    return FALLBACK_VAULTS;
+  }
+
+  const all = (iporData.vaults || []).filter(v =>
+    v.chain === SCAN_CHAIN || v.chainId === SCAN_CHAIN_ID
+  );
+
+  // Prefer vaults with reported TVL above the threshold. Vaults without TVL
+  // data (source=github, no api response) get included too — we'll scan them
+  // once and let lastBlock dedup future work.
+  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD || v.tvl === 0);
+
+  console.log(`Loaded ${iporData.vaults.length} total vaults from IPOR, ` +
+              `${all.length} on ${SCAN_CHAIN}, ${tracked.length} above $${MIN_TVL_USD} TVL filter`);
+
+  return tracked.map(v => ({
+    address: v.address.toLowerCase(),
+    name: v.name || 'Unknown',
+    symbol: v.token || '?',
+    decimals: decimalsFor(v.token),
+    underlyingToken: v.assetAddress || null,
+    tvl: v.tvl || 0,
+  }));
 }
 
 // Stablecoin detection: symbol contains USD/DAI
@@ -251,7 +307,7 @@ async function main() {
     console.log(`Current block: ${currentBlock}`);
 
     for (const vault of VAULTS) {
-      const lastBlock = data.lastBlock[vault.address] || (currentBlock - 220000); // default: 30 days back
+      const lastBlock = data.lastBlock[vault.address] || (currentBlock - NEW_VAULT_BACKFILL_BLOCKS); // ~7 days back for new vaults
       const fromBlock = lastBlock + 1;
 
       if (fromBlock > currentBlock) {
