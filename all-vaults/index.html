@@ -256,7 +256,16 @@
       color: var(--text-body);
       white-space: nowrap;
     }
-    .deployed-date .na { color: var(--text-secondary); }
+    .deployed-date.na { color: var(--text-secondary); }
+
+    .tvl-value {
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .tvl-value.na { color: var(--text-secondary); font-weight: 400; }
 
     .empty-state {
       text-align: center;
@@ -412,6 +421,14 @@
       }
     }
 
+    function formatTvl(v) {
+      if (v == null || v === 0) return null;
+      if (v >= 1e9) return '$' + (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+      if (v >= 1e6) return '$' + (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (v >= 1e3) return '$' + Math.round(v / 1e3) + 'K';
+      return '$' + Math.round(v);
+    }
+
     function explorerUrl(chain, addr) {
       const base = EXPLORERS[chain];
       return base ? base + addr : null;
@@ -419,7 +436,7 @@
 
     // State
     let allVaults = [];
-    let sortKey = 'deployedAt';
+    let sortKey = 'tvl';
     let sortDir = 'desc';
 
     async function loadData() {
@@ -496,11 +513,13 @@
       const dir = sortDir === 'asc' ? 1 : -1;
       return vaults.slice().sort((a, b) => {
         let av = a[sortKey], bv = b[sortKey];
-        // null deploy dates go to bottom regardless of sort direction
-        if (sortKey === 'deployedAt') {
-          if (!av && !bv) return 0;
-          if (!av) return 1;
-          if (!bv) return -1;
+        // Missing values (null dates, zero TVL) always sink to bottom
+        if (sortKey === 'deployedAt' || sortKey === 'tvl') {
+          const aMissing = sortKey === 'tvl' ? !(av > 0) : !av;
+          const bMissing = sortKey === 'tvl' ? !(bv > 0) : !bv;
+          if (aMissing && bMissing) return 0;
+          if (aMissing) return 1;
+          if (bMissing) return -1;
         }
         if (av == null) av = '';
         if (bv == null) bv = '';
@@ -541,10 +560,15 @@
         const dateCell = dateStr
           ? `<span class="deployed-date">${dateStr}</span>`
           : `<span class="deployed-date na">—</span>`;
+        const tvlStr = formatTvl(v.tvl);
+        const tvlCell = tvlStr
+          ? `<span class="tvl-value">${tvlStr}</span>`
+          : `<span class="tvl-value na">—</span>`;
 
         rows += `<tr>
           <td class="addr">${addrCell}</td>
           <td class="vault-name">${escapeHtml(v.name)}</td>
+          <td>${tvlCell}</td>
           <td><span class="ticker">${escapeHtml(v.ticker)}</span></td>
           <td><span class="chain-pill">${escapeHtml(v.chain)}</span></td>
           <td>${dateCell}</td>
@@ -553,10 +577,11 @@
         mobile += `<div class="vault-card">
           <div class="vault-card-top">
             <div class="vault-card-name">${escapeHtml(v.name)}</div>
-            <span class="ticker">${escapeHtml(v.ticker)}</span>
+            ${tvlCell}
           </div>
           <div class="vault-card-meta">
             <span class="chain-pill">${escapeHtml(v.chain)}</span>
+            <span class="ticker">${escapeHtml(v.ticker)}</span>
             ${dateStr ? `<span class="deployed-date">${dateStr}</span>` : `<span class="deployed-date na">—</span>`}
           </div>
           <div class="vault-card-meta">
@@ -571,6 +596,7 @@
             <tr>
               <th>Address</th>
               <th class="sortable" data-sort="name">Name<span class="sort-indicator">${indicator('name')}</span></th>
+              <th class="sortable" data-sort="tvl">TVL<span class="sort-indicator">${indicator('tvl')}</span></th>
               <th class="sortable" data-sort="ticker">Ticker<span class="sort-indicator">${indicator('ticker')}</span></th>
               <th class="sortable" data-sort="chain">Chain<span class="sort-indicator">${indicator('chain')}</span></th>
               <th class="sortable" data-sort="deployedAt">Deployed<span class="sort-indicator">${indicator('deployedAt')}</span></th>
@@ -589,7 +615,7 @@
             sortDir = sortDir === 'asc' ? 'desc' : 'asc';
           } else {
             sortKey = key;
-            sortDir = key === 'deployedAt' ? 'desc' : 'asc';
+            sortDir = (key === 'deployedAt' || key === 'tvl') ? 'desc' : 'asc';
           }
           render();
         });
