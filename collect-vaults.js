@@ -196,6 +196,29 @@ async function main() {
     }
   }).filter(Boolean);
 
+  // Fetch block timestamps for new vaults (small batch, only on first discovery)
+  if (newVaults.length > 0) {
+    console.log(`Fetching block timestamps for ${newVaults.length} new vaults...`);
+    const uniqueBlocks = [...new Set(newVaults.map(v => v.block))];
+    const blockTsMap = {};
+    for (let i = 0; i < uniqueBlocks.length; i += 5) {
+      const batch = uniqueBlocks.slice(i, i + 5);
+      const results = await Promise.all(batch.map(async b => {
+        try {
+          const blk = await rpcCall('eth_getBlockByNumber', ['0x' + b.toString(16), false]);
+          return blk ? parseInt(blk.timestamp, 16) : 0;
+        } catch {
+          return 0;
+        }
+      }));
+      batch.forEach((b, j) => { blockTsMap[b] = results[j]; });
+    }
+    newVaults.forEach(v => {
+      const ts = blockTsMap[v.block];
+      if (ts) v.deployedAt = new Date(ts * 1000).toISOString();
+    });
+  }
+
   // Merge with existing vaults (deduplicate by address)
   const existing = new Map(data.vaults.map(v => [v.address, v]));
   for (const v of newVaults) {

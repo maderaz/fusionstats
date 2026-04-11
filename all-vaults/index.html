@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Vaults — Fusion Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --red: #dc2626;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    header { margin-bottom: 1.5rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--text-body);
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .vault-count-badge {
+      font-size: 0.7rem;
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      padding: 0.15rem 0.5rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .theme-toggle {
+      margin-left: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Filters */
+    .filters-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+
+    .filters-bar input[type="search"],
+    .filters-bar select {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.45rem 0.7rem;
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filters-bar input[type="search"] {
+      flex: 1;
+      min-width: 180px;
+    }
+    .filters-bar input[type="search"]:focus,
+    .filters-bar select:focus {
+      border-color: var(--accent);
+    }
+    .filters-bar select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 1.8rem;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%239BA3AF' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.6rem center;
+      cursor: pointer;
+    }
+
+    /* Table */
+    .vaults-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      text-align: left;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      font-weight: 500;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+      user-select: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    thead th.sortable:hover { color: var(--accent); }
+    thead th .sort-indicator {
+      display: inline-block;
+      width: 0.8em;
+      opacity: 0.6;
+    }
+
+    tbody td {
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      border-bottom: 1px solid var(--stroke);
+      color: var(--text-body);
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: var(--accent-bg); }
+
+    .addr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+    }
+    .addr a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .addr a:hover { text-decoration: underline; }
+
+    .vault-name {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .ticker {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      background: var(--bg-alt);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      color: var(--text-body);
+    }
+
+    .chain-pill {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 500;
+      background: var(--accent-bg);
+      color: var(--accent);
+    }
+
+    .deployed-date {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-body);
+      white-space: nowrap;
+    }
+    .deployed-date .na { color: var(--text-secondary); }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    /* Mobile */
+    .vault-cards-mobile { display: none; }
+    .vault-card {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .vault-card:last-child { border-bottom: none; }
+    .vault-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+    .vault-card-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .vault-card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      gap: 0.5rem;
+    }
+    .vault-card-addr {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+
+      .top-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+
+      .filters-bar input[type="search"] { min-width: 0; flex: 1 1 100%; }
+      .filters-bar select { flex: 1; }
+
+      /* Hide table, show cards */
+      .vaults-card table { display: none; }
+      .vault-cards-mobile { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="/">Activity</a>
+      <a href="/dominance">Dominance</a>
+      <a href="/all-vaults" class="active">All Vaults</a>
+      <a href="/spark">Spark</a>
+      <a href="/logs">Logs</a>
+      <a href="/socials">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+    </nav>
+
+    <header>
+      <h1>All Vaults</h1>
+      <p>
+        Every Fusion vault discovered across all chains
+        <span id="vaultCount" class="vault-count-badge" style="display:none"></span>
+      </p>
+    </header>
+
+    <div class="filters-bar">
+      <input type="search" id="searchInput" placeholder="Search by name, ticker, or address…" autocomplete="off">
+      <select id="chainFilter">
+        <option value="">All chains</option>
+      </select>
+    </div>
+
+    <div class="vaults-card" id="vaultsContainer">
+      <div class="empty-state">Loading vaults…</div>
+    </div>
+  </div>
+
+  <script>
+    // Theme toggle
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+    document.getElementById('themeToggle').addEventListener('click', function() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+        this.innerHTML = '&#9790;';
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+        this.innerHTML = '&#9788;';
+      }
+    });
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      document.getElementById('themeToggle').innerHTML = '&#9788;';
+    }
+
+    // Known block explorers per chain
+    const EXPLORERS = {
+      ethereum: 'https://etherscan.io/address/',
+      arbitrum: 'https://arbiscan.io/address/',
+      base: 'https://basescan.org/address/',
+      unichain: 'https://uniscan.xyz/address/',
+      plasma: 'https://plasmascan.to/address/',
+      avalanche: 'https://snowtrace.io/address/',
+      tac: 'https://explorer.tac.build/address/',
+      ink: 'https://explorer.inkonchain.com/address/',
+      katana: 'https://explorer.katanarpc.com/address/',
+    };
+
+    // Mainnet block time approximation (for deriving dates from block numbers
+    // when deployedAt isn't stored). Falls back to "—" for non-ethereum vaults.
+    const ETH_AVG_BLOCK_TIME_S = 12;
+
+    function shortAddr(a) {
+      return a.slice(0, 6) + '…' + a.slice(-4);
+    }
+
+    function formatDate(iso) {
+      if (!iso) return null;
+      try {
+        return new Date(iso).toLocaleDateString('en-US', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    function explorerUrl(chain, addr) {
+      const base = EXPLORERS[chain];
+      return base ? base + addr : null;
+    }
+
+    // State
+    let allVaults = [];
+    let sortKey = 'deployedAt';
+    let sortDir = 'desc';
+
+    async function loadData() {
+      // Load both sources in parallel
+      const [iporRes, factoryRes] = await Promise.allSettled([
+        fetch('../ipor-vaults.json?t=' + Date.now()).then(r => r.ok ? r.json() : null),
+        fetch('../vaults.json?t=' + Date.now()).then(r => r.ok ? r.json() : null),
+      ]);
+
+      const iporData = iporRes.status === 'fulfilled' ? iporRes.value : null;
+      const factoryData = factoryRes.status === 'fulfilled' ? factoryRes.value : null;
+
+      // Build a lookup of block→deployment date from factory data (ethereum only)
+      const deploymentByAddress = {};
+      if (factoryData && Array.isArray(factoryData.vaults)) {
+        const refBlock = factoryData.lastBlock;
+        const refTimeMs = factoryData.updatedAt
+          ? new Date(factoryData.updatedAt).getTime()
+          : Date.now();
+        for (const v of factoryData.vaults) {
+          if (!v.address) continue;
+          let deployed = v.deployedAt || null;
+          if (!deployed && v.block && refBlock) {
+            const deltaBlocks = refBlock - v.block;
+            const estimatedMs = refTimeMs - deltaBlocks * ETH_AVG_BLOCK_TIME_S * 1000;
+            deployed = new Date(estimatedMs).toISOString();
+          }
+          if (deployed) {
+            deploymentByAddress[v.address.toLowerCase()] = deployed;
+          }
+        }
+      }
+
+      // Merge IPOR list (all chains) with deployment dates (ethereum only)
+      let vaults = [];
+      if (iporData && Array.isArray(iporData.vaults)) {
+        vaults = iporData.vaults.map(v => ({
+          chain: v.chain || 'unknown',
+          name: v.name || '(unnamed)',
+          ticker: v.token || v.symbol || '?',
+          address: (v.address || '').toLowerCase(),
+          tvl: v.tvl || 0,
+          deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
+        }));
+      } else if (factoryData && Array.isArray(factoryData.vaults)) {
+        // Fallback: just factory data (ethereum only)
+        vaults = factoryData.vaults.map(v => ({
+          chain: 'ethereum',
+          name: v.name || '(unnamed)',
+          ticker: v.symbol || '?',
+          address: (v.address || '').toLowerCase(),
+          tvl: 0,
+          deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
+        }));
+      }
+
+      return vaults;
+    }
+
+    function applyFilters(vaults) {
+      const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const chain = document.getElementById('chainFilter').value;
+      return vaults.filter(v => {
+        if (chain && v.chain !== chain) return false;
+        if (q) {
+          const hay = (v.name + ' ' + v.ticker + ' ' + v.address).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function sortVaults(vaults) {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      return vaults.slice().sort((a, b) => {
+        let av = a[sortKey], bv = b[sortKey];
+        // null deploy dates go to bottom regardless of sort direction
+        if (sortKey === 'deployedAt') {
+          if (!av && !bv) return 0;
+          if (!av) return 1;
+          if (!bv) return -1;
+        }
+        if (av == null) av = '';
+        if (bv == null) bv = '';
+        if (typeof av === 'string') av = av.toLowerCase();
+        if (typeof bv === 'string') bv = bv.toLowerCase();
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+    }
+
+    function render() {
+      const filtered = applyFilters(allVaults);
+      const sorted = sortVaults(filtered);
+
+      const countEl = document.getElementById('vaultCount');
+      countEl.textContent = sorted.length + ' of ' + allVaults.length + ' vaults';
+      countEl.style.display = 'inline-block';
+
+      const container = document.getElementById('vaultsContainer');
+      if (sorted.length === 0) {
+        container.innerHTML = '<div class="empty-state">No vaults match your filters.</div>';
+        return;
+      }
+
+      const indicator = (k) => sortKey === k
+        ? (sortDir === 'asc' ? ' ▲' : ' ▼')
+        : '';
+
+      let rows = '';
+      let mobile = '';
+      for (const v of sorted) {
+        const explorer = explorerUrl(v.chain, v.address);
+        const addrCell = explorer
+          ? `<a href="${explorer}" target="_blank" rel="noopener">${shortAddr(v.address)}</a>`
+          : shortAddr(v.address);
+        const dateStr = v.deployedAt ? formatDate(v.deployedAt) : null;
+        const dateCell = dateStr
+          ? `<span class="deployed-date">${dateStr}</span>`
+          : `<span class="deployed-date na">—</span>`;
+
+        rows += `<tr>
+          <td class="addr">${addrCell}</td>
+          <td class="vault-name">${escapeHtml(v.name)}</td>
+          <td><span class="ticker">${escapeHtml(v.ticker)}</span></td>
+          <td><span class="chain-pill">${escapeHtml(v.chain)}</span></td>
+          <td>${dateCell}</td>
+        </tr>`;
+
+        mobile += `<div class="vault-card">
+          <div class="vault-card-top">
+            <div class="vault-card-name">${escapeHtml(v.name)}</div>
+            <span class="ticker">${escapeHtml(v.ticker)}</span>
+          </div>
+          <div class="vault-card-meta">
+            <span class="chain-pill">${escapeHtml(v.chain)}</span>
+            ${dateStr ? `<span class="deployed-date">${dateStr}</span>` : `<span class="deployed-date na">—</span>`}
+          </div>
+          <div class="vault-card-meta">
+            <span class="addr vault-card-addr">${addrCell}</span>
+          </div>
+        </div>`;
+      }
+
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th class="sortable" data-sort="name">Name<span class="sort-indicator">${indicator('name')}</span></th>
+              <th class="sortable" data-sort="ticker">Ticker<span class="sort-indicator">${indicator('ticker')}</span></th>
+              <th class="sortable" data-sort="chain">Chain<span class="sort-indicator">${indicator('chain')}</span></th>
+              <th class="sortable" data-sort="deployedAt">Deployed<span class="sort-indicator">${indicator('deployedAt')}</span></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="vault-cards-mobile">${mobile}</div>
+      `;
+
+      // Wire sortable headers
+      container.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          if (sortKey === key) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortKey = key;
+            sortDir = key === 'deployedAt' ? 'desc' : 'asc';
+          }
+          render();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function populateChainFilter() {
+      const chains = [...new Set(allVaults.map(v => v.chain))].sort();
+      const sel = document.getElementById('chainFilter');
+      sel.innerHTML = '<option value="">All chains</option>'
+        + chains.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', render);
+    document.getElementById('chainFilter').addEventListener('change', render);
+
+    loadData().then(vaults => {
+      allVaults = vaults;
+      populateChainFilter();
+      render();
+    }).catch(err => {
+      console.error(err);
+      document.getElementById('vaultsContainer').innerHTML =
+        '<div class="empty-state">Failed to load vault data: ' + escapeHtml(err.message) + '</div>';
+    });
+  </script>
+</body>
+</html>
