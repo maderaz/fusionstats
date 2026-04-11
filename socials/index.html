@@ -54,25 +54,30 @@
     .container { max-width: 960px; margin: 0 auto; }
 
     .theme-toggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
+      margin-left: auto;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       border: 1px solid var(--stroke);
       background: var(--surface);
-      color: var(--text);
-      font-size: 1.2rem;
+      color: var(--text-body);
       cursor: pointer;
-      z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .top-nav {
       display: flex;
+      align-items: center;
       gap: 0.25rem;
       margin-bottom: 1.5rem;
     }
@@ -677,15 +682,58 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 1rem; }
-      .cube-canvas { width: 100%; }
-      .controls-row { flex-direction: column; }
-      .control-group input[type="text"] { width: 100%; }
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Top nav: horizontal scroll on narrow screens */
+      .top-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+
+      .generator-card { padding: 1rem; }
+      .generator-card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; }
+
+      .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .control-group { width: 100%; }
+      .control-group input[type="text"],
+      .control-group select {
+        width: 100%;
+        font-size: 0.85rem;
+      }
+      .control-group input[type="range"] { width: 100%; }
+
+      .btn { width: 100%; padding: 0.6rem 1rem; }
+      .logo-upload-wrap { flex-wrap: wrap; }
+
+      /* Canvas: always fit viewport on mobile, cap tall portraits */
+      .cube-canvas {
+        width: 100% !important;
+        max-width: 100%;
+      }
+      .canvas-wrapper {
+        margin: 1rem 0;
+        overflow: hidden;
+      }
+      .cube-text-overlay { font-size: 0.85rem; }
+      .cube-text-sub { font-size: 0.55rem; }
+
+      .download-info { font-size: 0.7rem; }
     }
   </style>
 </head>
 <body>
-  <button class="theme-toggle" id="themeToggle">&#9790;</button>
   <div class="container">
     <nav class="top-nav">
       <a href="/">Activity</a>
@@ -693,6 +741,7 @@
       <a href="/spark">Spark</a>
       <a href="/logs">Logs</a>
       <a href="/socials" class="active">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
