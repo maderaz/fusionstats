@@ -269,44 +269,14 @@
       margin-bottom: 2rem;
     }
 
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.5rem; }
-      header p { font-size: 0.8rem; }
-
-      /* Stats row: horizontal scroll snap on mobile */
-      .stats-row {
-        grid-template-columns: repeat(3, minmax(150px, 1fr));
-        gap: 0.5rem;
-      }
-      .stat-card { padding: 0.75rem 0.9rem; }
-      .stat-card .value { font-size: 1.1rem; }
-      .stat-card .label { font-size: 0.6rem; }
-      .stat-card .sub { font-size: 0.65rem; }
-
-      /* Activity card */
-      .activity-card h2 {
-        padding: 1rem 1rem;
-        font-size: 0.9rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-      .activity-card h2 > span { float: none !important; text-align: left !important; }
-
-      /* Hide table, show card list instead */
-      .activity-card table { display: none; }
-      .mobile-events { display: block; }
-    }
-
-    /* Mobile event cards (hidden on desktop) */
-    .mobile-events { display: none; padding: 0.5rem; }
+    /* Mobile event cards (hidden on desktop by default) */
+    .mobile-events { display: none; }
     .mobile-event {
-      padding: 0.75rem 0.85rem;
+      padding: 0.85rem 1rem;
       border-bottom: 1px solid var(--stroke);
       display: flex;
       flex-direction: column;
-      gap: 0.35rem;
+      gap: 0.5rem;
     }
     .mobile-event:last-child { border-bottom: none; }
     .mobile-event-top {
@@ -320,14 +290,15 @@
       color: var(--text-secondary);
     }
     .mobile-event-amount {
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
     .mobile-event-usd {
-      font-size: 0.75rem;
+      font-size: 0.78rem;
       color: var(--text-secondary);
       font-weight: 400;
+      font-variant-numeric: tabular-nums;
     }
     .mobile-event-meta {
       display: flex;
@@ -346,7 +317,49 @@
     .mobile-event-user {
       flex-shrink: 0;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
+      font-size: 0.7rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+
+      /* Top nav: allow horizontal scroll on narrow screens */
+      .top-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+
+      /* Stats row: 3 columns but narrower cards */
+      .stats-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+      }
+      .stat-card { padding: 0.75rem 0.7rem; }
+      .stat-card .value { font-size: 0.95rem; }
+      .stat-card .label { font-size: 0.6rem; margin-bottom: 0.35rem; }
+      .stat-card .sub { font-size: 0.62rem; }
+
+      /* Activity card header */
+      .activity-card h2 {
+        padding: 1rem 1rem;
+        font-size: 0.9rem;
+      }
+      .activity-card h2 > span {
+        float: none !important;
+        display: block;
+        text-align: left !important;
+        margin-top: 0.35rem;
+      }
+
+      /* Swap table → cards */
+      .activity-card table { display: none; }
+      .mobile-events { display: block; }
     }
   </style>
 </head>
