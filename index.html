@@ -416,14 +416,22 @@
       border-bottom: 1px solid var(--stroke);
       flex-wrap: nowrap;
       align-items: center;
+      overflow-x: auto;
     }
     .filter-group {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      flex: 0 1 auto;
+      flex-shrink: 0;
+    }
+    /* Product filter allowed to shrink so it doesn't blow the row */
+    .filter-group:has(#filterProduct) {
+      flex-shrink: 1;
       min-width: 0;
-      overflow: hidden;
+    }
+    .filter-group:has(#filterProduct) select {
+      min-width: 8rem;
+      max-width: 14rem;
     }
     .filter-label {
       font-size: 0.7rem;
@@ -447,8 +455,6 @@
       background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%239BA3AF' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
       background-position: right 0.6rem center;
-      max-width: 100%;
-      text-overflow: ellipsis;
       text-overflow: ellipsis;
     }
     .activity-filters select:focus {
