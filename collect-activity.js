@@ -24,7 +24,7 @@ const SCAN_CHAIN_ID = 1;
 const MIN_TVL_USD = 1000;
 
 // Initial backfill window for newly-discovered vaults
-const NEW_VAULT_BACKFILL_BLOCKS = 50_000; // ~7 days on mainnet
+const NEW_VAULT_BACKFILL_BLOCKS = 220_000; // ~30 days on mainnet
 
 const RPCS = [
   'https://ethereum-rpc.publicnode.com',
@@ -306,8 +306,18 @@ async function main() {
     const currentBlock = await getBlockNumber();
     console.log(`Current block: ${currentBlock}`);
 
+    // Reset lastBlock for vaults that were scanned but have zero events —
+    // they likely had a too-short backfill window and need a rescan.
+    const eventVaults = new Set(data.events.map(e => e.vault));
     for (const vault of VAULTS) {
-      const lastBlock = data.lastBlock[vault.address] || (currentBlock - NEW_VAULT_BACKFILL_BLOCKS); // ~7 days back for new vaults
+      if (data.lastBlock[vault.address] && !eventVaults.has(vault.address)) {
+        console.log(`${vault.name}: resetting lastBlock (0 events, needs deeper backfill)`);
+        delete data.lastBlock[vault.address];
+      }
+    }
+
+    for (const vault of VAULTS) {
+      const lastBlock = data.lastBlock[vault.address] || (currentBlock - NEW_VAULT_BACKFILL_BLOCKS); // ~30 days back for new vaults
       const fromBlock = lastBlock + 1;
 
       if (fromBlock > currentBlock) {
