@@ -18,10 +18,13 @@ const MIN_TVL_USD = 1000;
 
 // Initial backfill window for newly-discovered vaults (~48 hours per chain block time)
 const NEW_VAULT_BACKFILL = {
-  ethereum: 14_400,    // ~48h at 12s/block
-  base: 86_400,        // ~48h at 2s/block
+  ethereum:  14_400,   // ~48h at 12s/block
+  base:      86_400,   // ~48h at 2s/block
   arbitrum: 576_000,   // ~48h at 0.3s/block
-  _default: 14_400,
+  plasma:    14_400,   // ~48h (EVM, ~12s blocks)
+  avalanche: 86_400,   // ~48h at 2s/block
+  unichain:  43_200,   // ~48h at ~4s/block
+  _default:  14_400,
 };
 
 // Per-chain RPC endpoints (free, no auth)
@@ -44,14 +47,28 @@ const CHAIN_RPCS = {
     'https://arb1.arbitrum.io/rpc',
     'https://arbitrum.llamarpc.com',
   ],
+  plasma: [
+    'https://evm-rpc.plasma.io/api',
+  ],
+  avalanche: [
+    'https://avalanche-c-chain-rpc.publicnode.com',
+    'https://avalanche.drpc.org',
+    'https://api.avax.network/ext/bc/C/rpc',
+  ],
+  unichain: [
+    'https://mainnet.unichain.org',
+  ],
 };
 
 // Per-chain scan chunk sizes (smaller = less likely to hit RPC limits)
 const CHAIN_CHUNKS = {
-  ethereum: 10_000,
-  base: 50_000,
+  ethereum:  10_000,
+  base:      50_000,
   arbitrum: 100_000,
-  _default: 10_000,
+  plasma:    10_000,
+  avalanche: 50_000,
+  unichain:  20_000,
+  _default:  10_000,
 };
 
 // DeFi Llama chain prefix for price lookups
@@ -59,6 +76,9 @@ const LLAMA_CHAIN = {
   ethereum: 'ethereum',
   base: 'base',
   arbitrum: 'arbitrum',
+  plasma: 'plasma',
+  avalanche: 'avax',
+  unichain: 'unichain',
 };
 
 // ERC-4626 event topics
