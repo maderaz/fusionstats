@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Activity — Fusion Stats</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/BAm4czb.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -317,6 +318,43 @@
       font-weight: 400;
     }
 
+    /* Info tooltip icon */
+    .info-tip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      cursor: default;
+      position: relative;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    .info-tip::after {
+      content: attr(data-tip);
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.88);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.65rem;
+      font-weight: 400;
+      white-space: normal;
+      width: max-content;
+      max-width: 220px;
+      line-height: 1.4;
+      z-index: 20;
+      pointer-events: none;
+      text-align: center;
+    }
+    .info-tip:hover::after { display: block; }
+
     .product-link {
       color: var(--text-body);
       text-decoration: none;
@@ -548,7 +586,7 @@
       <h1>Vault Activity</h1>
       <p style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
         Deposit & withdrawal events across all Fusion vaults
-        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap;cursor:help"></span>
+        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap"></span>
       </p>
     </header>
 
@@ -576,6 +614,14 @@
             <option value="1000" selected>≥ $1K</option>
             <option value="10000">≥ $10K</option>
             <option value="100000">≥ $100K</option>
+          </select>
+        </label>
+        <label class="filter-group">
+          <span class="filter-label">Type</span>
+          <select id="filterType">
+            <option value="">All</option>
+            <option value="deposit">Deposits</option>
+            <option value="withdraw">Withdrawals</option>
           </select>
         </label>
         <label class="filter-group">
@@ -632,10 +678,12 @@
     function applyFilters() {
       const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
       const product = document.getElementById('filterProduct').value;
+      const type = document.getElementById('filterType').value;
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
 
       const filtered = allEvents.filter(e => {
+        if (type && e.type !== type) return false;
         if (minAmount > 0) {
           const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
           if (usd < minAmount) return false;
@@ -693,8 +741,7 @@
         const vaultCountEl = document.getElementById('vaultCount');
         const vaultCount = (data.vaults || []).length;
         if (vaultCount > 0) {
-          vaultCountEl.textContent = `Vaults Tracked: ${vaultCount}`;
-          vaultCountEl.title = 'Only Ethereum mainnet vaults with >$1K TVL are tracked for deposit/withdrawal events';
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="Only Ethereum mainnet vaults with &gt;$1K TVL are tracked for deposit/withdrawal events">&#9432;</span>`;
           vaultCountEl.style.display = 'inline-block';
         }
 
@@ -921,9 +968,9 @@
       fireActive = false;
       document.title = 'Activity \u2014 Fusion Stats';
       setFavicon('\u26d4'); // default: no-entry circle (neutral)
-      // remove favicon entirely to revert to default
+      // restore original favicon
       const link = document.querySelector("link[rel~='icon']");
-      if (link) link.remove();
+      if (link) link.href = 'https://i.imgur.com/BAm4czb.png';
     }
 
     function checkForFireEvents(events) {
@@ -968,6 +1015,7 @@
 
     // Filter change handlers
     document.getElementById('filterAmount').addEventListener('change', applyFilters);
+    document.getElementById('filterType').addEventListener('change', applyFilters);
     document.getElementById('filterProduct').addEventListener('change', applyFilters);
 
     loadActivity();
