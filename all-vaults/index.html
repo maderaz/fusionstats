@@ -542,10 +542,9 @@
     // State
     // Public/private classification comes from ipor-vaults.json (isPublic field),
     // which is derived from the IPOR-Labs/ipor-abi GitHub whitelist — the same
-    // source DeFiLlama uses. No hardcoded name matching needed.
-    function isPublicVault(v) {
-      return v.isPublic === true;
-    }
+    // source DeFiLlama uses. If the field hasn't been populated yet (collector
+    // hasn't run with the new code), we skip the classification entirely.
+    let hasPublicData = false; // set to true once we confirm isPublic exists in data
 
     let allVaults = [];
     let sortKey = 'tvl';
@@ -594,9 +593,12 @@
             address: (v.address || '').toLowerCase(),
             tvl: v.tvl || 0,
             isPublic: v.isPublic === true,
+            _hasField: 'isPublic' in v,
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
+        // Check if any vault has the isPublic field — if not, data hasn't been refreshed yet
+        hasPublicData = vaults.some(v => v._hasField);
       } else if (factoryData && Array.isArray(factoryData.vaults)) {
         // Fallback: just factory data (ethereum only)
         vaults = factoryData.vaults.map(v => {
@@ -655,6 +657,17 @@
     }
 
     function renderSummary() {
+      if (!hasPublicData) {
+        // isPublic field not yet in data — show only total TVL
+        const totalTvl = allVaults.reduce((s, v) => s + v.tvl, 0);
+        document.getElementById('publicCount').textContent = '—';
+        document.getElementById('publicTvl').textContent = 'awaiting data';
+        document.getElementById('privateCount').textContent = '—';
+        document.getElementById('privateTvl').textContent = 'awaiting data';
+        document.getElementById('totalTvl').textContent = formatTvl(totalTvl) || '$0';
+        document.getElementById('summaryCards').style.display = 'grid';
+        return;
+      }
       const pubVaults = allVaults.filter(v => v.isPublic);
       const privVaults = allVaults.filter(v => !v.isPublic);
       const pubTvl = pubVaults.reduce((s, v) => s + v.tvl, 0);
@@ -702,9 +715,10 @@
           ? `<span class="tvl-value">${tvlStr}</span>`
           : `<span class="tvl-value na">—</span>`;
 
-        const visPill = v.isPublic ? '' : ' <span class="vis-pill private">private</span>';
+        const visPill = (!hasPublicData || v.isPublic) ? '' : ' <span class="vis-pill private">private</span>';
         const appUrl = `https://app.ipor.io/fusion/${v.chain}/${v.address}`;
-        rows += `<tr${v.isPublic ? '' : ' style="opacity:0.65"'}>
+        const dimRow = hasPublicData && !v.isPublic;
+        rows += `<tr${dimRow ? ' style="opacity:0.65"' : ''}>
           <td class="addr">${addrCell}</td>
           <td class="vault-name">${escapeHtml(v.name)}${visPill}</td>
           <td>${tvlCell}</td>
@@ -715,7 +729,7 @@
           <td><a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">&#8599;</a></td>
         </tr>`;
 
-        mobile += `<div class="vault-card"${v.isPublic ? '' : ' style="opacity:0.65"'}>
+        mobile += `<div class="vault-card"${dimRow ? ' style="opacity:0.65"' : ''}>
           <div class="vault-card-top">
             <div class="vault-card-name">${escapeHtml(v.name)}${visPill}</div>
             ${tvlCell}
@@ -787,6 +801,8 @@
     loadData().then(vaults => {
       allVaults = vaults;
       populateChainFilter();
+      // Hide visibility filter if public/private data not available yet
+      if (!hasPublicData) document.getElementById('visibilityFilter').style.display = 'none';
       renderSummary();
       render();
     }).catch(err => {
