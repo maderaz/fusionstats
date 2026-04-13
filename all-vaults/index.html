@@ -429,36 +429,8 @@
       </p>
     </header>
 
-    <div id="summaryCards" class="summary-cards" style="display:none">
-      <div class="summary-card">
-        <div class="summary-label">Public Vaults</div>
-        <div class="summary-row">
-          <span class="summary-value" id="publicCount">—</span>
-          <span class="summary-tvl" id="publicTvl"></span>
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-label">Private Vaults</div>
-        <div class="summary-row">
-          <span class="summary-value" id="privateCount">—</span>
-          <span class="summary-tvl" id="privateTvl"></span>
-        </div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-label">Total TVL</div>
-        <div class="summary-row">
-          <span class="summary-value summary-accent" id="totalTvl">—</span>
-        </div>
-      </div>
-    </div>
-
     <div class="filters-bar">
       <input type="search" id="searchInput" placeholder="Search by name, ticker, or address…" autocomplete="off">
-      <select id="visibilityFilter">
-        <option value="">All vaults</option>
-        <option value="public">Public only</option>
-        <option value="private">Private only</option>
-      </select>
       <select id="chainFilter">
         <option value="">All chains</option>
       </select>
@@ -540,12 +512,6 @@
     }
 
     // State
-    // Public/private classification comes from ipor-vaults.json (isPublic field),
-    // which is derived from the IPOR-Labs/ipor-abi GitHub whitelist — the same
-    // source DeFiLlama uses. If the field hasn't been populated yet (collector
-    // hasn't run with the new code), we skip the classification entirely.
-    let hasPublicData = false; // set to true once we confirm isPublic exists in data
-
     let allVaults = [];
     let sortKey = 'tvl';
     let sortDir = 'desc';
@@ -592,13 +558,9 @@
             ticker: v.token || v.symbol || '?',
             address: (v.address || '').toLowerCase(),
             tvl: v.tvl || 0,
-            isPublic: v.isPublic === true,
-            _hasField: 'isPublic' in v,
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
-        // Check if any vault has the isPublic field — if not, data hasn't been refreshed yet
-        hasPublicData = vaults.some(v => v._hasField);
       } else if (factoryData && Array.isArray(factoryData.vaults)) {
         // Fallback: just factory data (ethereum only)
         vaults = factoryData.vaults.map(v => {
@@ -609,7 +571,6 @@
             ticker: v.symbol || '?',
             address: (v.address || '').toLowerCase(),
             tvl: 0,
-            isPublic: false, // factory-only vaults not in GitHub whitelist
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
@@ -621,11 +582,8 @@
     function applyFilters(vaults) {
       const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
       const chain = document.getElementById('chainFilter').value;
-      const vis = document.getElementById('visibilityFilter').value;
       return vaults.filter(v => {
         if (chain && v.chain !== chain) return false;
-        if (vis === 'public' && !v.isPublic) return false;
-        if (vis === 'private' && v.isPublic) return false;
         if (q) {
           const hay = (v.name + ' ' + v.ticker + ' ' + v.address).toLowerCase();
           if (!hay.includes(q)) return false;
@@ -654,31 +612,6 @@
         if (av > bv) return 1 * dir;
         return 0;
       });
-    }
-
-    function renderSummary() {
-      if (!hasPublicData) {
-        // isPublic field not yet in data — show only total TVL
-        const totalTvl = allVaults.reduce((s, v) => s + v.tvl, 0);
-        document.getElementById('publicCount').textContent = '—';
-        document.getElementById('publicTvl').textContent = 'awaiting data';
-        document.getElementById('privateCount').textContent = '—';
-        document.getElementById('privateTvl').textContent = 'awaiting data';
-        document.getElementById('totalTvl').textContent = formatTvl(totalTvl) || '$0';
-        document.getElementById('summaryCards').style.display = 'grid';
-        return;
-      }
-      const pubVaults = allVaults.filter(v => v.isPublic);
-      const privVaults = allVaults.filter(v => !v.isPublic);
-      const pubTvl = pubVaults.reduce((s, v) => s + v.tvl, 0);
-      const privTvl = privVaults.reduce((s, v) => s + v.tvl, 0);
-
-      document.getElementById('publicCount').textContent = pubVaults.length;
-      document.getElementById('publicTvl').textContent = formatTvl(pubTvl) || '$0';
-      document.getElementById('privateCount').textContent = privVaults.length;
-      document.getElementById('privateTvl').textContent = formatTvl(privTvl) || '$0';
-      document.getElementById('totalTvl').textContent = formatTvl(pubTvl + privTvl) || '$0';
-      document.getElementById('summaryCards').style.display = 'grid';
     }
 
     function render() {
@@ -715,12 +648,10 @@
           ? `<span class="tvl-value">${tvlStr}</span>`
           : `<span class="tvl-value na">—</span>`;
 
-        const visPill = (!hasPublicData || v.isPublic) ? '' : ' <span class="vis-pill private">private</span>';
         const appUrl = `https://app.ipor.io/fusion/${v.chain}/${v.address}`;
-        const dimRow = hasPublicData && !v.isPublic;
-        rows += `<tr${dimRow ? ' style="opacity:0.65"' : ''}>
+        rows += `<tr>
           <td class="addr">${addrCell}</td>
-          <td class="vault-name">${escapeHtml(v.name)}${visPill}</td>
+          <td class="vault-name">${escapeHtml(v.name)}</td>
           <td>${tvlCell}</td>
           <td><span class="ticker">${escapeHtml(v.ticker)}</span></td>
           <td><span class="chain-pill">${escapeHtml(v.chain)}</span></td>
@@ -729,9 +660,9 @@
           <td><a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">&#8599;</a></td>
         </tr>`;
 
-        mobile += `<div class="vault-card"${dimRow ? ' style="opacity:0.65"' : ''}>
+        mobile += `<div class="vault-card">
           <div class="vault-card-top">
-            <div class="vault-card-name">${escapeHtml(v.name)}${visPill}</div>
+            <div class="vault-card-name">${escapeHtml(v.name)}</div>
             ${tvlCell}
           </div>
           <div class="vault-card-meta">
@@ -796,14 +727,10 @@
 
     document.getElementById('searchInput').addEventListener('input', render);
     document.getElementById('chainFilter').addEventListener('change', render);
-    document.getElementById('visibilityFilter').addEventListener('change', render);
 
     loadData().then(vaults => {
       allVaults = vaults;
       populateChainFilter();
-      // Hide visibility filter if public/private data not available yet
-      if (!hasPublicData) document.getElementById('visibilityFilter').style.display = 'none';
-      renderSummary();
       render();
     }).catch(err => {
       console.error(err);
