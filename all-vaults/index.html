@@ -104,6 +104,45 @@
       flex-wrap: wrap;
     }
 
+    /* Summary cards */
+    .summary-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .summary-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 0.35rem;
+    }
+    .summary-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .summary-value {
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .summary-accent { color: var(--accent); }
+    .summary-tvl {
+      font-size: 0.78rem;
+      color: var(--text-body);
+      font-variant-numeric: tabular-nums;
+    }
+
     .vault-count-badge {
       font-size: 0.7rem;
       background: var(--surface);
@@ -239,6 +278,22 @@
       color: var(--text-body);
     }
 
+    .vis-pill {
+      display: inline-block;
+      font-size: 0.55rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 500;
+      vertical-align: middle;
+      margin-left: 0.35rem;
+    }
+    .vis-pill.private {
+      background: var(--bg-alt);
+      color: var(--text-secondary);
+    }
+
     .chain-pill {
       display: inline-block;
       font-size: 0.65rem;
@@ -266,6 +321,22 @@
       white-space: nowrap;
     }
     .tvl-value.na { color: var(--text-secondary); font-weight: 400; }
+
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 1rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .open-link:hover {
+      background: var(--accent-bg);
+    }
 
     .empty-state {
       text-align: center;
@@ -312,6 +383,11 @@
       body { padding: 0.75rem; }
       h1 { font-size: 1.65rem; }
       header p { font-size: 0.8rem; }
+      .summary-cards { grid-template-columns: 1fr 1fr 1fr; gap: 0.4rem; }
+      .summary-card { padding: 0.65rem 0.7rem; }
+      .summary-value { font-size: 1.1rem; }
+      .summary-tvl { font-size: 0.68rem; }
+      .summary-label { font-size: 0.58rem; }
 
       .top-nav {
         overflow-x: auto;
@@ -336,8 +412,8 @@
   <div class="container">
     <nav class="top-nav">
       <a href="/">Activity</a>
-      <a href="/dominance">Dominance</a>
       <a href="/all-vaults" class="active">All Vaults</a>
+      <a href="/dominance">Dominance</a>
       <a href="/spark">Spark</a>
       <a href="/logs">Logs</a>
       <a href="/socials">Socials</a>
@@ -352,8 +428,36 @@
       </p>
     </header>
 
+    <div id="summaryCards" class="summary-cards" style="display:none">
+      <div class="summary-card">
+        <div class="summary-label">Public Vaults</div>
+        <div class="summary-row">
+          <span class="summary-value" id="publicCount">—</span>
+          <span class="summary-tvl" id="publicTvl"></span>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Private Vaults</div>
+        <div class="summary-row">
+          <span class="summary-value" id="privateCount">—</span>
+          <span class="summary-tvl" id="privateTvl"></span>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Total TVL</div>
+        <div class="summary-row">
+          <span class="summary-value summary-accent" id="totalTvl">—</span>
+        </div>
+      </div>
+    </div>
+
     <div class="filters-bar">
       <input type="search" id="searchInput" placeholder="Search by name, ticker, or address…" autocomplete="off">
+      <select id="visibilityFilter">
+        <option value="">All vaults</option>
+        <option value="public">Public only</option>
+        <option value="private">Private only</option>
+      </select>
       <select id="chainFilter">
         <option value="">All chains</option>
       </select>
@@ -435,6 +539,36 @@
     }
 
     // State
+    // Public vaults are those listed in the Fusion app (app.ipor.io/fusion).
+    // This set is maintained manually — when IPOR lists a new vault publicly,
+    // add its name here. Everything else is classified as "private".
+    const PUBLIC_VAULT_NAMES = new Set([
+      'IPOR stETH Ethereum',
+      'Reservoir wsrUSD looping', 'Reservoir wsrUSD Looping',
+      'AavEthena Loop Mainnet', 'AavEthena Loop Plasma',
+      'Reservoir ETH Yield', 'Reservoir BTC Yield',
+      'IPOR wstETH Base', 'IPOR wstETH Arbitrum',
+      'TAU InfiniFi Pointsmaxx - Silo', 'TAU InfiniFi Pointsmax',
+      'TAU Reservoir Pointsmax', 'TAU infiniFi Pointsmax',
+      'TAU InfiniFi BTC Carry', 'TAU InfiniFi ETH Carry',
+      'TAU Yield Bond ETF', 'TAU Lending Optimizer',
+      'yoUSD Loooper', 'yoETH Loooper',
+      'K3 Leveraged syrupUSDT Strategy', 'K3 Capital ETH Maxi',
+      'Autopilot WETH Base', 'Autopilot USDC Base', 'Autopilot cbBTC Base',
+      'Autopilot USDC DRIP Arbitrum', 'Autopilot WETH Arbitrum', 'Autopilot WBTC Arbitrum',
+      'USDC Morpho-Only Autopilot',
+      'IPOR USDC Prime', 'IPOR USDT Prime', 'IPOR DAI Prime',
+      'IPOR USDC Lending Optimizer Base',
+      'LlamaRisk crvUSD Optimizer', 'Llamarisk crvUSD Vault',
+      'Strata srUSDe PT Looping', 'Strata-Money PTs looping Ethereum',
+      'Tanken WETH Base', 'Clearstar Core',
+      'Sentinel stcUSD Adaptive Looping', 'stcUSD fixed rate looping',
+    ]);
+
+    function isPublicVault(v) {
+      return PUBLIC_VAULT_NAMES.has(v.name);
+    }
+
     let allVaults = [];
     let sortKey = 'tvl';
     let sortDir = 'desc';
@@ -473,24 +607,32 @@
       // Merge IPOR list (all chains) with deployment dates (ethereum only)
       let vaults = [];
       if (iporData && Array.isArray(iporData.vaults)) {
-        vaults = iporData.vaults.map(v => ({
-          chain: v.chain || 'unknown',
-          name: v.name || '(unnamed)',
-          ticker: v.token || v.symbol || '?',
-          address: (v.address || '').toLowerCase(),
-          tvl: v.tvl || 0,
-          deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
-        }));
+        vaults = iporData.vaults.map(v => {
+          const name = v.name || '(unnamed)';
+          return {
+            chain: v.chain || 'unknown',
+            name,
+            ticker: v.token || v.symbol || '?',
+            address: (v.address || '').toLowerCase(),
+            tvl: v.tvl || 0,
+            isPublic: isPublicVault({ name }),
+            deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
+          };
+        });
       } else if (factoryData && Array.isArray(factoryData.vaults)) {
         // Fallback: just factory data (ethereum only)
-        vaults = factoryData.vaults.map(v => ({
-          chain: 'ethereum',
-          name: v.name || '(unnamed)',
-          ticker: v.symbol || '?',
-          address: (v.address || '').toLowerCase(),
-          tvl: 0,
-          deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
-        }));
+        vaults = factoryData.vaults.map(v => {
+          const name = v.name || '(unnamed)';
+          return {
+            chain: 'ethereum',
+            name,
+            ticker: v.symbol || '?',
+            address: (v.address || '').toLowerCase(),
+            tvl: 0,
+            isPublic: isPublicVault({ name }),
+            deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
+          };
+        });
       }
 
       return vaults;
@@ -499,8 +641,11 @@
     function applyFilters(vaults) {
       const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
       const chain = document.getElementById('chainFilter').value;
+      const vis = document.getElementById('visibilityFilter').value;
       return vaults.filter(v => {
         if (chain && v.chain !== chain) return false;
+        if (vis === 'public' && !v.isPublic) return false;
+        if (vis === 'private' && v.isPublic) return false;
         if (q) {
           const hay = (v.name + ' ' + v.ticker + ' ' + v.address).toLowerCase();
           if (!hay.includes(q)) return false;
@@ -529,6 +674,20 @@
         if (av > bv) return 1 * dir;
         return 0;
       });
+    }
+
+    function renderSummary() {
+      const pubVaults = allVaults.filter(v => v.isPublic);
+      const privVaults = allVaults.filter(v => !v.isPublic);
+      const pubTvl = pubVaults.reduce((s, v) => s + v.tvl, 0);
+      const privTvl = privVaults.reduce((s, v) => s + v.tvl, 0);
+
+      document.getElementById('publicCount').textContent = pubVaults.length;
+      document.getElementById('publicTvl').textContent = formatTvl(pubTvl) || '$0';
+      document.getElementById('privateCount').textContent = privVaults.length;
+      document.getElementById('privateTvl').textContent = formatTvl(privTvl) || '$0';
+      document.getElementById('totalTvl').textContent = formatTvl(pubTvl + privTvl) || '$0';
+      document.getElementById('summaryCards').style.display = 'grid';
     }
 
     function render() {
@@ -565,18 +724,21 @@
           ? `<span class="tvl-value">${tvlStr}</span>`
           : `<span class="tvl-value na">—</span>`;
 
-        rows += `<tr>
+        const visPill = v.isPublic ? '' : ' <span class="vis-pill private">private</span>';
+        const appUrl = `https://app.ipor.io/fusion/${v.chain}/${v.address}`;
+        rows += `<tr${v.isPublic ? '' : ' style="opacity:0.65"'}>
           <td class="addr">${addrCell}</td>
-          <td class="vault-name">${escapeHtml(v.name)}</td>
+          <td class="vault-name">${escapeHtml(v.name)}${visPill}</td>
           <td>${tvlCell}</td>
           <td><span class="ticker">${escapeHtml(v.ticker)}</span></td>
           <td><span class="chain-pill">${escapeHtml(v.chain)}</span></td>
           <td>${dateCell}</td>
+          <td><a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">&#8599;</a></td>
         </tr>`;
 
-        mobile += `<div class="vault-card">
+        mobile += `<div class="vault-card"${v.isPublic ? '' : ' style="opacity:0.65"'}>
           <div class="vault-card-top">
-            <div class="vault-card-name">${escapeHtml(v.name)}</div>
+            <div class="vault-card-name">${escapeHtml(v.name)}${visPill}</div>
             ${tvlCell}
           </div>
           <div class="vault-card-meta">
@@ -586,6 +748,7 @@
           </div>
           <div class="vault-card-meta">
             <span class="addr vault-card-addr">${addrCell}</span>
+            <a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">Open &#8599;</a>
           </div>
         </div>`;
       }
@@ -600,6 +763,7 @@
               <th class="sortable" data-sort="ticker">Ticker<span class="sort-indicator">${indicator('ticker')}</span></th>
               <th class="sortable" data-sort="chain">Chain<span class="sort-indicator">${indicator('chain')}</span></th>
               <th class="sortable" data-sort="deployedAt">Deployed<span class="sort-indicator">${indicator('deployedAt')}</span></th>
+              <th>Open</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -637,10 +801,12 @@
 
     document.getElementById('searchInput').addEventListener('input', render);
     document.getElementById('chainFilter').addEventListener('change', render);
+    document.getElementById('visibilityFilter').addEventListener('change', render);
 
     loadData().then(vaults => {
       allVaults = vaults;
       populateChainFilter();
+      renderSummary();
       render();
     }).catch(err => {
       console.error(err);

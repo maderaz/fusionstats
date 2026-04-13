@@ -527,8 +527,8 @@
     <nav class="top-nav">
       <div class="top-nav-links">
         <a href="/" class="active">Activity</a>
-        <a href="/dominance">Dominance</a>
         <a href="/all-vaults">All Vaults</a>
+        <a href="/dominance">Dominance</a>
         <a href="/spark">Spark</a>
         <a href="/logs">Logs</a>
         <a href="/socials">Socials</a>
@@ -822,7 +822,7 @@
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
           <td class="num-bold">${formatAmount(e.assets)} ${sym}${usd ? '<br>' + usd : ''}</td>
           <td class="vault-name">${name}</td>
-          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
+          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.55rem;font-weight:700;text-decoration:none;margin-left:4px;vertical-align:middle;line-height:1">B</a></td>
         </tr>`;
         mobileRows += `<div class="mobile-event">
           <div class="mobile-event-top">
@@ -835,7 +835,7 @@
           </div>
           <div class="mobile-event-meta">
             <span class="mobile-event-product" title="${name}">${name}</span>
-            <a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>
+            <a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.55rem;font-weight:700;text-decoration:none;margin-left:4px;vertical-align:middle;line-height:1">B</a>
           </div>
         </div>`;
       });
