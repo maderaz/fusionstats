@@ -227,7 +227,7 @@
       // Build index: address → event indices
       addrIndex = {};
       events.forEach((e, i) => {
-        const addrs = new Set([e.owner, e.sender, e.receiver].filter(Boolean).map(a => a.toLowerCase()));
+        const addrs = new Set([e.owner, e.sender, e.receiver, e.vault].filter(Boolean).map(a => a.toLowerCase()));
         addrs.forEach(a => { if (!addrIndex[a]) addrIndex[a] = []; addrIndex[a].push(i); });
       });
 
