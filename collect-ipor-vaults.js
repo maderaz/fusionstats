@@ -79,8 +79,13 @@ async function fetchFromGithub() {
   const data = await fetchJson(ADDRESSES_URL);
   const out = [];
   for (const [chain, value] of Object.entries(data)) {
-    if (!Array.isArray(value)) continue;
-    for (const entry of value) {
+    // Structure: { ethereum: { vaults: [...], fuses: [...], ... }, arbitrum: { ... } }
+    // The vaults array is nested under chainName.vaults
+    const vaultsList = Array.isArray(value) ? value
+      : (value && Array.isArray(value.vaults)) ? value.vaults
+      : null;
+    if (!vaultsList) continue;
+    for (const entry of vaultsList) {
       if (!entry || typeof entry !== 'object') continue;
       const addr = (entry.PlasmaVault || entry.plasmaVault || entry.address || '').toLowerCase();
       if (!/^0x[a-f0-9]{40}$/.test(addr)) continue;
