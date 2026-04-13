@@ -16,12 +16,12 @@ const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
 // Minimum TVL ($) for a vault to be actively scanned.
 const MIN_TVL_USD = 1000;
 
-// Initial backfill window for newly-discovered vaults (~30 days varies by chain block time)
+// Initial backfill window for newly-discovered vaults (~48 hours per chain block time)
 const NEW_VAULT_BACKFILL = {
-  ethereum: 220_000,   // ~30d at 12s/block
-  base: 1_300_000,     // ~30d at 2s/block
-  arbitrum: 8_600_000, // ~30d at 0.3s/block
-  _default: 220_000,
+  ethereum: 14_400,    // ~48h at 12s/block
+  base: 86_400,        // ~48h at 2s/block
+  arbitrum: 576_000,   // ~48h at 0.3s/block
+  _default: 14_400,
 };
 
 // Per-chain RPC endpoints (free, no auth)
@@ -215,7 +215,7 @@ async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
     const json = await res.json();
     // DeFi Llama may return keys in different case — match case-insensitively
     const coins = json.coins || {};
-    const match = Object.keys(coins).find(k => k.toLowerCase() === `ethereum:${tokenAddr.toLowerCase()}`);
+    const match = Object.keys(coins).find(k => k.toLowerCase() === `${llamaChain}:${tokenAddr.toLowerCase()}`);
     return match ? coins[match].price : null;
   } catch {
     return null;
@@ -253,14 +253,15 @@ async function enrichWithPrices(events) {
   }
 }
 
-async function scanLogs(chain, address, topic, fromBlock, toBlock) {
+// Batch scan: accepts an array of addresses so one eth_getLogs covers all vaults on a chain
+async function scanLogs(chain, addresses, topic, fromBlock, toBlock) {
   const allLogs = [];
   const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
 
   async function scan(from, to) {
     try {
       const logs = await rpcCall(chain, 'eth_getLogs', [{
-        address,
+        address: addresses,
         topics: [topic],
         fromBlock: '0x' + from.toString(16),
         toBlock: '0x' + to.toString(16),
@@ -365,59 +366,80 @@ async function main() {
 
     const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
 
+    // Find the earliest fromBlock across all vaults on this chain
+    const vaultsToScan = [];
     for (const vault of chainVaults) {
-      try {
-        const lastBlock = data.lastBlock[vault.address] || (currentBlock - backfill);
-        const fromBlock = lastBlock + 1;
-
-        if (fromBlock > currentBlock) {
-          console.log(`${vault.name}: already up to date`);
-          continue;
-        }
-
-        console.log(`\n${vault.name} [${chain}]: scanning blocks ${fromBlock} to ${currentBlock}...`);
-
-        const depositLogs = await scanLogs(chain, vault.address, DEPOSIT_TOPIC, fromBlock, currentBlock);
-        const deposits = depositLogs.map(l => parseDepositLog(l, vault));
-        console.log(`  ${deposits.length} deposits found`);
-
-        const withdrawLogs = await scanLogs(chain, vault.address, WITHDRAW_TOPIC, fromBlock, currentBlock);
-        const withdrawals = withdrawLogs.map(l => parseWithdrawLog(l, vault));
-        console.log(`  ${withdrawals.length} withdrawals found`);
-
-        const newEvents = [...deposits, ...withdrawals];
-        newEventsTotal += newEvents.length;
-
-        // Fetch timestamps
-        const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
-        if (uniqueBlocks.length > 0) {
-          console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
-          for (let i = 0; i < uniqueBlocks.length; i += 5) {
-            const batch = uniqueBlocks.slice(i, i + 5);
-            const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
-            results.forEach((ts, j) => {
-              const block = batch[j];
-              newEvents.filter(e => e.block === block).forEach(e => e.timestamp = ts);
-            });
-          }
-        }
-
-        newEvents.forEach(e => {
-          e.assets = Math.round(e.assets * 1e6) / 1e6;
-          e.shares = Math.round(e.shares * 1e6) / 1e6;
-        });
-
-        await enrichWithPrices(newEvents);
-        data.events.push(...newEvents);
-        data.lastBlock[vault.address] = currentBlock;
-      } catch (e) {
-        console.log(`  ${vault.name}: scan failed (${e.message})`);
-      }
+      const lastBlock = data.lastBlock[vault.address] || (currentBlock - backfill);
+      const fromBlock = lastBlock + 1;
+      if (fromBlock <= currentBlock) vaultsToScan.push({ vault, fromBlock });
     }
-  }
 
-  try { /* outer catch for compatibility */ } catch (e) {
-    console.log(`\nScan phase error: ${e.message}`);
+    if (vaultsToScan.length === 0) {
+      console.log(`  All vaults up to date`);
+      continue;
+    }
+
+    const earliestFrom = Math.min(...vaultsToScan.map(v => v.fromBlock));
+    const allAddresses = vaultsToScan.map(v => v.vault.address);
+    const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
+
+    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom}...`);
+
+    try {
+      // Single batch eth_getLogs for all vaults on this chain
+      const depositLogs = await scanLogs(chain, allAddresses, DEPOSIT_TOPIC, earliestFrom, currentBlock);
+      const withdrawLogs = await scanLogs(chain, allAddresses, WITHDRAW_TOPIC, earliestFrom, currentBlock);
+
+      console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs`);
+
+      const newEvents = [];
+      for (const log of depositLogs) {
+        const addr = log.address.toLowerCase();
+        const vault = vaultMap[addr];
+        if (!vault) continue;
+        const entry = vaultsToScan.find(v => v.vault.address === addr);
+        if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
+          newEvents.push(parseDepositLog(log, vault));
+        }
+      }
+      for (const log of withdrawLogs) {
+        const addr = log.address.toLowerCase();
+        const vault = vaultMap[addr];
+        if (!vault) continue;
+        const entry = vaultsToScan.find(v => v.vault.address === addr);
+        if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
+          newEvents.push(parseWithdrawLog(log, vault));
+        }
+      }
+
+      newEventsTotal += newEvents.length;
+
+      // Fetch timestamps (batch 10 at a time)
+      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
+      if (uniqueBlocks.length > 0) {
+        console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
+        const tsMap = {};
+        for (let i = 0; i < uniqueBlocks.length; i += 10) {
+          const batch = uniqueBlocks.slice(i, i + 10);
+          const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+          results.forEach((ts, j) => { tsMap[batch[j]] = ts; });
+        }
+        newEvents.forEach(e => { e.timestamp = tsMap[e.block] || 0; });
+      }
+
+      newEvents.forEach(e => {
+        e.assets = Math.round(e.assets * 1e6) / 1e6;
+        e.shares = Math.round(e.shares * 1e6) / 1e6;
+      });
+
+      await enrichWithPrices(newEvents);
+      data.events.push(...newEvents);
+      for (const { vault } of vaultsToScan) {
+        data.lastBlock[vault.address] = currentBlock;
+      }
+    } catch (e) {
+      console.log(`  ${chain} batch scan failed: ${e.message}`);
+    }
   }
 
   // Backfill prices for any events still missing usdValue (works without RPC)
