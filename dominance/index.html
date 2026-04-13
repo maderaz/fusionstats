@@ -359,7 +359,7 @@
       gap: 2px;
       position: relative;
       min-width: 0;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .chart-bar-slot {
@@ -1038,8 +1038,11 @@
       const spanHours = Math.round((newest - oldest) / 3600000);
       const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
       sub.textContent = `${dataCount} data points · ${spanLabel} span · updated every 30 min`;
+    }
 
-      // Tap-to-show tooltips on touch devices
+    // Tap-to-show tooltips on touch devices (attached once, not per render)
+    (function() {
+      const barsEl = document.getElementById('chartBars');
       barsEl.addEventListener('click', function(e) {
         const slot = e.target.closest('.chart-bar-slot');
         if (!slot) return;
@@ -1047,13 +1050,12 @@
         barsEl.querySelectorAll('.chart-bar-slot.active').forEach(s => s.classList.remove('active'));
         if (!wasActive) slot.classList.add('active');
       });
-      // Dismiss tooltip on tap outside chart
       document.addEventListener('click', function(e) {
         if (!e.target.closest('.chart-bars-container')) {
           barsEl.querySelectorAll('.chart-bar-slot.active').forEach(s => s.classList.remove('active'));
         }
       });
-    }
+    })();
 
     // --- LocalStorage cache (15 min TTL) ---
     const CACHE_KEY = 'fusionstats_cache';
