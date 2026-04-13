@@ -713,15 +713,20 @@
     }
 
     let trackedVaults = [];
+    let chainsWithEvents = new Set();
 
     function populateChainFilter() {
       const select = document.getElementById('filterChain');
-      // Use tracked vaults list (not events) so chains with 0 activity still appear
-      const fromVaults = trackedVaults.map(v => v.chain || 'ethereum');
-      const fromEvents = allEvents.map(e => e.chain || 'ethereum');
-      const chains = [...new Set([...fromVaults, ...fromEvents])].sort();
+      // All chains from tracked vaults
+      const allChains = [...new Set(trackedVaults.map(v => v.chain || 'ethereum'))].sort();
+      chainsWithEvents = new Set(allEvents.map(e => e.chain || 'ethereum'));
       select.innerHTML = '<option value="">All chains</option>'
-        + chains.map(c => `<option value="${c}">${c}</option>`).join('');
+        + allChains.map(c => {
+          const hasEvents = chainsWithEvents.has(c);
+          const count = trackedVaults.filter(v => (v.chain || 'ethereum') === c).length;
+          const label = hasEvents ? `${c} (${count})` : `${c} (${count}) — no events yet`;
+          return `<option value="${c}">${label}</option>`;
+        }).join('');
     }
 
     async function loadActivity() {
@@ -737,6 +742,17 @@
 
         // Always use vault lookup as source of truth for symbol/name
         trackedVaults = data.vaults || [];
+        // Also pull full vault list from ipor-vaults.json for complete chain coverage
+        try {
+          const iporRes = await fetch('ipor-vaults.json');
+          if (iporRes.ok) {
+            const ipor = await iporRes.json();
+            const activityAddrs = new Set(trackedVaults.map(v => v.address));
+            (ipor.vaults || []).filter(v => v.tvl >= 1000 && !activityAddrs.has(v.address)).forEach(v => {
+              trackedVaults.push({ address: v.address, name: v.name, symbol: v.token, chain: v.chain });
+            });
+          }
+        } catch {}
         const vaultInfo = {};
         trackedVaults.forEach(v => { vaultInfo[v.address] = v; });
         events.forEach(e => {
@@ -889,9 +905,16 @@
     function renderTable(events, updatedAt) {
       const content = document.getElementById('activityContent');
       if (!events.length) {
-        const msg = allEvents.length > 0
-          ? 'No events match the current filters'
-          : 'No events yet — collector may not have run';
+        const chainSel = document.getElementById('filterChain').value;
+        let msg;
+        if (chainSel && !chainsWithEvents.has(chainSel)) {
+          const count = trackedVaults.filter(v => (v.chain || 'ethereum') === chainSel).length;
+          msg = `No events tracked yet for <strong>${chainSel}</strong> — ${count} vault${count !== 1 ? 's' : ''} monitored, awaiting first activity`;
+        } else if (allEvents.length > 0) {
+          msg = 'No events match the current filters';
+        } else {
+          msg = 'No events yet — collector may not have run';
+        }
         content.innerHTML = `<div class="loading-msg">${msg}</div>`;
         return;
       }
