@@ -630,6 +630,12 @@
             <option value="">All products</option>
           </select>
         </label>
+        <label class="filter-group">
+          <span class="filter-label">Chain</span>
+          <select id="filterChain">
+            <option value="">All chains</option>
+          </select>
+        </label>
       </div>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
@@ -679,11 +685,13 @@
       const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
       const product = document.getElementById('filterProduct').value;
       const type = document.getElementById('filterType').value;
+      const chain = document.getElementById('filterChain').value;
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
 
       const filtered = allEvents.filter(e => {
         if (type && e.type !== type) return false;
+        if (chain && (e.chain || 'ethereum') !== chain) return false;
         if (minAmount > 0) {
           const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
           if (usd < minAmount) return false;
@@ -700,9 +708,15 @@
       const names = [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
       select.innerHTML = '<option value="">All products</option>'
         + names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
-      // Restore previous selection if still valid
       const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
       if (stored && names.includes(stored)) select.value = stored;
+    }
+
+    function populateChainFilter() {
+      const select = document.getElementById('filterChain');
+      const chains = [...new Set(allEvents.map(e => e.chain || 'ethereum').filter(Boolean))].sort();
+      select.innerHTML = '<option value="">All chains</option>'
+        + chains.map(c => `<option value="${c}">${c}</option>`).join('');
     }
 
     async function loadActivity() {
@@ -741,13 +755,14 @@
         const vaultCountEl = document.getElementById('vaultCount');
         const vaultCount = (data.vaults || []).length;
         if (vaultCount > 0) {
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="Only Ethereum mainnet vaults with &gt;$1K TVL are tracked for deposit/withdrawal events">&#9432;</span>`;
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="Tracks Fusion vaults with &gt;$1K TVL across Ethereum, Base &amp; Arbitrum">&#9432;</span>`;
           vaultCountEl.style.display = 'inline-block';
         }
 
         allEvents = events;
         lastUpdatedAt = data.updatedAt;
         populateProductFilter();
+        populateChainFilter();
 
         // Restore stored amount filter (default $1K = already selected in HTML)
         const storedAmount = localStorage.getItem(FILTER_AMOUNT_KEY);
@@ -1016,6 +1031,7 @@
     // Filter change handlers
     document.getElementById('filterAmount').addEventListener('change', applyFilters);
     document.getElementById('filterType').addEventListener('change', applyFilters);
+    document.getElementById('filterChain').addEventListener('change', applyFilters);
     document.getElementById('filterProduct').addEventListener('change', applyFilters);
 
     loadActivity();

@@ -13,25 +13,53 @@ const path = require('path');
 const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
 const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
 
-// Only scan Ethereum mainnet vaults (we only have mainnet RPC infrastructure).
-// Activity scanning across other chains would require per-chain RPCs.
-const SCAN_CHAIN = 'ethereum';
-const SCAN_CHAIN_ID = 1;
-
 // Minimum TVL ($) for a vault to be actively scanned.
-// Filters out test/clone vaults with no real activity — we still KEEP them
-// in the list but skip RPC scans for them until they have TVL.
 const MIN_TVL_USD = 1000;
 
-// Initial backfill window for newly-discovered vaults
-const NEW_VAULT_BACKFILL_BLOCKS = 220_000; // ~30 days on mainnet
+// Initial backfill window for newly-discovered vaults (~30 days varies by chain block time)
+const NEW_VAULT_BACKFILL = {
+  ethereum: 220_000,   // ~30d at 12s/block
+  base: 1_300_000,     // ~30d at 2s/block
+  arbitrum: 8_600_000, // ~30d at 0.3s/block
+  _default: 220_000,
+};
 
-const RPCS = [
-  'https://ethereum-rpc.publicnode.com',
-  'https://eth.drpc.org',
-  'https://eth.llamarpc.com',
-  'https://cloudflare-eth.com',
-];
+// Per-chain RPC endpoints (free, no auth)
+const CHAIN_RPCS = {
+  ethereum: [
+    'https://ethereum-rpc.publicnode.com',
+    'https://eth.drpc.org',
+    'https://eth.llamarpc.com',
+    'https://cloudflare-eth.com',
+  ],
+  base: [
+    'https://base-rpc.publicnode.com',
+    'https://base.drpc.org',
+    'https://mainnet.base.org',
+    'https://base.llamarpc.com',
+  ],
+  arbitrum: [
+    'https://arbitrum-one-rpc.publicnode.com',
+    'https://arbitrum.drpc.org',
+    'https://arb1.arbitrum.io/rpc',
+    'https://arbitrum.llamarpc.com',
+  ],
+};
+
+// Per-chain scan chunk sizes (smaller = less likely to hit RPC limits)
+const CHAIN_CHUNKS = {
+  ethereum: 10_000,
+  base: 50_000,
+  arbitrum: 100_000,
+  _default: 10_000,
+};
+
+// DeFi Llama chain prefix for price lookups
+const LLAMA_CHAIN = {
+  ethereum: 'ethereum',
+  base: 'base',
+  arbitrum: 'arbitrum',
+};
 
 // ERC-4626 event topics
 const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
@@ -97,32 +125,30 @@ function decimalsFor(symbol) {
   return 18;
 }
 
-// Load vaults from ipor-vaults.json (populated by collect-ipor-vaults.js).
-// Falls back to FALLBACK_VAULTS if the file doesn't exist.
-// Filters to SCAN_CHAIN only — activity scanning is Ethereum-mainnet only.
+// Load vaults from ipor-vaults.json — ALL chains with supported RPCs.
+// Falls back to FALLBACK_VAULTS (ethereum only) if file doesn't exist.
 function loadVaults() {
   let iporData = null;
   try {
     iporData = JSON.parse(fs.readFileSync(IPOR_VAULTS_FILE, 'utf8'));
   } catch (e) {
     console.log(`ipor-vaults.json unavailable (${e.message}), using fallback list`);
-    return FALLBACK_VAULTS;
+    return FALLBACK_VAULTS.map(v => ({ ...v, chain: 'ethereum' }));
   }
 
-  const all = (iporData.vaults || []).filter(v =>
-    v.chain === SCAN_CHAIN || v.chainId === SCAN_CHAIN_ID
-  );
+  const supportedChains = new Set(Object.keys(CHAIN_RPCS));
+  const all = (iporData.vaults || []).filter(v => supportedChains.has(v.chain));
+  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD);
 
-  // Prefer vaults with reported TVL above the threshold. Vaults without TVL
-  // data (source=github, no api response) get included too — we'll scan them
-  // once and let lastBlock dedup future work.
-  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD || v.tvl === 0);
-
-  console.log(`Loaded ${iporData.vaults.length} total vaults from IPOR, ` +
-              `${all.length} on ${SCAN_CHAIN}, ${tracked.length} above $${MIN_TVL_USD} TVL filter`);
+  const byChain = {};
+  tracked.forEach(v => { byChain[v.chain] = (byChain[v.chain] || 0) + 1; });
+  const chainSummary = Object.entries(byChain).map(([c, n]) => `${c}:${n}`).join(', ');
+  console.log(`Loaded ${iporData.vaults.length} total vaults, ${all.length} on supported chains, ` +
+              `${tracked.length} above $${MIN_TVL_USD} TVL [${chainSummary}]`);
 
   return tracked.map(v => ({
     address: v.address.toLowerCase(),
+    chain: v.chain || 'ethereum',
     name: v.name || 'Unknown',
     symbol: v.token || '?',
     decimals: decimalsFor(v.token),
@@ -138,14 +164,17 @@ function isStablecoin(symbol) {
   return s.includes('USD') || s.includes('DAI') || s === 'FRAX';
 }
 
-let activeRpc = 0;
 let callId = 0;
+const activeRpcByChain = {};
 
-async function rpcCall(method, params) {
-  const order = [activeRpc, ...RPCS.map((_, i) => i).filter(i => i !== activeRpc)];
+async function rpcCall(chain, method, params) {
+  const rpcs = CHAIN_RPCS[chain];
+  if (!rpcs) throw new Error(`No RPCs for chain ${chain}`);
+  const active = activeRpcByChain[chain] || 0;
+  const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
   for (const idx of order) {
     try {
-      const res = await fetch(RPCS[idx], {
+      const res = await fetch(rpcs[idx], {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
@@ -154,33 +183,33 @@ async function rpcCall(method, params) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      activeRpc = idx;
+      activeRpcByChain[chain] = idx;
       return json.result;
     } catch (e) {
       // suppress verbose per-RPC errors
     }
   }
-  throw new Error(`All RPCs failed for ${method}`);
+  throw new Error(`All RPCs failed for ${chain}:${method}`);
 }
 
-async function getBlockNumber() {
-  const hex = await rpcCall('eth_blockNumber', []);
+async function getBlockNumber(chain) {
+  const hex = await rpcCall(chain, 'eth_blockNumber', []);
   return parseInt(hex, 16);
 }
 
-async function getBlockTimestamp(blockNum) {
-  const block = await rpcCall('eth_getBlockByNumber', ['0x' + blockNum.toString(16), false]);
+async function getBlockTimestamp(chain, blockNum) {
+  const block = await rpcCall(chain, 'eth_getBlockByNumber', ['0x' + blockNum.toString(16), false]);
   return block ? parseInt(block.timestamp, 16) : 0;
 }
 
 // DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
-async function fetchHistoricalPrice(symbol, tokenAddr, timestamp) {
+async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
   if (isStablecoin(symbol)) return 1.0;
-  // Use provided underlyingToken, or fall back to TOKEN_ADDRESSES map
   if (!tokenAddr) tokenAddr = TOKEN_ADDRESSES[symbol];
   if (!tokenAddr) return null;
+  const llamaChain = LLAMA_CHAIN[chain] || LLAMA_CHAIN[chain] || 'ethereum';
   try {
-    const url = `https://coins.llama.fi/prices/historical/${timestamp}/ethereum:${tokenAddr}`;
+    const url = `https://coins.llama.fi/prices/historical/${timestamp}/${llamaChain}:${tokenAddr}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = await res.json();
@@ -202,7 +231,7 @@ async function enrichWithPrices(events) {
     if (!e.timestamp) continue;
     const day = Math.floor(e.timestamp / 86400) * 86400; // round to day
     const key = `${e.underlyingToken || e.symbol}:${day}`;
-    if (!groups[key]) groups[key] = { symbol: e.symbol, underlyingToken: e.underlyingToken, timestamp: day + 43200, events: [] }; // midday
+    if (!groups[key]) groups[key] = { symbol: e.symbol, underlyingToken: e.underlyingToken, chain: e.chain, timestamp: day + 43200, events: [] }; // midday
     groups[key].events.push(e);
   }
 
@@ -212,7 +241,7 @@ async function enrichWithPrices(events) {
   for (let i = 0; i < keys.length; i += 3) {
     const batch = keys.slice(i, i + 3);
     const results = await Promise.all(
-      batch.map(k => fetchHistoricalPrice(groups[k].symbol, groups[k].underlyingToken, groups[k].timestamp))
+      batch.map(k => fetchHistoricalPrice(groups[k].symbol, groups[k].underlyingToken, groups[k].timestamp, groups[k].chain))
     );
     results.forEach((price, j) => {
       if (price == null) return;
@@ -224,12 +253,13 @@ async function enrichWithPrices(events) {
   }
 }
 
-async function scanLogs(address, topic, fromBlock, toBlock) {
+async function scanLogs(chain, address, topic, fromBlock, toBlock) {
   const allLogs = [];
+  const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
 
   async function scan(from, to) {
     try {
-      const logs = await rpcCall('eth_getLogs', [{
+      const logs = await rpcCall(chain, 'eth_getLogs', [{
         address,
         topics: [topic],
         fromBlock: '0x' + from.toString(16),
@@ -244,7 +274,6 @@ async function scanLogs(address, topic, fromBlock, toBlock) {
     }
   }
 
-  const CHUNK = 10000;
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
     await scan(start, end);
@@ -262,6 +291,7 @@ function parseDepositLog(log, vault) {
     vault: vault.address,
     vaultName: vault.name,
     symbol: vault.symbol,
+    chain: vault.chain,
     underlyingToken: vault.underlyingToken,
     sender, owner, assets, shares,
     tx: log.transactionHash,
@@ -281,6 +311,7 @@ function parseWithdrawLog(log, vault) {
     vault: vault.address,
     vaultName: vault.name,
     symbol: vault.symbol,
+    chain: vault.chain,
     underlyingToken: vault.underlyingToken,
     sender, receiver, owner, assets, shares,
     tx: log.transactionHash,
@@ -300,72 +331,93 @@ async function main() {
     data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8'));
   } catch {}
 
-  // Scan new events from chain (may fail if RPCs are unavailable)
+  // Scan new events across all supported chains
   let newEventsTotal = 0;
-  try {
-    const currentBlock = await getBlockNumber();
-    console.log(`Current block: ${currentBlock}`);
 
-    // Reset lastBlock for vaults that were scanned but have zero events —
-    // they likely had a too-short backfill window and need a rescan.
-    const eventVaults = new Set(data.events.map(e => e.vault));
-    for (const vault of VAULTS) {
-      if (data.lastBlock[vault.address] && !eventVaults.has(vault.address)) {
-        console.log(`${vault.name}: resetting lastBlock (0 events, needs deeper backfill)`);
-        delete data.lastBlock[vault.address];
-      }
+  // Reset lastBlock for vaults with 0 events (need deeper backfill)
+  const eventVaults = new Set(data.events.map(e => e.vault));
+  for (const vault of VAULTS) {
+    if (data.lastBlock[vault.address] && !eventVaults.has(vault.address)) {
+      console.log(`${vault.name}: resetting lastBlock (0 events, needs deeper backfill)`);
+      delete data.lastBlock[vault.address];
+    }
+  }
+
+  // Group vaults by chain
+  const byChain = {};
+  VAULTS.forEach(v => {
+    const c = v.chain || 'ethereum';
+    if (!byChain[c]) byChain[c] = [];
+    byChain[c].push(v);
+  });
+
+  for (const [chain, chainVaults] of Object.entries(byChain)) {
+    if (!CHAIN_RPCS[chain]) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
+
+    let currentBlock;
+    try {
+      currentBlock = await getBlockNumber(chain);
+      console.log(`\n=== ${chain.toUpperCase()} === (block ${currentBlock}, ${chainVaults.length} vaults)`);
+    } catch (e) {
+      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (RPC error: ${e.message})`);
+      continue;
     }
 
-    for (const vault of VAULTS) {
-      const lastBlock = data.lastBlock[vault.address] || (currentBlock - NEW_VAULT_BACKFILL_BLOCKS); // ~30 days back for new vaults
-      const fromBlock = lastBlock + 1;
+    const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
 
-      if (fromBlock > currentBlock) {
-        console.log(`${vault.name}: already up to date`);
-        continue;
-      }
+    for (const vault of chainVaults) {
+      try {
+        const lastBlock = data.lastBlock[vault.address] || (currentBlock - backfill);
+        const fromBlock = lastBlock + 1;
 
-      console.log(`\n${vault.name}: scanning blocks ${fromBlock} to ${currentBlock}...`);
+        if (fromBlock > currentBlock) {
+          console.log(`${vault.name}: already up to date`);
+          continue;
+        }
 
-      // Scan deposits
-      const depositLogs = await scanLogs(vault.address, DEPOSIT_TOPIC, fromBlock, currentBlock);
-      const deposits = depositLogs.map(l => parseDepositLog(l, vault));
-      console.log(`  ${deposits.length} deposits found`);
+        console.log(`\n${vault.name} [${chain}]: scanning blocks ${fromBlock} to ${currentBlock}...`);
 
-      // Scan withdrawals
-      const withdrawLogs = await scanLogs(vault.address, WITHDRAW_TOPIC, fromBlock, currentBlock);
-      const withdrawals = withdrawLogs.map(l => parseWithdrawLog(l, vault));
-      console.log(`  ${withdrawals.length} withdrawals found`);
+        const depositLogs = await scanLogs(chain, vault.address, DEPOSIT_TOPIC, fromBlock, currentBlock);
+        const deposits = depositLogs.map(l => parseDepositLog(l, vault));
+        console.log(`  ${deposits.length} deposits found`);
 
-      const newEvents = [...deposits, ...withdrawals];
-      newEventsTotal += newEvents.length;
+        const withdrawLogs = await scanLogs(chain, vault.address, WITHDRAW_TOPIC, fromBlock, currentBlock);
+        const withdrawals = withdrawLogs.map(l => parseWithdrawLog(l, vault));
+        console.log(`  ${withdrawals.length} withdrawals found`);
 
-      // Fetch timestamps for new events
-      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
-      console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
-      for (let i = 0; i < uniqueBlocks.length; i += 5) {
-        const batch = uniqueBlocks.slice(i, i + 5);
-        const results = await Promise.all(batch.map(b => getBlockTimestamp(b).catch(() => 0)));
-        results.forEach((ts, j) => {
-          const block = batch[j];
-          newEvents.filter(e => e.block === block).forEach(e => e.timestamp = ts);
+        const newEvents = [...deposits, ...withdrawals];
+        newEventsTotal += newEvents.length;
+
+        // Fetch timestamps
+        const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
+        if (uniqueBlocks.length > 0) {
+          console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
+          for (let i = 0; i < uniqueBlocks.length; i += 5) {
+            const batch = uniqueBlocks.slice(i, i + 5);
+            const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+            results.forEach((ts, j) => {
+              const block = batch[j];
+              newEvents.filter(e => e.block === block).forEach(e => e.timestamp = ts);
+            });
+          }
+        }
+
+        newEvents.forEach(e => {
+          e.assets = Math.round(e.assets * 1e6) / 1e6;
+          e.shares = Math.round(e.shares * 1e6) / 1e6;
         });
+
+        await enrichWithPrices(newEvents);
+        data.events.push(...newEvents);
+        data.lastBlock[vault.address] = currentBlock;
+      } catch (e) {
+        console.log(`  ${vault.name}: scan failed (${e.message})`);
       }
-
-      // Round asset amounts
-      newEvents.forEach(e => {
-        e.assets = Math.round(e.assets * 1e6) / 1e6;
-        e.shares = Math.round(e.shares * 1e6) / 1e6;
-      });
-
-      // Fetch USD prices at time of each event
-      await enrichWithPrices(newEvents);
-
-      data.events.push(...newEvents);
-      data.lastBlock[vault.address] = currentBlock;
     }
-  } catch (e) {
-    console.log(`\nRPC scan failed (${e.message}), continuing with price backfill...`);
+  }
+
+  try { /* outer catch for compatibility */ } catch (e) {
+    console.log(`\nScan phase error: ${e.message}`);
   }
 
   // Backfill prices for any events still missing usdValue (works without RPC)
@@ -386,7 +438,7 @@ async function main() {
   });
 
   data.updatedAt = new Date().toISOString();
-  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, underlyingToken: v.underlyingToken }));
+  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken }));
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
