@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Address Lookup — Fusion Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #F5F5FA; --bg-alt: #E9E9F3; --surface: #FFFFFF; --stroke: #E5E5E5;
+      --text: #000000; --text-body: #70747A; --text-secondary: #9BA3AF;
+      --accent: #8429FF; --accent-end: #6C00FF; --accent-light: #A37FFF;
+      --accent-bg: rgba(132,41,255,0.10);
+      --green: #16a34a; --green-bg: rgba(22,163,74,0.08);
+      --red: #dc2626; --red-bg: rgba(220,38,38,0.08);
+    }
+    [data-theme="dark"] {
+      --bg: #0F0F14; --bg-alt: #1A1A24; --surface: #16161E; --stroke: #2A2A3A;
+      --text: #E8E8F0; --text-body: #9A9AB0; --text-secondary: #6A6A80;
+      --accent: #A37FFF; --accent-end: #8429FF; --accent-light: #B89AFF;
+      --accent-bg: rgba(132,41,255,0.15);
+      --green: #22c55e; --green-bg: rgba(34,197,94,0.12);
+      --red: #ef4444; --red-bg: rgba(239,68,68,0.12);
+    }
+    body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; font-weight: 400; transition: background 0.3s, color 0.3s; }
+    .num-bold { font-family: 'Source Sans 3', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .top-nav { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 1.5rem; }
+    .top-nav a { font-size: 0.8rem; font-weight: 500; color: var(--text-body); text-decoration: none; padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+    .top-nav a:hover { color: var(--accent); border-color: var(--stroke); }
+    .top-nav a.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+    .theme-toggle { margin-left: auto; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    header { margin-bottom: 1.5rem; }
+    header h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; background: linear-gradient(90deg, var(--accent), var(--accent-end)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    header p { color: var(--text-body); font-size: 0.875rem; }
+
+    /* Search */
+    .addr-input-wrap { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .addr-input-wrap input {
+      flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+      padding: 0.6rem 0.9rem; background: var(--surface); border: 1px solid var(--stroke);
+      border-radius: 8px; color: var(--text); outline: none; transition: border-color 0.15s;
+    }
+    .addr-input-wrap input:focus { border-color: var(--accent); }
+    .addr-input-wrap input::placeholder { color: var(--text-secondary); font-family: 'Poppins', sans-serif; font-size: 0.8rem; }
+    .btn { font-family: inherit; font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Top wallets chips */
+    .top-wallets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.5rem; }
+    .wallet-chip {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+      padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--stroke);
+      background: var(--surface); color: var(--text-body); cursor: pointer;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .wallet-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 10px; padding: 0.85rem 1rem; }
+    .stat-card .label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-bottom: 0.35rem; }
+    .stat-card .value { font-size: 1.15rem; letter-spacing: -0.02em; }
+    .stat-card .sub { font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+    /* Flow chart */
+    .flow-chart { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; padding: 0.85rem 1rem 0.65rem; margin-bottom: 1rem; }
+    .flow-chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+    .flow-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
+    .flow-chart-range { font-size: 0.65rem; color: var(--text-secondary); }
+    .flow-chart-bars { display: flex; align-items: center; gap: 3px; height: 80px; position: relative; }
+    .flow-chart-bars::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--stroke); z-index: 0; }
+    .flow-bar-slot { flex: 1; height: 100%; position: relative; z-index: 1; }
+    .flow-bar { position: absolute; left: 0; right: 0; min-height: 2px; border-radius: 3px; transition: opacity 0.15s; }
+    .flow-bar.positive { background: var(--green); bottom: 50%; }
+    .flow-bar.negative { background: var(--red); top: 50%; }
+    .flow-bar-slot:hover .flow-bar { opacity: 0.7; }
+    .flow-bar-slot .flow-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.88); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.7rem; white-space: nowrap; z-index: 10; pointer-events: none; line-height: 1.4; }
+    .flow-bar-slot:hover .flow-tip, .flow-bar-slot.active .flow-tip { display: block; }
+    .flow-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.35rem; }
+
+    /* Breakdown panels */
+    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .panel { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; }
+    .panel-title { font-size: 0.75rem; font-weight: 500; padding: 0.85rem 1rem; border-bottom: 1px solid var(--stroke); }
+    .panel table { width: 100%; border-collapse: collapse; }
+    .panel th { text-align: left; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--stroke); }
+    .panel td { padding: 0.5rem 0.8rem; font-size: 0.78rem; border-bottom: 1px solid var(--stroke); color: var(--text-body); }
+    .panel tr:last-child td { border-bottom: none; }
+    .flow-bar-inline { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 0.4rem; min-width: 2px; }
+
+    /* Event history */
+    .history-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; margin-bottom: 2rem; }
+    .history-card .panel-title { display: flex; justify-content: space-between; align-items: center; }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th { text-align: left; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--stroke); }
+    .history-table td { padding: 0.5rem 0.8rem; font-size: 0.78rem; border-bottom: 1px solid var(--stroke); color: var(--text-body); }
+    .history-table tr:last-child td { border-bottom: none; }
+    .badge-deposit, .badge-withdraw { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.12rem 0.4rem; border-radius: 4px; text-decoration: none; }
+    .badge-deposit { color: var(--green); background: var(--green-bg); }
+    .badge-withdraw { color: var(--red); background: var(--red-bg); }
+
+    .show-more-btn { display: block; width: 100%; padding: 0.7rem; text-align: center; font-family: inherit; font-size: 0.78rem; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
+    .show-more-btn:hover { background: var(--accent-bg); }
+
+    /* Empty / loading */
+    .empty-state { text-align: center; padding: 3rem 2rem; color: var(--text-secondary); font-size: 0.875rem; }
+    .intro-state { text-align: center; padding: 2rem; color: var(--text-secondary); }
+    .intro-state p { font-size: 0.85rem; margin-bottom: 1rem; }
+    .intro-state .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
+
+    /* Mobile cards for event history */
+    .mobile-events { display: none; }
+    .mobile-event { padding: 0.85rem 1rem; border-bottom: 1px solid var(--stroke); display: flex; flex-direction: column; gap: 0.5rem; }
+    .mobile-event:last-child { border-bottom: none; }
+    .mobile-event-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .mobile-event-when { font-size: 0.7rem; color: var(--text-secondary); }
+    .mobile-event-amount { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .mobile-event-usd { font-size: 0.78rem; color: var(--text-secondary); font-weight: 400; }
+    .mobile-event-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-body); gap: 0.5rem; }
+    .mobile-event-product { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      h1 { font-size: 1.65rem; }
+      header p { font-size: 0.8rem; }
+      .top-nav { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+      .stat-card { padding: 0.65rem 0.6rem; }
+      .stat-card .value { font-size: 0.9rem; }
+      .stat-card .label { font-size: 0.55rem; }
+      .stat-card .sub { font-size: 0.6rem; }
+      .panels { grid-template-columns: 1fr; }
+      .history-card table { display: none; }
+      .mobile-events { display: block; }
+      .addr-input-wrap { flex-wrap: wrap; }
+      .addr-input-wrap input { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="/">Activity</a>
+      <a href="/all-vaults">All Vaults</a>
+      <a href="/dominance">Dominance</a>
+      <a href="/address" class="active">Address</a>
+      <a href="/spark">Spark</a>
+      <a href="/logs">Logs</a>
+      <a href="/socials">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+    </nav>
+
+    <header>
+      <h1>Address Lookup</h1>
+      <p>Explore any wallet's Fusion vault activity</p>
+    </header>
+
+    <div class="addr-input-wrap">
+      <input type="text" id="addrInput" placeholder="Paste an Ethereum address (0x…)" spellcheck="false" autocomplete="off">
+      <button class="btn" id="shareBtn" style="display:none" title="Copy shareable link">Share</button>
+    </div>
+
+    <div id="introSection">
+      <div class="intro-state">
+        <p>Enter an address above, or explore a top wallet:</p>
+        <div class="label">Top wallets by volume</div>
+        <div class="top-wallets" id="topWallets"></div>
+      </div>
+    </div>
+
+    <div id="resultSection" style="display:none">
+      <div id="statsRow" class="stats-row"></div>
+      <div id="flowChart" class="flow-chart" style="display:none">
+        <div class="flow-chart-header">
+          <span class="flow-chart-title">Net flow over time</span>
+          <span class="flow-chart-range" id="flowRange"></span>
+        </div>
+        <div class="flow-chart-bars" id="flowBars"></div>
+        <div class="flow-chart-axis"><span id="flowStart"></span><span id="flowEnd"></span></div>
+      </div>
+      <div class="panels" id="panels"></div>
+      <div class="history-card" id="historyCard"></div>
+    </div>
+
+    <div id="emptySection" style="display:none">
+      <div class="empty-state">This address has no recorded activity in tracked Fusion vaults.</div>
+    </div>
+  </div>
+
+  <script>
+    // Theme
+    (function(){const s=localStorage.getItem('theme');const p=window.matchMedia('(prefers-color-scheme:dark)').matches;if(s==='dark'||(!s&&p))document.documentElement.setAttribute('data-theme','dark')})();
+    document.getElementById('themeToggle').addEventListener('click',function(){const d=document.documentElement.getAttribute('data-theme')==='dark';if(d){document.documentElement.removeAttribute('data-theme');localStorage.setItem('theme','light');this.innerHTML='&#9790;'}else{document.documentElement.setAttribute('data-theme','dark');localStorage.setItem('theme','dark');this.innerHTML='&#9788;'}});
+    if(document.documentElement.getAttribute('data-theme')==='dark')document.getElementById('themeToggle').innerHTML='&#9788;';
+
+    // Helpers
+    function shortAddr(a){return a.slice(0,6)+'…'+a.slice(-4)}
+    function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+    function timeAgo(ts){const d=Math.floor(Date.now()/1000-ts);if(d<60)return d+'s ago';if(d<3600)return Math.floor(d/60)+'m ago';if(d<86400)return Math.floor(d/3600)+'h ago';return Math.floor(d/86400)+'d ago'}
+    function formatAmount(n){if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return n.toFixed(2);if(n>=1)return n.toFixed(4);return n.toFixed(6)}
+    function fmtUsd(v){const a=Math.abs(v);const s=v>=0?'+':'-';if(a>=1e6)return s+'$'+(a/1e6).toFixed(2)+'M';if(a>=1e3)return s+'$'+(a/1e3).toFixed(1)+'K';if(a===0)return '$0';return s+'$'+a.toFixed(2)}
+    function fmtUsdPlain(v){if(v>=1e6)return '$'+(v/1e6).toFixed(2)+'M';if(v>=1e3)return '$'+(v/1e3).toFixed(1)+'K';return '$'+v.toFixed(2)}
+    function formatDate(ts){return new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+
+    // Data
+    let allEvents = [];
+    let addrIndex = {}; // address → [event indices]
+
+    async function loadEvents() {
+      const res = await fetch('../activity-events.json');
+      if (!res.ok) return;
+      const data = await res.json();
+      const events = data.events || [];
+      const vaultInfo = {};
+      (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
+      events.forEach(e => { const v = vaultInfo[e.vault]; if (v) { e.symbol = v.symbol; e.vaultName = v.name; } });
+      allEvents = events;
+
+      // Build index: address → event indices
+      addrIndex = {};
+      events.forEach((e, i) => {
+        const addrs = new Set([e.owner, e.sender, e.receiver].filter(Boolean).map(a => a.toLowerCase()));
+        addrs.forEach(a => { if (!addrIndex[a]) addrIndex[a] = []; addrIndex[a].push(i); });
+      });
+
+      renderTopWallets();
+    }
+
+    function getEventsForAddr(addr) {
+      const indices = addrIndex[addr.toLowerCase()] || [];
+      const seen = new Set();
+      return indices.map(i => allEvents[i]).filter(e => {
+        const key = e.tx + ':' + e.logIdx;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a, b) => b.timestamp - a.timestamp);
+    }
+
+    function computeStats(events) {
+      let deposited = 0, withdrawn = 0;
+      const vaults = new Set();
+      let firstTs = Infinity, lastTs = 0;
+      events.forEach(e => {
+        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        if (e.type === 'deposit') deposited += usd; else withdrawn += usd;
+        vaults.add(e.vault);
+        if (e.timestamp) { firstTs = Math.min(firstTs, e.timestamp); lastTs = Math.max(lastTs, e.timestamp); }
+      });
+      return { deposited, withdrawn, net: deposited - withdrawn, vaultCount: vaults.size, firstTs: firstTs === Infinity ? 0 : firstTs, lastTs, eventCount: events.length };
+    }
+
+    // Top wallets
+    function renderTopWallets() {
+      const walletVol = {};
+      allEvents.forEach(e => {
+        if (!e.owner || e.usdValue == null) return;
+        const a = e.owner.toLowerCase();
+        walletVol[a] = (walletVol[a] || 0) + Math.abs(e.usdValue);
+      });
+      const sorted = Object.entries(walletVol).sort((a, b) => b[1] - a[1]).slice(0, 12);
+      const el = document.getElementById('topWallets');
+      el.innerHTML = sorted.map(([addr]) =>
+        `<a class="wallet-chip" data-addr="${addr}">${shortAddr(addr)}</a>`
+      ).join('');
+      el.addEventListener('click', e => {
+        const chip = e.target.closest('[data-addr]');
+        if (chip) selectAddress(chip.dataset.addr);
+      });
+    }
+
+    // URL sync
+    function getUrlAddr() {
+      return new URLSearchParams(window.location.search).get('a') || '';
+    }
+    function setUrlAddr(addr) {
+      const url = new URL(window.location);
+      if (addr) url.searchParams.set('a', addr); else url.searchParams.delete('a');
+      history.replaceState(null, '', url);
+    }
+
+    // Select and render
+    function selectAddress(addr) {
+      addr = addr.trim().toLowerCase();
+      document.getElementById('addrInput').value = addr;
+      setUrlAddr(addr);
+      if (!/^0x[a-f0-9]{40}$/.test(addr)) {
+        document.getElementById('resultSection').style.display = 'none';
+        document.getElementById('emptySection').style.display = 'none';
+        document.getElementById('introSection').style.display = '';
+        document.getElementById('shareBtn').style.display = 'none';
+        return;
+      }
+      const events = getEventsForAddr(addr);
+      document.getElementById('introSection').style.display = 'none';
+      document.getElementById('shareBtn').style.display = '';
+      if (events.length === 0) {
+        document.getElementById('resultSection').style.display = 'none';
+        document.getElementById('emptySection').style.display = '';
+        return;
+      }
+      document.getElementById('emptySection').style.display = 'none';
+      document.getElementById('resultSection').style.display = '';
+      renderResults(addr, events);
+    }
+
+    function renderResults(addr, events) {
+      const s = computeStats(events);
+      renderStats(s);
+      renderFlowChart(events);
+      renderPanels(events);
+      renderHistory(events);
+    }
+
+    // Stats cards
+    function renderStats(s) {
+      const el = document.getElementById('statsRow');
+      const netColor = s.net >= 0 ? 'var(--green)' : 'var(--red)';
+      el.innerHTML = `
+        <div class="stat-card"><div class="label">Deposited</div><div class="value num-bold" style="color:var(--green)">${fmtUsdPlain(s.deposited)}</div></div>
+        <div class="stat-card"><div class="label">Withdrawn</div><div class="value num-bold" style="color:var(--red)">${fmtUsdPlain(s.withdrawn)}</div></div>
+        <div class="stat-card"><div class="label">Net Flow</div><div class="value num-bold" style="color:${netColor}">${fmtUsd(s.net)}</div></div>
+        <div class="stat-card"><div class="label">Vaults</div><div class="value num-bold">${s.vaultCount}</div></div>
+        <div class="stat-card"><div class="label">Active</div><div class="value" style="font-size:0.78rem">${s.firstTs?formatDate(s.firstTs):'-'}</div><div class="sub">${s.lastTs?'→ '+formatDate(s.lastTs):''}</div></div>
+      `;
+    }
+
+    // Flow chart (daily bars)
+    function renderFlowChart(events) {
+      const chart = document.getElementById('flowChart');
+      const barsEl = document.getElementById('flowBars');
+      if (events.length < 2) { chart.style.display = 'none'; return; }
+
+      const now = Date.now();
+      const today = Math.floor(now / 86400000);
+      // Determine range from events
+      const minDay = Math.floor(Math.min(...events.filter(e=>e.timestamp).map(e=>e.timestamp)) / 86400);
+      const days = Math.min(90, Math.max(7, today - minDay + 1));
+      const buckets = new Array(days).fill(0);
+
+      events.forEach(e => {
+        if (!e.timestamp || e.usdValue == null) return;
+        const day = Math.floor(e.timestamp / 86400);
+        const idx = days - 1 - (today - day);
+        if (idx < 0 || idx >= days) return;
+        buckets[idx] += e.type === 'deposit' ? e.usdValue : -e.usdValue;
+      });
+
+      const maxAbs = Math.max(...buckets.map(Math.abs), 1);
+      const fmtDay = daysAgo => { const d = new Date(now - daysAgo * 86400000); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); };
+
+      let html = '';
+      for (let i = 0; i < days; i++) {
+        const val = buckets[i];
+        const daysAgo = days - 1 - i;
+        const heightPct = Math.abs(val) / maxAbs * 50;
+        const cls = val >= 0 ? 'positive' : 'negative';
+        const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
+        html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div><div class="flow-tip">${label}<br><strong>${fmtUsd(val)}</strong></div></div>`;
+      }
+      barsEl.innerHTML = html;
+
+      // Touch support
+      barsEl.onclick = function(ev) {
+        const slot = ev.target.closest('.flow-bar-slot');
+        if (!slot) return;
+        const was = slot.classList.contains('active');
+        barsEl.querySelectorAll('.flow-bar-slot.active').forEach(s => s.classList.remove('active'));
+        if (!was) slot.classList.add('active');
+      };
+
+      document.getElementById('flowStart').textContent = fmtDay(days - 1);
+      document.getElementById('flowEnd').textContent = 'today';
+      document.getElementById('flowRange').textContent = days + 'd';
+      chart.style.display = '';
+    }
+
+    // Breakdown panels
+    function renderPanels(events) {
+      // Per vault
+      const byVault = {};
+      events.forEach(e => {
+        const key = e.vault;
+        if (!byVault[key]) byVault[key] = { name: e.vaultName || shortAddr(e.vault), deposited: 0, withdrawn: 0, count: 0, firstTs: Infinity, lastTs: 0 };
+        const v = byVault[key];
+        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        if (e.type === 'deposit') v.deposited += usd; else v.withdrawn += usd;
+        v.count++;
+        if (e.timestamp) { v.firstTs = Math.min(v.firstTs, e.timestamp); v.lastTs = Math.max(v.lastTs, e.timestamp); }
+      });
+      const vaultList = Object.values(byVault).sort((a, b) => Math.abs(b.deposited - b.withdrawn) - Math.abs(a.deposited - a.withdrawn));
+      const maxVaultFlow = Math.max(...vaultList.map(v => Math.abs(v.deposited - v.withdrawn)), 1);
+
+      let vaultRows = '';
+      vaultList.forEach(v => {
+        const net = v.deposited - v.withdrawn;
+        const color = net >= 0 ? 'var(--green)' : 'var(--red)';
+        const barW = Math.abs(net) / maxVaultFlow * 60;
+        vaultRows += `<tr>
+          <td>${escapeHtml(v.name)}</td>
+          <td><span class="flow-bar-inline" style="width:${barW}px;background:${color}"></span><span style="color:${color}" class="num-bold">${fmtUsd(net)}</span></td>
+          <td class="num-bold">${v.count}</td>
+        </tr>`;
+      });
+
+      // Per asset
+      const byAsset = {};
+      events.forEach(e => {
+        const sym = e.symbol || '?';
+        if (!byAsset[sym]) byAsset[sym] = { deposited: 0, withdrawn: 0 };
+        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        if (e.type === 'deposit') byAsset[sym].deposited += usd; else byAsset[sym].withdrawn += usd;
+      });
+      const assetList = Object.entries(byAsset).sort((a, b) => (b[1].deposited + b[1].withdrawn) - (a[1].deposited + a[1].withdrawn));
+
+      let assetRows = '';
+      assetList.forEach(([sym, a]) => {
+        const net = a.deposited - a.withdrawn;
+        const color = net >= 0 ? 'var(--green)' : 'var(--red)';
+        assetRows += `<tr>
+          <td><strong>${escapeHtml(sym)}</strong></td>
+          <td style="color:var(--green)" class="num-bold">${fmtUsdPlain(a.deposited)}</td>
+          <td style="color:var(--red)" class="num-bold">${fmtUsdPlain(a.withdrawn)}</td>
+          <td style="color:${color}" class="num-bold">${fmtUsd(net)}</td>
+        </tr>`;
+      });
+
+      document.getElementById('panels').innerHTML = `
+        <div class="panel">
+          <div class="panel-title">Per Vault</div>
+          <table><thead><tr><th>Vault</th><th>Net Flow</th><th>Events</th></tr></thead><tbody>${vaultRows}</tbody></table>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Per Asset</div>
+          <table><thead><tr><th>Asset</th><th>In</th><th>Out</th><th>Net</th></tr></thead><tbody>${assetRows}</tbody></table>
+        </div>
+      `;
+    }
+
+    // Event history
+    let historyLimit = 50;
+    function renderHistory(events) {
+      historyLimit = 50;
+      renderHistoryInner(events);
+    }
+    function renderHistoryInner(events) {
+      const card = document.getElementById('historyCard');
+      const shown = events.slice(0, historyLimit);
+      const hasMore = events.length > historyLimit;
+
+      let rows = '';
+      let mobileRows = '';
+      shown.forEach(e => {
+        const time = e.timestamp ? timeAgo(e.timestamp) : '#' + e.block;
+        const bc = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
+        const bt = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
+        const sym = e.symbol || '?';
+        const name = e.vaultName || shortAddr(e.vault);
+        const usdStr = e.usdValue != null ? '$' + e.usdValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+        rows += `<tr>
+          <td>${time}</td>
+          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" class="${bc}">${bt}</a></td>
+          <td class="num-bold">${formatAmount(e.assets)} ${sym}${usdStr ? '<br><span style="color:var(--text-secondary);font-weight:400;font-size:0.7rem">'+usdStr+'</span>' : ''}</td>
+          <td>${escapeHtml(name)}</td>
+        </tr>`;
+        mobileRows += `<div class="mobile-event">
+          <div class="mobile-event-top"><a href="https://etherscan.io/tx/${e.tx}" target="_blank" class="${bc}">${bt}</a><span class="mobile-event-when">${time}</span></div>
+          <div class="mobile-event-top"><span class="mobile-event-amount">${formatAmount(e.assets)} ${sym}</span><span class="mobile-event-usd">${usdStr}</span></div>
+          <div class="mobile-event-meta"><span class="mobile-event-product">${escapeHtml(name)}</span></div>
+        </div>`;
+      });
+
+      card.innerHTML = `
+        <div class="panel-title">Event History <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">${events.length} events</span></div>
+        <table class="history-table"><thead><tr><th>When</th><th>Type</th><th>Amount</th><th>Product</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="mobile-events">${mobileRows}</div>
+        ${hasMore ? '<button class="show-more-btn" id="showMoreBtn">Show more (' + (events.length - historyLimit) + ' remaining)</button>' : ''}
+      `;
+
+      if (hasMore) {
+        document.getElementById('showMoreBtn').addEventListener('click', () => {
+          historyLimit += 100;
+          renderHistoryInner(events);
+        });
+      }
+    }
+
+    // Input handling
+    const input = document.getElementById('addrInput');
+    let debounceTimer;
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => selectAddress(input.value), 300);
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(debounceTimer); selectAddress(input.value); } });
+
+    // Share button
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById('shareBtn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Share'; }, 1500);
+      });
+    });
+
+    // Init
+    loadEvents().then(() => {
+      const urlAddr = getUrlAddr();
+      if (urlAddr) selectAddress(urlAddr);
+    });
+  </script>
+</body>
+</html>
