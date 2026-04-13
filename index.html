@@ -906,12 +906,15 @@
       const content = document.getElementById('activityContent');
       if (!events.length) {
         const chainSel = document.getElementById('filterChain').value;
+        const chainEvents = chainSel ? allEvents.filter(e => (e.chain || 'ethereum') === chainSel) : allEvents;
+        const count = chainSel ? trackedVaults.filter(v => (v.chain || 'ethereum') === chainSel).length : 0;
         let msg;
-        if (chainSel && !chainsWithEvents.has(chainSel)) {
-          const count = trackedVaults.filter(v => (v.chain || 'ethereum') === chainSel).length;
+        if (chainSel && chainEvents.length === 0) {
           msg = `No events tracked yet for <strong>${chainSel}</strong> — ${count} vault${count !== 1 ? 's' : ''} monitored, awaiting first activity`;
         } else if (allEvents.length > 0) {
-          msg = 'No events match the current filters';
+          msg = chainSel
+            ? `No events on <strong>${chainSel}</strong> match the current filters (${chainEvents.length} event${chainEvents.length !== 1 ? 's' : ''} exist — try lowering Min amount)`
+            : 'No events match the current filters';
         } else {
           msg = 'No events yet — collector may not have run';
         }
