@@ -41,4 +41,5 @@ jobs:
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update data files [skip ci]"
+          git pull --rebase origin ${{ github.ref_name }} || true
           git push
