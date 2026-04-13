@@ -712,9 +712,14 @@
       if (stored && names.includes(stored)) select.value = stored;
     }
 
+    let trackedVaults = [];
+
     function populateChainFilter() {
       const select = document.getElementById('filterChain');
-      const chains = [...new Set(allEvents.map(e => e.chain || 'ethereum').filter(Boolean))].sort();
+      // Use tracked vaults list (not events) so chains with 0 activity still appear
+      const fromVaults = trackedVaults.map(v => v.chain || 'ethereum');
+      const fromEvents = allEvents.map(e => e.chain || 'ethereum');
+      const chains = [...new Set([...fromVaults, ...fromEvents])].sort();
       select.innerHTML = '<option value="">All chains</option>'
         + chains.map(c => `<option value="${c}">${c}</option>`).join('');
     }
@@ -731,8 +736,9 @@
         const events = data.events || [];
 
         // Always use vault lookup as source of truth for symbol/name
+        trackedVaults = data.vaults || [];
         const vaultInfo = {};
-        (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
+        trackedVaults.forEach(v => { vaultInfo[v.address] = v; });
         events.forEach(e => {
           const v = vaultInfo[e.vault];
           if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
