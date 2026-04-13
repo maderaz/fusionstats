@@ -47,7 +47,7 @@
     }
     .addr-input-wrap input:focus { border-color: var(--accent); }
     .addr-input-wrap input::placeholder { color: var(--text-secondary); font-family: 'Poppins', sans-serif; font-size: 0.8rem; }
-    .btn { font-family: inherit; font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn { font-family: inherit; font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; transition: all 0.15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
     .btn:hover { border-color: var(--accent); color: var(--accent); }
 
     /* Top wallets chips */
@@ -165,7 +165,8 @@
 
     <div class="addr-input-wrap">
       <input type="text" id="addrInput" placeholder="Paste an Ethereum address (0x…)" spellcheck="false" autocomplete="off">
-      <button class="btn" id="shareBtn" style="display:none" title="Copy shareable link">Share</button>
+      <a class="btn" id="appBtn" style="display:none" target="_blank" rel="noopener">Open in App</a>
+      <a class="btn" id="explorerBtn" style="display:none" target="_blank" rel="noopener" title="View on Etherscan">&#8599; Explorer</a>
     </div>
 
     <div id="introSection">
@@ -296,12 +297,20 @@
         document.getElementById('resultSection').style.display = 'none';
         document.getElementById('emptySection').style.display = 'none';
         document.getElementById('introSection').style.display = '';
-        document.getElementById('shareBtn').style.display = 'none';
+        document.getElementById('appBtn').style.display = 'none';
+        document.getElementById('explorerBtn').style.display = 'none';
         return;
       }
       const events = getEventsForAddr(addr);
       document.getElementById('introSection').style.display = 'none';
-      document.getElementById('shareBtn').style.display = '';
+      // Set explorer link
+      const explorerBtn = document.getElementById('explorerBtn');
+      explorerBtn.href = `https://etherscan.io/address/${addr}`;
+      explorerBtn.style.display = '';
+      // Set app link (use ethereum as default chain for vault addresses)
+      const appBtn = document.getElementById('appBtn');
+      appBtn.href = `https://app.ipor.io/fusion/ethereum/${addr}`;
+      appBtn.style.display = '';
       if (events.length === 0) {
         document.getElementById('resultSection').style.display = 'none';
         document.getElementById('emptySection').style.display = '';
@@ -502,14 +511,6 @@
     });
     input.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(debounceTimer); selectAddress(input.value); } });
 
-    // Share button
-    document.getElementById('shareBtn').addEventListener('click', () => {
-      navigator.clipboard.writeText(window.location.href).then(() => {
-        const btn = document.getElementById('shareBtn');
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Share'; }, 1500);
-      });
-    });
 
     // Init
     loadEvents().then(() => {
