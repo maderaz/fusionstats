@@ -247,11 +247,24 @@
     }
 
     function computeStats(events) {
+      // Build price lookup for fallback
+      const priceBySymbol = {};
+      events.forEach(e => {
+        if (e.usdValue != null && e.assets > 0 && e.symbol) {
+          priceBySymbol[e.symbol] = e.usdValue / e.assets;
+        }
+      });
+      function getUsd(e) {
+        if (e.usdValue != null) return Math.abs(e.usdValue);
+        if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) return Math.abs(e.assets * priceBySymbol[e.symbol]);
+        return 0;
+      }
+
       let deposited = 0, withdrawn = 0;
       const vaults = new Set();
       let firstTs = Infinity, lastTs = 0;
       events.forEach(e => {
-        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        const usd = getUsd(e);
         if (e.type === 'deposit') deposited += usd; else withdrawn += usd;
         vaults.add(e.vault);
         if (e.timestamp) { firstTs = Math.min(firstTs, e.timestamp); lastTs = Math.max(lastTs, e.timestamp); }
@@ -348,19 +361,38 @@
       const barsEl = document.getElementById('flowBars');
       if (events.length < 2) { chart.style.display = 'none'; return; }
 
+      // Build a price lookup from events that have usdValue — use as fallback
+      // for events missing prices (same symbol, closest known price)
+      const priceBySymbol = {};
+      events.forEach(e => {
+        if (e.usdValue != null && e.assets > 0 && e.symbol) {
+          priceBySymbol[e.symbol] = e.usdValue / e.assets;
+        }
+      });
+
+      function getUsd(e) {
+        if (e.usdValue != null) return Math.abs(e.usdValue);
+        // Fallback: use inferred price from same symbol
+        if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) {
+          return Math.abs(e.assets * priceBySymbol[e.symbol]);
+        }
+        return 0;
+      }
+
       const now = Date.now();
       const today = Math.floor(now / 86400000);
-      // Determine range from events
       const minDay = Math.floor(Math.min(...events.filter(e=>e.timestamp).map(e=>e.timestamp)) / 86400);
       const days = Math.min(90, Math.max(7, today - minDay + 1));
       const buckets = new Array(days).fill(0);
 
       events.forEach(e => {
-        if (!e.timestamp || e.usdValue == null) return;
+        if (!e.timestamp) return;
+        const usd = getUsd(e);
+        if (usd === 0) return;
         const day = Math.floor(e.timestamp / 86400);
         const idx = days - 1 - (today - day);
         if (idx < 0 || idx >= days) return;
-        buckets[idx] += e.type === 'deposit' ? e.usdValue : -e.usdValue;
+        buckets[idx] += e.type === 'deposit' ? usd : -usd;
       });
 
       const maxAbs = Math.max(...buckets.map(Math.abs), 1);
@@ -394,13 +426,24 @@
 
     // Breakdown panels
     function renderPanels(events) {
+      // Build price lookup
+      const priceBySymbol = {};
+      events.forEach(e => {
+        if (e.usdValue != null && e.assets > 0 && e.symbol) priceBySymbol[e.symbol] = e.usdValue / e.assets;
+      });
+      function getUsd(e) {
+        if (e.usdValue != null) return Math.abs(e.usdValue);
+        if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) return Math.abs(e.assets * priceBySymbol[e.symbol]);
+        return 0;
+      }
+
       // Per vault
       const byVault = {};
       events.forEach(e => {
         const key = e.vault;
         if (!byVault[key]) byVault[key] = { name: e.vaultName || shortAddr(e.vault), deposited: 0, withdrawn: 0, count: 0, firstTs: Infinity, lastTs: 0 };
         const v = byVault[key];
-        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        const usd = getUsd(e);
         if (e.type === 'deposit') v.deposited += usd; else v.withdrawn += usd;
         v.count++;
         if (e.timestamp) { v.firstTs = Math.min(v.firstTs, e.timestamp); v.lastTs = Math.max(v.lastTs, e.timestamp); }
@@ -425,7 +468,7 @@
       events.forEach(e => {
         const sym = e.symbol || '?';
         if (!byAsset[sym]) byAsset[sym] = { deposited: 0, withdrawn: 0 };
-        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        const usd = getUsd(e);
         if (e.type === 'deposit') byAsset[sym].deposited += usd; else byAsset[sym].withdrawn += usd;
       });
       const assetList = Object.entries(byAsset).sort((a, b) => (b[1].deposited + b[1].withdrawn) - (a[1].deposited + a[1].withdrawn));

@@ -756,17 +756,29 @@
       const bars = document.getElementById('flowChartBars');
       if (!events.length) return;
 
-      // Group events by day (UTC). Day 0 = (days-1) days ago, Day (days-1) = today
+      // Build price lookup for events missing usdValue
+      const priceBySymbol = {};
+      events.forEach(e => {
+        if (e.usdValue != null && e.assets > 0 && e.symbol) {
+          priceBySymbol[e.symbol] = e.usdValue / e.assets;
+        }
+      });
+
       const now = Date.now();
       const today = Math.floor(now / 86400000);
       const buckets = new Array(days).fill(0);
 
       events.forEach(e => {
-        if (!e.timestamp || e.usdValue == null) return;
+        if (!e.timestamp) return;
+        let usd = e.usdValue;
+        if (usd == null && e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) {
+          usd = e.assets * priceBySymbol[e.symbol];
+        }
+        if (usd == null) return;
         const day = Math.floor(e.timestamp / 86400);
         const idx = days - 1 - (today - day);
         if (idx < 0 || idx >= days) return;
-        buckets[idx] += e.type === 'deposit' ? e.usdValue : -e.usdValue;
+        buckets[idx] += e.type === 'deposit' ? usd : -usd;
       });
 
       // Find max absolute value for scaling
