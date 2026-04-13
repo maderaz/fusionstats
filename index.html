@@ -548,7 +548,7 @@
       <h1>Vault Activity</h1>
       <p style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
         Deposit & withdrawal events across all Fusion vaults
-        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap"></span>
+        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap;cursor:help"></span>
       </p>
     </header>
 
@@ -694,6 +694,7 @@
         const vaultCount = (data.vaults || []).length;
         if (vaultCount > 0) {
           vaultCountEl.textContent = `Vaults Tracked: ${vaultCount}`;
+          vaultCountEl.title = 'Only Ethereum mainnet vaults with >$1K TVL are tracked for deposit/withdrawal events';
           vaultCountEl.style.display = 'inline-block';
         }
 
