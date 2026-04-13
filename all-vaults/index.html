@@ -540,34 +540,11 @@
     }
 
     // State
-    // Public vaults are those listed in the Fusion app (app.ipor.io/fusion).
-    // This set is maintained manually — when IPOR lists a new vault publicly,
-    // add its name here. Everything else is classified as "private".
-    const PUBLIC_VAULT_NAMES = new Set([
-      'IPOR stETH Ethereum',
-      'Reservoir wsrUSD looping', 'Reservoir wsrUSD Looping',
-      'AavEthena Loop Mainnet', 'AavEthena Loop Plasma',
-      'Reservoir ETH Yield', 'Reservoir BTC Yield',
-      'IPOR wstETH Base', 'IPOR wstETH Arbitrum',
-      'TAU InfiniFi Pointsmaxx - Silo', 'TAU InfiniFi Pointsmax',
-      'TAU Reservoir Pointsmax', 'TAU infiniFi Pointsmax',
-      'TAU InfiniFi BTC Carry', 'TAU InfiniFi ETH Carry',
-      'TAU Yield Bond ETF', 'TAU Lending Optimizer',
-      'yoUSD Loooper', 'yoETH Loooper',
-      'K3 Leveraged syrupUSDT Strategy', 'K3 Capital ETH Maxi',
-      'Autopilot WETH Base', 'Autopilot USDC Base', 'Autopilot cbBTC Base',
-      'Autopilot USDC DRIP Arbitrum', 'Autopilot WETH Arbitrum', 'Autopilot WBTC Arbitrum',
-      'USDC Morpho-Only Autopilot',
-      'IPOR USDC Prime', 'IPOR USDT Prime', 'IPOR DAI Prime',
-      'IPOR USDC Lending Optimizer Base',
-      'LlamaRisk crvUSD Optimizer', 'Llamarisk crvUSD Vault',
-      'Strata srUSDe PT Looping', 'Strata-Money PTs looping Ethereum',
-      'Tanken WETH Base', 'Clearstar Core',
-      'Sentinel stcUSD Adaptive Looping', 'stcUSD fixed rate looping',
-    ]);
-
+    // Public/private classification comes from ipor-vaults.json (isPublic field),
+    // which is derived from the IPOR-Labs/ipor-abi GitHub whitelist — the same
+    // source DeFiLlama uses. No hardcoded name matching needed.
     function isPublicVault(v) {
-      return PUBLIC_VAULT_NAMES.has(v.name);
+      return v.isPublic === true;
     }
 
     let allVaults = [];
@@ -616,7 +593,7 @@
             ticker: v.token || v.symbol || '?',
             address: (v.address || '').toLowerCase(),
             tvl: v.tvl || 0,
-            isPublic: isPublicVault({ name }),
+            isPublic: v.isPublic === true,
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
@@ -630,7 +607,7 @@
             ticker: v.symbol || '?',
             address: (v.address || '').toLowerCase(),
             tvl: 0,
-            isPublic: isPublicVault({ name }),
+            isPublic: false, // factory-only vaults not in GitHub whitelist
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
@@ -734,6 +711,7 @@
           <td><span class="ticker">${escapeHtml(v.ticker)}</span></td>
           <td><span class="chain-pill">${escapeHtml(v.chain)}</span></td>
           <td>${dateCell}</td>
+          <td><a href="/address/?a=${v.address}" class="open-link" title="View stats">&#9776;</a></td>
           <td><a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">&#8599;</a></td>
         </tr>`;
 
@@ -749,7 +727,8 @@
           </div>
           <div class="vault-card-meta">
             <span class="addr vault-card-addr">${addrCell}</span>
-            <a href="${appUrl}" target="_blank" rel="noopener" class="open-link" title="Open in IPOR app">Open &#8599;</a>
+            <a href="/address/?a=${v.address}" class="open-link">Stats</a>
+            <a href="${appUrl}" target="_blank" rel="noopener" class="open-link">Open &#8599;</a>
           </div>
         </div>`;
       }
@@ -764,6 +743,7 @@
               <th class="sortable" data-sort="ticker">Ticker<span class="sort-indicator">${indicator('ticker')}</span></th>
               <th class="sortable" data-sort="chain">Chain<span class="sort-indicator">${indicator('chain')}</span></th>
               <th class="sortable" data-sort="deployedAt">Deployed<span class="sort-indicator">${indicator('deployedAt')}</span></th>
+              <th>Stats</th>
               <th>Open</th>
             </tr>
           </thead>

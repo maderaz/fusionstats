@@ -115,10 +115,15 @@ async function main() {
     console.log(`  API failed: ${e.message}`);
   }
 
-  // Always also pull from GitHub to get the full list (including vaults API doesn't report)
+  // Always also pull from GitHub — this is the PUBLIC vault whitelist.
+  // DeFiLlama uses the same file as their allowlist for fusion-by-ipor pools.
+  let publicAddresses = new Set();
   try {
     const ghVaults = await fetchFromGithub();
     sources.push(ADDRESSES_URL);
+    // Build public address set
+    for (const gv of ghVaults) publicAddresses.add(gv.address);
+    console.log(`  ${publicAddresses.size} public vault addresses from GitHub whitelist`);
     // Merge: API entries take precedence (richer), add any GitHub-only ones
     const byAddr = new Map(vaults.map(v => [v.address, v]));
     for (const gv of ghVaults) {
@@ -132,6 +137,11 @@ async function main() {
   if (vaults.length === 0) {
     console.error('Both sources failed. Keeping existing ipor-vaults.json if present.');
     process.exit(0);
+  }
+
+  // Stamp isPublic based on GitHub whitelist presence
+  for (const v of vaults) {
+    v.isPublic = publicAddresses.has(v.address);
   }
 
   // Deduplicate by (chainId, address)
