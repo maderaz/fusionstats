@@ -790,7 +790,7 @@
           vaultCountEl.style.display = 'inline-block';
         }
 
-        allEvents = events;
+        allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         lastUpdatedAt = data.updatedAt;
         populateProductFilter();
         populateChainFilter();

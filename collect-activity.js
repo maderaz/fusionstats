@@ -470,7 +470,7 @@ async function main() {
   }
 
   // Sort newest first, deduplicate by tx+logIdx
-  data.events.sort((a, b) => b.block - a.block || b.logIdx - a.logIdx);
+  data.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || b.block - a.block || b.logIdx - a.logIdx);
   const seen = new Set();
   data.events = data.events.filter(e => {
     const key = e.tx + ':' + e.logIdx;
