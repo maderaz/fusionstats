@@ -63,13 +63,16 @@ const CHAIN_RPCS = {
 // Per-chain scan chunk sizes (smaller = less likely to hit RPC limits)
 const CHAIN_CHUNKS = {
   ethereum:  10_000,
-  base:      50_000,
-  arbitrum: 100_000,
+  base:      10_000,
+  arbitrum:  10_000,
   plasma:    10_000,
-  avalanche: 50_000,
-  unichain:  20_000,
+  avalanche: 10_000,
+  unichain:  10_000,
   _default:  10_000,
 };
+
+// Max seconds to spend scanning a single chain (prevents workflow hangs)
+const CHAIN_TIMEOUT_MS = 150_000; // 2.5 min per chain
 
 // DeFi Llama chain prefix for price lookups
 const LLAMA_CHAIN = {
@@ -273,12 +276,16 @@ async function enrichWithPrices(events) {
   }
 }
 
-// Batch scan: accepts an array of addresses so one eth_getLogs covers all vaults on a chain
-async function scanLogs(chain, addresses, topic, fromBlock, toBlock) {
+// Batch scan: accepts array of addresses so one eth_getLogs covers all vaults on a chain.
+// Respects `deadline` (Date.now() + ms) — aborts scanning once exceeded.
+// Returns { logs, reachedBlock } so caller knows where partial progress stopped.
+async function scanLogs(chain, addresses, topic, fromBlock, toBlock, deadline) {
   const allLogs = [];
   const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
+  let reachedBlock = fromBlock - 1;
 
   async function scan(from, to) {
+    if (Date.now() > deadline) throw new Error('chain timeout');
     try {
       const logs = await rpcCall(chain, 'eth_getLogs', [{
         address: addresses,
@@ -288,7 +295,8 @@ async function scanLogs(chain, addresses, topic, fromBlock, toBlock) {
       }]);
       allLogs.push(...logs);
     } catch (e) {
-      if (to - from <= 2000) return;
+      if (e.message === 'chain timeout') throw e;
+      if (to - from <= 500) return; // give up on tiny ranges
       const mid = from + Math.floor((to - from) / 2);
       await scan(from, mid);
       await scan(mid + 1, to);
@@ -297,9 +305,15 @@ async function scanLogs(chain, addresses, topic, fromBlock, toBlock) {
 
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
-    await scan(start, end);
+    try {
+      await scan(start, end);
+      reachedBlock = end;
+    } catch (e) {
+      if (e.message === 'chain timeout') { break; }
+      throw e;
+    }
   }
-  return allLogs;
+  return { logs: allLogs, reachedBlock };
 }
 
 function parseDepositLog(log, vault) {
@@ -403,43 +417,45 @@ async function main() {
     const allAddresses = vaultsToScan.map(v => v.vault.address);
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
-    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom}...`);
+    const deadline = Date.now() + CHAIN_TIMEOUT_MS;
+    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(CHAIN_TIMEOUT_MS/1000)}s)...`);
 
     try {
       // Single batch eth_getLogs for all vaults on this chain
-      const depositLogs = await scanLogs(chain, allAddresses, DEPOSIT_TOPIC, earliestFrom, currentBlock);
-      const withdrawLogs = await scanLogs(chain, allAddresses, WITHDRAW_TOPIC, earliestFrom, currentBlock);
+      const dep = await scanLogs(chain, allAddresses, DEPOSIT_TOPIC, earliestFrom, currentBlock, deadline);
+      const wd  = await scanLogs(chain, allAddresses, WITHDRAW_TOPIC, earliestFrom, currentBlock, deadline);
+      const depositLogs = dep.logs;
+      const withdrawLogs = wd.logs;
+      // Conservative: use the min progress block across both topics
+      const progressBlock = Math.min(dep.reachedBlock, wd.reachedBlock);
 
-      console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs`);
+      console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
 
+      const addrIdx = new Map(vaultsToScan.map(v => [v.vault.address, v]));
       const newEvents = [];
-      for (const log of depositLogs) {
-        const addr = log.address.toLowerCase();
-        const vault = vaultMap[addr];
-        if (!vault) continue;
-        const entry = vaultsToScan.find(v => v.vault.address === addr);
-        if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
-          newEvents.push(parseDepositLog(log, vault));
+      const parseInto = (logs, parser) => {
+        for (const log of logs) {
+          const addr = log.address.toLowerCase();
+          const vault = vaultMap[addr];
+          if (!vault) continue;
+          const entry = addrIdx.get(addr);
+          if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
+            newEvents.push(parser(log, vault));
+          }
         }
-      }
-      for (const log of withdrawLogs) {
-        const addr = log.address.toLowerCase();
-        const vault = vaultMap[addr];
-        if (!vault) continue;
-        const entry = vaultsToScan.find(v => v.vault.address === addr);
-        if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
-          newEvents.push(parseWithdrawLog(log, vault));
-        }
-      }
+      };
+      parseInto(depositLogs, parseDepositLog);
+      parseInto(withdrawLogs, parseWithdrawLog);
 
       newEventsTotal += newEvents.length;
 
-      // Fetch timestamps (batch 10 at a time)
+      // Fetch timestamps (batch 10 at a time), with chain deadline
       const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
       if (uniqueBlocks.length > 0) {
         console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
         const tsMap = {};
         for (let i = 0; i < uniqueBlocks.length; i += 10) {
+          if (Date.now() > deadline) { console.log('  (timestamp fetch cut short — deadline)'); break; }
           const batch = uniqueBlocks.slice(i, i + 10);
           const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
           results.forEach((ts, j) => { tsMap[batch[j]] = ts; });
@@ -454,11 +470,22 @@ async function main() {
 
       await enrichWithPrices(newEvents);
       data.events.push(...newEvents);
-      for (const { vault } of vaultsToScan) {
-        data.lastBlock[vault.address] = currentBlock;
+      // Persist partial progress: use progressBlock if we didn't reach currentBlock
+      const stopBlock = (progressBlock >= currentBlock) ? currentBlock : progressBlock;
+      if (stopBlock >= earliestFrom) {
+        for (const { vault } of vaultsToScan) {
+          data.lastBlock[vault.address] = stopBlock;
+        }
       }
     } catch (e) {
       console.log(`  ${chain} batch scan failed: ${e.message}`);
+    }
+
+    // Persist after each chain so partial progress is saved even if later chains hang
+    try {
+      fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+    } catch (e) {
+      console.log(`  (warning: intermediate save failed: ${e.message})`);
     }
   }
 

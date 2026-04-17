@@ -28,9 +28,13 @@ jobs:
         run: node collect-ipor-vaults.js
 
       - name: Run collector
+        timeout-minutes: 5
+        continue-on-error: true
         run: node collect.js
 
       - name: Collect vault activity
+        timeout-minutes: 8
+        continue-on-error: true
         run: node collect-activity.js
 
       - name: Commit & push data files
