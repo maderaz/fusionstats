@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fusion — Video Storyboard v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --purple: #8429FF;
+    --purple-deep: #6C00FF;
+    --purple-light: #A37FFF;
+    --purple-soft: #EDE9FE;
+    --purple-mist: #F5F3FF;
+    --purple-border: #E5DCFF;
+    --green-soft: #D1FAE5;
+    --green: #10B981;
+    --ink: #0B0E14;
+    --body: #4A4F5A;
+    --muted: #8A8F99;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #1A1A1F; }
+  body {
+    font-family: 'Inter Tight', -apple-system, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 56px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .header { color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+  .header h1 {
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 700; letter-spacing: -0.025em;
+    font-size: 36px; margin: 0 0 6px;
+  }
+  .header p {
+    color: rgba(255,255,255,0.55);
+    font-size: 12px; margin: 0;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  .frame-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    color: rgba(255,255,255,0.55);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0 4px;
+  }
+  .frame-meta strong { color: rgba(255,255,255,0.9); font-weight: 500; }
+
+  .frame {
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    background: #FFFFFF;
+    border-radius: 18px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .grad-tl::before  { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 60% 55% at 12% 8%, rgba(132,41,255,0.20), transparent 65%); }
+  .grad-br::before  { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 60% 55% at 90% 92%, rgba(132,41,255,0.20), transparent 65%); }
+  .grad-corners::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 50% 45% at 8% 8%, rgba(132,41,255,0.16), transparent 60%),
+      radial-gradient(ellipse 50% 45% at 92% 92%, rgba(132,41,255,0.16), transparent 60%); }
+  .grad-wash::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(132,41,255,0.10), transparent 70%); }
+  .grad-center::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 55% 50% at 50% 55%, rgba(132,41,255,0.18), transparent 65%); }
+  .grad-full::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 50% 45% at 0% 0%, rgba(132,41,255,0.16), transparent 60%),
+      radial-gradient(ellipse 60% 50% at 100% 100%, rgba(132,41,255,0.18), transparent 60%); }
+
+  .stage {
+    position: relative; z-index: 1;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 7%; text-align: center;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .accent { color: var(--purple); }
+
+  /* ===== FRAME 1 — "Build on Fusion" Aave-style hero ===== */
+  .f1-hero {
+    display: inline-flex; align-items: center; gap: 18px;
+    font-size: 66px; font-weight: 700; letter-spacing: -0.035em; line-height: 1;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .f1-hero .lockup {
+    display: inline-flex; align-items: center; gap: 12px;
+    color: var(--purple);
+  }
+  .f1-hero svg { display: block; }
+
+  /* ===== FRAME 2 — Deploying actions list (Uniswap-style) ===== */
+  .f2-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    width: 100%; height: 100%;
+    align-items: center;
+    text-align: left;
+  }
+  .f2-title {
+    font-size: 52px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.04;
+    color: var(--ink);
+  }
+  .action-list { display: flex; flex-direction: column; gap: 4px; }
+  .action-list h4 {
+    font-size: 18px; font-weight: 700; letter-spacing: -0.015em;
+    margin: 0 0 10px; color: var(--ink);
+  }
+  .action {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .action.first {
+    background: #F4F4F8;
+  }
+  .action .icon {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px; font-weight: 700;
+  }
+  .icon-purple-solid { background: var(--purple); color: #fff; }
+  .icon-purple { background: var(--purple-soft); color: var(--purple); }
+  .icon-green { background: var(--green-soft); color: var(--green); }
+
+  .action.muted { color: var(--muted); }
+  .action.muted .icon { /* keep tinted */ }
+
+  /* ===== FRAME 3 — Protocols ===== */
+  .f3-title {
+    font-size: 50px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05;
+    color: var(--ink); max-width: 720px; margin: 0 0 60px;
+  }
+  .protocol-row {
+    display: flex; gap: 14px; align-items: center; justify-content: center;
+    flex-wrap: wrap; width: 100%;
+  }
+  .protocol {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 11px 18px;
+    border: 1px solid var(--purple-border);
+    background: #fff;
+    border-radius: 999px;
+    font-size: 18px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .protocol .dot {
+    width: 11px; height: 11px; border-radius: 50%;
+  }
+
+  /* ===== FRAME 4 — Primitives 2x2 ===== */
+  .f4-header { width: 100%; text-align: left; margin-bottom: 32px; }
+  .f4-title {
+    font-size: 50px; font-weight: 700; letter-spacing: -0.03em; line-height: 1;
+    color: var(--ink);
+  }
+  .f4-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; width: 100%;
+  }
+  .f4-card {
+    background: #fff;
+    border: 1px solid var(--purple-border);
+    border-radius: 14px;
+    padding: 22px 22px 24px;
+    text-align: left;
+  }
+  .f4-card .arrow-icon {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background: var(--purple-soft);
+    color: var(--purple);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px;
+    margin-bottom: 14px;
+  }
+  .f4-card .name {
+    font-size: 17px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.015em; margin-bottom: 6px;
+  }
+  .f4-card .desc {
+    font-size: 13px; color: var(--muted); line-height: 1.45;
+  }
+
+  /* ===== FRAME 5 — Built for ===== */
+  .f5-line {
+    font-size: 78px; font-weight: 700; line-height: 1;
+    letter-spacing: -0.035em; color: var(--ink);
+    display: inline-flex; gap: 22px; align-items: baseline; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .f5-bracket {
+    color: var(--purple);
+    display: inline-flex; flex-direction: column;
+    align-items: flex-start; line-height: 1.05; gap: 4px;
+  }
+  .f5-bracket span { font-size: 64px; font-weight: 700; letter-spacing: -0.03em; }
+  .f5-bracket span:nth-child(1) { opacity: 1; }
+  .f5-bracket span:nth-child(2) { opacity: 0.55; }
+  .f5-bracket span:nth-child(3) { opacity: 0.32; }
+  .f5-bracket span:nth-child(4) { opacity: 0.16; }
+
+  /* ===== FRAME 6 — Brand cube ===== */
+  .hero-cube { width: 44%; margin-bottom: 36px; }
+  .hero-cube img { width: 100%; display: block; }
+  .f6-tag {
+    font-size: 36px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.1; max-width: 600px; color: var(--ink);
+  }
+
+  /* ===== FRAME 7 — Endcard URL only ===== */
+  .f7-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 60px; font-weight: 600; letter-spacing: -0.015em;
+    color: var(--purple);
+  }
+  .f7-caret {
+    display: inline-block;
+    width: 4px; height: 0.85em;
+    background: var(--purple);
+    vertical-align: text-bottom;
+    margin-left: 6px;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <h1>Fusion — 18s video storyboard <span style="color:rgba(255,255,255,0.4); font-weight:500;">v2</span></h1>
+    <p>7 KEYFRAMES · 1:1 · WHITE BG + PURPLE GRADIENTS · UNISWAP/AAVE-STYLE</p>
+  </div>
+
+  <!-- ===================== FRAME 1 — HERO "Build on Fusion" ===================== -->
+  <div class="frame-meta"><strong>Frame 01 · 0:00–0:03</strong><span>HERO · BUILD ON FUSION</span></div>
+  <div class="frame grad-tl">
+    <div class="stage">
+      <div class="f1-hero">
+        <span>Build on</span>
+        <span class="lockup">
+          <svg width="54" height="54" viewBox="0 0 73 73" fill="none">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M72.9745 36.4854C72.9745 28.9218 65.2566 22.5 53.6982 19.2763C50.4708 7.71785 44.0491 0 36.4854 0C28.9218 0 22.5 7.71785 19.2763 19.2763C7.71785 22.5037 0 28.9254 0 36.4854C0 44.0454 7.71785 50.4708 19.2763 53.6982C22.5037 65.2566 28.9254 72.9745 36.4854 72.9745C44.0454 72.9745 50.4708 65.2566 53.6982 53.6982C65.2566 50.4708 72.9745 44.0491 72.9745 36.4854ZM26.8656 13.6513C29.5533 8.24658 33.0597 5.14769 36.4744 5.14769C39.889 5.14769 43.4065 8.24658 46.0832 13.6513C46.7734 15.0575 47.3756 16.5042 47.8859 17.9875C40.3223 16.7318 32.6008 16.7318 25.0371 17.9875C25.5475 16.5042 26.1643 15.0759 26.8546 13.6696L26.8656 13.6513ZM50.7792 36.5038C50.7829 39.8156 50.5112 43.1054 50.0008 46.3769L26.5939 22.9553C29.8654 22.4449 33.1736 22.1916 36.4854 22.1989C40.84 22.1842 45.1836 22.6285 49.4464 23.5281C50.346 27.7909 50.7902 32.0978 50.7756 36.4524M22.1953 36.4634C22.1916 33.1515 22.4486 29.8691 22.9553 26.5939L46.3769 50.0192C43.1054 50.5296 39.7973 50.7829 36.4854 50.7756C32.1308 50.7902 27.7872 50.3423 23.5244 49.4464C22.6248 45.1836 22.1806 40.84 22.1953 36.4854V36.4634ZM13.6549 46.0942C8.25025 43.4065 5.15136 39.9001 5.15136 36.4854C5.15136 33.0708 8.25392 29.5533 13.6549 26.8766C15.0612 26.1864 16.5078 25.5842 17.9912 25.0739C16.7355 32.6375 16.7355 40.359 17.9912 47.9227C16.5078 47.4123 15.0832 46.7991 13.677 46.1052L13.6549 46.0942ZM46.1162 59.3342C43.4285 64.7389 39.9221 67.8378 36.5074 67.8378C33.0928 67.8378 29.5753 64.7353 26.8987 59.3342C26.2084 57.928 25.6062 56.4813 25.0959 54.998C28.8704 55.6295 32.6889 55.9453 36.5185 55.9379C40.3443 55.9453 44.1665 55.6295 47.941 54.998C47.4307 56.4813 46.8212 57.9096 46.1309 59.3159L46.1199 59.3342H46.1162ZM59.3379 46.1089C57.9316 46.7991 56.4924 47.416 55.009 47.9227C55.6442 44.1482 55.9563 40.3297 55.9489 36.5001C55.9563 32.6742 55.6405 28.852 55.009 25.0775C56.4924 25.5842 57.939 26.1864 59.3452 26.8803C64.7499 29.568 67.8488 33.0744 67.8488 36.4891C67.8488 39.9037 64.7499 43.4212 59.3452 46.0978H59.3379V46.1089Z" fill="#8429FF"/>
+          </svg>
+          Fusion
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 2 — DEPLOY (action list, Uniswap style) ===================== -->
+  <div class="frame-meta"><strong>Frame 02 · 0:03–0:06</strong><span>DEPLOY · ACTION LIST</span></div>
+  <div class="frame grad-br">
+    <div class="stage" style="padding: 8%; justify-content: center;">
+      <div class="f2-grid">
+        <h2 class="f2-title">Deploy a vault in a&nbsp;few simple steps.</h2>
+        <div class="action-list">
+          <h4>Deploying</h4>
+          <div class="action first">
+            <span class="icon icon-purple-solid">↗</span>
+            <span>Connect to your provider</span>
+          </div>
+          <div class="action muted">
+            <span class="icon icon-purple">↗</span>
+            <span>Configure the vault</span>
+          </div>
+          <div class="action muted">
+            <span class="icon icon-purple">↗</span>
+            <span>Build a fuse action</span>
+          </div>
+          <div class="action muted">
+            <span class="icon icon-purple">↗</span>
+            <span>Execute onchain</span>
+          </div>
+          <div class="action muted">
+            <span class="icon icon-green">↙</span>
+            <span>Read position state</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 3 — PROTOCOLS ===================== -->
+  <div class="frame-meta"><strong>Frame 03 · 0:06–0:09</strong><span>COMPOSABILITY · PROTOCOLS</span></div>
+  <div class="frame grad-wash">
+    <div class="stage">
+      <h2 class="f3-title">Create strategies with leading protocols in&nbsp;minutes.</h2>
+      <div class="protocol-row">
+        <span class="protocol"><span class="dot" style="background:#B6509E;"></span>Aave</span>
+        <span class="protocol"><span class="dot" style="background:#0B0E14;"></span>Morpho</span>
+        <span class="protocol"><span class="dot" style="background:#FF5733;"></span>Spark</span>
+        <span class="protocol"><span class="dot" style="background:#1FC7D4;"></span>Pendle</span>
+        <span class="protocol"><span class="dot" style="background:#00D395;"></span>Compound</span>
+        <span class="protocol"><span class="dot" style="background:#3B82F6;"></span>Euler</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 4 — PRIMITIVES ===================== -->
+  <div class="frame-meta"><strong>Frame 04 · 0:09–0:13</strong><span>TECHNICAL · PRIMITIVES</span></div>
+  <div class="frame grad-corners">
+    <div class="stage" style="justify-content: flex-start; padding: 9%;">
+      <div class="f4-header">
+        <h2 class="f4-title">Built-in primitives.</h2>
+      </div>
+      <div class="f4-grid">
+        <div class="f4-card">
+          <span class="arrow-icon">↗</span>
+          <div class="name">Fuse Actions</div>
+          <div class="desc">Compose protocol calls atomically</div>
+        </div>
+        <div class="f4-card">
+          <span class="arrow-icon">↗</span>
+          <div class="name">Position Breakdown</div>
+          <div class="desc">Per-substrate visibility, USD-denominated</div>
+        </div>
+        <div class="f4-card">
+          <span class="arrow-icon">↗</span>
+          <div class="name">Role-Based Access</div>
+          <div class="desc">Granular onchain permissions</div>
+        </div>
+        <div class="f4-card">
+          <span class="arrow-icon">↗</span>
+          <div class="name">Reconciliation</div>
+          <div class="desc">Accurate balance tracking across markets</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 5 — BUILT FOR ===================== -->
+  <div class="frame-meta"><strong>Frame 05 · 0:13–0:16</strong><span>AUDIENCE · BUILT FOR</span></div>
+  <div class="frame grad-center">
+    <div class="stage">
+      <div class="f5-line">
+        <span>Built for</span>
+        <span class="f5-bracket">
+          <span>Protocols</span>
+          <span>dApps</span>
+          <span>Institutions</span>
+          <span>Funds</span>
+        </span>
+      </div>
+      <div class="mono" style="margin-top: 56px; font-size: 11px; color: var(--muted); letter-spacing: 0.08em;">CYCLES · 0.6S EACH · CROSSFADE</div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 6 — BRAND BEAT (cube) ===================== -->
+  <div class="frame-meta"><strong>Frame 06 · 0:16–0:18</strong><span>BRAND BEAT · CUBE STACK</span></div>
+  <div class="frame grad-full">
+    <div class="stage">
+      <div class="hero-cube">
+        <img src="assets/cube-stacked.svg" alt="Fusion stacked cube" />
+      </div>
+      <div class="f6-tag">Composable vaults. <span class="accent">One stack.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== FRAME 7 — ENDCARD URL ===================== -->
+  <div class="frame-meta"><strong>Frame 07 · 0:18 · ENDCARD</strong><span>CTA · TWITTER PREVIEW</span></div>
+  <div class="frame">
+    <div class="stage">
+      <div class="f7-url">fusion.ipor.io<span class="f7-caret"></span></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
