@@ -105,6 +105,19 @@
     .badge-deposit { color: var(--green); background: var(--green-bg); }
     .badge-withdraw { color: var(--red); background: var(--red-bg); }
 
+    /* Rebalance section */
+    .rebalance-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--stroke); font-size: 0.78rem; flex-wrap: wrap; }
+    .rebalance-row:last-child { border-bottom: none; }
+    .rebalance-row .when { color: var(--text-secondary); width: 5.5rem; flex-shrink: 0; }
+    .rebalance-row .flow { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.5rem; border-radius: 5px; background: var(--surface-alt, var(--accent-bg)); border: 1px solid var(--stroke); font-size: 0.72rem; }
+    .rebalance-row .flow .arrow { font-family: monospace; opacity: 0.6; }
+    .rebalance-row .flow .protocol { font-weight: 600; color: var(--accent); }
+    .rebalance-row .flow .amount { color: var(--text-body); font-variant-numeric: tabular-nums; }
+    .rebalance-row .tx-link { font-size: 0.7rem; color: var(--text-secondary); margin-left: auto; font-family: monospace; }
+    .rebalance-row .tx-link:hover { color: var(--accent); }
+    .rebalance-row.dim { opacity: 0.6; }
+    .rebalance-empty { padding: 1.5rem 1rem; text-align: center; color: var(--text-secondary); font-size: 0.78rem; }
+
     .show-more-btn { display: block; width: 100%; padding: 0.7rem; text-align: center; font-family: inherit; font-size: 0.78rem; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
     .show-more-btn:hover { background: var(--accent-bg); }
 
@@ -190,6 +203,7 @@
         <div class="flow-chart-axis"><span id="flowStart"></span><span id="flowEnd"></span></div>
       </div>
       <div class="panels" id="panels"></div>
+      <div class="history-card" id="rebalanceCard" style="display:none"></div>
       <div class="history-card" id="historyCard"></div>
     </div>
 
@@ -226,6 +240,7 @@
       (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
       events.forEach(e => { const v = vaultInfo[e.vault]; if (v) { e.symbol = v.symbol; e.vaultName = v.name; } });
       allEvents = events;
+      window.allEvents = events;
 
       // Build index: address → event indices
       addrIndex = {};
@@ -342,6 +357,72 @@
       renderFlowChart(events);
       renderPanels(events);
       renderHistory(events);
+      renderRebalances(addr);
+    }
+
+    // Rebalance / fuse activity (only renders when address is a known vault and has rebalance data)
+    async function renderRebalances(addr) {
+      const card = document.getElementById('rebalanceCard');
+      card.style.display = 'none';
+      // Only attempt to load if this address is a tracked vault
+      const isVault = (window.allEvents || []).some(e => e.vault && e.vault.toLowerCase() === addr);
+      if (!isVault) return;
+
+      try {
+        const res = await fetch(`../rebalance-events-${addr}.json`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = (data.rebalances || []).slice(0, 30);
+        if (items.length === 0) {
+          card.style.display = '';
+          card.innerHTML = `
+            <div class="panel-title">Rebalance Activity
+              <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">no rebalances detected in last ${data.blockRange?.to - data.blockRange?.from || 0} blocks</span>
+            </div>
+            <div class="rebalance-empty">No protocol-level capital movement detected in the scanned window. Either the vault hasn't rebalanced, or its strategy uses fuses we don't yet recognize.</div>`;
+          return;
+        }
+        card.style.display = '';
+        const explorerBase = ({
+          ethereum: 'https://etherscan.io/tx/',
+          base: 'https://basescan.org/tx/',
+          arbitrum: 'https://arbiscan.io/tx/',
+        })[data.chain] || 'https://etherscan.io/tx/';
+        const rows = items.map(r => {
+          const ts = r.timestamp ? formatRelative(r.timestamp) : `block ${r.block}`;
+          const flowChips = r.flows
+            .filter(f => f.kind !== 'unknown' || (f.usdValue && Math.abs(f.usdValue) > 100))
+            .map(f => {
+              const arrow = f.direction === 'out' ? '↗ supply' : '↙ withdraw';
+              const usd = f.usdValue ? `$${Math.abs(f.usdValue).toLocaleString(undefined, {maximumFractionDigits: 0})}` : '';
+              return `<span class="flow">
+                <span class="arrow">${arrow}</span>
+                <span class="protocol">${f.protocol}</span>
+                <span class="amount">${usd ? usd + ' · ' : ''}${f.amount.toLocaleString(undefined, {maximumFractionDigits: 4})} ${f.symbol}</span>
+              </span>`;
+            }).join('');
+          if (!flowChips) return '';
+          return `<div class="rebalance-row">
+            <span class="when">${ts}</span>
+            ${flowChips}
+            <a class="tx-link" href="${explorerBase}${r.tx}" target="_blank" rel="noopener">${r.tx.slice(0, 10)}…</a>
+          </div>`;
+        }).filter(Boolean).join('');
+        const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '';
+        card.innerHTML = `
+          <div class="panel-title">Rebalance Activity
+            <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">${items.length} protocol-level events · updated ${updated}</span>
+          </div>
+          ${rows || '<div class="rebalance-empty">All flows in the window were filtered as user deposits/withdrawals.</div>'}`;
+      } catch {}
+    }
+
+    function formatRelative(ts) {
+      const diff = Math.floor(Date.now() / 1000) - ts;
+      if (diff < 60) return `${diff}s ago`;
+      if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+      return `${Math.floor(diff/86400)}d ago`;
     }
 
     // Stats cards
