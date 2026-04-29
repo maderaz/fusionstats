@@ -174,63 +174,98 @@ function classifyToken(meta) {
   return { protocol: 'Unknown', kind: 'unknown' };
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  if (!args[0]) {
-    console.error('Usage: node collect-rebalances.js <vaultAddress> [chain] [backfillBlocks]');
-    process.exit(1);
-  }
-  const vault = args[0].toLowerCase();
-  const chain = args[1] || 'ethereum';
-  const backfill = parseInt(args[2] || '50000', 10);
+// Initial backfill window (~7 days per chain block time) for first scan of a vault
+const INITIAL_BACKFILL = {
+  ethereum:  50_000,    // ~7d at 12s/block
+  base:     300_000,    // ~7d at 2s/block
+  arbitrum: 2_000_000,  // ~7d at 0.3s/block
+  plasma:    50_000,
+  avalanche: 300_000,
+  unichain:  150_000,
+  _default:  50_000,
+};
 
-  console.log(`\n=== Scanning rebalances for ${vault} on ${chain} ===\n`);
+// Hard ceiling on blocks scanned in one run per vault (prevents runaway scans)
+const MAX_BLOCKS_PER_RUN = {
+  ethereum:  100_000,
+  base:     1_500_000,
+  arbitrum: 5_000_000,
+  _default:  100_000,
+};
+
+// Scan a single vault — uses incremental lastBlock if existing JSON found.
+// Returns { vault, chain, txCount, newTxCount, fileName }
+async function scanVault(vaultAddr, chain, opts = {}) {
+  const vault = vaultAddr.toLowerCase();
+  const outFile = `rebalance-events-${vault}.json`;
+
+  // Load existing data for incremental scan
+  let existing = null;
+  try { existing = JSON.parse(fs.readFileSync(outFile, 'utf8')); } catch {}
 
   const currentBlock = await getBlockNumber(chain);
-  const fromBlock = currentBlock - backfill;
-  console.log(`Block range: ${fromBlock} → ${currentBlock} (${backfill} blocks)`);
+  const initialBackfill = INITIAL_BACKFILL[chain] || INITIAL_BACKFILL._default;
+  const maxBlocks = MAX_BLOCKS_PER_RUN[chain] || MAX_BLOCKS_PER_RUN._default;
 
+  let fromBlock;
+  if (existing && existing.blockRange?.to) {
+    fromBlock = existing.blockRange.to + 1;
+  } else {
+    fromBlock = Math.max(1, currentBlock - initialBackfill);
+  }
+  // Cap the scan window to avoid runaway scans on first run for old vaults
+  if (currentBlock - fromBlock > maxBlocks) {
+    fromBlock = currentBlock - maxBlocks;
+  }
+
+  if (fromBlock > currentBlock) {
+    console.log(`  ${vault} [${chain}]: up to date`);
+    return { vault, chain, txCount: existing?.rebalances?.length || 0, newTxCount: 0, fileName: outFile };
+  }
+
+  console.log(`  ${vault} [${chain}]: scanning blocks ${fromBlock} → ${currentBlock} (${currentBlock - fromBlock + 1} blocks)`);
   const padded = '0x' + vault.slice(2).padStart(64, '0');
 
-  console.log('Fetching outflows (vault → *)...');
   const outflowLogs = await scanLogs(chain, { topics: [TRANSFER_TOPIC, padded] }, fromBlock, currentBlock);
-  console.log(`  ${outflowLogs.length} outflow transfers`);
-
-  console.log('Fetching inflows (* → vault)...');
   const inflowLogs = await scanLogs(chain, { topics: [TRANSFER_TOPIC, null, padded] }, fromBlock, currentBlock);
-  console.log(`  ${inflowLogs.length} inflow transfers`);
+  console.log(`    transfers: ${outflowLogs.length} out + ${inflowLogs.length} in`);
 
-  const allTransfers = [...outflowLogs, ...inflowLogs]
-    .map(parseTransfer)
-    .filter(Boolean);
+  const allTransfers = [...outflowLogs, ...inflowLogs].map(parseTransfer).filter(Boolean);
 
-  // Cross-reference user deposits/withdrawals from existing activity-events.json
-  let userTxs = new Set();
-  try {
-    const activity = JSON.parse(fs.readFileSync('activity-events.json', 'utf8'));
-    activity.events
-      .filter(e => e.vault.toLowerCase() === vault)
-      .forEach(e => userTxs.add(e.tx.toLowerCase()));
-    console.log(`\nFound ${userTxs.size} user deposit/withdraw txs to filter out`);
-  } catch (e) {
-    console.log(`(no activity-events.json: ${e.message})`);
+  // Cross-reference user deposit/withdraw tx hashes from activity-events.json
+  let userTxs = opts.userTxs;
+  if (!userTxs) {
+    userTxs = new Set();
+    try {
+      const activity = JSON.parse(fs.readFileSync('activity-events.json', 'utf8'));
+      activity.events.filter(e => e.vault.toLowerCase() === vault).forEach(e => userTxs.add(e.tx.toLowerCase()));
+    } catch {}
   }
 
   const rebalanceTransfers = allTransfers.filter(t => !userTxs.has(t.tx.toLowerCase()));
-  console.log(`\nNon-user transfers (rebalance candidates): ${rebalanceTransfers.length}`);
 
-  // Group by transaction hash
+  // Group by tx
   const txGroups = {};
   for (const t of rebalanceTransfers) {
     if (!txGroups[t.tx]) txGroups[t.tx] = [];
     txGroups[t.tx].push(t);
   }
 
-  console.log(`\nUnique rebalance transactions: ${Object.keys(txGroups).length}\n`);
+  if (Object.keys(txGroups).length === 0) {
+    // Still update blockRange so next run is incremental
+    const out = {
+      vault, chain,
+      updatedAt: new Date().toISOString(),
+      blockRange: { from: existing?.blockRange?.from || fromBlock, to: currentBlock },
+      txCount: existing?.rebalances?.length || 0,
+      rebalances: existing?.rebalances || [],
+    };
+    fs.writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
+    return { vault, chain, txCount: out.txCount, newTxCount: 0, fileName: outFile };
+  }
 
-  // Resolve token metadata for unique tokens
+  // Resolve token metadata
   const uniqueTokens = [...new Set(allTransfers.map(t => t.token))];
-  console.log(`Resolving metadata for ${uniqueTokens.length} unique tokens...`);
   const tokenMeta = {};
   for (let i = 0; i < uniqueTokens.length; i += 5) {
     const batch = uniqueTokens.slice(i, i + 5);
@@ -238,68 +273,120 @@ async function main() {
     batch.forEach((addr, j) => { tokenMeta[addr] = results[j]; });
   }
 
-  // Build rebalance event records
-  const rebalances = [];
-  for (const [tx, transfers] of Object.entries(txGroups)) {
-    const block = transfers[0].block;
-    const ts = await getBlockTimestamp(chain, block).catch(() => 0);
-    const flows = transfers.map(t => {
-      const meta = tokenMeta[t.token];
-      const cls = classifyToken(meta);
-      const decimals = meta?.decimals ?? 18;
-      const amount = Number(t.amount) / 10 ** decimals;
-      const usdValue = meta?.price ? amount * meta.price : null;
-      return {
-        token: t.token,
-        symbol: meta?.symbol || '?',
-        protocol: cls.protocol,
-        kind: cls.kind,
-        direction: t.from === vault ? 'out' : 'in',
-        amount: Math.round(amount * 1e6) / 1e6,
-        usdValue: usdValue != null ? Math.round(usdValue * 100) / 100 : null,
-      };
+  // Build rebalance records (fetch timestamps in parallel batches)
+  const txList = Object.entries(txGroups);
+  const newRebalances = [];
+  for (let i = 0; i < txList.length; i += 5) {
+    const batch = txList.slice(i, i + 5);
+    const blockNums = batch.map(([, transfers]) => transfers[0].block);
+    const timestamps = await Promise.all(blockNums.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+    batch.forEach(([tx, transfers], j) => {
+      const flows = transfers.map(t => {
+        const meta = tokenMeta[t.token];
+        const cls = classifyToken(meta);
+        const decimals = meta?.decimals ?? 18;
+        const amount = Number(t.amount) / 10 ** decimals;
+        const usdValue = meta?.price ? amount * meta.price : null;
+        return {
+          token: t.token,
+          symbol: meta?.symbol || '?',
+          protocol: cls.protocol,
+          kind: cls.kind,
+          direction: t.from === vault ? 'out' : 'in',
+          amount: Math.round(amount * 1e6) / 1e6,
+          usdValue: usdValue != null ? Math.round(usdValue * 100) / 100 : null,
+        };
+      });
+      newRebalances.push({ tx, block: transfers[0].block, timestamp: timestamps[j], flows });
     });
-    rebalances.push({ tx, block, timestamp: ts, flows });
   }
 
-  rebalances.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  // Merge with existing, dedupe by tx hash, sort newest first
+  const all = [...newRebalances, ...(existing?.rebalances || [])];
+  const seen = new Set();
+  const merged = all.filter(r => {
+    if (seen.has(r.tx)) return false;
+    seen.add(r.tx);
+    return true;
+  }).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-  // Print summary
-  console.log('\n=== TOKEN BREAKDOWN ===');
-  const byProtocol = {};
-  for (const tx of rebalances) {
-    for (const f of tx.flows) {
-      const k = `${f.protocol} (${f.symbol})`;
-      byProtocol[k] = (byProtocol[k] || 0) + 1;
-    }
-  }
-  Object.entries(byProtocol)
-    .sort((a, b) => b[1] - a[1])
-    .forEach(([k, n]) => console.log(`  ${k}: ${n}`));
-
-  console.log('\n=== LATEST REBALANCES ===');
-  rebalances.slice(0, 5).forEach(r => {
-    const date = r.timestamp ? new Date(r.timestamp * 1000).toISOString() : `block ${r.block}`;
-    console.log(`\n${date}  tx ${r.tx.slice(0, 12)}...`);
-    r.flows.forEach(f => {
-      const arrow = f.direction === 'out' ? '→' : '←';
-      const usd = f.usdValue ? ` ($${f.usdValue.toLocaleString()})` : '';
-      console.log(`  ${arrow} ${f.amount} ${f.symbol} via ${f.protocol}${usd}`);
-    });
-  });
-
-  // Save to JSON
   const out = {
-    vault,
-    chain,
+    vault, chain,
     updatedAt: new Date().toISOString(),
-    blockRange: { from: fromBlock, to: currentBlock },
-    txCount: rebalances.length,
-    rebalances,
+    blockRange: { from: existing?.blockRange?.from || fromBlock, to: currentBlock },
+    txCount: merged.length,
+    rebalances: merged,
   };
-  const outFile = `rebalance-events-${vault}.json`;
   fs.writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
-  console.log(`\nWrote ${rebalances.length} rebalance events to ${outFile}`);
+  console.log(`    +${newRebalances.length} new rebalances (${merged.length} total) → ${outFile}`);
+  return { vault, chain, txCount: merged.length, newTxCount: newRebalances.length, fileName: outFile };
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  // Pre-load activity events once for cross-referencing
+  const userTxsByVault = {};
+  try {
+    const activity = JSON.parse(fs.readFileSync('activity-events.json', 'utf8'));
+    for (const e of activity.events) {
+      const v = e.vault.toLowerCase();
+      if (!userTxsByVault[v]) userTxsByVault[v] = new Set();
+      userTxsByVault[v].add(e.tx.toLowerCase());
+    }
+  } catch {}
+
+  if (args[0] === '--all') {
+    // Scan ALL >$1K TVL vaults with supported chain RPCs
+    let vaults;
+    try {
+      const ipor = JSON.parse(fs.readFileSync('ipor-vaults.json', 'utf8'));
+      const supportedChains = new Set(Object.keys(CHAIN_RPCS));
+      vaults = ipor.vaults
+        .filter(v => v.tvl >= 1000 && supportedChains.has(v.chain))
+        .map(v => ({ address: v.address.toLowerCase(), chain: v.chain, name: v.name, tvl: v.tvl }));
+    } catch (e) {
+      console.error('Could not load ipor-vaults.json:', e.message);
+      process.exit(1);
+    }
+
+    console.log(`\n=== FULL REBALANCE SCAN — ${vaults.length} vaults ===\n`);
+    const summary = { updatedAt: null, vaults: [] };
+    let scannedOk = 0, failed = 0;
+
+    for (const v of vaults) {
+      console.log(`\n[${scannedOk + failed + 1}/${vaults.length}] ${v.name} ($${(v.tvl/1000).toFixed(0)}K)`);
+      try {
+        const result = await scanVault(v.address, v.chain, { userTxs: userTxsByVault[v.address] || new Set() });
+        summary.vaults.push({ ...result, name: v.name, tvl: v.tvl });
+        scannedOk++;
+      } catch (e) {
+        console.log(`    FAILED: ${e.message}`);
+        failed++;
+      }
+    }
+
+    summary.updatedAt = new Date().toISOString();
+    summary.scannedOk = scannedOk;
+    summary.failed = failed;
+    summary.totalVaults = vaults.length;
+    fs.writeFileSync('rebalances-summary.json', JSON.stringify(summary, null, 2) + '\n');
+    console.log(`\n=== DONE — ${scannedOk} ok, ${failed} failed → rebalances-summary.json ===\n`);
+    return;
+  }
+
+  if (!args[0]) {
+    console.error('Usage:');
+    console.error('  node collect-rebalances.js --all                              # scan all >$1K vaults');
+    console.error('  node collect-rebalances.js <vaultAddress> [chain]             # scan single vault');
+    process.exit(1);
+  }
+
+  // Single-vault mode
+  const vault = args[0].toLowerCase();
+  const chain = args[1] || 'ethereum';
+  console.log(`\n=== Scanning rebalances for ${vault} on ${chain} ===\n`);
+  await scanVault(vault, chain, { userTxs: userTxsByVault[vault] || new Set() });
 }
 
 main().catch(e => {
