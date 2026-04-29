@@ -70,6 +70,10 @@ const PROTOCOL_RULES = [
 
 let callId = 0;
 const activeRpcByChain = {};
+const lastCallTimeByRpc = {}; // throttle per RPC endpoint
+const RPC_MIN_INTERVAL_MS = parseInt(process.env.RPC_MIN_INTERVAL_MS || '150', 10);
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function rpcCall(chain, method, params) {
   const rpcs = CHAIN_RPCS[chain];
@@ -77,8 +81,14 @@ async function rpcCall(chain, method, params) {
   const active = activeRpcByChain[chain] || 0;
   const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
   for (const idx of order) {
+    const url = rpcs[idx];
+    // Throttle per RPC endpoint
+    const last = lastCallTimeByRpc[url] || 0;
+    const wait = RPC_MIN_INTERVAL_MS - (Date.now() - last);
+    if (wait > 0) await sleep(wait);
+    lastCallTimeByRpc[url] = Date.now();
     try {
-      const res = await fetch(rpcs[idx], {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
@@ -103,10 +113,15 @@ async function getBlockTimestamp(chain, blockNum) {
   return block ? parseInt(block.timestamp, 16) : 0;
 }
 
-// Scan logs in chunks, halve on RPC error
-async function scanLogs(chain, params, fromBlock, toBlock) {
+// Scan logs in chunks, halve on RPC error. Logs progress every PROGRESS_EVERY chunks.
+async function scanLogs(chain, params, fromBlock, toBlock, label = '') {
   const out = [];
   const CHUNK = 10_000;
+  const PROGRESS_EVERY = 25; // log every 25 chunks (~250K blocks on ETH)
+  const totalChunks = Math.ceil((toBlock - fromBlock + 1) / CHUNK);
+  let chunkIdx = 0;
+  const t0 = Date.now();
+
   async function scan(from, to) {
     try {
       const logs = await rpcCall(chain, 'eth_getLogs', [{
@@ -122,8 +137,16 @@ async function scanLogs(chain, params, fromBlock, toBlock) {
       await scan(mid + 1, to);
     }
   }
+
   for (let s = fromBlock; s <= toBlock; s += CHUNK) {
     await scan(s, Math.min(s + CHUNK - 1, toBlock));
+    chunkIdx++;
+    if (totalChunks > PROGRESS_EVERY && chunkIdx % PROGRESS_EVERY === 0) {
+      const pct = Math.round(100 * chunkIdx / totalChunks);
+      const elapsed = Math.round((Date.now() - t0) / 1000);
+      const eta = Math.round(elapsed * (totalChunks - chunkIdx) / chunkIdx);
+      console.log(`      ${label} progress: ${chunkIdx}/${totalChunks} chunks (${pct}%) · ${out.length} logs · ${elapsed}s elapsed · ~${eta}s ETA`);
+    }
   }
   return out;
 }
@@ -194,41 +217,74 @@ const MAX_BLOCKS_PER_RUN = {
 };
 
 // Scan a single vault — uses incremental lastBlock if existing JSON found.
+// opts.fromBlock — explicit override (e.g. for --deepest mode). Scans backward
+//   to this block as well as forward from existing.blockRange.to.
+// opts.maxBlocksOverride — bypass the per-run safety cap (use with caution).
 // Returns { vault, chain, txCount, newTxCount, fileName }
 async function scanVault(vaultAddr, chain, opts = {}) {
   const vault = vaultAddr.toLowerCase();
   const outFile = `rebalance-events-${vault}.json`;
 
-  // Load existing data for incremental scan
   let existing = null;
   try { existing = JSON.parse(fs.readFileSync(outFile, 'utf8')); } catch {}
 
   const currentBlock = await getBlockNumber(chain);
   const initialBackfill = INITIAL_BACKFILL[chain] || INITIAL_BACKFILL._default;
-  const maxBlocks = MAX_BLOCKS_PER_RUN[chain] || MAX_BLOCKS_PER_RUN._default;
+  const maxBlocks = opts.maxBlocksOverride || MAX_BLOCKS_PER_RUN[chain] || MAX_BLOCKS_PER_RUN._default;
 
-  let fromBlock;
-  if (existing && existing.blockRange?.to) {
-    fromBlock = existing.blockRange.to + 1;
+  // Determine scan ranges. We may have two: backward fill + forward delta.
+  const ranges = [];
+  if (opts.fromBlock != null) {
+    // Deepest mode: explicit fromBlock; scan everything from fromBlock to currentBlock
+    // that isn't already covered by existing data.
+    const start = Math.max(1, opts.fromBlock);
+    if (existing && existing.blockRange) {
+      // Backward fill: from `start` to existing.blockRange.from - 1
+      if (start < existing.blockRange.from) {
+        ranges.push({ from: start, to: existing.blockRange.from - 1, label: 'backward' });
+      }
+      // Forward delta: from existing.blockRange.to + 1 to currentBlock
+      if (existing.blockRange.to + 1 <= currentBlock) {
+        ranges.push({ from: existing.blockRange.to + 1, to: currentBlock, label: 'forward' });
+      }
+    } else {
+      ranges.push({ from: start, to: currentBlock, label: 'full' });
+    }
   } else {
-    fromBlock = Math.max(1, currentBlock - initialBackfill);
-  }
-  // Cap the scan window to avoid runaway scans on first run for old vaults
-  if (currentBlock - fromBlock > maxBlocks) {
-    fromBlock = currentBlock - maxBlocks;
+    let fromBlock;
+    if (existing && existing.blockRange?.to) {
+      fromBlock = existing.blockRange.to + 1;
+    } else {
+      fromBlock = Math.max(1, currentBlock - initialBackfill);
+    }
+    if (currentBlock - fromBlock > maxBlocks && !opts.maxBlocksOverride) {
+      fromBlock = currentBlock - maxBlocks;
+    }
+    if (fromBlock <= currentBlock) {
+      ranges.push({ from: fromBlock, to: currentBlock, label: 'incremental' });
+    }
   }
 
-  if (fromBlock > currentBlock) {
+  if (ranges.length === 0) {
     console.log(`  ${vault} [${chain}]: up to date`);
     return { vault, chain, txCount: existing?.rebalances?.length || 0, newTxCount: 0, fileName: outFile };
   }
 
-  console.log(`  ${vault} [${chain}]: scanning blocks ${fromBlock} → ${currentBlock} (${currentBlock - fromBlock + 1} blocks)`);
   const padded = '0x' + vault.slice(2).padStart(64, '0');
+  const allOutflowLogs = [];
+  const allInflowLogs = [];
 
-  const outflowLogs = await scanLogs(chain, { topics: [TRANSFER_TOPIC, padded] }, fromBlock, currentBlock);
-  const inflowLogs = await scanLogs(chain, { topics: [TRANSFER_TOPIC, null, padded] }, fromBlock, currentBlock);
-  console.log(`    transfers: ${outflowLogs.length} out + ${inflowLogs.length} in`);
+  for (const r of ranges) {
+    console.log(`  ${vault} [${chain}]: ${r.label} scan blocks ${r.from} → ${r.to} (${(r.to - r.from + 1).toLocaleString()} blocks)`);
+    const outLogs = await scanLogs(chain, { topics: [TRANSFER_TOPIC, padded] }, r.from, r.to, `${r.label}/out`);
+    const inLogs  = await scanLogs(chain, { topics: [TRANSFER_TOPIC, null, padded] }, r.from, r.to, `${r.label}/in`);
+    console.log(`    ${r.label}: ${outLogs.length} out + ${inLogs.length} in`);
+    allOutflowLogs.push(...outLogs);
+    allInflowLogs.push(...inLogs);
+  }
+
+  const outflowLogs = allOutflowLogs;
+  const inflowLogs  = allInflowLogs;
 
   const allTransfers = [...outflowLogs, ...inflowLogs].map(parseTransfer).filter(Boolean);
 
@@ -253,10 +309,12 @@ async function scanVault(vaultAddr, chain, opts = {}) {
 
   if (Object.keys(txGroups).length === 0) {
     // Still update blockRange so next run is incremental
+    const newFrom = Math.min(...ranges.map(r => r.from), existing?.blockRange?.from ?? Infinity);
+    const newTo   = Math.max(...ranges.map(r => r.to),   existing?.blockRange?.to   ?? 0);
     const out = {
       vault, chain,
       updatedAt: new Date().toISOString(),
-      blockRange: { from: existing?.blockRange?.from || fromBlock, to: currentBlock },
+      blockRange: { from: newFrom, to: newTo },
       txCount: existing?.rebalances?.length || 0,
       rebalances: existing?.rebalances || [],
     };
@@ -310,10 +368,12 @@ async function scanVault(vaultAddr, chain, opts = {}) {
     return true;
   }).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
+  const newFrom = Math.min(...ranges.map(r => r.from), existing?.blockRange?.from ?? Infinity);
+  const newTo   = Math.max(...ranges.map(r => r.to),   existing?.blockRange?.to   ?? 0);
   const out = {
     vault, chain,
     updatedAt: new Date().toISOString(),
-    blockRange: { from: existing?.blockRange?.from || fromBlock, to: currentBlock },
+    blockRange: { from: newFrom, to: newTo },
     txCount: merged.length,
     rebalances: merged,
   };
@@ -375,10 +435,48 @@ async function main() {
     return;
   }
 
+  // --deepest <vault> <chain> [fromBlock]
+  // Scans backward as far as fromBlock (default: ~2 years on ETH equivalent for chain),
+  // bypassing per-run safety cap. Use sparingly — meant for one-off historical seed.
+  if (args[0] === '--deepest') {
+    const vault = (args[1] || '').toLowerCase();
+    const chain = args[2] || 'ethereum';
+    const fromBlockArg = args[3] ? parseInt(args[3], 10) : null;
+    if (!/^0x[a-f0-9]{40}$/.test(vault)) {
+      console.error('Usage: node collect-rebalances.js --deepest <vaultAddress> [chain] [fromBlock]');
+      process.exit(1);
+    }
+    // Deep backfill defaults: ~2 years equivalent
+    const DEEP_BACKFILL = {
+      ethereum:  5_000_000,    // ~24 months at 12s/block
+      base:     30_000_000,    // ~24 months at 2s/block
+      arbitrum: 200_000_000,   // ~24 months at 0.3s/block
+      plasma:    5_000_000,
+      avalanche:30_000_000,
+      unichain: 15_000_000,
+      _default:  5_000_000,
+    };
+    const currentBlock = await getBlockNumber(chain);
+    const defaultDeep = DEEP_BACKFILL[chain] || DEEP_BACKFILL._default;
+    const fromBlock = fromBlockArg ?? Math.max(1, currentBlock - defaultDeep);
+    console.log(`\n=== DEEPEST scan for ${vault} on ${chain} ===`);
+    console.log(`Range: block ${fromBlock} → ${currentBlock} (${currentBlock - fromBlock} blocks ≈ ${(((currentBlock - fromBlock) * 12) / 86400).toFixed(0)}d at ETH cadence)`);
+    console.log(`Throttle: ${RPC_MIN_INTERVAL_MS}ms min between RPC calls per endpoint\n`);
+    const t0 = Date.now();
+    await scanVault(vault, chain, {
+      userTxs: userTxsByVault[vault] || new Set(),
+      fromBlock,
+      maxBlocksOverride: Infinity,
+    });
+    console.log(`\nElapsed: ${Math.round((Date.now() - t0) / 1000)}s`);
+    return;
+  }
+
   if (!args[0]) {
     console.error('Usage:');
-    console.error('  node collect-rebalances.js --all                              # scan all >$1K vaults');
-    console.error('  node collect-rebalances.js <vaultAddress> [chain]             # scan single vault');
+    console.error('  node collect-rebalances.js --all                              # scan all >$1K vaults (incremental)');
+    console.error('  node collect-rebalances.js --deepest <vault> [chain] [fromBlock]  # one-off historical seed');
+    console.error('  node collect-rebalances.js <vaultAddress> [chain]             # incremental single vault');
     process.exit(1);
   }
 
