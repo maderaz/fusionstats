@@ -113,8 +113,9 @@
     .rebalance-stat .value { font-size: 0.95rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
     .rebalance-stat .sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem; }
     .rebalance-chart-wrap { padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--stroke); }
-    .rebalance-chart-bars { display: flex; align-items: flex-end; gap: 2px; height: 100px; position: relative; }
-    .rebalance-chart-bar-slot { flex: 1; height: 100%; position: relative; display: flex; align-items: flex-end; }
+    .rebalance-chart-scroll { overflow-x: auto; }
+    .rebalance-chart-bars { display: flex; align-items: flex-end; gap: 1px; height: 100px; position: relative; min-width: 100%; }
+    .rebalance-chart-bar-slot { flex: 1 1 0; min-width: 2px; height: 100%; position: relative; display: flex; align-items: flex-end; }
     .rebalance-chart-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 0; transition: opacity 0.15s; }
     .rebalance-chart-bar-slot:hover .rebalance-chart-bar { opacity: 0.7; }
     .rebalance-chart-bar-slot .reb-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.88); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.7rem; white-space: nowrap; z-index: 10; pointer-events: none; line-height: 1.4; }
@@ -133,8 +134,13 @@
     .rebalance-row .tx-link { font-size: 0.68rem; color: var(--text-secondary); margin-left: auto; font-family: monospace; }
     .rebalance-row .tx-link:hover { color: var(--accent); }
     .rebalance-empty { padding: 1.5rem 1rem; text-align: center; color: var(--text-secondary); font-size: 0.78rem; }
-    .rebalance-toggle { display: block; width: 100%; padding: 0.6rem; text-align: center; font-family: inherit; font-size: 0.72rem; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
+    .rebalance-toggle { display: block; width: 100%; padding: 0.7rem; text-align: center; font-family: inherit; font-size: 0.75rem; font-weight: 500; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
     .rebalance-toggle:hover { background: var(--accent-bg); }
+    .rebalance-pager { display: flex; align-items: center; justify-content: center; gap: 0.65rem; padding: 0.65rem 1rem; border-top: 1px solid var(--stroke); font-size: 0.72rem; color: var(--text-secondary); flex-wrap: wrap; }
+    .rebalance-pager button { font-family: inherit; font-size: 0.72rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); border-radius: 5px; background: var(--surface); color: var(--text-body); cursor: pointer; }
+    .rebalance-pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .rebalance-pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .rebalance-pager .rebalance-collapse-btn { margin-left: auto; }
     @media (max-width: 700px) {
       .rebalance-stats { grid-template-columns: repeat(2, 1fr); }
       .rebalance-stat:nth-child(2) { border-right: none; }
@@ -437,10 +443,10 @@
         const minTs = Math.min(...txVolumes.map(t => t.ts));
         const trackedDays = Math.max(1, Math.ceil((now - minTs) / 86400));
 
-        // Group by day for chart
+        // Group by day for chart — full history from earliest event to today
         const dayMs = 86400;
         const todayDay = Math.floor(now / dayMs);
-        const startDay = Math.max(todayDay - 29, Math.floor(minTs / dayMs)); // up to 30d window
+        const startDay = Math.floor(minTs / dayMs); // FULL history, no 30d cap
         const days = [];
         for (let d = startDay; d <= todayDay; d++) {
           days.push({ day: d, volume: 0, count: 0 });
@@ -516,9 +522,9 @@
           <div class="rebalance-chart-wrap">
             <div class="flow-chart-header" style="margin-bottom:0.5rem">
               <span class="flow-chart-title">Daily volume processed</span>
-              <span class="flow-chart-range">peak ${fmtMoney(maxVol)} · ${days.length}d</span>
+              <span class="flow-chart-range">peak ${fmtMoney(maxVol)} · ${days.length}d since inception</span>
             </div>
-            <div class="rebalance-chart-bars">${barsHtml}</div>
+            <div class="rebalance-chart-scroll"><div class="rebalance-chart-bars" style="min-width:${Math.max(100, days.length * 3)}px">${barsHtml}</div></div>
             <div class="rebalance-chart-axis"><span>${chartStart}</span><span>${chartEnd}</span></div>
           </div>`;
 
@@ -530,27 +536,14 @@
             `).join('')}
           </div>` : '';
 
-        // Recent rows (collapsed by default)
-        const RECENT_LIMIT = 8;
-        const recentTx = txVolumes.slice(0, 50);
-        const renderRow = (t) => {
-          const tsLabel = formatRelative(t.ts);
-          const flowChips = t.raw.flows
-            .filter(f => f.kind !== 'unknown' && f.usdValue)
-            .map(f => {
-              const arrow = f.direction === 'out' ? '↗' : '↙';
-              const usd = `$${Math.abs(f.usdValue).toLocaleString(undefined, {maximumFractionDigits: 0})}`;
-              return `<span class="flow"><span class="arrow">${arrow}</span><span class="protocol">${f.protocol}</span><span class="amount">${usd}</span></span>`;
-            }).join('');
-          if (!flowChips) return '';
-          return `<div class="rebalance-row">
-            <span class="when">${tsLabel}</span>
-            ${flowChips}
-            <a class="tx-link" href="${explorerBase}${t.tx}" target="_blank" rel="noopener">${t.tx.slice(0, 10)}…</a>
-          </div>`;
+        // Stash all txs + helpers globally so pagination buttons can re-render
+        window.__rebalanceState = {
+          all: txVolumes,
+          explorerBase,
+          page: 0,
+          perPage: 25,
+          expanded: false,
         };
-        const initialRows = recentTx.slice(0, RECENT_LIMIT).map(renderRow).filter(Boolean).join('');
-        const moreRows = recentTx.slice(RECENT_LIMIT).map(renderRow).filter(Boolean).join('');
 
         card.innerHTML = `
           <div class="panel-title">Rebalance Activity
@@ -559,9 +552,9 @@
           ${statsHtml}
           ${chartHtml}
           ${chipsHtml}
-          <div id="rebalanceRows">${initialRows}</div>
-          ${moreRows ? `<button class="rebalance-toggle" onclick="this.previousElementSibling.insertAdjacentHTML('beforeend', this.dataset.more); this.remove()" data-more="${moreRows.replace(/"/g, '&quot;')}">Show ${recentTx.length - RECENT_LIMIT} more</button>` : ''}
+          <div id="rebalanceRowsHost"></div>
         `;
+        renderRebalanceRows();
       } catch (e) {
         // silently ignore
       }
@@ -573,6 +566,55 @@
       if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
       if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
       return `${Math.floor(diff/86400)}d ago`;
+    }
+
+    // Renders the paginated rebalance rows section (collapsed by default)
+    function renderRebalanceRows() {
+      const state = window.__rebalanceState;
+      if (!state) return;
+      const host = document.getElementById('rebalanceRowsHost');
+      if (!host) return;
+
+      const total = state.all.length;
+
+      if (!state.expanded) {
+        host.innerHTML = `<button class="rebalance-toggle" onclick="window.__rebalanceState.expanded=true;renderRebalanceRows()">Show ${total} transactions</button>`;
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(total / state.perPage));
+      const page = Math.min(state.page, totalPages - 1);
+      const start = page * state.perPage;
+      const end = Math.min(start + state.perPage, total);
+
+      const rows = state.all.slice(start, end).map(t => {
+        const tsLabel = formatRelative(t.ts);
+        const flowChips = t.raw.flows
+          .filter(f => f.kind !== 'unknown' && f.usdValue)
+          .map(f => {
+            const arrow = f.direction === 'out' ? '↗' : '↙';
+            const usd = `$${Math.abs(f.usdValue).toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+            return `<span class="flow"><span class="arrow">${arrow}</span><span class="protocol">${f.protocol}</span><span class="amount">${usd}</span></span>`;
+          }).join('');
+        if (!flowChips) return '';
+        return `<div class="rebalance-row">
+          <span class="when">${tsLabel}</span>
+          ${flowChips}
+          <a class="tx-link" href="${state.explorerBase}${t.tx}" target="_blank" rel="noopener">${t.tx.slice(0, 10)}…</a>
+        </div>`;
+      }).filter(Boolean).join('');
+
+      const prevDisabled = page <= 0 ? 'disabled' : '';
+      const nextDisabled = page >= totalPages - 1 ? 'disabled' : '';
+      const pager = `
+        <div class="rebalance-pager">
+          <button ${prevDisabled} onclick="window.__rebalanceState.page=Math.max(0,window.__rebalanceState.page-1);renderRebalanceRows()">‹ Prev</button>
+          <span>Page ${page + 1} of ${totalPages} · ${start + 1}–${end} of ${total}</span>
+          <button ${nextDisabled} onclick="window.__rebalanceState.page=Math.min(${totalPages - 1},window.__rebalanceState.page+1);renderRebalanceRows()">Next ›</button>
+          <button class="rebalance-collapse-btn" onclick="window.__rebalanceState.expanded=false;window.__rebalanceState.page=0;renderRebalanceRows()">Collapse</button>
+        </div>`;
+
+      host.innerHTML = `${rows}${pager}`;
     }
 
     // Stats cards
