@@ -189,6 +189,9 @@ function isStablecoin(symbol) {
 
 let callId = 0;
 const activeRpcByChain = {};
+const lastCallTimeByRpc = {};
+const RPC_MIN_INTERVAL_MS = parseInt(process.env.RPC_MIN_INTERVAL_MS || '0', 10);
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function rpcCall(chain, method, params) {
   const rpcs = CHAIN_RPCS[chain];
@@ -196,8 +199,15 @@ async function rpcCall(chain, method, params) {
   const active = activeRpcByChain[chain] || 0;
   const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
   for (const idx of order) {
+    const url = rpcs[idx];
+    if (RPC_MIN_INTERVAL_MS > 0) {
+      const last = lastCallTimeByRpc[url] || 0;
+      const wait = RPC_MIN_INTERVAL_MS - (Date.now() - last);
+      if (wait > 0) await sleep(wait);
+      lastCallTimeByRpc[url] = Date.now();
+    }
     try {
-      const res = await fetch(rpcs[idx], {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++callId, method, params }),
@@ -355,7 +365,131 @@ function parseWithdrawLog(log, vault) {
   };
 }
 
+// Deep historical scan for a single vault — bypass MAX_BLOCKS cap, scan
+// from explicit fromBlock (default ~24 months back) to currentBlock, supporting
+// both backward fill (extending historical coverage) and forward delta.
+// Merges into activity-events.json with dedup by tx+logIdx.
+async function deepestScanVault(vaultAddr, chain, fromBlockArg) {
+  const vault = vaultAddr.toLowerCase();
+  const DEEP_BACKFILL = {
+    ethereum:  5_000_000,    // ~24 months at 12s/block
+    base:     30_000_000,    // ~24 months at 2s/block
+    arbitrum: 200_000_000,
+    plasma:    5_000_000,
+    avalanche: 30_000_000,
+    unichain:  15_000_000,
+    _default:  5_000_000,
+  };
+  const DEADLINE_NEVER = Date.now() + 6 * 60 * 60 * 1000;
+
+  // Load existing data + locate vault
+  let data = { updatedAt: null, lastBlock: {}, events: [], vaults: [] };
+  try { data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch {}
+
+  const VAULTS = loadVaults();
+  const vaultMeta = VAULTS.find(v => v.address === vault);
+  if (!vaultMeta) {
+    console.error(`Vault ${vault} not found in ipor-vaults.json (or below TVL filter)`);
+    process.exit(1);
+  }
+
+  const currentBlock = await getBlockNumber(chain);
+  const defaultDeep = DEEP_BACKFILL[chain] || DEEP_BACKFILL._default;
+  const startBlock = fromBlockArg ?? Math.max(1, currentBlock - defaultDeep);
+
+  // Compute scan ranges from existing coverage
+  const ranges = [];
+  const existingFrom = data.lastBlock?.[`${vault}:from`];
+  const existingTo   = data.lastBlock?.[vault];
+  if (existingTo && existingFrom) {
+    if (startBlock < existingFrom) ranges.push({ from: startBlock, to: existingFrom - 1, label: 'backward' });
+    if (existingTo + 1 <= currentBlock) ranges.push({ from: existingTo + 1, to: currentBlock, label: 'forward' });
+  } else {
+    ranges.push({ from: startBlock, to: currentBlock, label: 'full' });
+  }
+
+  if (ranges.length === 0) {
+    console.log(`${vault}: already covers the requested range`);
+    return;
+  }
+
+  console.log(`\n=== DEEPEST scan for ${vault} (${vaultMeta.name}) on ${chain} ===`);
+  console.log(`Throttle: ${RPC_MIN_INTERVAL_MS}ms min between RPC calls\n`);
+
+  for (const r of ranges) {
+    console.log(`  ${r.label} scan: blocks ${r.from} → ${r.to} (${(r.to - r.from + 1).toLocaleString()} blocks)`);
+    const t0 = Date.now();
+    const dep = await scanLogs(chain, [vault], DEPOSIT_TOPIC, r.from, r.to, DEADLINE_NEVER);
+    const wd  = await scanLogs(chain, [vault], WITHDRAW_TOPIC, r.from, r.to, DEADLINE_NEVER);
+    console.log(`    ${dep.logs.length} deposit + ${wd.logs.length} withdraw logs (${Math.round((Date.now() - t0)/1000)}s)`);
+
+    const newEvents = [];
+    for (const log of dep.logs)  newEvents.push(parseDepositLog(log, vaultMeta));
+    for (const log of wd.logs)   newEvents.push(parseWithdrawLog(log, vaultMeta));
+
+    // Fetch timestamps in parallel batches of 10
+    const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
+    if (uniqueBlocks.length > 0) {
+      console.log(`    fetching timestamps for ${uniqueBlocks.length} blocks...`);
+      const tsMap = {};
+      for (let i = 0; i < uniqueBlocks.length; i += 10) {
+        const batch = uniqueBlocks.slice(i, i + 10);
+        const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+        results.forEach((ts, j) => { tsMap[batch[j]] = ts; });
+      }
+      newEvents.forEach(e => { e.timestamp = tsMap[e.block] || 0; });
+    }
+
+    newEvents.forEach(e => {
+      e.assets = Math.round(e.assets * 1e6) / 1e6;
+      e.shares = Math.round(e.shares * 1e6) / 1e6;
+    });
+
+    await enrichWithPrices(newEvents);
+    data.events.push(...newEvents);
+    console.log(`    +${newEvents.length} events`);
+  }
+
+  // Update coverage markers
+  if (!data.lastBlock) data.lastBlock = {};
+  const newFrom = Math.min(startBlock, data.lastBlock[`${vault}:from`] ?? Infinity);
+  const newTo   = Math.max(currentBlock, data.lastBlock[vault] ?? 0);
+  data.lastBlock[`${vault}:from`] = newFrom;
+  data.lastBlock[vault] = newTo;
+
+  // Dedup events by tx + logIdx, sort newest first
+  const seen = new Set();
+  data.events = data.events
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || b.block - a.block || b.logIdx - a.logIdx)
+    .filter(e => {
+      const key = e.tx + ':' + e.logIdx;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+  data.updatedAt = new Date().toISOString();
+  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken }));
+
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+  console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
+}
+
 async function main() {
+  // CLI: --deepest <vault> [chain] [fromBlock]
+  const args = process.argv.slice(2);
+  if (args[0] === '--deepest') {
+    const vault = (args[1] || '').toLowerCase();
+    const chain = args[2] || 'ethereum';
+    const fromBlock = args[3] ? parseInt(args[3], 10) : null;
+    if (!/^0x[a-f0-9]{40}$/.test(vault)) {
+      console.error('Usage: node collect-activity.js --deepest <vault> [chain] [fromBlock]');
+      process.exit(1);
+    }
+    await deepestScanVault(vault, chain, fromBlock);
+    return;
+  }
+
   console.log('=== Vault Activity Collector ===\n');
 
   const VAULTS = loadVaults();
