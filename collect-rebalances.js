@@ -49,23 +49,31 @@ const LLAMA_CHAIN = { ethereum: 'ethereum', base: 'base', arbitrum: 'arbitrum' }
 // Known protocol-receipt-token prefixes (token addresses or symbol prefixes).
 // Resolved via DeFi Llama price API (returns symbol + name).
 // Classification logic uses the resolved symbol/name.
+// IMPORTANT: order matters — first match wins. Specific protocols before
+// generic stable/LST so receipt tokens (e.g. sUSDe = Ethena, NOT Spark) classify right.
 const PROTOCOL_RULES = [
-  // Aave V3
-  { match: (s, n) => /^a(?:Eth|Base|Arb)?[A-Z]/i.test(s) || /aave/i.test(n), protocol: 'Aave', kind: 'lending' },
-  // Compound V3
-  { match: (s, n) => /^c[A-Z].*V3?$/i.test(s) || /compound/i.test(n), protocol: 'Compound', kind: 'lending' },
-  // Spark / MakerDAO
-  { match: (s, n) => /^s(?:DAI|USDS|WETH|spk)/i.test(s) || /spark/i.test(n), protocol: 'Spark', kind: 'lending' },
-  // Morpho (Blue and MetaMorpho)
-  { match: (s, n) => /morpho|metamorpho/i.test(n), protocol: 'Morpho', kind: 'lending' },
-  // Pendle
-  { match: (s, n) => /^(PT|YT|SY)-/i.test(s) || /pendle/i.test(n), protocol: 'Pendle', kind: 'yield' },
-  // Euler V2
-  { match: (s, n) => /^e[A-Z]/.test(s) && /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
-  // Lido / wstETH (collateral, not protocol position)
-  { match: (s, n) => /^(stETH|wstETH|weETH|ETHx|rETH|cbETH)$/i.test(s), protocol: 'LST', kind: 'collateral' },
-  // Stablecoins
-  { match: (s) => /^(USDC|USDT|DAI|USDe|crvUSD|GHO|USDS|FRAX|LUSD)$/i.test(s), protocol: 'Stable', kind: 'collateral' },
+  // Spark Lend (Aave V3 fork) — receipt tokens use `sp` prefix.
+  // Also includes Sky/MakerDAO savings tokens (sDAI, sUSDS) and Spark debt tokens.
+  { match: (s, n) => /^sp[A-Za-z]/.test(s) || /^(sDAI|sUSDS)$/i.test(s) || /spark/i.test(n) || /^variableDebtSp/i.test(s) || /^stableDebtSp/i.test(s), protocol: 'Spark', kind: 'lending' },
+  // Aave V3 — aTokens with optional chain/market markers (Eth, Base, Arb, Prime, Avax)
+  { match: (s, n) => /^a(?:Eth|Base|Arb|Prime|Avax|Opt|Pol|Sonic)?[A-Z]/.test(s) || /aave/i.test(n) || /^variableDebt[A-Z]/.test(s) || /^stableDebt[A-Z]/.test(s), protocol: 'Aave', kind: 'lending' },
+  // Compound V3 — cToken pattern with V3 suffix
+  { match: (s, n) => /^c[A-Z].*[Vv]3$/.test(s) || /compound/i.test(n), protocol: 'Compound', kind: 'lending' },
+  // Pendle — Principal/Yield/Standardized-Yield wrappers
+  { match: (s, n) => /^(PT|YT|SY|LP)-/i.test(s) || /pendle/i.test(n), protocol: 'Pendle', kind: 'yield' },
+  // Euler V2 — eTokens with explicit Euler in name
+  { match: (s, n) => /^e[A-Z]/.test(s) && /euler/i.test(n) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
+  // Morpho (Blue & MetaMorpho) — usually identifiable from name.
+  // Also vault tokens with "Steakhouse"/"Gauntlet"/"Re7" curators which are MetaMorpho strategies.
+  { match: (s, n) => /morpho|metamorpho/i.test(n) || /steakhouse|gauntlet|re7|usual/i.test(n), protocol: 'Morpho', kind: 'lending' },
+  // Ethena — sUSDe is staked USDe, NOT a Spark token (must come before generic LST/Stable rules)
+  { match: (s, n) => /^(USDe|sUSDe|ENA)$/i.test(s) || /ethena/i.test(n), protocol: 'Ethena', kind: 'collateral' },
+  // Liquid staking tokens (transit asset, not a destination protocol — filtered from chips)
+  { match: (s, n) => /^(stETH|wstETH|weETH|eETH|ETHx|rETH|cbETH|swETH|frxETH|sfrxETH|mETH|osETH|rswETH|ezETH|pufETH)$/i.test(s), protocol: 'LST', kind: 'collateral' },
+  // Liquid staked BTC variants
+  { match: (s) => /^(WBTC|cbBTC|tBTC|LBTC|FBTC|solvBTC)$/i.test(s), protocol: 'BTC', kind: 'collateral' },
+  // Stablecoins (transit asset)
+  { match: (s) => /^(USDC|USDT|DAI|crvUSD|GHO|USDS|FRAX|LUSD|PYUSD|FDUSD|TUSD|USDP|sFRAX)$/i.test(s), protocol: 'Stable', kind: 'collateral' },
 ];
 
 let callId = 0;
@@ -355,6 +363,26 @@ async function scanVault(vaultAddr, chain, opts = {}) {
           usdValue: usdValue != null ? Math.round(usdValue * 100) / 100 : null,
         };
       });
+
+      // Infer USD value for protocol-receipt-token flows missing prices.
+      // Receipt tokens (e.g. spwstETH) often aren't on DeFi Llama. Their value
+      // mirrors the underlying transferred in the opposite direction in the
+      // same tx — so use the corresponding side's USD as a proxy.
+      const knownOut = flows.filter(f => f.direction === 'out' && f.usdValue != null);
+      const knownIn  = flows.filter(f => f.direction === 'in'  && f.usdValue != null);
+      const sumKnownOut = knownOut.reduce((a, f) => a + f.usdValue, 0);
+      const sumKnownIn  = knownIn.reduce((a, f) => a + f.usdValue, 0);
+      flows.forEach(f => {
+        if (f.usdValue != null) return;
+        if (f.kind === 'unknown') return; // don't fabricate value for truly unknown tokens
+        // Use the opposite-direction sum as proxy; fall back to same-direction if missing
+        const proxy = f.direction === 'out' ? sumKnownIn : sumKnownOut;
+        if (proxy > 0) {
+          f.usdValue = Math.round(proxy * 100) / 100;
+          f.usdInferred = true;
+        }
+      });
+
       newRebalances.push({ tx, block: transfers[0].block, timestamp: timestamps[j], flows });
     });
   }

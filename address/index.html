@@ -427,6 +427,29 @@
     }
 
     // Rebalance / fuse activity (only renders when address is a known vault and has rebalance data)
+    // Frontend protocol re-classifier — kept in sync with collect-rebalances.js so
+    // existing scanned data shows correct labels without requiring a re-scan.
+    const PROTOCOL_RULES_FRONTEND = [
+      { match: (s, n) => /^sp[A-Za-z]/.test(s) || /^(sDAI|sUSDS)$/i.test(s) || /spark/i.test(n) || /^variableDebtSp/i.test(s) || /^stableDebtSp/i.test(s), protocol: 'Spark', kind: 'lending' },
+      { match: (s, n) => /^a(?:Eth|Base|Arb|Prime|Avax|Opt|Pol|Sonic)?[A-Z]/.test(s) || /aave/i.test(n) || /^variableDebt[A-Z]/.test(s) || /^stableDebt[A-Z]/.test(s), protocol: 'Aave', kind: 'lending' },
+      { match: (s, n) => /^c[A-Z].*[Vv]3$/.test(s) || /compound/i.test(n), protocol: 'Compound', kind: 'lending' },
+      { match: (s, n) => /^(PT|YT|SY|LP)-/i.test(s) || /pendle/i.test(n), protocol: 'Pendle', kind: 'yield' },
+      { match: (s, n) => (/^e[A-Z]/.test(s) && /euler/i.test(n)) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
+      { match: (s, n) => /morpho|metamorpho/i.test(n) || /steakhouse|gauntlet|re7|usual/i.test(n), protocol: 'Morpho', kind: 'lending' },
+      { match: (s, n) => /^(USDe|sUSDe|ENA)$/i.test(s) || /ethena/i.test(n), protocol: 'Ethena', kind: 'collateral' },
+      { match: (s, n) => /^(stETH|wstETH|weETH|eETH|ETHx|rETH|cbETH|swETH|frxETH|sfrxETH|mETH|osETH|rswETH|ezETH|pufETH)$/i.test(s), protocol: 'LST', kind: 'collateral' },
+      { match: (s) => /^(WBTC|cbBTC|tBTC|LBTC|FBTC|solvBTC)$/i.test(s), protocol: 'BTC', kind: 'collateral' },
+      { match: (s) => /^(USDC|USDT|DAI|crvUSD|GHO|USDS|FRAX|LUSD|PYUSD|FDUSD|TUSD|USDP|sFRAX)$/i.test(s), protocol: 'Stable', kind: 'collateral' },
+    ];
+    function reclassifyFlow(f) {
+      const sym = f.symbol || '';
+      const name = '';  // Token name not stored in JSON — rules with name patterns won't fire here, that's fine
+      for (const r of PROTOCOL_RULES_FRONTEND) {
+        if (r.match(sym, name)) return { protocol: r.protocol, kind: r.kind };
+      }
+      return { protocol: 'Unknown', kind: 'unknown' };
+    }
+
     async function renderRebalances(addr) {
       const card = document.getElementById('rebalanceCard');
       card.style.display = 'none';
@@ -439,6 +462,24 @@
         if (!res.ok) return;
         const data = await res.json();
         const all = data.rebalances || [];
+        // Re-classify every flow with the latest rules so backend updates land
+        // immediately without needing a fresh scan. Also infer USD value for
+        // receipt tokens that DeFi Llama didn't price (use the opposite-side sum).
+        for (const r of all) {
+          const flows = r.flows || [];
+          for (const f of flows) {
+            const cls = reclassifyFlow(f);
+            f.protocol = cls.protocol;
+            f.kind = cls.kind;
+          }
+          const sumKnownOut = flows.filter(f => f.direction === 'out' && f.usdValue != null).reduce((a, f) => a + f.usdValue, 0);
+          const sumKnownIn  = flows.filter(f => f.direction === 'in'  && f.usdValue != null).reduce((a, f) => a + f.usdValue, 0);
+          for (const f of flows) {
+            if (f.usdValue != null || f.kind === 'unknown') continue;
+            const proxy = f.direction === 'out' ? sumKnownIn : sumKnownOut;
+            if (proxy > 0) { f.usdValue = Math.round(proxy * 100) / 100; f.usdInferred = true; }
+          }
+        }
         const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString() : '';
 
         card.style.display = '';
