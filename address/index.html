@@ -1005,11 +1005,15 @@
 
       document.getElementById('panels').innerHTML = `
         <div class="panel">
-          <div class="panel-title">Per Vault</div>
+          <div class="panel-title">Cumulative Net Flow by Vault
+            <span class="info-tip" data-tip="Sum of all USD-denominated deposits minus withdrawals over the tracked event window. NOT the current TVL — TVL reflects the live on-chain balance, which differs due to price moves of the underlying, accrued yield, and (for leveraged vaults) the position's net equity vs gross managed assets.">&#9432;</span>
+          </div>
           <table><thead><tr><th>Vault</th><th>Net Flow</th><th>Events</th></tr></thead><tbody>${vaultRows}</tbody></table>
         </div>
         <div class="panel">
-          <div class="panel-title">Per Asset</div>
+          <div class="panel-title">Cumulative Flow by Asset
+            <span class="info-tip" data-tip="USD value of asset transfers at the time of each deposit/withdraw event (not at current price). Sums and net are cumulative across the tracked window.">&#9432;</span>
+          </div>
           <table><thead><tr><th>Asset</th><th>In</th><th>Out</th><th>Net</th></tr></thead><tbody>${assetRows}</tbody></table>
         </div>
       `;
