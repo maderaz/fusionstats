@@ -546,6 +546,13 @@
         const minTs = Math.min(...txVolumes.map(t => t.ts));
         const trackedDays = Math.max(1, Math.ceil((now - minTs) / 86400));
 
+        const fmtMoney = (v) => {
+          if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+          if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+          if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+          return '$' + v.toFixed(0);
+        };
+
         // Group by day for chart — full history from earliest event to today
         const dayMs = 86400;
         const todayDay = Math.floor(now / dayMs);
@@ -611,13 +618,6 @@
           otherSymTooltip = `Tokens we couldn't classify (top by volume):\n${topSyms}\n\nTell us if you recognize a protocol — we'll add it to the rules.`;
           protocols.push(['Other', { count: otherTxs, volume: otherVol, tooltip: otherSymTooltip }]);
         }
-
-        const fmtMoney = (v) => {
-          if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
-          if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
-          if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
-          return '$' + v.toFixed(0);
-        };
 
         const statsHtml = `
           <div class="rebalance-stats">
@@ -700,7 +700,8 @@
         renderRebalanceRows();
         attachChartTooltip(fmtMoney);
       } catch (e) {
-        // silently ignore
+        console.error('renderRebalances failed:', e);
+        card.style.display = 'none';
       }
     }
 
