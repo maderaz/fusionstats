@@ -34,5 +34,5 @@ jobs:
           git add -f rebalance-events-*.json rebalances-summary.json 2>/dev/null || true
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update rebalance data [skip ci]"
-          git pull --rebase origin ${{ github.ref_name }} || true
+          git pull --rebase --autostash origin ${{ github.ref_name }} || true
           git push
