@@ -112,14 +112,33 @@
     .rebalance-stat .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem; }
     .rebalance-stat .value { font-size: 0.95rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
     .rebalance-stat .sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem; }
-    .rebalance-chart-wrap { padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--stroke); }
-    .rebalance-chart-scroll { overflow-x: auto; }
+    .rebalance-chart-wrap { padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--stroke); position: relative; }
+    .rebalance-chart-scroll { overflow-x: auto; overflow-y: visible; }
     .rebalance-chart-bars { display: flex; align-items: flex-end; gap: 1px; height: 100px; position: relative; min-width: 100%; }
-    .rebalance-chart-bar-slot { flex: 1 1 0; min-width: 2px; height: 100%; position: relative; display: flex; align-items: flex-end; }
-    .rebalance-chart-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 0; transition: opacity 0.15s; }
+    .rebalance-chart-bar-slot { flex: 1 1 0; min-width: 2px; height: 100%; position: relative; display: flex; align-items: flex-end; cursor: default; border-radius: 2px; }
+    .rebalance-chart-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 0; transition: opacity 0.15s; pointer-events: none; }
+    .rebalance-chart-bar-slot:hover { background: rgba(132, 41, 255, 0.08); }
     .rebalance-chart-bar-slot:hover .rebalance-chart-bar { opacity: 0.7; }
-    .rebalance-chart-bar-slot .reb-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.88); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.7rem; white-space: nowrap; z-index: 10; pointer-events: none; line-height: 1.4; }
-    .rebalance-chart-bar-slot:hover .reb-tip { display: block; }
+    #rebalanceChartTip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(15, 17, 22, 0.95);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      z-index: 50;
+      white-space: nowrap;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+    #rebalanceChartTip.show { opacity: 1; }
+    #rebalanceChartTip .tt-date { font-weight: 600; margin-bottom: 3px; }
+    #rebalanceChartTip .tt-amount { color: #b794ff; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+    #rebalanceChartTip .tt-sub { color: rgba(255,255,255,0.6); font-size: 0.66rem; margin-top: 2px; }
+    #rebalanceChartTip.empty .tt-amount { color: rgba(255,255,255,0.5); font-weight: 500; font-size: 0.7rem; }
     .rebalance-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.4rem; }
     .rebalance-protocols-row { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--stroke); }
     .rebalance-protocol-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 0.7rem; font-weight: 600; }
@@ -516,23 +535,21 @@
             </div>
           </div>`;
 
-        // Chart bars
+        // Chart bars — store data in attrs, single shared tooltip wired via JS
         const barsHtml = days.map(d => {
           const heightPct = (d.volume / maxVol) * 100;
-          const dt = new Date(d.day * dayMs);
-          const dateStr = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-          const tip = d.volume > 0
-            ? `${dateStr} · ${fmtMoney(d.volume)} · ${d.count} tx${d.count === 1 ? '' : 's'}`
-            : `${dateStr} · no rebalances`;
-          return `<div class="rebalance-chart-bar-slot">
+          return `<div class="rebalance-chart-bar-slot"
+                       data-day="${d.day}"
+                       data-volume="${d.volume}"
+                       data-count="${d.count}">
             ${d.volume > 0 ? `<div class="rebalance-chart-bar" style="height:${heightPct}%"></div>` : ''}
-            <div class="reb-tip">${tip}</div>
           </div>`;
         }).join('');
         const chartStart = new Date(startDay * dayMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
         const chartEnd = 'today';
         const chartHtml = `
           <div class="rebalance-chart-wrap">
+            <div id="rebalanceChartTip"></div>
             <div class="flow-chart-header" style="margin-bottom:0.5rem">
               <span class="flow-chart-title">Daily volume processed</span>
               <span class="flow-chart-range">peak ${fmtMoney(maxVol)} · ${days.length}d since inception</span>
@@ -568,9 +585,63 @@
           <div id="rebalanceRowsHost"></div>
         `;
         renderRebalanceRows();
+        attachChartTooltip(fmtMoney);
       } catch (e) {
         // silently ignore
       }
+    }
+
+    function attachChartTooltip(fmtMoney) {
+      const wrap = document.querySelector('.rebalance-chart-wrap');
+      const tip = document.getElementById('rebalanceChartTip');
+      if (!wrap || !tip) return;
+      const dayMs = 86400;
+
+      function show(slot, evt) {
+        const day = parseInt(slot.dataset.day, 10);
+        const volume = parseFloat(slot.dataset.volume) || 0;
+        const count = parseInt(slot.dataset.count, 10) || 0;
+        const dt = new Date(day * dayMs * 1000);
+        const fullDate = dt.toLocaleDateString(undefined, {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        if (volume > 0) {
+          tip.classList.remove('empty');
+          tip.innerHTML = `
+            <div class="tt-date">${fullDate}</div>
+            <div class="tt-amount">${fmtMoney(volume)} rebalanced</div>
+            <div class="tt-sub">${count} transaction${count === 1 ? '' : 's'}</div>`;
+        } else {
+          tip.classList.add('empty');
+          tip.innerHTML = `
+            <div class="tt-date">${fullDate}</div>
+            <div class="tt-amount">no rebalances</div>`;
+        }
+        // Position relative to wrapper
+        const wrapRect = wrap.getBoundingClientRect();
+        const slotRect = slot.getBoundingClientRect();
+        const slotCenterX = slotRect.left + slotRect.width / 2 - wrapRect.left;
+        const slotTopY = slotRect.top - wrapRect.top;
+        // Render to measure
+        tip.classList.add('show');
+        const tipW = tip.offsetWidth;
+        const tipH = tip.offsetHeight;
+        // Clamp horizontally so tooltip never escapes the wrapper
+        let leftPx = slotCenterX - tipW / 2;
+        leftPx = Math.max(8, Math.min(wrapRect.width - tipW - 8, leftPx));
+        let topPx = slotTopY - tipH - 8;
+        if (topPx < 4) topPx = slotTopY + slotRect.height + 8; // flip below if not enough room
+        tip.style.left = `${leftPx}px`;
+        tip.style.top  = `${topPx}px`;
+      }
+
+      function hide() { tip.classList.remove('show'); }
+
+      wrap.addEventListener('mousemove', (e) => {
+        const slot = e.target.closest('.rebalance-chart-bar-slot');
+        if (slot) show(slot, e); else hide();
+      });
+      wrap.addEventListener('mouseleave', hide);
     }
 
     function formatRelative(ts) {
