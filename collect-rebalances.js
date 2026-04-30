@@ -467,6 +467,100 @@ async function main() {
     return;
   }
 
+  // --deepest-all [chain]
+  // Sequential deep historical scan for ALL >$1K vaults. Conservative per-chain
+  // backfill windows (smaller than single-vault --deepest) so the whole set
+  // fits within the GHA 6h cap. continue-on-error per vault: a failure on
+  // one doesn't stop the rest.
+  if (args[0] === '--deepest-all') {
+    const chainFilter = args[1] || null;
+    // Conservative per-chain windows for the all-vaults sweep (smaller than --deepest single-vault)
+    const DEEPEST_ALL_BACKFILL = {
+      ethereum:  2_500_000,   // ~12 months at 12s
+      base:      7_500_000,   // ~6 months at 2s
+      arbitrum:  5_000_000,   // ~17 days at 0.3s — realistic for free RPCs
+      plasma:    2_500_000,
+      avalanche: 7_500_000,
+      unichain:  7_500_000,
+      _default:  2_500_000,
+    };
+    const PER_VAULT_DEADLINE_MS = 12 * 60 * 1000; // 12 min per vault hard cap
+
+    let vaults;
+    try {
+      const ipor = JSON.parse(fs.readFileSync('ipor-vaults.json', 'utf8'));
+      const supportedChains = new Set(Object.keys(CHAIN_RPCS));
+      vaults = ipor.vaults
+        .filter(v => v.tvl >= 1000 && supportedChains.has(v.chain))
+        .filter(v => !chainFilter || v.chain === chainFilter)
+        .map(v => ({ address: v.address.toLowerCase(), chain: v.chain, name: v.name, tvl: v.tvl }));
+    } catch (e) {
+      console.error('Could not load ipor-vaults.json:', e.message);
+      process.exit(1);
+    }
+
+    // Sort: smaller chains first (fewer vaults, fast wins), then ETH (largest)
+    const chainOrder = { plasma: 0, avalanche: 1, unichain: 2, arbitrum: 3, base: 4, ethereum: 5 };
+    vaults.sort((a, b) => (chainOrder[a.chain] ?? 99) - (chainOrder[b.chain] ?? 99) || b.tvl - a.tvl);
+
+    console.log(`\n=== DEEPEST-ALL REBALANCE SCAN — ${vaults.length} vaults ${chainFilter ? `[${chainFilter}]` : ''} ===`);
+    console.log(`Throttle: ${RPC_MIN_INTERVAL_MS}ms · per-vault budget: ${PER_VAULT_DEADLINE_MS/60000}min\n`);
+
+    const summary = { updatedAt: null, mode: 'deepest-all', vaults: [] };
+    let scannedOk = 0, failed = 0, skipped = 0;
+    const startedAt = Date.now();
+    const GLOBAL_DEADLINE = startedAt + 5 * 60 * 60 * 1000; // 5h global cap
+
+    for (const v of vaults) {
+      const idx = scannedOk + failed + skipped + 1;
+      const elapsedMin = Math.round((Date.now() - startedAt) / 60000);
+      if (Date.now() > GLOBAL_DEADLINE) {
+        console.log(`\n[${idx}/${vaults.length}] SKIPPED ${v.name} — global deadline reached`);
+        skipped++;
+        continue;
+      }
+      console.log(`\n[${idx}/${vaults.length}] ${v.name} [${v.chain}] ($${(v.tvl/1000).toFixed(0)}K) · elapsed ${elapsedMin}min`);
+
+      const window = DEEPEST_ALL_BACKFILL[v.chain] || DEEPEST_ALL_BACKFILL._default;
+      const t0 = Date.now();
+      try {
+        let currentBlock;
+        try { currentBlock = await getBlockNumber(v.chain); }
+        catch (e) { console.log(`    SKIPPED: getBlockNumber failed: ${e.message}`); failed++; continue; }
+        const fromBlock = Math.max(1, currentBlock - window);
+
+        // Race scanVault against the per-vault budget
+        const scanPromise = scanVault(v.address, v.chain, {
+          userTxs: userTxsByVault[v.address] || new Set(),
+          fromBlock,
+          maxBlocksOverride: Infinity,
+        });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`per-vault budget exceeded (${PER_VAULT_DEADLINE_MS/60000}min)`)), PER_VAULT_DEADLINE_MS)
+        );
+        const result = await Promise.race([scanPromise, timeoutPromise]);
+        summary.vaults.push({ ...result, name: v.name, tvl: v.tvl, elapsedSec: Math.round((Date.now() - t0) / 1000) });
+        scannedOk++;
+        console.log(`    OK in ${Math.round((Date.now() - t0) / 1000)}s`);
+      } catch (e) {
+        console.log(`    FAILED: ${e.message}`);
+        summary.vaults.push({ vault: v.address, chain: v.chain, name: v.name, error: e.message });
+        failed++;
+      }
+
+      // Persist summary after each vault so progress survives mid-run crashes
+      summary.updatedAt = new Date().toISOString();
+      summary.scannedOk = scannedOk;
+      summary.failed = failed;
+      summary.skipped = skipped;
+      summary.totalVaults = vaults.length;
+      fs.writeFileSync('rebalances-summary.json', JSON.stringify(summary, null, 2) + '\n');
+    }
+
+    console.log(`\n=== DONE — ${scannedOk} ok, ${failed} failed, ${skipped} skipped (${Math.round((Date.now() - startedAt) / 60000)}min total) ===\n`);
+    return;
+  }
+
   // --deepest <vault> <chain> [fromBlock]
   // Scans backward as far as fromBlock (default: ~2 years on ETH equivalent for chain),
   // bypassing per-run safety cap. Use sparingly — meant for one-off historical seed.

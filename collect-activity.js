@@ -490,6 +490,70 @@ async function main() {
     return;
   }
 
+  // --deepest-all [chain]
+  // Sequential deep historical scan of user deposit/withdraw events for ALL
+  // >$1K vaults. Conservative per-chain windows + 12-min per-vault budget.
+  if (args[0] === '--deepest-all') {
+    const chainFilter = args[1] || null;
+    const DEEPEST_ALL_BACKFILL = {
+      ethereum:  2_500_000,
+      base:      7_500_000,
+      arbitrum:  5_000_000,
+      plasma:    2_500_000,
+      avalanche: 7_500_000,
+      unichain:  7_500_000,
+      _default:  2_500_000,
+    };
+    const PER_VAULT_DEADLINE_MS = 12 * 60 * 1000;
+
+    const VAULTS = loadVaults();
+    let targets = VAULTS.filter(v => CHAIN_RPCS[v.chain] && v.tvl >= 1000);
+    if (chainFilter) targets = targets.filter(v => v.chain === chainFilter);
+    const chainOrder = { plasma: 0, avalanche: 1, unichain: 2, arbitrum: 3, base: 4, ethereum: 5 };
+    targets.sort((a, b) => (chainOrder[a.chain] ?? 99) - (chainOrder[b.chain] ?? 99) || (b.tvl || 0) - (a.tvl || 0));
+
+    console.log(`\n=== DEEPEST-ALL ACTIVITY SCAN — ${targets.length} vaults ${chainFilter ? `[${chainFilter}]` : ''} ===`);
+    console.log(`Throttle: ${RPC_MIN_INTERVAL_MS}ms · per-vault budget: ${PER_VAULT_DEADLINE_MS/60000}min\n`);
+
+    let scannedOk = 0, failed = 0, skipped = 0;
+    const startedAt = Date.now();
+    const GLOBAL_DEADLINE = startedAt + 5 * 60 * 60 * 1000; // 5h global cap
+
+    for (const v of targets) {
+      const idx = scannedOk + failed + skipped + 1;
+      const elapsedMin = Math.round((Date.now() - startedAt) / 60000);
+      if (Date.now() > GLOBAL_DEADLINE) {
+        console.log(`\n[${idx}/${targets.length}] SKIPPED ${v.name} — global deadline reached`);
+        skipped++;
+        continue;
+      }
+      console.log(`\n[${idx}/${targets.length}] ${v.name} [${v.chain}] ($${((v.tvl||0)/1000).toFixed(0)}K) · elapsed ${elapsedMin}min`);
+
+      const window = DEEPEST_ALL_BACKFILL[v.chain] || DEEPEST_ALL_BACKFILL._default;
+      const t0 = Date.now();
+      try {
+        let currentBlock;
+        try { currentBlock = await getBlockNumber(v.chain); }
+        catch (e) { console.log(`    SKIPPED: getBlockNumber failed: ${e.message}`); failed++; continue; }
+        const fromBlock = Math.max(1, currentBlock - window);
+
+        const scanPromise = deepestScanVault(v.address, v.chain, fromBlock);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`per-vault budget exceeded (${PER_VAULT_DEADLINE_MS/60000}min)`)), PER_VAULT_DEADLINE_MS)
+        );
+        await Promise.race([scanPromise, timeoutPromise]);
+        scannedOk++;
+        console.log(`    OK in ${Math.round((Date.now() - t0) / 1000)}s`);
+      } catch (e) {
+        console.log(`    FAILED: ${e.message}`);
+        failed++;
+      }
+    }
+
+    console.log(`\n=== DONE — ${scannedOk} ok, ${failed} failed, ${skipped} skipped (${Math.round((Date.now() - startedAt) / 60000)}min total) ===\n`);
+    return;
+  }
+
   console.log('=== Vault Activity Collector ===\n');
 
   const VAULTS = loadVaults();

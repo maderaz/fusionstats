@@ -1,0 +1,80 @@
+name: Deep Backfill ALL Vaults (One-off)
+
+# Manual-only — sequentially seeds deep historical data for every >$1K
+# Fusion vault. After the seed, the daily/incremental crons keep things
+# fresh.
+#
+# Recommended sequence:
+#   1. Run with mode = "rebalances" (~2-3h)
+#   2. After it finishes, run with mode = "activity" (~2-3h)
+#   3. (Or run "both" if you want one button press, ~4-5h, watch the timeout)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to scan'
+        required: true
+        default: 'rebalances'
+        type: choice
+        options:
+          - rebalances
+          - activity
+          - both
+      chain:
+        description: 'Limit to one chain (leave blank for all chains)'
+        required: false
+        default: ''
+      throttle_ms:
+        description: 'Min ms between RPC calls per endpoint (higher = safer, slower)'
+        required: false
+        default: '250'
+
+permissions:
+  contents: write
+
+jobs:
+  deep-all:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350      # safely under GHA's 6h hard cap
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Refresh IPOR vault list
+        continue-on-error: true
+        run: node collect-ipor-vaults.js
+
+      - name: Refresh recent activity (used to filter rebalance flows)
+        if: ${{ inputs.mode == 'rebalances' || inputs.mode == 'both' }}
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node collect-activity.js
+
+      - name: Deep activity scan — all vaults
+        if: ${{ inputs.mode == 'activity' || inputs.mode == 'both' }}
+        continue-on-error: true
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-activity.js --deepest-all ${{ inputs.chain }}
+
+      - name: Deep rebalance scan — all vaults
+        if: ${{ inputs.mode == 'rebalances' || inputs.mode == 'both' }}
+        continue-on-error: true
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-rebalances.js --deepest-all ${{ inputs.chain }}
+
+      - name: Commit & push results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f activity-events.json rebalance-events-*.json rebalances-summary.json 2>/dev/null || true
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Deep backfill ALL vaults [mode=${{ inputs.mode }}, chain=${{ inputs.chain || 'all' }}] [skip ci]"
+          git pull --rebase --autostash origin ${{ github.ref_name }} || true
+          git push
