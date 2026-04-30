@@ -444,7 +444,10 @@
       const vaultInfo = (window.iporVaultsByAddr || {})[addr];
       renderStats(s, addr, vaultInfo);
       renderFlowChart(events);
-      renderPanels(events);
+      // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
+      // pages and confusing when cumulative net flow ≠ current TVL.
+      const panelsEl = document.getElementById('panels');
+      if (panelsEl) panelsEl.innerHTML = '';
       renderHistory(events);
       renderRebalances(addr);
     }
