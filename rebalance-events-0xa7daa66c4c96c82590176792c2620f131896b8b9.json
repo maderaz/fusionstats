@@ -1,12 +1,12 @@
 {
   "vault": "0xa7daa66c4c96c82590176792c2620f131896b8b9",
   "chain": "base",
-  "updatedAt": "2026-04-30T05:48:33.234Z",
+  "updatedAt": "2026-04-30T20:07:41.235Z",
   "blockRange": {
-    "from": 45069370,
-    "to": 45369370
+    "from": 37894228,
+    "to": 45394229
   },
-  "txCount": 1,
+  "txCount": 3,
   "rebalances": [
     {
       "tx": "0x27150daa3deac38b60ac9536b394a66277e4c53933168fd4fbb9bf79962dc928",
@@ -21,6 +21,56 @@
           "direction": "in",
           "amount": 1.634776,
           "usdValue": null
+        }
+      ]
+    },
+    {
+      "tx": "0xada76b95d3258367f93fd06c4f5896046837d406189210778649feb31a6b9b58",
+      "block": 44952778,
+      "timestamp": 1776694903,
+      "flows": [
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1.628776,
+          "usdValue": 4529.84
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.628776,
+          "usdValue": 4529.84
+        }
+      ]
+    },
+    {
+      "tx": "0x29ef3fdb2a966cb21954d12382c7a5865b1cce9d483df7cd048ddda09bd21342",
+      "block": 44831508,
+      "timestamp": 1776452363,
+      "flows": [
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.63,
+          "usdValue": 4533.25
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 1.63,
+          "usdValue": 4533.25
         }
       ]
     }
