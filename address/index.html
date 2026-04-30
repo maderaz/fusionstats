@@ -146,7 +146,30 @@
     .rebalance-protocols-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--stroke); }
     .rebalance-protocols-row .row-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-right: 0.3rem; display: inline-flex; align-items: center; gap: 0.25rem; }
     .rebalance-protocol-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 0.7rem; font-weight: 600; }
-    .rebalance-protocol-chip.unknown { background: var(--surface); color: var(--text-secondary); border: 1px dashed var(--stroke); }
+    .rebalance-protocol-chip.other { background: var(--surface); color: var(--text-secondary); border: 1px dashed var(--stroke); cursor: help; position: relative; }
+    .rebalance-protocol-chip.other::after {
+      content: attr(data-tip);
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 17, 22, 0.95);
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 7px;
+      font-size: 0.68rem;
+      font-weight: 400;
+      white-space: pre;
+      max-width: 320px;
+      line-height: 1.55;
+      z-index: 30;
+      pointer-events: none;
+      text-align: left;
+      letter-spacing: 0;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    }
+    .rebalance-protocol-chip.other:hover::after { display: block; }
     .rebalance-protocol-chip .count { color: var(--text-secondary); font-weight: 500; font-size: 0.65rem; margin-left: 0.2rem; }
     .rebalance-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--stroke); font-size: 0.78rem; flex-wrap: wrap; }
     .rebalance-row:last-child { border-bottom: none; }
@@ -434,8 +457,10 @@
       { match: (s, n) => /^a(?:Eth|Base|Arb|Prime|Avax|Opt|Pol|Sonic)?[A-Z]/.test(s) || /aave/i.test(n) || /^variableDebt[A-Z]/.test(s) || /^stableDebt[A-Z]/.test(s), protocol: 'Aave', kind: 'lending' },
       { match: (s, n) => /^c[A-Z].*[Vv]3$/.test(s) || /compound/i.test(n), protocol: 'Compound', kind: 'lending' },
       { match: (s, n) => /^(PT|YT|SY|LP)-/i.test(s) || /pendle/i.test(n), protocol: 'Pendle', kind: 'yield' },
-      { match: (s, n) => (/^e[A-Z]/.test(s) && /euler/i.test(n)) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
-      { match: (s, n) => /morpho|metamorpho/i.test(n) || /steakhouse|gauntlet|re7|usual/i.test(n), protocol: 'Morpho', kind: 'lending' },
+      { match: (s, n) => /^evk-/i.test(s) || /^e[A-Z][a-zA-Z]+(V?2|Vault)$/.test(s) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
+      { match: (s, n) => /morpho|metamorpho/i.test(n)
+          || /steakhouse|gauntlet|re7\b|smokehouse|hyperithm|llamarisk|mev capital|block analitica|9summits|apostro|tulipa|hakutora|b\.protocol|index coop|usual\b/i.test(n)
+          || /^(stk|gtl|re7|smk|hkt)[A-Z]/.test(s), protocol: 'Morpho', kind: 'lending' },
       { match: (s, n) => /^(USDe|sUSDe|ENA)$/i.test(s) || /ethena/i.test(n), protocol: 'Ethena', kind: 'collateral' },
       { match: (s, n) => /^(stETH|wstETH|weETH|eETH|ETHx|rETH|cbETH|swETH|frxETH|sfrxETH|mETH|osETH|rswETH|ezETH|pufETH)$/i.test(s), protocol: 'LST', kind: 'collateral' },
       { match: (s) => /^(WBTC|cbBTC|tBTC|LBTC|FBTC|solvBTC)$/i.test(s), protocol: 'BTC', kind: 'collateral' },
@@ -540,17 +565,20 @@
         // don't inflate volume by counting both legs of a rebalance for the same
         // protocol. Counts unique txs, not individual flows.
         const protoMap = {};
-        let unknownVol = 0, unknownTxs = 0;
+        const otherSymVol = {}; // track which symbols make up "Other"
+        let otherVol = 0, otherTxs = 0;
         for (const t of txVolumes) {
-          // Group flows in this tx by protocol
           const perProto = {};
-          let txHadUnknown = false;
-          let txUnknownVol = 0;
+          let txHadOther = false;
+          let txOtherVol = 0;
           for (const f of t.raw.flows) {
             if (!f.usdValue) continue;
-            if (f.kind === 'unknown') {
-              txHadUnknown = true;
-              txUnknownVol += Math.abs(f.usdValue);
+            if (f.kind === 'unknown' || f.protocol === 'Unknown') {
+              txHadOther = true;
+              const v = Math.abs(f.usdValue);
+              txOtherVol += v;
+              const sym = f.symbol || '?';
+              otherSymVol[sym] = (otherSymVol[sym] || 0) + v;
               continue;
             }
             const key = f.protocol;
@@ -561,20 +589,27 @@
             const v = Math.max(sides.out, sides.in);
             if (v <= 0) continue;
             if (!protoMap[proto]) protoMap[proto] = { count: 0, volume: 0 };
-            protoMap[proto].count++;     // counts this tx once for this protocol
+            protoMap[proto].count++;
             protoMap[proto].volume += v;
           }
-          if (txHadUnknown && txUnknownVol > 0) {
-            unknownTxs++;
-            unknownVol += txUnknownVol;
+          if (txHadOther && txOtherVol > 0) {
+            otherTxs++;
+            otherVol += txOtherVol;
           }
         }
         const protocols = Object.entries(protoMap)
-          .filter(([p]) => p !== 'Stable' && p !== 'LST') // transit-only kinds
+          .filter(([p]) => p !== 'Stable' && p !== 'LST' && p !== 'BTC') // transit-only kinds
           .sort((a, b) => b[1].volume - a[1].volume);
-        // Add Unknown chip if there are unclassified flows worth >$1k total
-        if (unknownVol > 1000) {
-          protocols.push(['Unknown', { count: unknownTxs, volume: unknownVol }]);
+        // "Other" chip aggregates unclassified flows. Hover reveals top symbols.
+        let otherSymTooltip = '';
+        if (otherVol > 1000) {
+          const topSyms = Object.entries(otherSymVol)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8)
+            .map(([sym, v]) => `${sym}: ${fmtMoney(v)}`)
+            .join('\n');
+          otherSymTooltip = `Tokens we couldn't classify (top by volume):\n${topSyms}\n\nTell us if you recognize a protocol — we'll add it to the rules.`;
+          protocols.push(['Other', { count: otherTxs, volume: otherVol, tooltip: otherSymTooltip }]);
         }
 
         const fmtMoney = (v) => {
@@ -635,11 +670,13 @@
         const chipsHtml = protocols.length ? `
           <div class="rebalance-protocols-row">
             <span class="row-label">Protocols
-              <span class="info-tip" data-tip="Volume per protocol, summed across all rebalance txs. For each tx we take max(supply, withdraw) per protocol so a rebalance pair (e.g. Aave→Spark) doesn't double-count. LSTs and stables are transit assets and excluded; Unknown = unclassified tokens we detected but couldn't attribute.">&#9432;</span>
+              <span class="info-tip" data-tip="Volume per protocol, summed across all rebalance txs. For each tx we take max(supply, withdraw) per protocol so a rebalance pair (e.g. Aave→Spark) doesn't double-count. LSTs, stables and BTC variants are transit assets and excluded. \"Other\" groups tokens we detected but couldn't classify — hover it to see which symbols.">&#9432;</span>
             </span>
-            ${protocols.map(([p, s]) => `
-              <span class="rebalance-protocol-chip${p === 'Unknown' ? ' unknown' : ''}">${p} ${fmtMoney(s.volume)}<span class="count">· ${s.count} tx${s.count === 1 ? '' : 's'}</span></span>
-            `).join('')}
+            ${protocols.map(([p, s]) => {
+              const isOther = p === 'Other';
+              const tipAttr = isOther && s.tooltip ? `data-tip="${s.tooltip.replace(/"/g, '&quot;')}"` : '';
+              return `<span class="rebalance-protocol-chip${isOther ? ' other' : ''}" ${tipAttr}>${p} ${fmtMoney(s.volume)}<span class="count">· ${s.count} tx${s.count === 1 ? '' : 's'}</span></span>`;
+            }).join('')}
           </div>` : '';
 
         // Stash all txs + helpers globally so pagination buttons can re-render

@@ -61,11 +61,15 @@ const PROTOCOL_RULES = [
   { match: (s, n) => /^c[A-Z].*[Vv]3$/.test(s) || /compound/i.test(n), protocol: 'Compound', kind: 'lending' },
   // Pendle — Principal/Yield/Standardized-Yield wrappers
   { match: (s, n) => /^(PT|YT|SY|LP)-/i.test(s) || /pendle/i.test(n), protocol: 'Pendle', kind: 'yield' },
-  // Euler V2 — eTokens with explicit Euler in name
-  { match: (s, n) => /^e[A-Z]/.test(s) && /euler/i.test(n) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
-  // Morpho (Blue & MetaMorpho) — usually identifiable from name.
-  // Also vault tokens with "Steakhouse"/"Gauntlet"/"Re7" curators which are MetaMorpho strategies.
-  { match: (s, n) => /morpho|metamorpho/i.test(n) || /steakhouse|gauntlet|re7|usual/i.test(n), protocol: 'Morpho', kind: 'lending' },
+  // Euler V2 — eTokens (evk- prefix or e...V2/2 suffix or Euler in name)
+  { match: (s, n) => /^evk-/i.test(s) || /^e[A-Z][a-zA-Z]+(V?2|Vault)$/.test(s) || /euler/i.test(n), protocol: 'Euler', kind: 'lending' },
+  // Morpho (Blue & MetaMorpho) — vault shares from many curators.
+  // Curator names (alphabetized): Apostro, Block Analitica, B.Protocol, Gauntlet, Hyperithm,
+  // Index Coop, LlamaRisk, MEV Capital, Re7, Smokehouse, Steakhouse, Tulipa, Usual, Yearn,
+  // 9Summits, Hakutora.
+  { match: (s, n) => /morpho|metamorpho/i.test(n)
+      || /steakhouse|gauntlet|re7\b|smokehouse|hyperithm|llamarisk|mev capital|block analitica|9summits|apostro|tulipa|hakutora|b\.protocol|index coop|usual\b/i.test(n)
+      || /^(stk|gtl|re7|smk|hkt)[A-Z]/.test(s), protocol: 'Morpho', kind: 'lending' },
   // Ethena — sUSDe is staked USDe, NOT a Spark token (must come before generic LST/Stable rules)
   { match: (s, n) => /^(USDe|sUSDe|ENA)$/i.test(s) || /ethena/i.test(n), protocol: 'Ethena', kind: 'collateral' },
   // Liquid staking tokens (transit asset, not a destination protocol — filtered from chips)
