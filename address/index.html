@@ -742,8 +742,11 @@
         // Clamp horizontally so tooltip never escapes the wrapper
         let leftPx = slotCenterX - tipW / 2;
         leftPx = Math.max(8, Math.min(wrapRect.width - tipW - 8, leftPx));
+        // Always position above the bar so the tooltip never grazes the chart's
+        // bottom edge / axis. If the bar is so tall that the tooltip would clip
+        // off the top of the wrapper, clamp at the top (a few px gap from edge).
         let topPx = slotTopY - tipH - 8;
-        if (topPx < 4) topPx = slotTopY + slotRect.height + 8; // flip below if not enough room
+        if (topPx < 4) topPx = 4;
         tip.style.left = `${leftPx}px`;
         tip.style.top  = `${topPx}px`;
       }
