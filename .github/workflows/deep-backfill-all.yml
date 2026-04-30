@@ -76,5 +76,23 @@ jobs:
           git add -f activity-events.json rebalance-events-*.json rebalances-summary.json 2>/dev/null || true
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Deep backfill ALL vaults [mode=${{ inputs.mode }}, chain=${{ inputs.chain || 'all' }}] [skip ci]"
-          git pull --rebase --autostash origin ${{ github.ref_name }} || true
-          git push
+
+          # Preserve the result on the remote BEFORE rebasing, so a conflict can never
+          # discard 3-4h of work the way run #1 did.
+          BACKUP="deep-backfill/${{ github.run_id }}"
+          git push origin "HEAD:refs/heads/$BACKUP"
+          echo "Backup branch pushed: $BACKUP"
+
+          # Now try to land on the working branch. -X theirs favors the just-computed
+          # backfill data on conflict (it's a strict superset of recent cron output
+          # for the windows it scanned).
+          git fetch origin ${{ github.ref_name }}
+          if ! git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }}; then
+            git rebase --abort || true
+            echo "::warning::Rebase failed; result preserved on branch $BACKUP — merge manually."
+            exit 1
+          fi
+          for i in 1 2 3 4; do
+            if git push; then break; fi
+            sleep $((2**i))
+          done
