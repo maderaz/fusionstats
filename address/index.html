@@ -140,8 +140,13 @@
     #rebalanceChartTip .tt-sub { color: rgba(255,255,255,0.6); font-size: 0.66rem; margin-top: 2px; }
     #rebalanceChartTip.empty .tt-amount { color: rgba(255,255,255,0.5); font-weight: 500; font-size: 0.7rem; }
     .rebalance-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.4rem; }
-    .rebalance-protocols-row { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--stroke); }
+    .info-tip { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; font-size: 0.7rem; color: var(--text-secondary); cursor: default; position: relative; vertical-align: middle; }
+    .info-tip::after { content: attr(data-tip); display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(15,17,22,0.95); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.66rem; font-weight: 400; white-space: normal; width: max-content; max-width: 280px; line-height: 1.45; z-index: 30; pointer-events: none; text-align: left; text-transform: none; letter-spacing: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .info-tip:hover::after { display: block; }
+    .rebalance-protocols-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--stroke); }
+    .rebalance-protocols-row .row-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-right: 0.3rem; display: inline-flex; align-items: center; gap: 0.25rem; }
     .rebalance-protocol-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 0.7rem; font-weight: 600; }
+    .rebalance-protocol-chip.unknown { background: var(--surface); color: var(--text-secondary); border: 1px dashed var(--stroke); }
     .rebalance-protocol-chip .count { color: var(--text-secondary); font-weight: 500; font-size: 0.65rem; margin-left: 0.2rem; }
     .rebalance-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--stroke); font-size: 0.78rem; flex-wrap: wrap; }
     .rebalance-row:last-child { border-bottom: none; }
@@ -490,19 +495,46 @@
         }
         const maxVol = Math.max(1, ...days.map(d => d.volume));
 
-        // Protocol breakdown (count & volume)
+        // Protocol breakdown — per tx, per protocol: take max(|out|, |in|) so we
+        // don't inflate volume by counting both legs of a rebalance for the same
+        // protocol. Counts unique txs, not individual flows.
         const protoMap = {};
+        let unknownVol = 0, unknownTxs = 0;
         for (const t of txVolumes) {
+          // Group flows in this tx by protocol
+          const perProto = {};
+          let txHadUnknown = false;
+          let txUnknownVol = 0;
           for (const f of t.raw.flows) {
-            if (f.kind === 'unknown' || !f.usdValue) continue;
-            if (!protoMap[f.protocol]) protoMap[f.protocol] = { count: 0, volume: 0 };
-            protoMap[f.protocol].count++;
-            protoMap[f.protocol].volume += Math.abs(f.usdValue);
+            if (!f.usdValue) continue;
+            if (f.kind === 'unknown') {
+              txHadUnknown = true;
+              txUnknownVol += Math.abs(f.usdValue);
+              continue;
+            }
+            const key = f.protocol;
+            if (!perProto[key]) perProto[key] = { out: 0, in: 0 };
+            perProto[key][f.direction] += Math.abs(f.usdValue);
+          }
+          for (const [proto, sides] of Object.entries(perProto)) {
+            const v = Math.max(sides.out, sides.in);
+            if (v <= 0) continue;
+            if (!protoMap[proto]) protoMap[proto] = { count: 0, volume: 0 };
+            protoMap[proto].count++;     // counts this tx once for this protocol
+            protoMap[proto].volume += v;
+          }
+          if (txHadUnknown && txUnknownVol > 0) {
+            unknownTxs++;
+            unknownVol += txUnknownVol;
           }
         }
         const protocols = Object.entries(protoMap)
-          .filter(([p]) => p !== 'Stable' && p !== 'LST')
+          .filter(([p]) => p !== 'Stable' && p !== 'LST') // transit-only kinds
           .sort((a, b) => b[1].volume - a[1].volume);
+        // Add Unknown chip if there are unclassified flows worth >$1k total
+        if (unknownVol > 1000) {
+          protocols.push(['Unknown', { count: unknownTxs, volume: unknownVol }]);
+        }
 
         const fmtMoney = (v) => {
           if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
@@ -561,8 +593,11 @@
         // Protocol chips
         const chipsHtml = protocols.length ? `
           <div class="rebalance-protocols-row">
+            <span class="row-label">Protocols
+              <span class="info-tip" data-tip="Volume per protocol, summed across all rebalance txs. For each tx we take max(supply, withdraw) per protocol so a rebalance pair (e.g. Aave→Spark) doesn't double-count. LSTs and stables are transit assets and excluded; Unknown = unclassified tokens we detected but couldn't attribute.">&#9432;</span>
+            </span>
             ${protocols.map(([p, s]) => `
-              <span class="rebalance-protocol-chip">${p} ${fmtMoney(s.volume)}<span class="count">·${s.count}</span></span>
+              <span class="rebalance-protocol-chip${p === 'Unknown' ? ' unknown' : ''}">${p} ${fmtMoney(s.volume)}<span class="count">· ${s.count} tx${s.count === 1 ? '' : 's'}</span></span>
             `).join('')}
           </div>` : '';
 
