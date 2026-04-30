@@ -327,7 +327,7 @@
         vaults.add(e.vault);
         if (e.timestamp) { firstTs = Math.min(firstTs, e.timestamp); lastTs = Math.max(lastTs, e.timestamp); }
       });
-      return { deposited, withdrawn, net: deposited - withdrawn, vaultCount: vaults.size, firstTs: firstTs === Infinity ? 0 : firstTs, lastTs, eventCount: events.length };
+      return { deposited, withdrawn, net: deposited - withdrawn, vaultCount: vaults.size, firstTs: firstTs === Infinity ? 0 : firstTs, lastTs, eventCount: events.length, events, getUsd };
     }
 
     // Top wallets
@@ -633,73 +633,55 @@
     // Stats cards
     function renderStats(s, addr, vaultInfo) {
       const el = document.getElementById('statsRow');
-      const netColor = s.net >= 0 ? 'var(--green)' : 'var(--red)';
       const isVault = !!vaultInfo;
 
-      // Timeframe label for cumulative metrics — derived from event range
-      const periodSub = s.firstTs
-        ? `since ${formatDate(s.firstTs)}`
-        : 'all time';
-      const tvm = s.deposited + s.withdrawn;
+      // 30D window (deposits/withdrawals/net flow are all rolling 30-day)
+      const cutoff = Math.floor(Date.now() / 1000) - 30 * 86400;
+      const events = (s.events || []).filter(e => (e.timestamp || 0) >= cutoff);
+      let dep30 = 0, wd30 = 0;
+      for (const e of events) {
+        const usd = s.getUsd ? s.getUsd(e) : (e.usdValue != null ? Math.abs(e.usdValue) : 0);
+        if (e.type === 'deposit') dep30 += usd; else wd30 += usd;
+      }
+      const net30 = dep30 - wd30;
+      const netColor = net30 >= 0 ? 'var(--green)' : 'var(--red)';
 
       const cards = [];
 
       if (isVault) {
-        // TVL — current snapshot from ipor-vaults.json
         const tvl = vaultInfo.tvl || 0;
         cards.push(`
           <div class="stat-card">
             <div class="label">TVL</div>
             <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
-            <div class="sub">current · ${vaultInfo.chain || 'eth'}</div>
-          </div>`);
-
-        // TVM — cumulative throughput tracked
-        cards.push(`
-          <div class="stat-card">
-            <div class="label">TVM</div>
-            <div class="value num-bold">${fmtUsdPlain(tvm)}</div>
-            <div class="sub">total moved · ${periodSub}</div>
           </div>`);
       }
 
       cards.push(`
         <div class="stat-card">
-          <div class="label">Deposited</div>
-          <div class="value num-bold" style="color:var(--green)">${fmtUsdPlain(s.deposited)}</div>
-          <div class="sub">${periodSub}</div>
+          <div class="label">Deposited (30D)</div>
+          <div class="value num-bold" style="color:var(--green)">${fmtUsdPlain(dep30)}</div>
         </div>`);
 
       cards.push(`
         <div class="stat-card">
-          <div class="label">Withdrawn</div>
-          <div class="value num-bold" style="color:var(--red)">${fmtUsdPlain(s.withdrawn)}</div>
-          <div class="sub">${periodSub}</div>
+          <div class="label">Withdrawn (30D)</div>
+          <div class="value num-bold" style="color:var(--red)">${fmtUsdPlain(wd30)}</div>
         </div>`);
 
       cards.push(`
         <div class="stat-card">
-          <div class="label">Net Flow</div>
-          <div class="value num-bold" style="color:${netColor}">${fmtUsd(s.net)}</div>
-          <div class="sub">${periodSub}</div>
+          <div class="label">Net Flow (30D)</div>
+          <div class="value num-bold" style="color:${netColor}">${fmtUsd(net30)}</div>
         </div>`);
 
       if (!isVault) {
-        // Show vault count only on wallet pages (where it's meaningful)
         cards.push(`
           <div class="stat-card">
             <div class="label">Vaults</div>
             <div class="value num-bold">${s.vaultCount}</div>
-            <div class="sub">touched</div>
           </div>`);
       }
-
-      cards.push(`
-        <div class="stat-card">
-          <div class="label">Active</div>
-          <div class="value" style="font-size:0.78rem">${s.firstTs ? formatDate(s.firstTs) : '-'}</div>
-          <div class="sub">${s.lastTs ? '→ ' + formatDate(s.lastTs) : ''}</div>
-        </div>`);
 
       el.innerHTML = cards.join('');
     }
