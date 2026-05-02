@@ -1,13 +1,593 @@
 {
   "vault": "0xf8f226da66244f89e70c5b5d1a5c5b0d505eb1d8",
   "chain": "ethereum",
-  "updatedAt": "2026-05-01T05:44:31.197Z",
+  "updatedAt": "2026-05-02T05:14:54.225Z",
   "blockRange": {
     "from": 22495568,
-    "to": 24998081
+    "to": 25005117
   },
-  "txCount": 138,
+  "txCount": 145,
   "rebalances": [
+    {
+      "tx": "0x19ac55bb55f6d5e49fa118e3d589e2d496eeb3d74e0b99089e56dec3af4adc21",
+      "block": 25000311,
+      "timestamp": 1777641107,
+      "flows": [
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.001132,
+          "usdValue": -88.41
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.001132,
+          "usdValue": 88.3
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.001132,
+          "usdValue": 88.31
+        }
+      ]
+    },
+    {
+      "tx": "0xa4eafbd1d95529aa31c55d67ea4a4c02ba09bc4e1b9379d731746bc4141eb9e4",
+      "block": 25000114,
+      "timestamp": 1777638743,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.934587,
+          "usdValue": 1.93
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.934587,
+          "usdValue": 1.93
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.934587,
+          "usdValue": 1.93
+        },
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 1.76667,
+          "usdValue": 1.93
+        }
+      ]
+    },
+    {
+      "tx": "0xdab002c7b47c4d02680bd839380ec19b8132bc03e1ffc1ce259619c607d1f0d6",
+      "block": 25000108,
+      "timestamp": 1777638671,
+      "flows": [
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000026,
+          "usdValue": 2.02
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 4.197002,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.219335,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.130445,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000026,
+          "usdValue": 2.02
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000026,
+          "usdValue": 2.02
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 4.197003,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 4.34978,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000026,
+          "usdValue": 2.04
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.934587,
+          "usdValue": 1.93
+        }
+      ]
+    },
+    {
+      "tx": "0xeb4ed741a1535d7557177829a1ed37f9ffa473bdc5e5338a68e2dc8ca3f9c5f7",
+      "block": 25000033,
+      "timestamp": 1777637759,
+      "flows": [
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.947799,
+          "usdValue": 1.04
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.037883,
+          "usdValue": 1.04
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000013,
+          "usdValue": 1.05
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.037883,
+          "usdValue": 1.04
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.272827,
+          "usdValue": null
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.193007,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000013,
+          "usdValue": 1.05
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.037883,
+          "usdValue": 1.04
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.037883,
+          "usdValue": 1.04
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000013,
+          "usdValue": 1.05
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 1.135006,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 1.137821,
+          "usdValue": null
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 2.193007,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000013,
+          "usdValue": 1.05
+        }
+      ]
+    },
+    {
+      "tx": "0x956627fe99a568a4b7b9b60734da23c333be3a245466eaeceacb40209c2adb29",
+      "block": 24999385,
+      "timestamp": 1777629959,
+      "flows": [
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1.217234,
+          "usdValue": 1.33
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.332915,
+          "usdValue": 1.33
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000017,
+          "usdValue": 1.35
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1.332915,
+          "usdValue": 1.33
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.925463,
+          "usdValue": null
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.822901,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000017,
+          "usdValue": 1.35
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.332915,
+          "usdValue": 1.33
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1.332915,
+          "usdValue": 1.33
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000017,
+          "usdValue": 1.35
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 1.462338,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 1.463124,
+          "usdValue": null
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 2.822819,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000017,
+          "usdValue": 1.35
+        }
+      ]
+    },
+    {
+      "tx": "0xbc045d5ae59b89c1e8320e054a6b1374d7b162891338af5ed3e5b26ed75d9958",
+      "block": 24999069,
+      "timestamp": 1777626155,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 359.105793,
+          "usdValue": 359.05
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 359.105793,
+          "usdValue": 359.02
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 359.105793,
+          "usdValue": 359.02
+        },
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 327.941054,
+          "usdValue": 359.07
+        }
+      ]
+    },
+    {
+      "tx": "0x7cb92e91d961f8df2dc568e2025b89388c7a68b7d506a8da5076275c3e119042",
+      "block": 24999062,
+      "timestamp": 1777626071,
+      "flows": [
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.00481,
+          "usdValue": 375.16
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 777.836813,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 410.579032,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 395.52772,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.00481,
+          "usdValue": 375.16
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00481,
+          "usdValue": 375.16
+        },
+        {
+          "token": "0x3bc801419479865b24b4d32fab0bf64638abbd5f",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 777.836894,
+          "usdValue": null
+        },
+        {
+          "token": "0xc6694e05b750015f54ac646544a4a9d33cbe4086",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 806.106752,
+          "usdValue": null
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.004826,
+          "usdValue": 376.45
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 358.105793,
+          "usdValue": 358.05
+        }
+      ]
+    },
     {
       "tx": "0x87bdf392c8afed71708d7bca7af6d62574abd814d948ca503d58e0b1ddf7cf82",
       "block": 24994757,
