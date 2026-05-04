@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rebalance Activity — Methodology — Fusion Stats</title>
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-light: #A37FFF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16a34a;
+      --red: #dc2626;
+      --warn: #d97706;
+      --code-bg: #F0F0F8;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-light: #B89AFF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --warn: #f59e0b;
+      --code-bg: #1A1A24;
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .top-nav a:hover { color: var(--accent); border-color: var(--stroke); }
+    .top-nav a.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+
+    .theme-toggle {
+      margin-left: auto;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    header { margin-bottom: 2rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { color: var(--text-body); font-size: 0.875rem; max-width: 720px; }
+
+    .doc h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 2rem 0 0.75rem;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .doc h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.5rem;
+      color: var(--text);
+    }
+    .doc p, .doc li {
+      font-size: 0.85rem;
+      color: var(--text-body);
+      line-height: 1.6;
+    }
+    .doc p { margin-bottom: 0.75rem; }
+    .doc ul, .doc ol { margin: 0.5rem 0 0.9rem 1.25rem; }
+    .doc li { margin-bottom: 0.35rem; }
+    .doc strong { color: var(--text); font-weight: 600; }
+    .doc a { color: var(--accent); text-decoration: none; }
+    .doc a:hover { text-decoration: underline; }
+
+    .doc code, .doc kbd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78em;
+      background: var(--code-bg);
+      color: var(--text);
+      padding: 0.08em 0.35em;
+      border-radius: 4px;
+      border: 1px solid var(--stroke);
+    }
+
+    .doc pre {
+      background: var(--code-bg);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      line-height: 1.55;
+      color: var(--text);
+      margin: 0.5rem 0 1rem;
+    }
+    .doc pre code { background: transparent; border: 0; padding: 0; font-size: inherit; color: inherit; }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-bg);
+      padding: 0.7rem 1rem;
+      border-radius: 0 8px 8px 0;
+      margin: 0.5rem 0 1rem;
+    }
+    .callout.warn { border-left-color: var(--warn); background: rgba(217, 119, 6, 0.08); }
+    .callout.warn strong { color: var(--warn); }
+    .callout p:last-child { margin-bottom: 0; }
+
+    table.api {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin: 0.5rem 0 1rem;
+    }
+    table.api th, table.api td {
+      text-align: left;
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--stroke);
+      vertical-align: top;
+    }
+    table.api th {
+      font-weight: 600;
+      color: var(--text);
+      background: var(--bg-alt);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    table.api td code { font-size: 0.72rem; }
+
+    .pill {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.1rem 0.45rem;
+      border-radius: 999px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-right: 0.3rem;
+    }
+    .pill.no { background: rgba(220, 38, 38, 0.10); color: var(--red); }
+    .pill.yes { background: rgba(22, 163, 74, 0.10); color: var(--green); }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.85rem 1.1rem;
+      font-size: 0.78rem;
+      margin-bottom: 1.5rem;
+    }
+    .toc-title {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 0.45rem;
+    }
+    .toc ol { margin: 0; padding-left: 1.1rem; }
+    .toc li { margin-bottom: 0.2rem; color: var(--text-body); }
+    .toc a { color: var(--text-body); text-decoration: none; }
+    .toc a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      .top-nav { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .top-nav::-webkit-scrollbar { display: none; }
+      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
+      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
+      .panel { padding: 1rem; }
+      .doc pre { font-size: 0.7rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <a href="/">Activity</a>
+      <a href="/all-vaults">All Vaults</a>
+      <a href="/dominance">Dominance</a>
+      <a href="/address">Address</a>
+      <a href="/spark">Spark</a>
+      <a href="/rebalance-methodology" class="active">Rebalance Docs</a>
+      <a href="/logs">Logs</a>
+      <a href="/video">Video</a>
+      <a href="/socials">Socials</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+    </nav>
+
+    <header>
+      <h1>Rebalance Activity — Methodology</h1>
+      <p>Technical explainer for porting the per-vault Rebalance Activity chart (rendered on the <code>/address</code> page) into the production Fusion app. Covers exactly what we read on-chain, what we deliberately don't read, the heuristics behind the volume numbers, and what would change in a first-party implementation.</p>
+    </header>
+
+    <div class="toc">
+      <div class="toc-title">Contents</div>
+      <ol>
+        <li><a href="#overview">Overview &amp; data flow</a></li>
+        <li><a href="#rpc">RPC methods we call (and don't call)</a></li>
+        <li><a href="#identify">Identifying rebalance txs</a></li>
+        <li><a href="#classify">Token &rarr; protocol classification</a></li>
+        <li><a href="#pricing">USD pricing &amp; receipt-token inference</a></li>
+        <li><a href="#volume">Volume math (24h / 7d / 30d / chart)</a></li>
+        <li><a href="#chips">Protocol chips &amp; "Other"</a></li>
+        <li><a href="#schema">Output JSON schema</a></li>
+        <li><a href="#prod">Porting to production Fusion</a></li>
+      </ol>
+    </div>
+
+    <div class="doc">
+
+      <section class="panel" id="overview">
+        <h2 style="margin-top:0">1. Overview &amp; data flow</h2>
+        <p>The chart on each single-vault page (e.g. <code>/address?addr=0xb8a4...715e</code>) shows daily USD volume the vault has rotated between underlying lending/yield protocols. Every value on that panel — 24h / 7d / 30d totals, the daily bar chart, the protocol chips — is derived from a single static JSON file: <code>rebalance-events-&lt;vault&gt;.json</code>.</p>
+
+        <p>That file is produced offline by <code>collect-rebalances.js</code> and committed to the repo. The frontend never hits an RPC; it only fetches the JSON and re-renders.</p>
+
+        <pre><code>collect-rebalances.js  ─▶  rebalance-events-&lt;vault&gt;.json  ─▶  address/index.html (renderRebalances)</code></pre>
+
+        <p>The detector's premise: every ERC-20 <code>Transfer</code> event where the vault is <code>from</code> or <code>to</code> is one of:</p>
+        <ol>
+          <li><strong>(a)</strong> a user deposit/withdraw of the vault asset, or</li>
+          <li><strong>(b)</strong> the vault supplying/withdrawing capital to/from an integrated protocol via a fuse.</li>
+        </ol>
+        <p>We keep <strong>(b)</strong> and discard <strong>(a)</strong> by cross-referencing tx hashes already known to be user activity (from <code>activity-events.json</code>, which is built from ERC-4626 <code>Deposit</code>/<code>Withdraw</code> events).</p>
+      </section>
+
+      <section class="panel" id="rpc">
+        <h2 style="margin-top:0">2. RPC methods we call &mdash; and what we deliberately don't</h2>
+
+        <h3>Functions we read</h3>
+        <table class="api">
+          <thead>
+            <tr><th style="width:30%">JSON-RPC method</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>eth_blockNumber</code></td>
+              <td>Current head, used as upper bound for the scan window.</td>
+            </tr>
+            <tr>
+              <td><code>eth_getBlockByNumber</code></td>
+              <td>Block timestamps only. Called with <code>false</code> for the second arg so tx bodies are not returned.</td>
+            </tr>
+            <tr>
+              <td><code>eth_getLogs</code></td>
+              <td>The only "real" data call. Two passes per chunk:<br><code>topics: [TRANSFER_TOPIC, &lt;padded vault&gt;]</code> &mdash; outflows (vault as <code>from</code>)<br><code>topics: [TRANSFER_TOPIC, null, &lt;padded vault&gt;]</code> &mdash; inflows (vault as <code>to</code>)<br>Chunked at 10,000 blocks; on RPC error we halve recursively down to a 500-block floor.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p><code>TRANSFER_TOPIC</code> is the canonical <code>0xddf2&hellip;b3ef</code>. We never decode an ABI &mdash; we parse the raw log directly:</p>
+
+<pre><code>function parseTransfer(log) {
+  if (log.topics.length !== 3) return null; // skip non-standard ERC-20s
+  return {
+    token:  log.address.toLowerCase(),
+    from:   '0x' + log.topics[1].slice(26).toLowerCase(),
+    to:     '0x' + log.topics[2].slice(26).toLowerCase(),
+    amount: BigInt(log.data || '0x0'),
+    block:  parseInt(log.blockNumber, 16),
+    tx:     log.transactionHash,
+    logIdx: parseInt(log.logIndex, 16),
+  };
+}</code></pre>
+
+        <h3>Functions we don't read</h3>
+        <p>This is the important part &mdash; the production app should be aware that this implementation is intentionally a black-box "follow the tokens" approach. We do <strong>not</strong> call any of:</p>
+        <ul>
+          <li><span class="pill no">No</span><code>eth_call</code> against the vault &mdash; no <code>balanceOf</code>, <code>totalAssets</code>, <code>convertToAssets</code>, <code>convertToShares</code>, <code>asset()</code>, <code>decimals()</code>, etc.</li>
+          <li><span class="pill no">No</span><code>eth_call</code> against the <strong>FuseManager</strong> / fuse registry &mdash; we don't enumerate the vault's connected fuses or read their state.</li>
+          <li><span class="pill no">No</span>Fuse-level events like <code>FuseSupply</code> / <code>FuseWithdraw</code> &mdash; we synthesise direction from raw <code>Transfer</code> topics and the vault's role in them.</li>
+          <li><span class="pill no">No</span><strong>PriceOracleMiddleware</strong> reads. All USD pricing comes from DeFi Llama's public price API (see &sect;5).</li>
+          <li><span class="pill no">No</span>Underlying market reads on Aave / Spark / Morpho / Euler / Compound / Pendle pools &mdash; we don't ask "is this vault still supplied to market X?", we just observe the receipt-token transfer.</li>
+          <li><span class="pill no">No</span>Trace APIs (<code>debug_traceTransaction</code>, <code>trace_call</code>) &mdash; everything is log-based for portability across public RPCs.</li>
+          <li><span class="pill no">No</span><strong>vault-specific event ABI</strong> beyond the ERC-20 <code>Transfer</code> topic.</li>
+        </ul>
+
+        <div class="callout warn">
+          <strong>Why this matters in production:</strong>
+          <p>If a fuse moves capital <em>without</em> producing an ERC-20 <code>Transfer</code> with the vault as a leg (e.g. a fuse that holds intermediary positions through a sub-account, or one that uses ERC-4626 <code>deposit</code> with the recipient set to a helper contract), this detector will miss it. A first-party implementation should index fuse-emitted events directly.</p>
+        </div>
+
+        <h3>Reliability / RPC hygiene</h3>
+        <ul>
+          <li>Per-chain RPC pool with sticky "active" index (last working endpoint is tried first).</li>
+          <li>Per-endpoint throttle: <code>RPC_MIN_INTERVAL_MS</code> (default 150ms) between calls.</li>
+          <li>15s timeout per request via <code>AbortSignal.timeout</code>.</li>
+          <li>Fail-over to next RPC silently on any error; halve chunk size on <code>eth_getLogs</code> error.</li>
+          <li>Per-chain initial backfill window (<code>INITIAL_BACKFILL</code>, ~7d) and per-run safety cap (<code>MAX_BLOCKS_PER_RUN</code>) to prevent runaway scans.</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="identify">
+        <h2 style="margin-top:0">3. Identifying rebalance txs</h2>
+        <p>After collecting all <code>Transfer</code> logs touching the vault, we partition by tx hash:</p>
+
+<pre><code>const userTxs = new Set(/* tx hashes from activity-events.json for this vault */);
+const rebalanceTransfers = allTransfers.filter(t =&gt; !userTxs.has(t.tx.toLowerCase()));
+
+// Group surviving transfers by tx hash
+const txGroups = {};
+for (const t of rebalanceTransfers) {
+  (txGroups[t.tx] ||= []).push(t);
+}</code></pre>
+
+        <p><code>activity-events.json</code> is produced by <code>collect-activity.js</code> from the vault's ERC-4626 <code>Deposit</code> and <code>Withdraw</code> events. Any tx hash present there is, by definition, user-initiated; we drop it from the rebalance set.</p>
+
+        <p>Every remaining tx is a candidate rebalance. Each transfer in the tx is tagged with a <strong>direction</strong>:</p>
+
+<pre><code>direction: t.from === vault ? 'out' : 'in'</code></pre>
+
+        <p>So a typical Aave&rarr;Spark rotation tx will produce four flows: <code>aUSDC out, USDC in, USDC out, spUSDC in</code> (or two, if the fuse routes asset-to-asset internally).</p>
+      </section>
+
+      <section class="panel" id="classify">
+        <h2 style="margin-top:0">4. Token &rarr; protocol classification</h2>
+        <p>For every unique token address in the rebalance set, we resolve metadata via DeFi Llama:</p>
+
+<pre><code>GET https://coins.llama.fi/prices/current/&lt;chain&gt;:&lt;tokenAddress&gt;?searchWidth=4h
+// returns { symbol, decimals, price }</code></pre>
+
+        <p>Then we run an ordered regex chain (<code>PROTOCOL_RULES</code>) over the resolved <code>symbol</code> + <code>name</code>. <strong>Order matters</strong> &mdash; specific protocols are matched before generic stable / LST buckets so receipt tokens like <code>sUSDe</code> classify as Ethena, not Spark.</p>
+
+        <p>The current rule set (kept in lock-step between <code>collect-rebalances.js</code> and the <code>PROTOCOL_RULES_FRONTEND</code> array in <code>address/index.html</code> so existing JSONs re-classify on the client without a re-scan):</p>
+
+        <table class="api">
+          <thead><tr><th>Protocol</th><th>kind</th><th>Match heuristic (symbol / name)</th></tr></thead>
+          <tbody>
+            <tr><td>Spark</td><td>lending</td><td><code>/^sp[A-Za-z]/</code>, <code>sDAI</code>, <code>sUSDS</code>, name contains <code>spark</code>, <code>variableDebtSp*</code>, <code>stableDebtSp*</code></td></tr>
+            <tr><td>Aave</td><td>lending</td><td><code>aEth*</code>, <code>aBase*</code>, <code>aArb*</code>, <code>aPrime*</code>, &hellip; / name contains <code>aave</code> / <code>variableDebt*</code> / <code>stableDebt*</code></td></tr>
+            <tr><td>Compound</td><td>lending</td><td><code>/^c[A-Z].*[Vv]3$/</code>, name contains <code>compound</code></td></tr>
+            <tr><td>Pendle</td><td>yield</td><td><code>PT- / YT- / SY- / LP-</code> prefixes, name contains <code>pendle</code></td></tr>
+            <tr><td>Euler</td><td>lending</td><td><code>evk-*</code>, <code>e&lt;Asset&gt;V2/Vault</code>, name contains <code>euler</code></td></tr>
+            <tr><td>Morpho</td><td>lending</td><td>name matches <code>morpho|metamorpho</code> or any known curator (Steakhouse, Gauntlet, Re7, Smokehouse, Hyperithm, LlamaRisk, MEV Capital, Block Analitica, 9Summits, Apostro, Tulipa, Hakutora, B.Protocol, Index Coop, Usual)</td></tr>
+            <tr><td>Ethena</td><td>collateral</td><td><code>USDe</code>, <code>sUSDe</code>, <code>ENA</code>, name contains <code>ethena</code> &mdash; <em>placed before LST/Stable to catch <code>sUSDe</code> first</em></td></tr>
+            <tr><td>LST</td><td>collateral</td><td><code>stETH, wstETH, weETH, eETH, ETHx, rETH, cbETH, swETH, frxETH, sfrxETH, mETH, osETH, rswETH, ezETH, pufETH</code></td></tr>
+            <tr><td>BTC</td><td>collateral</td><td><code>WBTC, cbBTC, tBTC, LBTC, FBTC, solvBTC</code></td></tr>
+            <tr><td>Stable</td><td>collateral</td><td><code>USDC, USDT, DAI, crvUSD, GHO, USDS, FRAX, LUSD, PYUSD, FDUSD, TUSD, USDP, sFRAX</code></td></tr>
+          </tbody>
+        </table>
+
+        <p><code>kind</code> distinguishes <strong>destination protocols</strong> (<code>lending</code> / <code>yield</code>) from <strong>transit assets</strong> (<code>collateral</code>). The transit kinds (LST, BTC, Stable) are excluded from the protocol chips so rotating USDC between two destinations doesn't show "Stable" as a third destination.</p>
+
+        <p>Anything that doesn't match returns <code>{ protocol: 'Unknown', kind: 'unknown' }</code>. These flows feed the <strong>"Other"</strong> chip (see &sect;7).</p>
+
+        <div class="callout">
+          <p><strong>Frontend re-classification.</strong> <code>address/index.html</code> ships a duplicate of these rules and re-runs them on every load (see <code>PROTOCOL_RULES_FRONTEND</code> and <code>reclassifyFlow()</code>, around line 458). This means tightening the regex set ships immediately to all historical data &mdash; no re-scan required. Keep the two arrays in sync.</p>
+        </div>
+      </section>
+
+      <section class="panel" id="pricing">
+        <h2 style="margin-top:0">5. USD pricing &amp; receipt-token inference</h2>
+        <p>Per token, we take <code>price</code> from the same DeFi Llama call. Then per flow:</p>
+
+<pre><code>const amount   = Number(t.amount) / 10 ** decimals;
+const usdValue = meta?.price ? amount * meta.price : null;</code></pre>
+
+        <p>DeFi Llama doesn't price every fuse receipt token (e.g. <code>spwstETH</code>, certain MetaMorpho vault shares). For those, the data file would otherwise have a one-sided USD value &mdash; only the underlying leg is priced.</p>
+
+        <p>To recover the missing side, we run a per-tx proxy step:</p>
+
+<pre><code>const sumKnownOut = flows.filter(f =&gt; f.direction === 'out' &amp;&amp; f.usdValue != null).reduce(...);
+const sumKnownIn  = flows.filter(f =&gt; f.direction === 'in'  &amp;&amp; f.usdValue != null).reduce(...);
+
+flows.forEach(f =&gt; {
+  if (f.usdValue != null) return;
+  if (f.kind === 'unknown') return;       // never fabricate value for tokens we can't classify
+  const proxy = f.direction === 'out' ? sumKnownIn : sumKnownOut;
+  if (proxy &gt; 0) {
+    f.usdValue   = round2(proxy);
+    f.usdInferred = true;                 // flagged in JSON for transparency
+  }
+});</code></pre>
+
+        <p>Rationale: in a rebalance, the value entering the vault should equal the value leaving (modulo fees / slippage). So if we know the underlying side's USD, the receipt-token side mirrors it. This same step is duplicated on the frontend, again so old JSONs benefit from new classification rules.</p>
+      </section>
+
+      <section class="panel" id="volume">
+        <h2 style="margin-top:0">6. Volume math (24h / 7d / 30d / daily chart)</h2>
+        <p>The single most important detail: <strong>per-tx volume is <code>max(|outflow USD|, |inflow USD|)</code></strong> &mdash; not the sum.</p>
+
+<pre><code>// Compute per-tx volume = max(|outflows|, |inflows|) to avoid double-counting rebalance pairs
+const txVolumes = all.map(r =&gt; {
+  let outUsd = 0, inUsd = 0, hasFlow = false;
+  for (const f of r.flows) {
+    if (f.kind === 'unknown' || !f.usdValue) continue;
+    hasFlow = true;
+    if (f.direction === 'out') outUsd += Math.abs(f.usdValue);
+    else                       inUsd  += Math.abs(f.usdValue);
+  }
+  return { ts: r.timestamp || 0, volume: Math.max(outUsd, inUsd), tx: r.tx, hasFlow, raw: r };
+}).filter(t =&gt; t.hasFlow &amp;&amp; t.volume &gt; 0);</code></pre>
+
+        <p>Without the <code>max</code>, an Aave&rarr;Spark rotation of $10M would register as $20M ($10M out of Aave + $10M into Spark). With <code>max</code>, it reads correctly as one $10M move.</p>
+
+        <p>Headline stats are simple time-window sums over <code>txVolumes</code>:</p>
+        <ul>
+          <li><strong>24H</strong> &mdash; <code>now - ts &le; 86 400</code></li>
+          <li><strong>7D</strong> &mdash; <code>&le; 7 &times; 86 400</code></li>
+          <li><strong>30D</strong> &mdash; <code>&le; 30 &times; 86 400</code></li>
+          <li><strong>All Time Tracked</strong> &mdash; sum over the whole dataset, with <code>{trackedDays}d window</code> shown as a sub-label so the value is read in context.</li>
+        </ul>
+
+        <p>The daily chart bins by <code>floor(ts / 86 400)</code> from the earliest event up to today &mdash; gaps included as zero-volume bars. Bar height is <code>volume / maxDailyVolume</code>; the tooltip shows full date, USD, and tx count.</p>
+      </section>
+
+      <section class="panel" id="chips">
+        <h2 style="margin-top:0">7. Protocol chips &amp; the "Other" bucket</h2>
+        <p>The chip row uses a parallel-but-not-identical aggregation. For each tx, for each protocol, we again take <code>max(|out|, |in|)</code> &mdash; but per-protocol within the tx:</p>
+
+<pre><code>for (const t of txVolumes) {
+  const perProto = {};
+  for (const f of t.raw.flows) {
+    if (!f.usdValue) continue;
+    if (f.kind === 'unknown' || f.protocol === 'Unknown') { /* &rarr; Other */ continue; }
+    (perProto[f.protocol] ||= { out: 0, in: 0 })[f.direction] += Math.abs(f.usdValue);
+  }
+  for (const [proto, sides] of Object.entries(perProto)) {
+    const v = Math.max(sides.out, sides.in);
+    if (v &lt;= 0) continue;
+    (protoMap[proto] ||= { count: 0, volume: 0 });
+    protoMap[proto].count++;
+    protoMap[proto].volume += v;
+  }
+}</code></pre>
+
+        <p>Then we strip transit kinds (<code>Stable</code>, <code>LST</code>, <code>BTC</code>) from the chip list so the row only shows actual destination venues. <code>count</code> is unique txs touching that protocol, not flow count.</p>
+
+        <p><strong>"Other"</strong> aggregates anything that fell through the regex chain. To make it auditable, we keep a per-symbol breakdown and surface the top 8 in the chip's hover tooltip:</p>
+
+<pre><code>otherSymTooltip = `Tokens we couldn't classify (top by volume):
+${topSyms.join('\n')}
+
+Tell us if you recognize a protocol &mdash; we'll add it to the rules.`;</code></pre>
+
+        <p>This is how the "Other" chip earns its keep: it's a data-driven backlog of missing rules. If a vault shows $50M of Other volume, that's 50M USD of fuse activity we owe a regex for.</p>
+      </section>
+
+      <section class="panel" id="schema">
+        <h2 style="margin-top:0">8. Output JSON schema</h2>
+        <p>One file per vault: <code>rebalance-events-&lt;vault&gt;.json</code>.</p>
+
+<pre><code>{
+  "vault":     "0xb8a4...715e",
+  "chain":     "ethereum",
+  "updatedAt": "2026-05-04T08:23:11.413Z",
+  "blockRange": { "from": 21345678, "to": 21456789 },
+  "txCount":   42,
+  "rebalances": [
+    {
+      "tx":        "0x...",
+      "block":     21456000,
+      "timestamp": 1746371234,
+      "flows": [
+        {
+          "token":      "0x...",
+          "symbol":     "aEthUSDC",
+          "protocol":   "Aave",
+          "kind":       "lending",
+          "direction":  "out",
+          "amount":     1234567.123456,
+          "usdValue":   1234567.0,
+          "usdInferred": false           // true if proxy-priced (see &sect;5)
+        },
+        ...
+      ]
+    },
+    ...
+  ]
+}</code></pre>
+
+        <p><code>blockRange</code> is the union of all scan ranges that have ever touched this file &mdash; runs are incremental: the next invocation starts from <code>blockRange.to + 1</code>. Records are deduped by tx hash and sorted newest-first.</p>
+      </section>
+
+      <section class="panel" id="prod">
+        <h2 style="margin-top:0">9. Porting to production Fusion</h2>
+        <p>The current implementation is optimised for "works on free public RPCs, runs in GitHub Actions, ships static JSON". A first-party implementation inside the Fusion app should rethink several of the trade-offs above.</p>
+
+        <h3>Replace</h3>
+        <ul>
+          <li><span class="pill no">Drop</span><strong>Public-RPC <code>eth_getLogs</code> sweeps.</strong> Use the existing Fusion indexer / subgraph. The detector chunks at 10K blocks and halves on error precisely because public RPCs are flaky and rate-limited &mdash; you don't have that constraint.</li>
+          <li><span class="pill no">Drop</span><strong>DeFi Llama for token symbol/decimals/price.</strong> Read decimals once via <code>ERC20.decimals()</code> (or your token metadata service) and price via Fusion's <code>PriceOracleMiddleware</code>. Llama latency and 4h <code>searchWidth</code> introduce stale prices that we currently paper over with the inference proxy in &sect;5; with the oracle middleware that step becomes unnecessary.</li>
+          <li><span class="pill no">Drop</span><strong>Regex-based protocol classification.</strong> Fusion knows the canonical protocol identity of every token a vault touches because it knows the fuse. Replace <code>PROTOCOL_RULES</code> with a lookup keyed by <code>fuseAddress &rarr; protocolName</code>. The regex chain exists only because we have no read access to the fuse registry.</li>
+          <li><span class="pill no">Drop</span><strong>The <code>activity-events.json</code> tx-hash subtraction</strong> for separating user vs rebalance txs. Use the actual fuse events (<code>FuseSupply</code> / <code>FuseWithdraw</code> or whatever the production names are) directly &mdash; they're unambiguous.</li>
+        </ul>
+
+        <h3>Keep</h3>
+        <ul>
+          <li><span class="pill yes">Keep</span><strong>Per-tx <code>max(out, in)</code> volume.</strong> The double-counting problem is structural to "rotation" semantics, not to our data source. Same logic applies even if you read fuse events directly.</li>
+          <li><span class="pill yes">Keep</span><strong>The <code>kind</code> distinction</strong> between destination protocols and transit assets. The chip row needs to know which legs of a flow are "where the money went" vs. "what it was carried in".</li>
+          <li><span class="pill yes">Keep</span><strong>The "Other" bucket as a data-quality signal</strong>, even if it should be near-zero in a first-party implementation &mdash; it's a useful safety net for new fuses that haven't been mapped yet.</li>
+          <li><span class="pill yes">Keep</span><strong>The chart aggregation (daily bins, full history, peak-normalised heights)</strong> and stat tiles (24h / 7d / 30d / All&nbsp;Time + window). The UX has been validated; the data inputs are what change.</li>
+        </ul>
+
+        <h3>Suggested production data shape</h3>
+        <p>If the production app exposes a per-vault endpoint, the minimal shape the existing renderer needs is essentially:</p>
+
+<pre><code>GET /api/vaults/:address/rebalances
+{
+  vault, chain, updatedAt,
+  rebalances: [
+    {
+      tx, block, timestamp,
+      flows: [
+        { protocol, kind, direction, usdValue, /* symbol/amount optional but useful for tooltips */ }
+      ]
+    }
+  ]
+}</code></pre>
+
+        <p>Everything from &sect;6 / &sect;7 onwards in <code>renderRebalances</code> (<code>address/index.html</code>, line 481) can be lifted as-is &mdash; just swap the <code>fetch('../rebalance-events-...json')</code> call for the new endpoint.</p>
+
+        <h3>Files to read in this repo</h3>
+        <table class="api">
+          <thead><tr><th>File</th><th>What's in it</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/maderaz/fusionstats/blob/main/collect-rebalances.js" target="_blank" rel="noopener"><code>collect-rebalances.js</code></a></td><td>Detector: RPC scan, classification rules, USD inference, JSON writer. Single source of truth for the methodology.</td></tr>
+            <tr><td><a href="https://github.com/maderaz/fusionstats/blob/main/address/index.html" target="_blank" rel="noopener"><code>address/index.html</code></a> &rarr; <code>renderRebalances()</code></td><td>The renderer: stats tiles, chart, chips, paginated tx list. Lines ~455&ndash;710. Frontend re-classifier <code>PROTOCOL_RULES_FRONTEND</code> mirrors the backend rules.</td></tr>
+            <tr><td><a href="https://github.com/maderaz/fusionstats/blob/main/collect-activity.js" target="_blank" rel="noopener"><code>collect-activity.js</code></a></td><td>Producer of <code>activity-events.json</code>, used for the user-tx subtraction step.</td></tr>
+            <tr><td><code>rebalance-events-&lt;addr&gt;.json</code></td><td>Per-vault output. Schema in &sect;8.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+
+    const toggle = document.getElementById('themeToggle');
+    function syncIcon() {
+      toggle.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? '&#9788;' : '&#9790;';
+    }
+    syncIcon();
+    toggle.addEventListener('click', function() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      }
+      syncIcon();
+    });
+  </script>
+</body>
+</html>
