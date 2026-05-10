@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Admin — Traffic — Fusion Stats</title>
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #F5F5FA;
+      --bg-alt: #E9E9F3;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --warn: #d97706;
+      --red: #dc2626;
+      --green: #16a34a;
+      --code-bg: #F0F0F8;
+    }
+    [data-theme="dark"] {
+      --bg: #0F0F14;
+      --bg-alt: #1A1A24;
+      --surface: #16161E;
+      --stroke: #2A2A3A;
+      --text: #E8E8F0;
+      --text-body: #9A9AB0;
+      --text-secondary: #6A6A80;
+      --accent: #A37FFF;
+      --accent-end: #8429FF;
+      --accent-bg: rgba(132, 41, 255, 0.15);
+      --warn: #f59e0b;
+      --red: #ef4444;
+      --green: #22c55e;
+      --code-bg: #1A1A24;
+    }
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header .sub { color: var(--text-secondary); font-size: 0.78rem; }
+    .theme-toggle {
+      margin-left: auto;
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .stat .label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+    }
+    .stat .value {
+      font-size: 1.3rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .stat .sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+    .filters {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-group { display: flex; align-items: center; gap: 0.4rem; }
+    .filter-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+    .filters input, .filters select {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      color: var(--text);
+    }
+    .filters input:focus, .filters select:focus { outline: none; border-color: var(--accent); }
+    .filters button {
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      cursor: pointer;
+    }
+    .filters button:hover { border-color: var(--accent); color: var(--accent); }
+
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 0.55rem 0.85rem;
+      text-align: left;
+      font-size: 0.76rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+    th {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      background: var(--bg-alt);
+      font-weight: 500;
+    }
+    td { color: var(--text-body); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--accent-bg); }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--text);
+    }
+    .path-cell { color: var(--text); font-weight: 500; }
+    .country-flag {
+      display: inline-block;
+      min-width: 1.4em;
+      margin-right: 0.25rem;
+      font-size: 0.95em;
+      vertical-align: -0.05em;
+    }
+    .device-pill {
+      display: inline-block;
+      padding: 0.05rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 500;
+      background: var(--accent-bg);
+      color: var(--accent);
+      text-transform: lowercase;
+    }
+    .session-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--text-secondary); }
+
+    .empty, .err {
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    .err { color: var(--red); }
+
+    pre.setup {
+      background: var(--code-bg);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      line-height: 1.5;
+      color: var(--text);
+      text-align: left;
+      max-width: 720px;
+      margin: 0.75rem auto;
+      overflow-x: auto;
+    }
+    .setup-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .setup-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+    .setup-card .step {
+      display: inline-block;
+      width: 22px; height: 22px;
+      line-height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.7rem;
+      margin-right: 0.4rem;
+    }
+    .setup-card ol { list-style: none; padding: 0; margin: 1rem 0; text-align: left; max-width: 720px; margin-left: auto; margin-right: auto; }
+    .setup-card li { padding: 0.6rem 0; color: var(--text-body); font-size: 0.82rem; }
+    .setup-card a { color: var(--accent); text-decoration: none; }
+    .setup-card a:hover { text-decoration: underline; }
+
+    @media (max-width: 700px) {
+      body { padding: 0.75rem; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      th, td { padding: 0.45rem 0.55rem; font-size: 0.7rem; }
+      th:nth-child(7), td:nth-child(7), /* OS */
+      th:nth-child(8), td:nth-child(8) { display: none; } /* Session */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Traffic</h1>
+      <span class="sub" id="updatedLabel">loading…</span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+    </header>
+
+    <div id="dashboard" style="display:none">
+      <div class="stats">
+        <div class="stat"><div class="label">Page views</div><div class="value" id="statTotal">—</div><div class="sub" id="statRange"></div></div>
+        <div class="stat"><div class="label">Unique sessions</div><div class="value" id="statSessions">—</div></div>
+        <div class="stat"><div class="label">Top page</div><div class="value" id="statTopPage" style="font-size:0.95rem">—</div><div class="sub" id="statTopPageHits"></div></div>
+        <div class="stat"><div class="label">Top country</div><div class="value" id="statTopCountry" style="font-size:0.95rem">—</div><div class="sub" id="statTopCountryHits"></div></div>
+      </div>
+
+      <div class="filters">
+        <div class="filter-group">
+          <span class="filter-label">Window</span>
+          <select id="filterWindow">
+            <option value="86400">Last 24h</option>
+            <option value="604800" selected>Last 7d</option>
+            <option value="2592000">Last 30d</option>
+            <option value="">All time</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Path</span>
+          <input type="text" id="filterPath" placeholder="/" style="width:140px">
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Country</span>
+          <select id="filterCountry"><option value="">All</option></select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Device</span>
+          <select id="filterDevice">
+            <option value="">All</option>
+            <option value="desktop">Desktop</option>
+            <option value="mobile">Mobile</option>
+            <option value="tablet">Tablet</option>
+          </select>
+        </div>
+        <button id="refreshBtn">Refresh</button>
+        <span style="margin-left:auto;font-size:0.7rem;color:var(--text-secondary)" id="rowCount"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Path</th>
+              <th>Country</th>
+              <th>City</th>
+              <th>Device</th>
+              <th>Browser</th>
+              <th>OS</th>
+              <th>Session</th>
+            </tr>
+          </thead>
+          <tbody id="rowsBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty" style="display:none">No traffic in this window yet.</div>
+      </div>
+    </div>
+
+    <div id="setupState" class="setup-card" style="display:none">
+      <h2>Storage not configured</h2>
+      <p style="color:var(--text-body);font-size:0.85rem;max-width:560px;margin:0.5rem auto;">
+        The traffic logger is wired up but Supabase env vars aren't set on Vercel yet.
+        Follow these one-time steps:
+      </p>
+      <ol>
+        <li><span class="step">1</span> Create a free Supabase project at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a></li>
+        <li><span class="step">2</span> Run this SQL in the Supabase SQL editor to create the table + index:
+          <pre class="setup">create table traffic_logs (
+  id          bigserial primary key,
+  ts          timestamptz not null default now(),
+  path        text,
+  session_id  text,
+  referrer    text,
+  user_agent  text,
+  country     text,
+  region      text,
+  city        text,
+  device      text,
+  browser     text,
+  os          text
+);
+create index traffic_logs_ts_idx on traffic_logs (ts desc);</pre>
+        </li>
+        <li><span class="step">3</span> In Vercel → Project Settings → Environment Variables, add (for all environments):
+          <pre class="setup">SUPABASE_URL                 = https://YOUR-PROJECT.supabase.co
+SUPABASE_SERVICE_ROLE_KEY    = (Project Settings → API → service_role)</pre>
+          The service-role key is server-side only — it lives in the Edge Function and is never sent to the browser.
+        </li>
+        <li><span class="step">4</span> Trigger a redeploy (push any commit, or Deployments → Redeploy on the latest one)</li>
+        <li><span class="step">5</span> Visit the homepage once, refresh this admin page — you should see your own visit logged.</li>
+      </ol>
+    </div>
+
+    <div id="errorState" class="err" style="display:none"></div>
+  </div>
+
+  <script>
+    (function() {
+      const saved = localStorage.getItem('fusionstats_theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+    const toggle = document.getElementById('themeToggle');
+    function syncIcon() {
+      toggle.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? '&#9788;' : '&#9790;';
+    }
+    syncIcon();
+    toggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
+      syncIcon();
+    });
+
+    function timeAgo(iso) {
+      const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (diff < 60) return diff + 's ago';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    // ISO 3166-1 alpha-2 → flag emoji (regional indicator letters)
+    function flag(cc) {
+      if (!cc || cc.length !== 2) return '';
+      const A = 0x1F1E6, base = 'A'.charCodeAt(0);
+      const c = cc.toUpperCase();
+      return String.fromCodePoint(A + (c.charCodeAt(0) - base), A + (c.charCodeAt(1) - base));
+    }
+
+    let allRows = [];
+
+    async function load() {
+      try {
+        const res = await fetch('/api/logs?limit=2000', { cache: 'no-store' });
+        const json = await res.json();
+        if (json.error === 'storage_not_configured') {
+          document.getElementById('setupState').style.display = 'block';
+          document.getElementById('updatedLabel').textContent = 'storage not configured';
+          return;
+        }
+        if (!json.ok) {
+          document.getElementById('errorState').style.display = 'block';
+          document.getElementById('errorState').textContent = `Error loading logs: ${json.error || 'unknown'}${json.detail ? ' — ' + json.detail : ''}`;
+          document.getElementById('updatedLabel').textContent = 'error';
+          return;
+        }
+        allRows = json.rows || [];
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('updatedLabel').textContent = `loaded ${allRows.length} rows · ${new Date().toLocaleTimeString()}`;
+        populateCountryFilter();
+        applyFilters();
+      } catch (e) {
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorState').textContent = 'Failed to fetch /api/logs: ' + e.message;
+      }
+    }
+
+    function populateCountryFilter() {
+      const sel = document.getElementById('filterCountry');
+      const counts = {};
+      allRows.forEach(r => { if (r.country) counts[r.country] = (counts[r.country] || 0) + 1; });
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      const current = sel.value;
+      sel.innerHTML = '<option value="">All</option>'
+        + sorted.map(([c, n]) => `<option value="${c}">${flag(c)} ${c} (${n})</option>`).join('');
+      if (current) sel.value = current;
+    }
+
+    function filteredRows() {
+      const w = parseInt(document.getElementById('filterWindow').value || '0', 10);
+      const path = document.getElementById('filterPath').value.trim().toLowerCase();
+      const country = document.getElementById('filterCountry').value;
+      const device = document.getElementById('filterDevice').value;
+      const cutoff = w > 0 ? Date.now() - w * 1000 : 0;
+      return allRows.filter(r => {
+        if (cutoff && new Date(r.ts).getTime() < cutoff) return false;
+        if (path && !(r.path || '').toLowerCase().includes(path)) return false;
+        if (country && r.country !== country) return false;
+        if (device && r.device !== device) return false;
+        return true;
+      });
+    }
+
+    function applyFilters() {
+      const rows = filteredRows();
+      renderStats(rows);
+      renderTable(rows);
+      document.getElementById('rowCount').textContent = `${rows.length} matched / ${allRows.length} total`;
+    }
+
+    function renderStats(rows) {
+      document.getElementById('statTotal').textContent = rows.length.toLocaleString();
+      const sessions = new Set(rows.map(r => r.session_id).filter(Boolean));
+      document.getElementById('statSessions').textContent = sessions.size.toLocaleString();
+
+      const byPath = {};
+      rows.forEach(r => { byPath[r.path || '/'] = (byPath[r.path || '/'] || 0) + 1; });
+      const topPage = Object.entries(byPath).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('statTopPage').textContent = topPage ? topPage[0] : '—';
+      document.getElementById('statTopPageHits').textContent = topPage ? topPage[1] + ' views' : '';
+
+      const byCountry = {};
+      rows.forEach(r => { if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1; });
+      const topCountry = Object.entries(byCountry).sort((a, b) => b[1] - a[1])[0];
+      document.getElementById('statTopCountry').innerHTML = topCountry ? `${flag(topCountry[0])} ${topCountry[0]}` : '—';
+      document.getElementById('statTopCountryHits').textContent = topCountry ? topCountry[1] + ' views' : '';
+
+      const w = document.getElementById('filterWindow');
+      document.getElementById('statRange').textContent = w.options[w.selectedIndex].text.toLowerCase();
+    }
+
+    function renderTable(rows) {
+      const body = document.getElementById('rowsBody');
+      const empty = document.getElementById('emptyState');
+      if (!rows.length) {
+        body.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      body.innerHTML = rows.slice(0, 1000).map(r => {
+        const cc = r.country || '';
+        const ccCell = cc ? `<span class="country-flag">${flag(cc)}</span>${cc}` : '';
+        const sess = (r.session_id || '').slice(0, 8);
+        return `<tr>
+          <td title="${new Date(r.ts).toLocaleString()}">${timeAgo(r.ts)}</td>
+          <td class="path-cell">${escapeHtml(r.path || '/')}</td>
+          <td>${ccCell}</td>
+          <td>${escapeHtml(r.city || '')}</td>
+          <td>${r.device ? `<span class="device-pill">${r.device}</span>` : ''}</td>
+          <td>${escapeHtml(r.browser || '')}</td>
+          <td>${escapeHtml(r.os || '')}</td>
+          <td class="session-cell">${sess}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    document.getElementById('filterWindow').addEventListener('change', applyFilters);
+    document.getElementById('filterPath').addEventListener('input', applyFilters);
+    document.getElementById('filterCountry').addEventListener('change', applyFilters);
+    document.getElementById('filterDevice').addEventListener('change', applyFilters);
+    document.getElementById('refreshBtn').addEventListener('click', load);
+
+    load();
+  </script>
+</body>
+</html>
