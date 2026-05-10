@@ -1,17 +1,25 @@
 // POST /api/log — accepts a beacon { path, sessionId } from track.js, enriches
-// it with geo + UA on the edge, and inserts a row into Supabase. Synchronous,
-// fire-and-forget from the browser (sendBeacon).
+// it with geo + UA on the edge, and appends an entry to a private GitHub Gist
+// (one file: traffic-log.json). Fire-and-forget from the browser (sendBeacon).
 //
-// Required env vars (set in Vercel Project Settings → Environment Variables):
-//   SUPABASE_URL                — e.g. https://xyzcompany.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY   — service-role key (server-side only, never ship to browser)
+// Why a gist (not Supabase, not the repo itself):
+//   - Zero third-party signups beyond GitHub (you already have it).
+//   - Updates don't touch the repo, so Vercel won't redeploy on every visit.
+//   - Free, private, version-controlled (gist keeps revision history).
 //
-// See admin/index.html for the matching `traffic_logs` table schema.
+// Required env vars (set in Vercel → Project Settings → Environment Variables):
+//   GITHUB_TOKEN  — fine-grained PAT, scope: `gist` (read+write). Server-side only.
+//   GIST_ID       — id of a secret gist containing one file: `traffic-log.json`
+//                   seeded with `{"entries":[]}`.
+//
+// The setup card in /admin/index.html walks through this when env is missing.
 
 export const config = { runtime: 'edge' };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GIST_ID = process.env.GIST_ID;
+const FILENAME = 'traffic-log.json';
+const MAX_ENTRIES = 5000; // FIFO trim so the gist file stays small forever
 
 function parseUserAgent(ua) {
   ua = ua || '';
@@ -43,27 +51,73 @@ function jsonResponse(body, status = 200) {
   });
 }
 
+async function readGist() {
+  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    headers: {
+      authorization: `Bearer ${GITHUB_TOKEN}`,
+      accept: 'application/vnd.github+json',
+      'user-agent': 'fusionstats-traffic-logger',
+    },
+  });
+  if (!res.ok) throw new Error(`gist read ${res.status}`);
+  const json = await res.json();
+  const file = (json.files || {})[FILENAME];
+  if (!file) return { entries: [] };
+  let content = file.content;
+  if (file.truncated && file.raw_url) {
+    // gist API caps per-file content at ~1MB; fetch raw if it's bigger
+    const raw = await fetch(file.raw_url, {
+      headers: { authorization: `Bearer ${GITHUB_TOKEN}`, 'user-agent': 'fusionstats-traffic-logger' },
+    });
+    content = await raw.text();
+  }
+  try {
+    const parsed = JSON.parse(content || '{}');
+    return { entries: Array.isArray(parsed.entries) ? parsed.entries : [] };
+  } catch {
+    return { entries: [] };
+  }
+}
+
+async function writeGist(data) {
+  const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${GITHUB_TOKEN}`,
+      accept: 'application/vnd.github+json',
+      'content-type': 'application/json',
+      'user-agent': 'fusionstats-traffic-logger',
+    },
+    body: JSON.stringify({
+      files: { [FILENAME]: { content: JSON.stringify(data) } },
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`gist write ${res.status}: ${detail.slice(0, 200)}`);
+  }
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') return jsonResponse({ ok: false, error: 'method_not_allowed' }, 405);
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  if (!GITHUB_TOKEN || !GIST_ID) {
     return jsonResponse({ ok: false, error: 'storage_not_configured' }, 503);
   }
 
   let body = {};
-  try { body = await req.json(); } catch { /* tolerate empty / malformed */ }
+  try { body = await req.json(); } catch { /* tolerate */ }
 
   const ua = req.headers.get('user-agent') || '';
   const { device, browser, os } = parseUserAgent(ua);
   const referrer = req.headers.get('referer') || '';
 
-  // Vercel Edge runtime exposes geo on req.geo; fall back to headers if missing
-  // (e.g. local dev or proxied requests).
   const geo = req.geo || {};
   const country = geo.country || req.headers.get('x-vercel-ip-country') || null;
   const region  = geo.region  || req.headers.get('x-vercel-ip-country-region') || null;
   const city    = geo.city    || req.headers.get('x-vercel-ip-city')    || null;
 
-  const row = {
+  const entry = {
+    ts: new Date().toISOString(),
     path:       (typeof body.path === 'string' ? body.path : '/').slice(0, 256),
     session_id: (typeof body.sessionId === 'string' ? body.sessionId : '').slice(0, 64),
     referrer:   referrer.slice(0, 512),
@@ -72,20 +126,15 @@ export default async function handler(req) {
     device, browser, os,
   };
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_logs`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      authorization: `Bearer ${SUPABASE_KEY}`,
-      'content-type': 'application/json',
-      prefer: 'return=minimal',
-    },
-    body: JSON.stringify(row),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    return jsonResponse({ ok: false, error: 'insert_failed', status: res.status, detail: detail.slice(0, 200) }, 502);
+  try {
+    const data = await readGist();
+    data.entries.push(entry);
+    if (data.entries.length > MAX_ENTRIES) {
+      data.entries.splice(0, data.entries.length - MAX_ENTRIES);
+    }
+    await writeGist(data);
+    return jsonResponse({ ok: true });
+  } catch (e) {
+    return jsonResponse({ ok: false, error: 'storage_error', detail: String(e.message || e).slice(0, 200) }, 502);
   }
-  return jsonResponse({ ok: true });
 }

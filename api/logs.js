@@ -1,15 +1,14 @@
-// GET /api/logs — returns the most recent traffic_logs rows from Supabase.
-// Used by /admin/index.html. No auth: relies on the page being unlinked and
-// noindex'd. Tighten this if you start logging anything sensitive.
+// GET /api/logs — returns recent traffic entries from the secret gist used as
+// our internal log store. Used by /admin/index.html.
 //
 // Query params:
 //   ?limit=N   — max rows (default 500, hard cap 5000)
-//   ?since=ISO — only rows with ts >= ISO timestamp
 
 export const config = { runtime: 'edge' };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const GIST_ID = process.env.GIST_ID;
+const FILENAME = 'traffic-log.json';
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -20,27 +19,41 @@ function jsonResponse(body, status = 200) {
 
 export default async function handler(req) {
   if (req.method !== 'GET') return jsonResponse({ ok: false, error: 'method_not_allowed' }, 405);
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  if (!GITHUB_TOKEN || !GIST_ID) {
     return jsonResponse({ ok: false, error: 'storage_not_configured' }, 503);
   }
 
   const url = new URL(req.url);
   const limit = Math.max(1, Math.min(5000, parseInt(url.searchParams.get('limit') || '500', 10)));
-  const since = url.searchParams.get('since');
 
-  const params = new URLSearchParams({ select: '*', order: 'ts.desc', limit: String(limit) });
-  if (since) params.append('ts', `gte.${since}`);
+  try {
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      headers: {
+        authorization: `Bearer ${GITHUB_TOKEN}`,
+        accept: 'application/vnd.github+json',
+        'user-agent': 'fusionstats-traffic-logger',
+      },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return jsonResponse({ ok: false, error: 'fetch_failed', status: res.status, detail: detail.slice(0, 200) }, 502);
+    }
+    const json = await res.json();
+    const file = (json.files || {})[FILENAME];
+    let content = file ? file.content : '{"entries":[]}';
+    if (file && file.truncated && file.raw_url) {
+      const raw = await fetch(file.raw_url, {
+        headers: { authorization: `Bearer ${GITHUB_TOKEN}`, 'user-agent': 'fusionstats-traffic-logger' },
+      });
+      content = await raw.text();
+    }
+    let entries = [];
+    try { entries = JSON.parse(content || '{}').entries || []; } catch {}
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_logs?${params}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      authorization: `Bearer ${SUPABASE_KEY}`,
-    },
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    return jsonResponse({ ok: false, error: 'fetch_failed', status: res.status, detail: detail.slice(0, 300) }, 502);
+    // newest first, capped
+    const rows = entries.slice().reverse().slice(0, limit);
+    return jsonResponse({ ok: true, count: rows.length, rows });
+  } catch (e) {
+    return jsonResponse({ ok: false, error: 'storage_error', detail: String(e.message || e).slice(0, 200) }, 502);
   }
-  const rows = await res.json();
-  return jsonResponse({ ok: true, count: rows.length, rows });
 }
