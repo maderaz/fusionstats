@@ -365,6 +365,155 @@ function parseWithdrawLog(log, vault) {
   };
 }
 
+// Detect events that look like flashloan-loops, atomic round-trips, or recurring
+// keeper/strategy activity rather than genuine user deposits/withdraws. Sets
+// e.synthetic = true and e.syntheticReason = '<rule>' on every matching event.
+//
+// Heuristics (defensive — multiple may apply, first match sets the reason):
+//   1. atomic              — deposit + withdraw in the SAME tx hash
+//   2. same-block-pair     — D+W in the SAME block on the same vault, amounts within 1%
+//   3. near-block-pair     — D+W within NEAR_BLOCK_WINDOW blocks, amounts within 1%
+//   4. tvl-ratio           — single event size > SYNTHETIC_TVL_MULT * vault TVL
+//   5. recurring-keeper    — same (vault, sender, type) repeats ≥ KEEPER_REPEATS
+//                            times within KEEPER_WINDOW_SEC, all amounts within 5%
+//   6. address-pair        — recurring (depositSender → withdrawSender) pair on
+//                            same vault with matched amounts, ≥ PAIR_REPEATS times
+//
+// Frontend hides synthetic events by default and re-classifies on the client
+// using the same rule set when needed (so existing JSONs benefit from a
+// tightened rule without a re-scan).
+function tagSyntheticEvents(events, vaults) {
+  const SYNTHETIC_TVL_MULT  = 3;
+  const NEAR_BLOCK_WINDOW   = 3;
+  const PAIR_BLOCK_WINDOW   = 50;       // address-pair search window (~10min on ETH)
+  const AMOUNT_MATCH_PCT    = 0.01;
+  const KEEPER_REPEATS      = 5;
+  const KEEPER_WINDOW_SEC   = 86400;
+  const KEEPER_AMOUNT_PCT   = 0.05;
+  const PAIR_REPEATS        = 3;
+
+  const tvlByVault = {};
+  vaults.forEach(v => { tvlByVault[v.address] = v.tvl || 0; });
+
+  // Reset first so heuristic tweaks re-classify cleanly on the next run.
+  events.forEach(e => { delete e.synthetic; delete e.syntheticReason; });
+
+  const tag = (e, reason) => {
+    if (e.synthetic) return;
+    e.synthetic = true;
+    e.syntheticReason = reason;
+  };
+
+  const amountsClose = (a, b, pct) => {
+    const max = Math.max(a, b);
+    if (max <= 0) return false;
+    return Math.abs(a - b) / max <= pct;
+  };
+
+  // 1. atomic same-tx D+W on the SAME vault (not just same tx — a router/zap
+  //    can legitimately withdraw from vault A and deposit into vault B in one
+  //    tx and that's not synthetic).
+  const byTxVault = {};
+  events.forEach(e => { (byTxVault[`${e.tx}|${e.vault}`] ||= []).push(e); });
+  for (const evs of Object.values(byTxVault)) {
+    if (evs.some(e => e.type === 'deposit') && evs.some(e => e.type === 'withdraw')) {
+      evs.forEach(e => tag(e, 'atomic'));
+    }
+  }
+
+  // group by vault for spatial heuristics
+  const byVault = {};
+  events.forEach(e => { (byVault[e.vault] ||= []).push(e); });
+
+  // 2 & 3. same/near-block round-trips
+  for (const evs of Object.values(byVault)) {
+    const sorted = [...evs].sort((a, b) => a.block - b.block);
+    for (let i = 0; i < sorted.length; i++) {
+      const a = sorted[i];
+      for (let j = i + 1; j < sorted.length; j++) {
+        const b = sorted[j];
+        const blockDiff = b.block - a.block;
+        if (blockDiff > NEAR_BLOCK_WINDOW) break;
+        if (a.type === b.type) continue;
+        if (!amountsClose(a.assets, b.assets, AMOUNT_MATCH_PCT)) continue;
+        const reason = blockDiff === 0 ? 'same-block-pair' : 'near-block-pair';
+        tag(a, reason);
+        tag(b, reason);
+      }
+    }
+  }
+
+  // 4. TVL ratio — only when we have a positive TVL to compare against
+  events.forEach(e => {
+    const tvl = tvlByVault[e.vault];
+    if (!tvl || tvl <= 0) return;
+    const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+    if (usd > SYNTHETIC_TVL_MULT * tvl) tag(e, 'tvl-ratio');
+  });
+
+  // 5. recurring-keeper: same (vault, sender, type) ≥ KEEPER_REPEATS times in
+  //    a 24h window with amounts within 5% of each other
+  const keeperGroups = {};
+  events.forEach(e => {
+    if (!e.sender) return;
+    const k = `${e.vault}|${e.sender}|${e.type}`;
+    (keeperGroups[k] ||= []).push(e);
+  });
+  for (const evs of Object.values(keeperGroups)) {
+    if (evs.length < KEEPER_REPEATS) continue;
+    const sorted = [...evs].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    let l = 0;
+    for (let r = 0; r < sorted.length; r++) {
+      while (l < r && (sorted[r].timestamp - sorted[l].timestamp) > KEEPER_WINDOW_SEC) l++;
+      if (r - l + 1 < KEEPER_REPEATS) continue;
+      const window = sorted.slice(l, r + 1).filter(e => e.assets > 0);
+      if (window.length < KEEPER_REPEATS) continue;
+      const amounts = window.map(e => e.assets);
+      const min = Math.min(...amounts), max = Math.max(...amounts);
+      if (max > 0 && (max - min) / max <= KEEPER_AMOUNT_PCT) {
+        window.forEach(e => tag(e, 'recurring-keeper'));
+      }
+    }
+  }
+
+  // 6. address-pair recurring: (depositSender, withdrawSender) on same vault
+  //    matched by amount, occurring ≥ PAIR_REPEATS times in the dataset
+  for (const evs of Object.values(byVault)) {
+    const deposits  = evs.filter(e => e.type === 'deposit'  && e.sender && e.assets > 0);
+    const withdraws = evs.filter(e => e.type === 'withdraw' && e.sender && e.assets > 0);
+    if (deposits.length < PAIR_REPEATS || withdraws.length < PAIR_REPEATS) continue;
+    const sortedW = [...withdraws].sort((a, b) => a.block - b.block);
+    const usedW = new Set();
+    const pairOccurrences = {};
+    for (const d of deposits) {
+      const cand = sortedW.find(w =>
+        !usedW.has(w) &&
+        Math.abs(w.block - d.block) <= PAIR_BLOCK_WINDOW &&
+        amountsClose(d.assets, w.assets, AMOUNT_MATCH_PCT)
+      );
+      if (!cand) continue;
+      usedW.add(cand);
+      const key = `${d.sender}|${cand.sender}`;
+      (pairOccurrences[key] ||= []).push({ d, w: cand });
+    }
+    for (const occurrences of Object.values(pairOccurrences)) {
+      if (occurrences.length < PAIR_REPEATS) continue;
+      occurrences.forEach(({ d, w }) => {
+        tag(d, 'address-pair');
+        tag(w, 'address-pair');
+      });
+    }
+  }
+
+  const counts = {};
+  events.forEach(e => { if (e.synthetic) counts[e.syntheticReason] = (counts[e.syntheticReason] || 0) + 1; });
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (total > 0) {
+    const breakdown = Object.entries(counts).map(([k, v]) => `${k}:${v}`).join(', ');
+    console.log(`Tagged ${total} synthetic events (${breakdown})`);
+  }
+}
+
 // Deep historical scan for a single vault — bypass MAX_BLOCKS cap, scan
 // from explicit fromBlock (default ~24 months back) to currentBlock, supporting
 // both backward fill (extending historical coverage) and forward delta.
@@ -468,8 +617,10 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg) {
       return true;
     });
 
+  tagSyntheticEvents(data.events, VAULTS);
+
   data.updatedAt = new Date().toISOString();
-  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken }));
+  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
@@ -704,8 +855,10 @@ async function main() {
     return true;
   });
 
+  tagSyntheticEvents(data.events, VAULTS);
+
   data.updatedAt = new Date().toISOString();
-  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken }));
+  data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);

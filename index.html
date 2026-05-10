@@ -318,6 +318,32 @@
       font-weight: 400;
     }
 
+    /* Synthetic-flow markers */
+    .synth-badge {
+      display: inline-block;
+      margin-left: 0.4rem;
+      padding: 0.05rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--warn, #d97706);
+      background: rgba(217, 119, 6, 0.10);
+      border: 1px solid rgba(217, 119, 6, 0.25);
+      cursor: help;
+      text-transform: lowercase;
+    }
+    [data-theme="dark"] .synth-badge {
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    tr.row-synthetic td,
+    .mobile-event.row-synthetic { opacity: 0.65; }
+    tr.row-synthetic:hover td,
+    .mobile-event.row-synthetic:hover { opacity: 1; }
+
     /* Info tooltip icon */
     .info-tip {
       display: inline-flex;
@@ -647,6 +673,16 @@
             <option value="">All chains</option>
           </select>
         </label>
+        <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
+          <span class="filter-label">Synthetic
+            <span class="info-tip" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
+          </span>
+          <select id="filterSynthetic">
+            <option value="hide" selected>Hide</option>
+            <option value="show">Show</option>
+            <option value="only">Only synthetic</option>
+          </select>
+        </label>
       </div>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
@@ -691,16 +727,53 @@
     let lastUpdatedAt = null;
     const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
+    const FILTER_SYNTHETIC_KEY = 'fusionstats_filter_synthetic';
+
+    // Frontend fallback re-classifier — covers older JSON snapshots that pre-date
+    // the backend tagger. Only applies the two cheapest heuristics; the full set
+    // (recurring-keeper, address-pair, near-block-pair) lives in collect-activity.js
+    // and is read from the JSON when present.
+    function reclassifySyntheticFallback(events, vaultsByAddr) {
+      const SYNTHETIC_TVL_MULT = 3;
+      // Atomic same-tx D+W on the SAME vault
+      const byTxVault = {};
+      events.forEach(e => {
+        if (e.synthetic !== undefined) return;
+        const k = `${e.tx}|${e.vault}`;
+        (byTxVault[k] ||= []).push(e);
+      });
+      for (const evs of Object.values(byTxVault)) {
+        if (evs.some(e => e.type === 'deposit') && evs.some(e => e.type === 'withdraw')) {
+          evs.forEach(e => { e.synthetic = true; e.syntheticReason = 'atomic'; });
+        }
+      }
+      // TVL-ratio
+      events.forEach(e => {
+        if (e.synthetic) return;
+        const v = vaultsByAddr[e.vault];
+        const tvl = v?.tvl || 0;
+        if (tvl <= 0) return;
+        const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+        if (usd > SYNTHETIC_TVL_MULT * tvl) {
+          e.synthetic = true;
+          e.syntheticReason = 'tvl-ratio';
+        }
+      });
+    }
 
     function applyFilters() {
       const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
       const product = document.getElementById('filterProduct').value;
       const type = document.getElementById('filterType').value;
       const chain = document.getElementById('filterChain').value;
+      const syntheticMode = document.getElementById('filterSynthetic').value || 'hide';
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
+      localStorage.setItem(FILTER_SYNTHETIC_KEY, syntheticMode);
 
       const filtered = allEvents.filter(e => {
+        if (syntheticMode === 'hide' && e.synthetic) return false;
+        if (syntheticMode === 'only' && !e.synthetic) return false;
         if (type && e.type !== type) return false;
         if (chain && (e.chain || 'ethereum') !== chain) return false;
         if (minAmount > 0) {
@@ -754,13 +827,24 @@
         // Always use vault lookup as source of truth for symbol/name
         trackedVaults = data.vaults || [];
         // Also pull full vault list from ipor-vaults.json for complete chain coverage
+        // and to provide TVL for the synthetic-detection fallback heuristic.
         try {
           const iporRes = await fetch('ipor-vaults.json');
           if (iporRes.ok) {
             const ipor = await iporRes.json();
             const activityAddrs = new Set(trackedVaults.map(v => v.address));
+            const iporByAddr = {};
+            (ipor.vaults || []).forEach(v => { iporByAddr[v.address.toLowerCase()] = v; });
+            // Backfill TVL onto the tracked-vault list (data.vaults entries may
+            // not carry tvl on older snapshots — backend now writes it).
+            trackedVaults.forEach(v => {
+              if (v.tvl == null) {
+                const i = iporByAddr[v.address];
+                if (i) v.tvl = i.tvl || 0;
+              }
+            });
             (ipor.vaults || []).filter(v => v.tvl >= 1000 && !activityAddrs.has(v.address)).forEach(v => {
-              trackedVaults.push({ address: v.address, name: v.name, symbol: v.token, chain: v.chain });
+              trackedVaults.push({ address: v.address, name: v.name, symbol: v.token, chain: v.chain, tvl: v.tvl });
             });
           }
         } catch {}
@@ -771,10 +855,14 @@
           if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
         });
 
-        // Net inflows (deposits - withdrawals) in USD
+        // Tag synthetic events not flagged by the backend (handles older JSONs).
+        reclassifySyntheticFallback(events, vaultInfo);
+
+        // Net inflows (deposits - withdrawals) in USD — synthetic excluded so
+        // a flashloan-loop bot can't make 24h flow look like a $50M inflow.
         function netFlowUsd(evts, seconds) {
           const cutoff = Math.floor(Date.now() / 1000) - seconds;
-          const filtered = evts.filter(e => (e.timestamp || 0) > cutoff && e.usdValue != null);
+          const filtered = evts.filter(e => !e.synthetic && (e.timestamp || 0) > cutoff && e.usdValue != null);
           let net = 0;
           filtered.forEach(e => { net += e.type === 'deposit' ? e.usdValue : -e.usdValue; });
           return net;
@@ -803,6 +891,15 @@
           const amountSel = document.getElementById('filterAmount');
           if ([...amountSel.options].some(o => o.value === storedAmount)) {
             amountSel.value = storedAmount;
+          }
+        }
+
+        // Restore synthetic-mode preference
+        const storedSynthetic = localStorage.getItem(FILTER_SYNTHETIC_KEY);
+        if (storedSynthetic) {
+          const synthSel = document.getElementById('filterSynthetic');
+          if ([...synthSel.options].some(o => o.value === storedSynthetic)) {
+            synthSel.value = storedSynthetic;
           }
         }
 
@@ -849,6 +946,8 @@
     function renderFlowChart(events, days = 30) {
       const chart = document.getElementById('flowChart');
       const bars = document.getElementById('flowChartBars');
+      // Drop synthetic flow so flashloan-loop bars don't dwarf real activity.
+      events = events.filter(e => !e.synthetic);
       if (!events.length) return;
 
       // Build price lookup for events missing usdValue
@@ -943,17 +1042,21 @@
         const name = e.vaultName || shortAddr(e.vault);
         const usd = e.usdValue != null ? `<span class="usd-value">$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '';
         const usdMobile = e.usdValue != null ? `$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '';
-        rows += `<tr>
+        const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
+        rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a></td>
+          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>${synthBadge}</td>
           <td class="num-bold">${formatAmount(e.assets)} ${sym}${usd ? '<br>' + usd : ''}</td>
           <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link">${name}</a></td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.6rem;font-weight:700;text-decoration:none;line-height:1">B</a></td>
         </tr>`;
-        mobileRows += `<div class="mobile-event">
+        mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
           <div class="mobile-event-top">
-            <a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>
+            <span style="display:inline-flex;align-items:center;gap:0.35rem">
+              <a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>
+              ${synthBadge}
+            </span>
             <span class="mobile-event-when">${time}</span>
           </div>
           <div class="mobile-event-top">
@@ -1035,8 +1138,10 @@
       const lastSeen = parseInt(localStorage.getItem(LAST_SEEN_KEY) || '0', 10);
       const now = Math.floor(Date.now() / 1000);
 
-      // Find significant events since last visit
+      // Find significant events since last visit. Synthetic flow excluded so a
+      // flashloan-loop bot can't ring the favicon-fire alarm every block.
       const newBig = events.filter(e =>
+        !e.synthetic &&
         (e.timestamp || 0) > lastSeen &&
         e.usdValue != null &&
         Math.abs(e.usdValue) >= FIRE_THRESHOLD_USD
@@ -1076,6 +1181,7 @@
     document.getElementById('filterType').addEventListener('change', applyFilters);
     document.getElementById('filterChain').addEventListener('change', applyFilters);
     document.getElementById('filterProduct').addEventListener('change', applyFilters);
+    document.getElementById('filterSynthetic').addEventListener('change', applyFilters);
 
     loadActivity();
 
