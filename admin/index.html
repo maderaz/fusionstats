@@ -323,36 +323,24 @@
     <div id="setupState" class="setup-card" style="display:none">
       <h2>Storage not configured</h2>
       <p style="color:var(--text-body);font-size:0.85rem;max-width:560px;margin:0.5rem auto;">
-        The traffic logger is wired up but Supabase env vars aren't set on Vercel yet.
-        Follow these one-time steps:
+        The traffic logger uses a private GitHub Gist as storage. Two one-time steps:
       </p>
       <ol>
-        <li><span class="step">1</span> Create a free Supabase project at <a href="https://supabase.com" target="_blank" rel="noopener">supabase.com</a></li>
-        <li><span class="step">2</span> Run this SQL in the Supabase SQL editor to create the table + index:
-          <pre class="setup">create table traffic_logs (
-  id          bigserial primary key,
-  ts          timestamptz not null default now(),
-  path        text,
-  session_id  text,
-  referrer    text,
-  user_agent  text,
-  country     text,
-  region      text,
-  city        text,
-  device      text,
-  browser     text,
-  os          text
-);
-create index traffic_logs_ts_idx on traffic_logs (ts desc);</pre>
+        <li><span class="step">1</span> Create a <strong>secret gist</strong> at <a href="https://gist.github.com/" target="_blank" rel="noopener">gist.github.com</a> with one file named <code>traffic-log.json</code> containing exactly:
+          <pre class="setup">{"entries":[]}</pre>
+          Click <em>Create secret gist</em>. Copy the gist id from the URL — it's the long hex segment after your username (<code>https://gist.github.com/&lt;you&gt;/<strong>abc123…</strong></code>).
         </li>
-        <li><span class="step">3</span> In Vercel → Project Settings → Environment Variables, add (for all environments):
-          <pre class="setup">SUPABASE_URL                 = https://YOUR-PROJECT.supabase.co
-SUPABASE_SERVICE_ROLE_KEY    = (Project Settings → API → service_role)</pre>
-          The service-role key is server-side only — it lives in the Edge Function and is never sent to the browser.
+        <li><span class="step">2</span> Create a <strong>fine-grained personal access token</strong> at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with scope <code>Gists: read and write</code>. No repo access needed.</li>
+        <li><span class="step">3</span> In Vercel → Project Settings → Environment Variables, add (Production + Preview + Development):
+          <pre class="setup">GITHUB_TOKEN  = ghp_…   (the PAT)
+GIST_ID       = abc123…  (the gist id)</pre>
         </li>
-        <li><span class="step">4</span> Trigger a redeploy (push any commit, or Deployments → Redeploy on the latest one)</li>
-        <li><span class="step">5</span> Visit the homepage once, refresh this admin page — you should see your own visit logged.</li>
+        <li><span class="step">4</span> Trigger a redeploy (Deployments → Redeploy on the latest one, or push any commit).</li>
+        <li><span class="step">5</span> Visit the homepage once, refresh this page — you should see your own visit logged.</li>
       </ol>
+      <p style="color:var(--text-secondary);font-size:0.7rem;margin-top:0.75rem;">
+        Internal log only — entries never leave your gist. Auto-trims to the last 5,000 entries (FIFO) so the file stays small forever.
+      </p>
     </div>
 
     <div id="errorState" class="err" style="display:none"></div>
