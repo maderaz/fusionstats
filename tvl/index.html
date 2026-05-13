@@ -356,6 +356,11 @@
           <button data-type="bar">Bar</button>
         </div>
         <div class="group">
+          <span class="group-label">Curve</span>
+          <button data-shape="linear" class="active">Sharp</button>
+          <button data-shape="spline">Smooth</button>
+        </div>
+        <div class="group">
           <span class="group-label">Stack</span>
           <button data-stack="off" class="active">Off</button>
           <button data-stack="on">On</button>
@@ -511,7 +516,7 @@
       return 7; // 180d & All
     }
 
-    function makeTraces(state, range, stack, chainConfig, type) {
+    function makeTraces(state, range, stack, chainConfig, type, shape) {
       const { perChain, anchorDay } = state;
       let cutoff = null;
       if (range !== 'all') cutoff = anchorDay - parseInt(range, 10);
@@ -548,7 +553,7 @@
             name: c,
             visible: cfg.visible ? true : 'legendonly',
             stackgroup: stack === 'on' ? 'tvl' : undefined,
-            line: { color: cfg.color, width: cfg.width, shape: 'linear' },
+            line: { color: cfg.color, width: cfg.width, shape, smoothing: shape === 'spline' ? 1.0 : undefined },
             hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
           });
         }
@@ -629,6 +634,7 @@
     let curScale = 'linear';
     let curStack = 'off';
     let curType = 'line';
+    let curShape = 'linear'; // 'linear' = sharp segments, 'spline' = smooth curve (line mode only)
     // Per-chain user-tweakable config (color, line width / corner radius, visibility)
     let chainConfig = {};
 
@@ -652,7 +658,7 @@
     // so the y-axis snaps to the visible chains (e.g. hide ethereum, base goes
     // into the spotlight).
     function redraw({ resetAxes = false } = {}) {
-      const traces = makeTraces(state, curRange, curStack, chainConfig, curType);
+      const traces = makeTraces(state, curRange, curStack, chainConfig, curType, curShape);
       const layout = makeLayout(curScale, curType, curStack);
       if (resetAxes) {
         layout.xaxis.autorange = true;
@@ -762,7 +768,22 @@
           redraw({ resetAxes: true });
         });
       });
-      wire('.chart-toolbar .group:nth-child(4)', (d) => curStack = d.stack);
+      // group 4 = Curve (line shape). Restyle-only so user zoom is preserved.
+      document.querySelectorAll('.chart-toolbar .group:nth-child(4) button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          curShape = btn.dataset.shape;
+          document.querySelectorAll('.chart-toolbar .group:nth-child(4) button').forEach(b => b.classList.toggle('active', b === btn));
+          if (curType === 'line') {
+            Plotly.restyle('tvlChart', {
+              'line.shape': curShape,
+              'line.smoothing': curShape === 'spline' ? 1.0 : null,
+            });
+          }
+          // In bar mode the shape is a no-op visually, but we still track it so
+          // a later switch back to Line uses the user's chosen curve.
+        });
+      });
+      wire('.chart-toolbar .group:nth-child(5)', (d) => curStack = d.stack);
       document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
     }
 
@@ -776,7 +797,7 @@
         // First plot
         Plotly.newPlot(
           'tvlChart',
-          makeTraces(state, curRange, curStack, chainConfig, curType),
+          makeTraces(state, curRange, curStack, chainConfig, curType, curShape),
           makeLayout(curScale, curType, curStack),
           CONFIG
         );
