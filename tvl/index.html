@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TVL — Fusion Stats</title>
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #FFFFFF;
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --stroke-light: #F0F0F0;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-end: #6C00FF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      font-weight: 400;
+    }
+
+    .container { max-width: 1280px; margin: 0 auto; }
+
+    .top-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .top-nav-links {
+      display: flex;
+      gap: 0.25rem;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      scrollbar-width: none;
+    }
+    .top-nav-links::-webkit-scrollbar { display: none; }
+    .top-nav a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-body);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .top-nav a:hover {
+      color: var(--accent);
+      border-color: var(--stroke);
+    }
+    .top-nav a.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+
+    header { margin-bottom: 1.5rem; }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent-end));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      color: var(--text-body);
+      font-size: 0.875rem;
+      margin-top: 0.35rem;
+    }
+
+    .num-bold {
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      padding: 0.8rem 0.9rem;
+    }
+    .stat-card .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+    }
+    .stat-card .value {
+      font-family: 'Source Sans 3', sans-serif;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      font-size: 1.1rem;
+    }
+    .chain-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 1rem 1rem 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .chart-toolbar {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .chart-toolbar .group {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+    }
+    .chart-toolbar .group-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-right: 0.35rem;
+    }
+    .chart-toolbar button {
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.35rem 0.7rem;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chart-toolbar button:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .chart-toolbar button.active {
+      color: var(--accent);
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+    .chart-hint {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-left: auto;
+    }
+
+    #tvlChart {
+      width: 100%;
+      height: 70vh;
+      min-height: 500px;
+    }
+
+    .caveat {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      padding: 0.75rem 0.25rem 0;
+      line-height: 1.55;
+    }
+    .caveat code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      background: rgba(0,0,0,0.04);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .loading {
+      padding: 4rem 1rem;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 0.75rem; }
+      #tvlChart { height: 60vh; min-height: 380px; }
+      .top-nav a { padding: 0.4rem 0.8rem; }
+      .chart-hint { display: none; }
+    }
+  </style>
+  <script defer src="/track.js"></script>
+  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <div class="top-nav-links">
+        <a href="/">Activity</a>
+        <a href="/all-vaults">All Vaults</a>
+        <a href="/tvl" class="active">TVL</a>
+        <a href="/dominance">Dominance</a>
+        <a href="/address">Address</a>
+        <a href="/spark">Spark</a>
+        <a href="/rebalance-methodology">Rebalance Docs</a>
+        <a href="/logs">Logs</a>
+        <a href="/video">Video</a>
+        <a href="/socials">Socials</a>
+      </div>
+    </nav>
+
+    <header>
+      <h1>TVL by Chain</h1>
+      <p>Total Value Locked across Fusion vaults. Click a chain in the legend to isolate it, drag on the chart to zoom either axis, double-click to reset.</p>
+    </header>
+
+    <div id="statsRow" class="stats-row"></div>
+
+    <div class="chart-card">
+      <div class="chart-toolbar">
+        <div class="group">
+          <span class="group-label">Range</span>
+          <button data-range="30">30d</button>
+          <button data-range="90">90d</button>
+          <button data-range="180" class="active">180d</button>
+          <button data-range="all">All</button>
+        </div>
+        <div class="group">
+          <span class="group-label">Y-axis</span>
+          <button data-scale="linear" class="active">Linear</button>
+          <button data-scale="log">Log</button>
+        </div>
+        <div class="group">
+          <span class="group-label">Stack</span>
+          <button data-stack="off" class="active">Off</button>
+          <button data-stack="on">On</button>
+        </div>
+        <span class="chart-hint">Drag a chart region to zoom · double-click resets · click legend to toggle</span>
+      </div>
+      <div id="tvlChart"><div class="loading">Loading data…</div></div>
+    </div>
+
+    <div class="caveat">
+      <strong>Method:</strong> per-chain TVL is anchored on the right edge to the on-chain snapshot in <code>ipor-vaults.json</code> (sum of <code>tvl</code> across vaults, at the file's <code>updatedAt</code> timestamp) and walked backward by daily net flow (deposits minus withdrawals in USD at event time, synthetic flow excluded). It approximates TVL change over the tracked event window; older points do not include yield accrual or deposits made before our event indexer started, and can diverge from the historical on-chain TVL for that reason. Negative values clamped to zero.
+    </div>
+  </div>
+
+  <script>
+    const CHAIN_COLORS = {
+      ethereum:  '#627EEA',
+      base:      '#0052FF',
+      arbitrum:  '#28A0F0',
+      optimism:  '#FF0420',
+      avalanche: '#E84142',
+      plasma:    '#16A34A',
+      unichain:  '#FF007A',
+      polygon:   '#7B3FE4',
+      bsc:       '#F0B90B',
+      sonic:     '#FE9A1C',
+      tac:       '#8B5CF6',
+      ink:       '#3B82F6',
+      katana:    '#EF4444',
+      gnosis:    '#3E6957',
+      fraxtal:   '#374151',
+    };
+    const DEFAULT_COLOR = '#8429FF';
+    const DAY_SEC = 86400;
+    const DAY_MS = DAY_SEC * 1000;
+
+    function fmtUsd(v) {
+      if (v == null || !isFinite(v)) return '—';
+      const a = Math.abs(v);
+      if (a >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+      if (a >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+      if (a >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+      return `$${v.toFixed(0)}`;
+    }
+
+    async function loadData() {
+      const [evtRes, vaultsRes] = await Promise.all([
+        fetch('/activity-events.json'),
+        fetch('/ipor-vaults.json'),
+      ]);
+      if (!evtRes.ok) throw new Error(`activity-events.json HTTP ${evtRes.status}`);
+      if (!vaultsRes.ok) throw new Error(`ipor-vaults.json HTTP ${vaultsRes.status}`);
+      const evtJson = await evtRes.json();
+      const vaultsJson = await vaultsRes.json();
+      return {
+        events: evtJson.events || [],
+        vaults: vaultsJson.vaults || [],
+        anchorTs: new Date(vaultsJson.updatedAt || Date.now()).getTime() / 1000,
+      };
+    }
+
+    function buildSeries({ events, vaults, anchorTs }) {
+      // Current TVL per chain
+      const currentByChain = {};
+      for (const v of vaults) {
+        const c = v.chain || 'ethereum';
+        currentByChain[c] = (currentByChain[c] || 0) + (v.tvl || 0);
+      }
+
+      // Usable events: genuine flow only, with usd value and timestamp
+      const usable = events.filter(e =>
+        !e.synthetic &&
+        typeof e.usdValue === 'number' &&
+        typeof e.timestamp === 'number' &&
+        e.timestamp <= anchorTs
+      );
+
+      const dayKey = (ts) => Math.floor(ts / DAY_SEC);
+      const anchorDay = dayKey(anchorTs);
+
+      // Earliest day across all chains (for x-axis lower bound)
+      let minDay = anchorDay;
+      for (const e of usable) {
+        const d = dayKey(e.timestamp);
+        if (d < minDay) minDay = d;
+      }
+
+      // Net flow per chain per day
+      const netByChain = {};
+      for (const c of Object.keys(currentByChain)) netByChain[c] = {};
+      for (const e of usable) {
+        const c = e.chain || 'ethereum';
+        if (!netByChain[c]) netByChain[c] = {};
+        const d = dayKey(e.timestamp);
+        const sign = e.type === 'deposit' ? 1 : -1;
+        netByChain[c][d] = (netByChain[c][d] || 0) + sign * e.usdValue;
+      }
+
+      // Walk backward per chain
+      const perChain = {};
+      for (const c of Object.keys(netByChain)) {
+        let tvl = currentByChain[c] || 0;
+        const points = [];
+        // Build forward from minDay→anchorDay, but we need TVL[anchorDay]=current and
+        // TVL[d-1] = TVL[d] - net[d]. So iterate anchorDay → minDay backward, collect,
+        // then reverse.
+        for (let d = anchorDay; d >= minDay; d--) {
+          points.push({ day: d, tvl });
+          tvl = tvl - (netByChain[c][d] || 0);
+        }
+        points.reverse();
+        perChain[c] = points;
+      }
+
+      return { perChain, currentByChain, anchorDay, minDay };
+    }
+
+    function makeTraces(state, range, stack) {
+      const { perChain, currentByChain, anchorDay } = state;
+      let cutoff = null;
+      if (range !== 'all') cutoff = anchorDay - parseInt(range, 10);
+
+      // Order chains by current TVL desc so legend reads big→small
+      const chains = Object.keys(perChain).sort((a, b) =>
+        (currentByChain[b] || 0) - (currentByChain[a] || 0)
+      );
+
+      const traces = [];
+      for (const c of chains) {
+        let pts = perChain[c];
+        if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
+        if (!pts.length) continue;
+        const peak = Math.max(...pts.map(p => p.tvl));
+        if (peak <= 1000) continue;
+        const color = CHAIN_COLORS[c] || DEFAULT_COLOR;
+        traces.push({
+          x: pts.map(p => new Date(p.day * DAY_MS)),
+          y: pts.map(p => Math.max(0, p.tvl)),
+          type: 'scatter',
+          mode: 'lines',
+          name: c,
+          stackgroup: stack === 'on' ? 'tvl' : undefined,
+          line: { color, width: 2, shape: 'linear' },
+          hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
+        });
+      }
+      return traces;
+    }
+
+    function makeLayout(scale) {
+      return {
+        autosize: true,
+        margin: { l: 78, r: 24, t: 8, b: 60 },
+        plot_bgcolor: '#FFFFFF',
+        paper_bgcolor: '#FFFFFF',
+        font: {
+          family: 'Poppins, -apple-system, sans-serif',
+          color: '#70747A',
+          size: 12,
+        },
+        xaxis: {
+          showgrid: true,
+          gridcolor: '#F0F0F0',
+          linecolor: '#E5E5E5',
+          tickfont: { size: 11 },
+          type: 'date',
+          fixedrange: false,
+        },
+        yaxis: {
+          showgrid: true,
+          gridcolor: '#F0F0F0',
+          linecolor: '#E5E5E5',
+          tickfont: { size: 11 },
+          tickformat: '$,.2s',
+          type: scale === 'log' ? 'log' : 'linear',
+          rangemode: scale === 'log' ? 'normal' : 'tozero',
+          fixedrange: false,
+        },
+        legend: {
+          orientation: 'h',
+          y: -0.16,
+          x: 0,
+          font: { size: 11 },
+        },
+        hovermode: 'x unified',
+        dragmode: 'zoom',
+      };
+    }
+
+    const CONFIG = {
+      responsive: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
+      scrollZoom: false,
+      doubleClick: 'reset',
+    };
+
+    function renderStats(currentByChain) {
+      const row = document.getElementById('statsRow');
+      const total = Object.values(currentByChain).reduce((a, b) => a + b, 0);
+      const chains = Object.entries(currentByChain)
+        .filter(([, t]) => t > 1000)
+        .sort((a, b) => b[1] - a[1]);
+      let html = `
+        <div class="stat-card">
+          <div class="label">Total TVL</div>
+          <div class="value num-bold">${fmtUsd(total)}</div>
+        </div>`;
+      for (const [c, t] of chains) {
+        const color = CHAIN_COLORS[c] || DEFAULT_COLOR;
+        html += `
+          <div class="stat-card">
+            <div class="label"><span class="chain-dot" style="background:${color}"></span>${c}</div>
+            <div class="value num-bold">${fmtUsd(t)}</div>
+          </div>`;
+      }
+      row.innerHTML = html;
+    }
+
+    let state = null;
+    let curRange = '180';
+    let curScale = 'linear';
+    let curStack = 'off';
+
+    function redraw() {
+      const traces = makeTraces(state, curRange, curStack);
+      const layout = makeLayout(curScale);
+      Plotly.react('tvlChart', traces, layout, CONFIG);
+    }
+
+    function bindToolbar() {
+      const wire = (sel, varSet) => {
+        document.querySelectorAll(sel + ' button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            varSet(btn.dataset);
+            document.querySelectorAll(sel + ' button').forEach(b => b.classList.toggle('active', b === btn));
+            redraw();
+          });
+        });
+      };
+      wire('.chart-toolbar .group:nth-child(1)', (d) => curRange = d.range);
+      wire('.chart-toolbar .group:nth-child(2)', (d) => curScale = d.scale);
+      wire('.chart-toolbar .group:nth-child(3)', (d) => curStack = d.stack);
+    }
+
+    (async function () {
+      try {
+        const data = await loadData();
+        state = buildSeries(data);
+        renderStats(state.currentByChain);
+        // First plot
+        Plotly.newPlot('tvlChart', makeTraces(state, curRange, curStack), makeLayout(curScale), CONFIG);
+        bindToolbar();
+      } catch (e) {
+        document.getElementById('tvlChart').innerHTML =
+          `<div class="loading">Failed to load: ${String(e.message || e)}</div>`;
+      }
+    })();
+  </script>
+</body>
+</html>
