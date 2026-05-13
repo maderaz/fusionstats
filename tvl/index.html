@@ -183,6 +183,98 @@
       margin-left: auto;
     }
 
+    .network-panel {
+      border-top: 1px solid var(--stroke);
+      border-bottom: 1px solid var(--stroke);
+      padding: 0.75rem 0 0.85rem;
+      margin-bottom: 0.85rem;
+    }
+    .network-panel-header {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .network-panel-header button.reset-styles {
+      font-family: inherit;
+      font-size: 0.65rem;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid var(--stroke);
+      background: var(--surface);
+      color: var(--text-body);
+      border-radius: 5px;
+      cursor: pointer;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .network-panel-header button.reset-styles:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .network-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.4rem 1rem;
+    }
+    .network-row {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.25rem 0;
+    }
+    .network-row.hidden .chain-name,
+    .network-row.hidden .width-slider {
+      opacity: 0.4;
+    }
+    .network-row input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0;
+    }
+    .network-row input[type="color"] {
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--stroke);
+      border-radius: 5px;
+      cursor: pointer;
+      padding: 0;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .network-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .network-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+    .network-row input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
+    .network-row .chain-name {
+      font-size: 0.78rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .network-row .width-slider {
+      width: 80px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .network-row .width-readout {
+      font-size: 0.65rem;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      min-width: 1.5ch;
+      text-align: right;
+    }
+    .network-row .width-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
     #tvlChart {
       width: 100%;
       height: 70vh;
@@ -263,7 +355,14 @@
           <button data-stack="off" class="active">Off</button>
           <button data-stack="on">On</button>
         </div>
-        <span class="chart-hint">Drag a chart region to zoom · double-click resets · click legend to toggle</span>
+        <span class="chart-hint">Drag a chart region to zoom · double-click resets</span>
+      </div>
+      <div class="network-panel" id="networkPanel" style="display:none">
+        <div class="network-panel-header">
+          <span>Networks</span>
+          <button class="reset-styles" id="resetStyles" type="button">Reset colors &amp; widths</button>
+        </div>
+        <div class="network-grid" id="networkGrid"></div>
       </div>
       <div id="tvlChart"><div class="loading">Loading data…</div></div>
     </div>
@@ -376,32 +475,37 @@
       return { perChain, currentByChain, anchorDay, minDay };
     }
 
-    function makeTraces(state, range, stack) {
-      const { perChain, currentByChain, anchorDay } = state;
+    // Chains to render (sorted big→small by current TVL, with ≥$1K peak in any window)
+    function chartChains(state) {
+      const { perChain, currentByChain } = state;
+      return Object.keys(perChain)
+        .filter(c => {
+          const peak = Math.max(...perChain[c].map(p => p.tvl), 0);
+          return peak > 1000;
+        })
+        .sort((a, b) => (currentByChain[b] || 0) - (currentByChain[a] || 0));
+    }
+
+    function makeTraces(state, range, stack, chainConfig) {
+      const { perChain, anchorDay } = state;
       let cutoff = null;
       if (range !== 'all') cutoff = anchorDay - parseInt(range, 10);
 
-      // Order chains by current TVL desc so legend reads big→small
-      const chains = Object.keys(perChain).sort((a, b) =>
-        (currentByChain[b] || 0) - (currentByChain[a] || 0)
-      );
-
       const traces = [];
-      for (const c of chains) {
+      for (const c of chartChains(state)) {
         let pts = perChain[c];
         if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
         if (!pts.length) continue;
-        const peak = Math.max(...pts.map(p => p.tvl));
-        if (peak <= 1000) continue;
-        const color = CHAIN_COLORS[c] || DEFAULT_COLOR;
+        const cfg = chainConfig[c];
         traces.push({
           x: pts.map(p => new Date(p.day * DAY_MS)),
           y: pts.map(p => Math.max(0, p.tvl)),
           type: 'scatter',
           mode: 'lines',
           name: c,
+          visible: cfg.visible ? true : 'legendonly',
           stackgroup: stack === 'on' ? 'tvl' : undefined,
-          line: { color, width: 2, shape: 'linear' },
+          line: { color: cfg.color, width: cfg.width, shape: 'linear' },
           hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
         });
       }
@@ -437,12 +541,7 @@
           rangemode: scale === 'log' ? 'normal' : 'tozero',
           fixedrange: false,
         },
-        legend: {
-          orientation: 'h',
-          y: -0.16,
-          x: 0,
-          font: { size: 11 },
-        },
+        showlegend: false,
         hovermode: 'x unified',
         dragmode: 'zoom',
       };
@@ -482,11 +581,103 @@
     let curRange = '180';
     let curScale = 'linear';
     let curStack = 'off';
+    // Per-chain user-tweakable config (color, line width, visibility)
+    let chainConfig = {};
 
-    function redraw() {
-      const traces = makeTraces(state, curRange, curStack);
+    function defaultConfig(chain) {
+      return {
+        color: CHAIN_COLORS[chain] || DEFAULT_COLOR,
+        width: 2,
+        visible: true,
+      };
+    }
+
+    function initChainConfig() {
+      chainConfig = {};
+      for (const c of chartChains(state)) {
+        chainConfig[c] = defaultConfig(c);
+      }
+    }
+
+    // Full redraw (rebuilds traces + layout). resetAxes forces Plotly to
+    // recompute autorange — used when visibility / range / scale / stack changes
+    // so the y-axis snaps to the visible chains (e.g. hide ethereum, base goes
+    // into the spotlight).
+    function redraw({ resetAxes = false } = {}) {
+      const traces = makeTraces(state, curRange, curStack, chainConfig);
       const layout = makeLayout(curScale);
+      if (resetAxes) {
+        layout.xaxis.autorange = true;
+        layout.yaxis.autorange = true;
+      }
       Plotly.react('tvlChart', traces, layout, CONFIG);
+    }
+
+    // Cheap style-only update for color or line width: uses restyle so the
+    // user's current zoom/pan view is preserved.
+    function restyleChain(chain, patch) {
+      const visibleTraces = chartChains(state);
+      const idx = visibleTraces.indexOf(chain);
+      if (idx < 0) return;
+      Plotly.restyle('tvlChart', patch, [idx]);
+    }
+
+    function renderNetworkPanel() {
+      const chains = chartChains(state);
+      const panel = document.getElementById('networkPanel');
+      const grid = document.getElementById('networkGrid');
+      if (!chains.length) {
+        panel.style.display = 'none';
+        return;
+      }
+      panel.style.display = '';
+      grid.innerHTML = chains.map(c => {
+        const cfg = chainConfig[c];
+        const tvl = fmtUsd(state.currentByChain[c] || 0);
+        return `
+          <div class="network-row${cfg.visible ? '' : ' hidden'}" data-chain="${c}">
+            <input type="checkbox" data-role="visible" ${cfg.visible ? 'checked' : ''} aria-label="Show ${c}">
+            <input type="color" data-role="color" value="${cfg.color}" aria-label="${c} line color">
+            <span class="chain-name">${c} <span style="color:var(--text-secondary);font-weight:400;font-size:0.7rem;margin-left:0.4rem">${tvl}</span></span>
+            <span class="width-wrap">
+              <input type="range" min="1" max="8" step="1" value="${cfg.width}" data-role="width" class="width-slider" aria-label="${c} line width">
+              <span class="width-readout">${cfg.width}px</span>
+            </span>
+          </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.network-row').forEach(row => {
+        const chain = row.dataset.chain;
+        const cbx = row.querySelector('[data-role="visible"]');
+        const col = row.querySelector('[data-role="color"]');
+        const wid = row.querySelector('[data-role="width"]');
+        const readout = row.querySelector('.width-readout');
+
+        cbx.addEventListener('change', () => {
+          chainConfig[chain].visible = cbx.checked;
+          row.classList.toggle('hidden', !cbx.checked);
+          // Visibility change → re-autorange so the remaining lines fill the chart.
+          redraw({ resetAxes: true });
+        });
+        col.addEventListener('input', () => {
+          chainConfig[chain].color = col.value;
+          restyleChain(chain, { 'line.color': col.value });
+        });
+        wid.addEventListener('input', () => {
+          const w = parseInt(wid.value, 10);
+          chainConfig[chain].width = w;
+          readout.textContent = w + 'px';
+          restyleChain(chain, { 'line.width': w });
+        });
+      });
+    }
+
+    function resetAllStyles() {
+      for (const c of Object.keys(chainConfig)) {
+        chainConfig[c] = defaultConfig(c);
+      }
+      renderNetworkPanel();
+      redraw({ resetAxes: true });
     }
 
     function bindToolbar() {
@@ -495,22 +686,30 @@
           btn.addEventListener('click', () => {
             varSet(btn.dataset);
             document.querySelectorAll(sel + ' button').forEach(b => b.classList.toggle('active', b === btn));
-            redraw();
+            redraw({ resetAxes: true });
           });
         });
       };
       wire('.chart-toolbar .group:nth-child(1)', (d) => curRange = d.range);
       wire('.chart-toolbar .group:nth-child(2)', (d) => curScale = d.scale);
       wire('.chart-toolbar .group:nth-child(3)', (d) => curStack = d.stack);
+      document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
     }
 
     (async function () {
       try {
         const data = await loadData();
         state = buildSeries(data);
+        initChainConfig();
         renderStats(state.currentByChain);
+        renderNetworkPanel();
         // First plot
-        Plotly.newPlot('tvlChart', makeTraces(state, curRange, curStack), makeLayout(curScale), CONFIG);
+        Plotly.newPlot(
+          'tvlChart',
+          makeTraces(state, curRange, curStack, chainConfig),
+          makeLayout(curScale),
+          CONFIG
+        );
         bindToolbar();
       } catch (e) {
         document.getElementById('tvlChart').innerHTML =
