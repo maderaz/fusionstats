@@ -351,6 +351,11 @@
           <button data-scale="log">Log</button>
         </div>
         <div class="group">
+          <span class="group-label">Type</span>
+          <button data-type="line" class="active">Line</button>
+          <button data-type="bar">Bar</button>
+        </div>
+        <div class="group">
           <span class="group-label">Stack</span>
           <button data-stack="off" class="active">Off</button>
           <button data-stack="on">On</button>
@@ -486,33 +491,72 @@
         .sort((a, b) => (currentByChain[b] || 0) - (currentByChain[a] || 0));
     }
 
-    function makeTraces(state, range, stack, chainConfig) {
+    // For bar mode: down-sample to one point per N-day bucket so rounded
+    // corners are actually visible. Keep the last (latest) point in each
+    // bucket since TVL is a balance, not a flow.
+    function bucketize(pts, bucketDays) {
+      if (bucketDays <= 1 || pts.length === 0) return pts;
+      const buckets = new Map();
+      for (const p of pts) {
+        const key = Math.floor(p.day / bucketDays) * bucketDays;
+        const cur = buckets.get(key);
+        if (!cur || p.day > cur.day) buckets.set(key, { day: key, tvl: p.tvl });
+      }
+      return [...buckets.values()].sort((a, b) => a.day - b.day);
+    }
+
+    function bucketDaysFor(range) {
+      if (range === '30') return 1;
+      if (range === '90') return 3;
+      return 7; // 180d & All
+    }
+
+    function makeTraces(state, range, stack, chainConfig, type) {
       const { perChain, anchorDay } = state;
       let cutoff = null;
       if (range !== 'all') cutoff = anchorDay - parseInt(range, 10);
+      const bDays = type === 'bar' ? bucketDaysFor(range) : 1;
 
       const traces = [];
       for (const c of chartChains(state)) {
         let pts = perChain[c];
         if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
         if (!pts.length) continue;
+        if (bDays > 1) pts = bucketize(pts, bDays);
         const cfg = chainConfig[c];
-        traces.push({
-          x: pts.map(p => new Date(p.day * DAY_MS)),
-          y: pts.map(p => Math.max(0, p.tvl)),
-          type: 'scatter',
-          mode: 'lines',
-          name: c,
-          visible: cfg.visible ? true : 'legendonly',
-          stackgroup: stack === 'on' ? 'tvl' : undefined,
-          line: { color: cfg.color, width: cfg.width, shape: 'linear' },
-          hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
-        });
+
+        if (type === 'bar') {
+          traces.push({
+            x: pts.map(p => new Date(p.day * DAY_MS)),
+            y: pts.map(p => Math.max(0, p.tvl)),
+            type: 'bar',
+            name: c,
+            visible: cfg.visible ? true : 'legendonly',
+            marker: {
+              color: cfg.color,
+              cornerradius: cfg.width,
+              line: { width: 0 },
+            },
+            hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
+          });
+        } else {
+          traces.push({
+            x: pts.map(p => new Date(p.day * DAY_MS)),
+            y: pts.map(p => Math.max(0, p.tvl)),
+            type: 'scatter',
+            mode: 'lines',
+            name: c,
+            visible: cfg.visible ? true : 'legendonly',
+            stackgroup: stack === 'on' ? 'tvl' : undefined,
+            line: { color: cfg.color, width: cfg.width, shape: 'linear' },
+            hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
+          });
+        }
       }
       return traces;
     }
 
-    function makeLayout(scale) {
+    function makeLayout(scale, type, stack) {
       return {
         autosize: true,
         margin: { l: 78, r: 24, t: 8, b: 60 },
@@ -541,6 +585,9 @@
           rangemode: scale === 'log' ? 'normal' : 'tozero',
           fixedrange: false,
         },
+        barmode: type === 'bar' && stack === 'on' ? 'stack' : 'group',
+        bargap: 0.18,
+        bargroupgap: 0.04,
         showlegend: false,
         hovermode: 'x unified',
         dragmode: 'zoom',
@@ -581,7 +628,8 @@
     let curRange = '180';
     let curScale = 'linear';
     let curStack = 'off';
-    // Per-chain user-tweakable config (color, line width, visibility)
+    let curType = 'line';
+    // Per-chain user-tweakable config (color, line width / corner radius, visibility)
     let chainConfig = {};
 
     function defaultConfig(chain) {
@@ -604,8 +652,8 @@
     // so the y-axis snaps to the visible chains (e.g. hide ethereum, base goes
     // into the spotlight).
     function redraw({ resetAxes = false } = {}) {
-      const traces = makeTraces(state, curRange, curStack, chainConfig);
-      const layout = makeLayout(curScale);
+      const traces = makeTraces(state, curRange, curStack, chainConfig, curType);
+      const layout = makeLayout(curScale, curType, curStack);
       if (resetAxes) {
         layout.xaxis.autorange = true;
         layout.yaxis.autorange = true;
@@ -613,12 +661,23 @@
       Plotly.react('tvlChart', traces, layout, CONFIG);
     }
 
-    // Cheap style-only update for color or line width: uses restyle so the
-    // user's current zoom/pan view is preserved.
-    function restyleChain(chain, patch) {
-      const visibleTraces = chartChains(state);
-      const idx = visibleTraces.indexOf(chain);
+    // Cheap style-only update for color or width: uses restyle so the
+    // user's current zoom/pan view is preserved. The width slider routes to
+    // line.width in line mode, marker.cornerradius in bar mode.
+    function restyleChainColor(chain, color) {
+      const idx = chartChains(state).indexOf(chain);
       if (idx < 0) return;
+      const patch = curType === 'bar'
+        ? { 'marker.color': color }
+        : { 'line.color': color };
+      Plotly.restyle('tvlChart', patch, [idx]);
+    }
+    function restyleChainWidth(chain, w) {
+      const idx = chartChains(state).indexOf(chain);
+      if (idx < 0) return;
+      const patch = curType === 'bar'
+        ? { 'marker.cornerradius': w }
+        : { 'line.width': w };
       Plotly.restyle('tvlChart', patch, [idx]);
     }
 
@@ -631,17 +690,18 @@
         return;
       }
       panel.style.display = '';
+      const widthUnit = curType === 'bar' ? '' : 'px';
       grid.innerHTML = chains.map(c => {
         const cfg = chainConfig[c];
         const tvl = fmtUsd(state.currentByChain[c] || 0);
         return `
           <div class="network-row${cfg.visible ? '' : ' hidden'}" data-chain="${c}">
             <input type="checkbox" data-role="visible" ${cfg.visible ? 'checked' : ''} aria-label="Show ${c}">
-            <input type="color" data-role="color" value="${cfg.color}" aria-label="${c} line color">
+            <input type="color" data-role="color" value="${cfg.color}" aria-label="${c} color">
             <span class="chain-name">${c} <span style="color:var(--text-secondary);font-weight:400;font-size:0.7rem;margin-left:0.4rem">${tvl}</span></span>
             <span class="width-wrap">
-              <input type="range" min="1" max="8" step="1" value="${cfg.width}" data-role="width" class="width-slider" aria-label="${c} line width">
-              <span class="width-readout">${cfg.width}px</span>
+              <input type="range" min="1" max="8" step="1" value="${cfg.width}" data-role="width" class="width-slider" aria-label="${c} width">
+              <span class="width-readout">${cfg.width}${widthUnit}</span>
             </span>
           </div>`;
       }).join('');
@@ -661,13 +721,13 @@
         });
         col.addEventListener('input', () => {
           chainConfig[chain].color = col.value;
-          restyleChain(chain, { 'line.color': col.value });
+          restyleChainColor(chain, col.value);
         });
         wid.addEventListener('input', () => {
           const w = parseInt(wid.value, 10);
           chainConfig[chain].width = w;
-          readout.textContent = w + 'px';
-          restyleChain(chain, { 'line.width': w });
+          readout.textContent = w + (curType === 'bar' ? '' : 'px');
+          restyleChainWidth(chain, w);
         });
       });
     }
@@ -692,7 +752,17 @@
       };
       wire('.chart-toolbar .group:nth-child(1)', (d) => curRange = d.range);
       wire('.chart-toolbar .group:nth-child(2)', (d) => curScale = d.scale);
-      wire('.chart-toolbar .group:nth-child(3)', (d) => curStack = d.stack);
+      // group 3 = Type. Custom handler so we also re-render the network panel
+      // (its width-slider label changes from "px" to "" in bar mode).
+      document.querySelectorAll('.chart-toolbar .group:nth-child(3) button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          curType = btn.dataset.type;
+          document.querySelectorAll('.chart-toolbar .group:nth-child(3) button').forEach(b => b.classList.toggle('active', b === btn));
+          renderNetworkPanel();
+          redraw({ resetAxes: true });
+        });
+      });
+      wire('.chart-toolbar .group:nth-child(4)', (d) => curStack = d.stack);
       document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
     }
 
@@ -706,8 +776,8 @@
         // First plot
         Plotly.newPlot(
           'tvlChart',
-          makeTraces(state, curRange, curStack, chainConfig),
-          makeLayout(curScale),
+          makeTraces(state, curRange, curStack, chainConfig, curType),
+          makeLayout(curScale, curType, curStack),
           CONFIG
         );
         bindToolbar();
