@@ -761,12 +761,16 @@
           plot_bgcolor:  'rgba(0,0,0,0)',
         });
         const stamp = new Date().toISOString().slice(0, 10);
+        // Pass display size + scale:2 (NOT width*2 + scale:1) — otherwise Plotly
+        // renders at the bigger canvas but keeps the layout's font sizes (e.g.
+        // tickfont:11px), so axis labels end up half the relative size of the
+        // preview. scale:2 multiplies the whole render, fonts included.
         await Plotly.downloadImage(gd, {
           format: 'png',
           filename: `fusion-tvl-${stamp}`,
-          width:  Math.max(1200, gd.clientWidth  * 2),
-          height: Math.max(700,  gd.clientHeight * 2),
-          scale: 1,
+          width:  gd.clientWidth,
+          height: gd.clientHeight,
+          scale: 2,
         });
       } finally {
         await Plotly.relayout(gd, {
