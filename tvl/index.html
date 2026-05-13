@@ -302,6 +302,75 @@
       font-size: 0.9rem;
     }
 
+    .data-card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+    .data-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .data-card-count {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-left: 0.4rem;
+    }
+    .data-card-header button {
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.4rem 0.9rem;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    .data-card-header button:hover { opacity: 0.85; }
+    .data-table-wrap {
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .data-table thead th {
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-weight: 500;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: left;
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .data-table th.num, .data-table td.num {
+      text-align: right;
+      font-family: 'Source Sans 3', sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    .data-table tbody td {
+      padding: 0.45rem 1rem;
+      border-bottom: 1px solid var(--stroke-light);
+      color: var(--text);
+    }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr:hover td { background: rgba(132, 41, 255, 0.04); }
+
     @media (max-width: 640px) {
       body { padding: 0.75rem; }
       #tvlChart { height: 60vh; min-height: 380px; }
@@ -379,6 +448,19 @@
 
     <div class="caveat">
       <strong>Method:</strong> per-chain TVL is anchored on the right edge to the on-chain snapshot in <code>ipor-vaults.json</code> (sum of <code>tvl</code> across vaults, at the file's <code>updatedAt</code> timestamp) and walked backward by daily net flow (deposits minus withdrawals in USD at event time, synthetic flow excluded). It approximates TVL change over the tracked event window; older points do not include yield accrual or deposits made before our event indexer started, and can diverge from the historical on-chain TVL for that reason. Negative values clamped to zero.
+    </div>
+
+    <div class="data-card" id="baseDataCard" style="display:none">
+      <div class="data-card-header">
+        <span>Base network — daily TVL <span class="data-card-count" id="baseDataCount"></span></span>
+        <button id="downloadBaseCsv" type="button">Download CSV</button>
+      </div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Date</th><th class="num">TVL (USD)</th></tr></thead>
+          <tbody id="baseDataBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -629,6 +711,47 @@
       row.innerHTML = html;
     }
 
+    // Base network data table + CSV download
+    function baseSeries() {
+      const pts = (state && state.perChain && state.perChain.base) || [];
+      // Newest first, clamp negatives, daily granularity
+      return pts.slice().reverse().map(p => ({
+        date: new Date(p.day * DAY_MS).toISOString().slice(0, 10),
+        tvl: Math.max(0, p.tvl),
+      }));
+    }
+
+    function renderBaseTable() {
+      const rows = baseSeries();
+      const card = document.getElementById('baseDataCard');
+      const body = document.getElementById('baseDataBody');
+      const count = document.getElementById('baseDataCount');
+      if (!rows.length) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      count.textContent = `(${rows.length} days)`;
+      body.innerHTML = rows.map(r => `
+        <tr><td>${r.date}</td><td class="num">$${r.tvl.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td></tr>
+      `).join('');
+    }
+
+    function downloadBaseCsv() {
+      const rows = baseSeries();
+      if (!rows.length) return;
+      const lines = ['date,tvl_usd'];
+      for (const r of rows) lines.push(`${r.date},${r.tvl.toFixed(2)}`);
+      const csv = lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fusion-tvl-base-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     let state = null;
     let curRange = '180';
     let curScale = 'linear';
@@ -794,6 +917,8 @@
         initChainConfig();
         renderStats(state.currentByChain);
         renderNetworkPanel();
+        renderBaseTable();
+        document.getElementById('downloadBaseCsv').addEventListener('click', downloadBaseCsv);
         // First plot
         Plotly.newPlot(
           'tvlChart',
