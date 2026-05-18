@@ -303,6 +303,10 @@
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
+          <div class="tvl-chart-range-group" id="tvlChartGranularity">
+            <button data-gran="auto" class="active">Auto</button>
+            <button data-gran="daily">Daily</button>
+          </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
         </div>
         <div id="tvlChart"></div>
@@ -487,13 +491,11 @@
     // edge to vaultInfo.tvl at the ipor-vaults.json snapshot time, walked
     // backward by daily net flow (deposits − withdrawals in USD, synthetic
     // excluded). Only renders when the address is a known IPOR vault.
-    const TVL_CHAIN_COLORS = {
-      ethereum: '#627EEA', base: '#0052FF', arbitrum: '#28A0F0',
-      optimism: '#FF0420', avalanche: '#E84142', plasma: '#16A34A',
-      unichain: '#FF007A', polygon: '#7B3FE4', bsc: '#F0B90B',
-    };
+    // Flagship purple — matches the Download PNG / accent CTA.
+    const TVL_BAR_COLOR = '#8429FF';
     let __tvlState = null;
     let __tvlRange = 'all';
+    let __tvlGran = 'auto'; // 'auto' = bucket cadence picked from range, 'daily' = always 1-day bars
 
     function buildVaultSeries(addr, vaultInfo) {
       const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
@@ -538,27 +540,27 @@
       return [...buckets.values()].sort((a, b) => a.day - b.day);
     }
 
-    function tvlBucketDays(range) {
+    function tvlBucketDays(range, gran) {
+      if (gran === 'daily') return 1;
       if (range === '30') return 1;
       if (range === '90') return 3;
       return 7; // 180d & all
     }
 
-    function tvlMakeTraceLayout(state, range, vaultInfo) {
+    function tvlMakeTraceLayout(state, range, gran, vaultInfo) {
       let cutoff = null;
       if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
       let pts = state.pts;
       if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
-      pts = bucketizeVault(pts, tvlBucketDays(range));
+      pts = bucketizeVault(pts, tvlBucketDays(range, gran));
 
-      const color = TVL_CHAIN_COLORS[vaultInfo.chain] || '#8429FF';
       const DAY_MS = 86400 * 1000;
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: pts.map(p => Math.max(0, p.tvl)),
         type: 'bar',
         name: vaultInfo.name || 'TVL',
-        marker: { color, cornerradius: 4, line: { width: 0 } },
+        marker: { color: TVL_BAR_COLOR, cornerradius: 4, line: { width: 0 } },
         hovertemplate: `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`,
       };
       const layout = {
@@ -569,12 +571,14 @@
         font: { family: 'Poppins, sans-serif', color: '#70747A', size: 11 },
         xaxis: {
           showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          linecolor: '#E5E5E5', tickfont: { size: 10 }, type: 'date',
+          showline: true, linecolor: '#999999', linewidth: 1,
+          tickfont: { size: 10 }, type: 'date',
           minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
         },
         yaxis: {
           showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          linecolor: '#E5E5E5', tickfont: { size: 10 }, tickformat: '$,.2s',
+          showline: true, linecolor: '#999999', linewidth: 1,
+          tickfont: { size: 10 }, tickformat: '$,.2s',
           rangemode: 'tozero',
           minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
         },
@@ -603,24 +607,45 @@
       card.style.display = '';
       __tvlState = buildVaultSeries(addr, vaultInfo);
       __tvlState.vaultInfo = vaultInfo;
-      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
+      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, __tvlGran, vaultInfo);
       Plotly.newPlot('tvlChart', [trace], layout, TVL_CONFIG);
+      const reactChart = () => {
+        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, __tvlGran, vaultInfo);
+        Plotly.react('tvlChart', [trace], layout, TVL_CONFIG);
+      };
       // Range buttons
       document.querySelectorAll('#tvlChartRange button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.range === __tvlRange);
         btn.onclick = () => {
           __tvlRange = btn.dataset.range;
           document.querySelectorAll('#tvlChartRange button').forEach(b => b.classList.toggle('active', b === btn));
-          const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
-          Plotly.react('tvlChart', [trace], layout, TVL_CONFIG);
+          reactChart();
         };
       });
-      // Download PNG (transparent bg, scale 2 for retina, fonts/lines scale together)
+      // Granularity buttons (Auto = pick from range; Daily = always 1-day bars)
+      document.querySelectorAll('#tvlChartGranularity button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.gran === __tvlGran);
+        btn.onclick = () => {
+          __tvlGran = btn.dataset.gran;
+          document.querySelectorAll('#tvlChartGranularity button').forEach(b => b.classList.toggle('active', b === btn));
+          reactChart();
+        };
+      });
+      // Download PNG — transparent paper/plot bg + hidden gridlines (incl. minor).
+      // Axis lines, tick labels and bars stay. scale:2 keeps the preview proportions.
       document.getElementById('downloadTvlPng').onclick = async () => {
         const gd = document.getElementById('tvlChart');
-        const origPaper = gd.layout.paper_bgcolor, origPlot = gd.layout.plot_bgcolor;
+        const origPaper = gd.layout.paper_bgcolor;
+        const origPlot  = gd.layout.plot_bgcolor;
         try {
-          await Plotly.relayout(gd, { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+          await Plotly.relayout(gd, {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor:  'rgba(0,0,0,0)',
+            'xaxis.showgrid': false,
+            'yaxis.showgrid': false,
+            'xaxis.minor.showgrid': false,
+            'yaxis.minor.showgrid': false,
+          });
           const stamp = new Date().toISOString().slice(0, 10);
           const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
           await Plotly.downloadImage(gd, {
@@ -631,7 +656,14 @@
             scale: 2,
           });
         } finally {
-          await Plotly.relayout(gd, { paper_bgcolor: origPaper, plot_bgcolor: origPlot });
+          await Plotly.relayout(gd, {
+            paper_bgcolor: origPaper,
+            plot_bgcolor:  origPlot,
+            'xaxis.showgrid': true,
+            'yaxis.showgrid': true,
+            'xaxis.minor.showgrid': true,
+            'yaxis.minor.showgrid': true,
+          });
         }
       };
     }
