@@ -1,0 +1,29 @@
+name: Probe DeFiLlama coverage (one-off)
+
+# Run manually from the Actions tab. Reports:
+#   - whether Fusion vaults exist on DefiLlama yields
+#   - which `project` slug they use
+#   - how many of our 351 vaults can be mapped
+#   - what the per-pool /chart endpoint returns
+#
+# No files written — output is in the workflow log.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run probe
+        run: node probe-defillama.js
