@@ -84,6 +84,18 @@
     .flow-bar-slot:hover .flow-tip, .flow-bar-slot.active .flow-tip { display: block; }
     .flow-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.35rem; }
 
+    /* Per-vault TVL chart (Plotly bar) */
+    .tvl-chart-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; padding: 0.85rem 1rem 0.65rem; margin-bottom: 1rem; }
+    .tvl-chart-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .tvl-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
+    .tvl-chart-range-group { display: flex; gap: 0.2rem; }
+    .tvl-chart-range-group button { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.65rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
+    .tvl-chart-range-group button:hover { color: var(--accent); border-color: var(--accent); }
+    .tvl-chart-range-group button.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+    .tvl-chart-export { margin-left: auto; font-family: inherit; font-size: 0.7rem; padding: 0.35rem 0.8rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 5px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+    .tvl-chart-export:hover { opacity: 0.85; }
+    #tvlChart { width: 100%; height: 380px; }
+
     /* Breakdown panels */
     .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
     .panel { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; }
@@ -235,6 +247,7 @@
     }
   </style>
   <script defer src="/track.js"></script>
+  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -280,6 +293,19 @@
         </div>
         <div class="flow-chart-bars" id="flowBars"></div>
         <div class="flow-chart-axis"><span id="flowStart"></span><span id="flowEnd"></span></div>
+      </div>
+      <div id="tvlChartCard" class="tvl-chart-card" style="display:none">
+        <div class="tvl-chart-toolbar">
+          <span class="tvl-chart-title">TVL over time</span>
+          <div class="tvl-chart-range-group" id="tvlChartRange">
+            <button data-range="30">30d</button>
+            <button data-range="90">90d</button>
+            <button data-range="180">180d</button>
+            <button data-range="all" class="active">All</button>
+          </div>
+          <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
+        </div>
+        <div id="tvlChart"></div>
       </div>
       <div class="panels" id="panels"></div>
       <div class="history-card" id="rebalanceCard" style="display:none"></div>
@@ -337,6 +363,7 @@
           (ipor.vaults || []).forEach(v => {
             window.iporVaultsByAddr[v.address.toLowerCase()] = v;
           });
+          window.iporAnchorTs = new Date(ipor.updatedAt || Date.now()).getTime() / 1000;
         }
       } catch {}
 
@@ -447,12 +474,166 @@
       const vaultInfo = (window.iporVaultsByAddr || {})[addr];
       renderStats(s, addr, vaultInfo);
       renderFlowChart(events);
+      renderTvlChart(addr, vaultInfo, events);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
       const panelsEl = document.getElementById('panels');
       if (panelsEl) panelsEl.innerHTML = '';
       renderHistory(events);
       renderRebalances(addr);
+    }
+
+    // Per-vault TVL bar chart (Plotly, rounded corners). Anchored on the right
+    // edge to vaultInfo.tvl at the ipor-vaults.json snapshot time, walked
+    // backward by daily net flow (deposits − withdrawals in USD, synthetic
+    // excluded). Only renders when the address is a known IPOR vault.
+    const TVL_CHAIN_COLORS = {
+      ethereum: '#627EEA', base: '#0052FF', arbitrum: '#28A0F0',
+      optimism: '#FF0420', avalanche: '#E84142', plasma: '#16A34A',
+      unichain: '#FF007A', polygon: '#7B3FE4', bsc: '#F0B90B',
+    };
+    let __tvlState = null;
+    let __tvlRange = 'all';
+
+    function buildVaultSeries(addr, vaultInfo) {
+      const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
+      const DAY = 86400;
+      const anchorDay = Math.floor(anchorTs / DAY);
+
+      const usable = (window.allEvents || []).filter(e =>
+        !e.synthetic &&
+        e.vault && e.vault.toLowerCase() === addr &&
+        typeof e.usdValue === 'number' &&
+        typeof e.timestamp === 'number' &&
+        e.timestamp <= anchorTs
+      );
+
+      let minDay = anchorDay;
+      const net = {};
+      for (const e of usable) {
+        const d = Math.floor(e.timestamp / DAY);
+        if (d < minDay) minDay = d;
+        const sign = e.type === 'deposit' ? 1 : -1;
+        net[d] = (net[d] || 0) + sign * e.usdValue;
+      }
+
+      let tvl = vaultInfo.tvl || 0;
+      const pts = [];
+      for (let d = anchorDay; d >= minDay; d--) {
+        pts.push({ day: d, tvl });
+        tvl = tvl - (net[d] || 0);
+      }
+      pts.reverse();
+      return { pts, anchorDay, minDay };
+    }
+
+    function bucketizeVault(pts, days) {
+      if (days <= 1 || !pts.length) return pts;
+      const buckets = new Map();
+      for (const p of pts) {
+        const key = Math.floor(p.day / days) * days;
+        const cur = buckets.get(key);
+        if (!cur || p.day > cur.day) buckets.set(key, { day: key, tvl: p.tvl });
+      }
+      return [...buckets.values()].sort((a, b) => a.day - b.day);
+    }
+
+    function tvlBucketDays(range) {
+      if (range === '30') return 1;
+      if (range === '90') return 3;
+      return 7; // 180d & all
+    }
+
+    function tvlMakeTraceLayout(state, range, vaultInfo) {
+      let cutoff = null;
+      if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
+      let pts = state.pts;
+      if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
+      pts = bucketizeVault(pts, tvlBucketDays(range));
+
+      const color = TVL_CHAIN_COLORS[vaultInfo.chain] || '#8429FF';
+      const DAY_MS = 86400 * 1000;
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: pts.map(p => Math.max(0, p.tvl)),
+        type: 'bar',
+        name: vaultInfo.name || 'TVL',
+        marker: { color, cornerradius: 4, line: { width: 0 } },
+        hovertemplate: `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`,
+      };
+      const layout = {
+        autosize: true,
+        margin: { l: 70, r: 16, t: 8, b: 48 },
+        plot_bgcolor: '#FFFFFF',
+        paper_bgcolor: '#FFFFFF',
+        font: { family: 'Poppins, sans-serif', color: '#70747A', size: 11 },
+        xaxis: {
+          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
+          linecolor: '#E5E5E5', tickfont: { size: 10 }, type: 'date',
+          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
+        },
+        yaxis: {
+          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
+          linecolor: '#E5E5E5', tickfont: { size: 10 }, tickformat: '$,.2s',
+          rangemode: 'tozero',
+          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
+        },
+        bargap: 0.18,
+        showlegend: false,
+        hovermode: 'x',
+        dragmode: 'zoom',
+      };
+      return { trace, layout };
+    }
+
+    const TVL_CONFIG = {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
+      scrollZoom: false, doubleClick: 'reset',
+    };
+
+    function renderTvlChart(addr, vaultInfo, events) {
+      const card = document.getElementById('tvlChartCard');
+      // Only show on vault pages (where vaultInfo.tvl is known).
+      if (!vaultInfo || !(vaultInfo.tvl > 0) || typeof Plotly === 'undefined') {
+        card.style.display = 'none';
+        __tvlState = null;
+        return;
+      }
+      card.style.display = '';
+      __tvlState = buildVaultSeries(addr, vaultInfo);
+      __tvlState.vaultInfo = vaultInfo;
+      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
+      Plotly.newPlot('tvlChart', [trace], layout, TVL_CONFIG);
+      // Range buttons
+      document.querySelectorAll('#tvlChartRange button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.range === __tvlRange);
+        btn.onclick = () => {
+          __tvlRange = btn.dataset.range;
+          document.querySelectorAll('#tvlChartRange button').forEach(b => b.classList.toggle('active', b === btn));
+          const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
+          Plotly.react('tvlChart', [trace], layout, TVL_CONFIG);
+        };
+      });
+      // Download PNG (transparent bg, scale 2 for retina, fonts/lines scale together)
+      document.getElementById('downloadTvlPng').onclick = async () => {
+        const gd = document.getElementById('tvlChart');
+        const origPaper = gd.layout.paper_bgcolor, origPlot = gd.layout.plot_bgcolor;
+        try {
+          await Plotly.relayout(gd, { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+          const stamp = new Date().toISOString().slice(0, 10);
+          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          await Plotly.downloadImage(gd, {
+            format: 'png',
+            filename: `fusion-tvl-${slug}-${stamp}`,
+            width: gd.clientWidth,
+            height: gd.clientHeight,
+            scale: 2,
+          });
+        } finally {
+          await Plotly.relayout(gd, { paper_bgcolor: origPaper, plot_bgcolor: origPlot });
+        }
+      };
     }
 
     // Rebalance / fuse activity (only renders when address is a known vault and has rebalance data)
