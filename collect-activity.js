@@ -12,6 +12,8 @@ const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
 const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
+const FACTORY_FILE = path.join(__dirname, 'vaults.json');
+const DEPLOYMENTS_FILE = path.join(__dirname, 'vault-deployments.json');
 
 // Minimum TVL ($) for a vault to be actively scanned.
 const MIN_TVL_USD = 1000;
@@ -233,6 +235,30 @@ async function getBlockNumber(chain) {
 async function getBlockTimestamp(chain, blockNum) {
   const block = await rpcCall(chain, 'eth_getBlockByNumber', ['0x' + blockNum.toString(16), false]);
   return block ? parseInt(block.timestamp, 16) : 0;
+}
+
+// Binary search the lowest block at which `address` has non-empty bytecode.
+// Cost: ~log2(currentBlock) RPC calls (~25 on Ethereum).
+async function findDeploymentBlock(chain, address, currentBlock) {
+  const codeNow = await rpcCall(chain, 'eth_getCode', [address, '0x' + currentBlock.toString(16)]);
+  if (!codeNow || codeNow === '0x') throw new Error('contract has no code at head');
+  let lo = 1, hi = currentBlock;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const code = await rpcCall(chain, 'eth_getCode', [address, '0x' + mid.toString(16)]);
+    if (!code || code === '0x') lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+function loadDeployments() {
+  try { return JSON.parse(fs.readFileSync(DEPLOYMENTS_FILE, 'utf8')); }
+  catch { return { updatedAt: null, deployments: {} }; }
+}
+
+function saveDeployments(cache) {
+  cache.updatedAt = new Date().toISOString();
+  fs.writeFileSync(DEPLOYMENTS_FILE, JSON.stringify(cache, null, 2) + '\n');
 }
 
 // DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
@@ -626,9 +652,167 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg) {
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
 }
 
+// Refresh vault-deployments.json with deployment block + timestamp for every
+// vault in ipor-vaults.json. Sources, in priority:
+//   1. cache hit in vault-deployments.json  → skip
+//   2. vaults.json factory data (Ethereum)  → seed from `block` + `deployedAt`
+//   3. binary search eth_getCode on chain   → ~25 RPC calls per vault
+async function findDeploymentsAll(chainFilter) {
+  const cache = loadDeployments();
+
+  // Seed Ethereum factory data (cheap, no RPC)
+  try {
+    const factory = JSON.parse(fs.readFileSync(FACTORY_FILE, 'utf8'));
+    for (const v of (factory.vaults || [])) {
+      const addr = (v.address || '').toLowerCase();
+      if (!addr || !v.block) continue;
+      if (cache.deployments[addr]) continue;
+      cache.deployments[addr] = {
+        chain: 'ethereum',
+        block: v.block,
+        deployedAt: v.deployedAt || null,
+        source: 'factory',
+      };
+    }
+  } catch (e) {
+    console.log(`(skipping factory seed: ${e.message})`);
+  }
+
+  // Backfill missing timestamps for factory-seeded entries that lack deployedAt
+  for (const [addr, d] of Object.entries(cache.deployments)) {
+    if (d.deployedAt || !d.block || !CHAIN_RPCS[d.chain]) continue;
+    if (chainFilter && d.chain !== chainFilter) continue;
+    try {
+      const ts = await getBlockTimestamp(d.chain, d.block);
+      if (ts) d.deployedAt = new Date(ts * 1000).toISOString();
+    } catch {}
+  }
+
+  const vaultsData = JSON.parse(fs.readFileSync(IPOR_VAULTS_FILE, 'utf8'));
+  let todo = (vaultsData.vaults || []).filter(v => {
+    const addr = (v.address || '').toLowerCase();
+    if (!addr || !CHAIN_RPCS[v.chain]) return false;
+    if (chainFilter && v.chain !== chainFilter) return false;
+    return !cache.deployments[addr];
+  });
+  console.log(`\nNeed to binary-search ${todo.length} vaults (${Object.keys(cache.deployments).length} cached)`);
+
+  // Group by chain to share currentBlock per chain
+  const byChain = {};
+  for (const v of todo) (byChain[v.chain] ||= []).push(v);
+
+  let ok = 0, fail = 0;
+  for (const [chain, list] of Object.entries(byChain)) {
+    let currentBlock;
+    try { currentBlock = await getBlockNumber(chain); }
+    catch (e) { console.log(`  [${chain}] getBlockNumber failed (${e.message}); skipping ${list.length} vaults`); fail += list.length; continue; }
+
+    for (const v of list) {
+      const addr = v.address.toLowerCase();
+      const tag = `[${chain}] ${v.name || addr.slice(0, 10)}`;
+      const t0 = Date.now();
+      try {
+        const block = await findDeploymentBlock(chain, addr, currentBlock);
+        const ts = await getBlockTimestamp(chain, block).catch(() => 0);
+        cache.deployments[addr] = {
+          chain,
+          block,
+          deployedAt: ts ? new Date(ts * 1000).toISOString() : null,
+          source: 'binarySearch',
+        };
+        ok++;
+        console.log(`  OK ${tag}: block ${block} (${Math.round((Date.now() - t0) / 1000)}s)`);
+      } catch (e) {
+        fail++;
+        console.log(`  FAIL ${tag}: ${e.message}`);
+      }
+      if ((ok + fail) % 10 === 0) saveDeployments(cache); // checkpoint
+    }
+  }
+
+  saveDeployments(cache);
+  console.log(`\nDone: ${ok} ok, ${fail} failed, ${Object.keys(cache.deployments).length} total cached`);
+}
+
+// Scan only the gap between [deployment, current earliest event] for every
+// vault that has a known deployment block. Reuses deepestScanVault so the
+// existing `ranges` logic detects the backward gap and skips already-covered
+// blocks. Does NOT redo work already done by --deepest-all.
+async function gapFillAll(chainFilter) {
+  const cache = loadDeployments();
+  const VAULTS = loadVaults();
+  let data = { lastBlock: {}, events: [] };
+  try { data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch {}
+
+  let targets = VAULTS.filter(v => CHAIN_RPCS[v.chain] && cache.deployments[v.address]);
+  if (chainFilter) targets = targets.filter(v => v.chain === chainFilter);
+  const chainOrder = { plasma: 0, avalanche: 1, unichain: 2, arbitrum: 3, base: 4, ethereum: 5 };
+  targets.sort((a, b) => (chainOrder[a.chain] ?? 99) - (chainOrder[b.chain] ?? 99) || (b.tvl || 0) - (a.tvl || 0));
+
+  // Filter to vaults with an actual gap: deployment block < existing earliest scanned block.
+  const withGap = targets.filter(v => {
+    const deployBlock = cache.deployments[v.address].block;
+    const existingFrom = data.lastBlock?.[`${v.address}:from`];
+    return existingFrom == null || deployBlock < existingFrom;
+  });
+  console.log(`\n=== GAP-FILL — ${withGap.length} vaults with backward gap ${chainFilter ? `[${chainFilter}]` : ''} ===`);
+  console.log(`(${targets.length - withGap.length} vaults already cover deployment)\n`);
+
+  const PER_VAULT_DEADLINE_MS = 12 * 60 * 1000;
+  const startedAt = Date.now();
+  const GLOBAL_DEADLINE = startedAt + 5 * 60 * 60 * 1000;
+  let ok = 0, failed = 0, skipped = 0;
+
+  for (let i = 0; i < withGap.length; i++) {
+    const v = withGap[i];
+    const deployBlock = cache.deployments[v.address].block;
+    const existingFrom = data.lastBlock?.[`${v.address}:from`];
+    const gapBlocks = existingFrom != null ? existingFrom - deployBlock : null;
+    const elapsedMin = Math.round((Date.now() - startedAt) / 60000);
+
+    if (Date.now() > GLOBAL_DEADLINE) {
+      console.log(`\n[${i + 1}/${withGap.length}] SKIPPED ${v.name} — global deadline`);
+      skipped++;
+      continue;
+    }
+    console.log(`\n[${i + 1}/${withGap.length}] ${v.name} [${v.chain}] · gap ${gapBlocks?.toLocaleString() ?? '?'} blocks · elapsed ${elapsedMin}min`);
+
+    try {
+      const scanPromise = deepestScanVault(v.address, v.chain, deployBlock);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`per-vault budget exceeded (${PER_VAULT_DEADLINE_MS / 60000}min)`)), PER_VAULT_DEADLINE_MS)
+      );
+      await Promise.race([scanPromise, timeoutPromise]);
+      ok++;
+      // Reload data after each vault since deepestScanVault writes the file
+      try { data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch {}
+    } catch (e) {
+      console.log(`    FAILED: ${e.message}`);
+      failed++;
+    }
+  }
+
+  console.log(`\n=== GAP-FILL DONE — ${ok} ok, ${failed} failed, ${skipped} skipped (${Math.round((Date.now() - startedAt) / 60000)}min) ===\n`);
+}
+
 async function main() {
   // CLI: --deepest <vault> [chain] [fromBlock]
   const args = process.argv.slice(2);
+
+  // --find-deployments [chain]
+  if (args[0] === '--find-deployments') {
+    const chainFilter = args[1] || null;
+    await findDeploymentsAll(chainFilter);
+    return;
+  }
+
+  // --gap-fill [chain]
+  if (args[0] === '--gap-fill') {
+    const chainFilter = args[1] || null;
+    await gapFillAll(chainFilter);
+    return;
+  }
+
   if (args[0] === '--deepest') {
     const vault = (args[1] || '').toLowerCase();
     const chain = args[2] || 'ethereum';
