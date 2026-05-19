@@ -1,0 +1,83 @@
+name: Gap-Fill Activity (from Creation)
+
+# Manual-only — for each tracked vault, scans the historical gap between its
+# contract deployment block and the earliest block we already have data for.
+# Does NOT re-scan ranges the previous deep-backfill already covered.
+#
+# Two-phase: (1) finds deployment blocks for vaults missing from the cache
+# (binary search eth_getCode), then (2) runs the targeted gap scan.
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Limit to one chain (leave blank for all)'
+        required: false
+        default: ''
+      throttle_ms:
+        description: 'Min ms between RPC calls per endpoint (higher = safer, slower)'
+        required: false
+        default: '250'
+      skip_find_deployments:
+        description: 'Skip phase 1 (use existing vault-deployments.json as-is)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: write
+
+jobs:
+  gap-fill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Refresh IPOR vault list
+        continue-on-error: true
+        run: node collect-ipor-vaults.js
+
+      - name: Phase 1 — find deployment blocks
+        if: ${{ inputs.skip_find_deployments != 'true' }}
+        continue-on-error: true
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-activity.js --find-deployments ${{ inputs.chain }}
+
+      - name: Phase 2 — gap-fill from deployment to first existing data
+        continue-on-error: true
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-activity.js --gap-fill ${{ inputs.chain }}
+
+      - name: Commit & push results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f activity-events.json vault-deployments.json 2>/dev/null || true
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Gap-fill activity [chain=${{ inputs.chain || 'all' }}] [skip ci]"
+
+          BACKUP="gap-fill/${{ github.run_id }}"
+          git push origin "HEAD:refs/heads/$BACKUP"
+          echo "Backup branch pushed: $BACKUP"
+
+          git fetch origin ${{ github.ref_name }}
+          if ! git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }}; then
+            git rebase --abort || true
+            echo "::warning::Rebase failed; result preserved on branch $BACKUP — merge manually."
+            exit 1
+          fi
+          for i in 1 2 3 4; do
+            if git push; then break; fi
+            sleep $((2**i))
+          done

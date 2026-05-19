@@ -367,10 +367,20 @@
         }
       } catch {}
 
-      // Load factory data (Ethereum) so vault pages can show deployment date.
-      // Real `deployedAt` is used when present; otherwise estimated from
-      // block number using a 12s/block average. Non-Ethereum vaults aren't
-      // covered here and will show "—".
+      // Load cross-chain deployment cache (produced by Gap-Fill Activity workflow).
+      // Falls back to vaults.json factory data (Ethereum only, block-derived
+      // when deployedAt is missing) so the box still shows something for
+      // Ethereum vaults even before the deployments cache exists.
+      window.vaultDeploymentByAddr = {};
+      try {
+        const depRes = await fetch('../vault-deployments.json');
+        if (depRes.ok) {
+          const dep = await depRes.json();
+          Object.entries(dep.deployments || {}).forEach(([addr, d]) => {
+            if (d.deployedAt) window.vaultDeploymentByAddr[addr.toLowerCase()] = d.deployedAt;
+          });
+        }
+      } catch {}
       try {
         const facRes = await fetch('../vaults.json');
         if (facRes.ok) {
@@ -378,15 +388,16 @@
           const refBlock = fac.lastBlock;
           const refTimeMs = fac.updatedAt ? new Date(fac.updatedAt).getTime() : Date.now();
           const ETH_AVG_BLOCK_TIME_S = 12;
-          window.vaultDeploymentByAddr = {};
           (fac.vaults || []).forEach(v => {
             if (!v.address) return;
+            const addr = v.address.toLowerCase();
+            if (window.vaultDeploymentByAddr[addr]) return; // prefer deployments cache
             let iso = v.deployedAt || null;
             if (!iso && v.block && refBlock) {
               const deltaBlocks = refBlock - v.block;
               iso = new Date(refTimeMs - deltaBlocks * ETH_AVG_BLOCK_TIME_S * 1000).toISOString();
             }
-            if (iso) window.vaultDeploymentByAddr[v.address.toLowerCase()] = iso;
+            if (iso) window.vaultDeploymentByAddr[addr] = iso;
           });
         }
       } catch {}
@@ -1052,21 +1063,6 @@
             <div class="label">TVL</div>
             <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
           </div>`);
-
-        const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
-        let createdLabel = '—';
-        if (deployIso) {
-          try {
-            createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
-              year: 'numeric', month: 'short', day: 'numeric'
-            });
-          } catch {}
-        }
-        cards.push(`
-          <div class="stat-card">
-            <div class="label">Created</div>
-            <div class="value num-bold">${createdLabel}</div>
-          </div>`);
       }
 
       cards.push(`
@@ -1092,6 +1088,39 @@
           <div class="stat-card">
             <div class="label">Vaults</div>
             <div class="value num-bold">${s.vaultCount}</div>
+          </div>`);
+      }
+
+      if (isVault) {
+        const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
+        let createdLabel = '—';
+        let gapSub = '';
+        if (deployIso) {
+          try {
+            createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric'
+            });
+            // Gap detection: how many days between deployment and the earliest
+            // event we currently have for this vault. >14d ⇒ likely backfill
+            // hasn't reached creation — flag for gap-fill workflow.
+            const deployTs = Math.floor(new Date(deployIso).getTime() / 1000);
+            const earliestEvent = (s.events || []).reduce(
+              (min, e) => (e.timestamp && (!min || e.timestamp < min)) ? e.timestamp : min,
+              null
+            );
+            if (earliestEvent && deployTs && earliestEvent > deployTs) {
+              const gapDays = Math.round((earliestEvent - deployTs) / 86400);
+              if (gapDays > 14) {
+                gapSub = `<div class="sub" style="color:var(--red)">⚠ ${gapDays}d data gap</div>`;
+              }
+            }
+          } catch {}
+        }
+        cards.push(`
+          <div class="stat-card">
+            <div class="label">Created</div>
+            <div class="value num-bold">${createdLabel}</div>
+            ${gapSub}
           </div>`);
       }
 
