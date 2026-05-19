@@ -1,13 +1,575 @@
 {
   "vault": "0xf8f226da66244f89e70c5b5d1a5c5b0d505eb1d8",
   "chain": "ethereum",
-  "updatedAt": "2026-05-18T17:12:55.288Z",
+  "updatedAt": "2026-05-19T06:11:37.505Z",
   "blockRange": {
     "from": 22495568,
-    "to": 25123508
+    "to": 25127384
   },
-  "txCount": 203,
+  "txCount": 210,
   "rebalances": [
+    {
+      "tx": "0x8c4423719c2269c4ad0cada0fd7946811fa3271947e0e4f2803f9e5126ab77d6",
+      "block": 25127245,
+      "timestamp": 1779169415,
+      "flows": [
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.014154,
+          "usdValue": -1082.71
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.014154,
+          "usdValue": 1085.22
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1807.828999,
+          "usdValue": 1807.63
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1808.019076,
+          "usdValue": 1807.82
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1808.019076,
+          "usdValue": 1807.46
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.014156,
+          "usdValue": 1085.33
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1808.019076,
+          "usdValue": 1807.82
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1808.019076,
+          "usdValue": 1807.46
+        },
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 1648.21734,
+          "usdValue": 1807.53
+        }
+      ]
+    },
+    {
+      "tx": "0x941f8125260ccefc5f9b44a54078bba5a82e812f4f034a69ab253a15247b7396",
+      "block": 25126345,
+      "timestamp": 1779158591,
+      "flows": [
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 2306.465023,
+          "usdValue": 2529.4
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 2530.055562,
+          "usdValue": 2529.27
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 2530.055562,
+          "usdValue": 2529.77
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.019888,
+          "usdValue": 1524.82
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 2530.055562,
+          "usdValue": 2529.27
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 2530.055562,
+          "usdValue": 2529.77
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 2530.109567,
+          "usdValue": 2529.83
+        },
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.019888,
+          "usdValue": -1521.31
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.019888,
+          "usdValue": 1524.82
+        }
+      ]
+    },
+    {
+      "tx": "0x019cba7411d4f94131c39083218f008e11a8b93fa6f73a193521a1146b98b3e2",
+      "block": 25126046,
+      "timestamp": 1779154979,
+      "flows": [
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 2172.219707,
+          "usdValue": 2382.18
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 2382.786615,
+          "usdValue": 2382.04
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 2382.786615,
+          "usdValue": 2382.52
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.018628,
+          "usdValue": 1428.23
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 2382.786615,
+          "usdValue": 2382.04
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 2382.786615,
+          "usdValue": 2382.52
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 2382.831432,
+          "usdValue": 2382.57
+        },
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.018628,
+          "usdValue": -1424.94
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.018628,
+          "usdValue": 1428.23
+        }
+      ]
+    },
+    {
+      "tx": "0xc08f35707f949f0d0ecc4d37ee4451f5f849fbef1b4509be44f061f9b949fd91",
+      "block": 25125749,
+      "timestamp": 1779151391,
+      "flows": [
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.012343,
+          "usdValue": -944.16
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.012343,
+          "usdValue": 946.34
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1586.945233,
+          "usdValue": 1586.77
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1587.05841,
+          "usdValue": 1586.88
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1587.05841,
+          "usdValue": 1586.56
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.012344,
+          "usdValue": 946.44
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1587.05841,
+          "usdValue": 1586.88
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1587.05841,
+          "usdValue": 1586.56
+        },
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 1446.815923,
+          "usdValue": 1586.66
+        }
+      ]
+    },
+    {
+      "tx": "0x2c73a60b97bd32e01659e26d30e6ae2103bb297618e0cf0a53b141d04a378e54",
+      "block": 25125451,
+      "timestamp": 1779147779,
+      "flows": [
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.013532,
+          "usdValue": -1035.13
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.013532,
+          "usdValue": 1037.53
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1733.833656,
+          "usdValue": 1733.64
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1733.971298,
+          "usdValue": 1733.78
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1733.971298,
+          "usdValue": 1733.43
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.013534,
+          "usdValue": 1037.63
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1733.971298,
+          "usdValue": 1733.78
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1733.971298,
+          "usdValue": 1733.43
+        },
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 1580.753153,
+          "usdValue": 1733.54
+        }
+      ]
+    },
+    {
+      "tx": "0x43d8c070b1aab9adbd919d0494bdaeeb1ec3ba36b9188cc95529468fcd8b413e",
+      "block": 25124862,
+      "timestamp": 1779140663,
+      "flows": [
+        {
+          "token": "0xa3931d71877c0e7a3148cb7eb4463524fec27fbd",
+          "symbol": "sUSDS",
+          "protocol": "Spark",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 13569.495693,
+          "usdValue": 14881.08
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 14884.629954,
+          "usdValue": 14879.99
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 14884.629954,
+          "usdValue": 14882.97
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.116606,
+          "usdValue": 8940.23
+        },
+        {
+          "token": "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
+          "symbol": "USDS",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 14884.629954,
+          "usdValue": 14879.99
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 14884.629954,
+          "usdValue": 14882.97
+        },
+        {
+          "token": "0x98c23e9d8f34fefb1b7bd6a91b7ff122f4e16f5c",
+          "symbol": "aEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 14884.630979,
+          "usdValue": 14882.97
+        },
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.116606,
+          "usdValue": -8919.63
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.116606,
+          "usdValue": 8940.23
+        }
+      ]
+    },
+    {
+      "tx": "0x729c225ece8d47f3d3ca74ee9d4da4064c1b9cd8e0931a97c4c43203e427b33e",
+      "block": 25124855,
+      "timestamp": 1779140579,
+      "flows": [
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000008,
+          "usdValue": 0.6
+        },
+        {
+          "token": "0x40aabef1aa8f0eec637e0e7d92fbffb2f26a8b7b",
+          "symbol": "variableDebtEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.000008,
+          "usdValue": -0.6
+        },
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000008,
+          "usdValue": 0.6
+        }
+      ]
+    },
     {
       "tx": "0xecac5edbe4d09cdad55266c3cdd7539a26cc8da29e189d434daf53dbc4f856c8",
       "block": 25119387,
