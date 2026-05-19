@@ -303,10 +303,6 @@
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
-          <div class="tvl-chart-range-group" id="tvlChartGranularity">
-            <button data-gran="auto" class="active">Auto</button>
-            <button data-gran="daily">Daily</button>
-          </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
         </div>
         <div id="tvlChart"></div>
@@ -368,6 +364,30 @@
             window.iporVaultsByAddr[v.address.toLowerCase()] = v;
           });
           window.iporAnchorTs = new Date(ipor.updatedAt || Date.now()).getTime() / 1000;
+        }
+      } catch {}
+
+      // Load factory data (Ethereum) so vault pages can show deployment date.
+      // Real `deployedAt` is used when present; otherwise estimated from
+      // block number using a 12s/block average. Non-Ethereum vaults aren't
+      // covered here and will show "—".
+      try {
+        const facRes = await fetch('../vaults.json');
+        if (facRes.ok) {
+          const fac = await facRes.json();
+          const refBlock = fac.lastBlock;
+          const refTimeMs = fac.updatedAt ? new Date(fac.updatedAt).getTime() : Date.now();
+          const ETH_AVG_BLOCK_TIME_S = 12;
+          window.vaultDeploymentByAddr = {};
+          (fac.vaults || []).forEach(v => {
+            if (!v.address) return;
+            let iso = v.deployedAt || null;
+            if (!iso && v.block && refBlock) {
+              const deltaBlocks = refBlock - v.block;
+              iso = new Date(refTimeMs - deltaBlocks * ETH_AVG_BLOCK_TIME_S * 1000).toISOString();
+            }
+            if (iso) window.vaultDeploymentByAddr[v.address.toLowerCase()] = iso;
+          });
         }
       } catch {}
 
@@ -495,7 +515,6 @@
     const TVL_BAR_COLOR = '#8429FF';
     let __tvlState = null;
     let __tvlRange = 'all';
-    let __tvlGran = 'auto'; // 'auto' = bucket cadence picked from range, 'daily' = always 1-day bars
 
     function buildVaultSeries(addr, vaultInfo) {
       const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
@@ -529,30 +548,11 @@
       return { pts, anchorDay, minDay };
     }
 
-    function bucketizeVault(pts, days) {
-      if (days <= 1 || !pts.length) return pts;
-      const buckets = new Map();
-      for (const p of pts) {
-        const key = Math.floor(p.day / days) * days;
-        const cur = buckets.get(key);
-        if (!cur || p.day > cur.day) buckets.set(key, { day: key, tvl: p.tvl });
-      }
-      return [...buckets.values()].sort((a, b) => a.day - b.day);
-    }
-
-    function tvlBucketDays(range, gran) {
-      if (gran === 'daily') return 1;
-      if (range === '30') return 1;
-      if (range === '90') return 3;
-      return 7; // 180d & all
-    }
-
-    function tvlMakeTraceLayout(state, range, gran, vaultInfo) {
+    function tvlMakeTraceLayout(state, range, vaultInfo) {
       let cutoff = null;
       if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
       let pts = state.pts;
       if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
-      pts = bucketizeVault(pts, tvlBucketDays(range, gran));
 
       const DAY_MS = 86400 * 1000;
       const trace = {
@@ -607,10 +607,10 @@
       card.style.display = '';
       __tvlState = buildVaultSeries(addr, vaultInfo);
       __tvlState.vaultInfo = vaultInfo;
-      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, __tvlGran, vaultInfo);
+      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
       Plotly.newPlot('tvlChart', [trace], layout, TVL_CONFIG);
       const reactChart = () => {
-        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, __tvlGran, vaultInfo);
+        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
         Plotly.react('tvlChart', [trace], layout, TVL_CONFIG);
       };
       // Range buttons
@@ -619,15 +619,6 @@
         btn.onclick = () => {
           __tvlRange = btn.dataset.range;
           document.querySelectorAll('#tvlChartRange button').forEach(b => b.classList.toggle('active', b === btn));
-          reactChart();
-        };
-      });
-      // Granularity buttons (Auto = pick from range; Daily = always 1-day bars)
-      document.querySelectorAll('#tvlChartGranularity button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.gran === __tvlGran);
-        btn.onclick = () => {
-          __tvlGran = btn.dataset.gran;
-          document.querySelectorAll('#tvlChartGranularity button').forEach(b => b.classList.toggle('active', b === btn));
           reactChart();
         };
       });
@@ -1060,6 +1051,21 @@
           <div class="stat-card">
             <div class="label">TVL</div>
             <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
+          </div>`);
+
+        const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
+        let createdLabel = '—';
+        if (deployIso) {
+          try {
+            createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric'
+            });
+          } catch {}
+        }
+        cards.push(`
+          <div class="stat-card">
+            <div class="label">Created</div>
+            <div class="value num-bold">${createdLabel}</div>
           </div>`);
       }
 
