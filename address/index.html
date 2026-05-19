@@ -367,6 +367,30 @@
         }
       } catch {}
 
+      // Load factory data (Ethereum) so vault pages can show deployment date.
+      // Real `deployedAt` is used when present; otherwise estimated from
+      // block number using a 12s/block average. Non-Ethereum vaults aren't
+      // covered here and will show "—".
+      try {
+        const facRes = await fetch('../vaults.json');
+        if (facRes.ok) {
+          const fac = await facRes.json();
+          const refBlock = fac.lastBlock;
+          const refTimeMs = fac.updatedAt ? new Date(fac.updatedAt).getTime() : Date.now();
+          const ETH_AVG_BLOCK_TIME_S = 12;
+          window.vaultDeploymentByAddr = {};
+          (fac.vaults || []).forEach(v => {
+            if (!v.address) return;
+            let iso = v.deployedAt || null;
+            if (!iso && v.block && refBlock) {
+              const deltaBlocks = refBlock - v.block;
+              iso = new Date(refTimeMs - deltaBlocks * ETH_AVG_BLOCK_TIME_S * 1000).toISOString();
+            }
+            if (iso) window.vaultDeploymentByAddr[v.address.toLowerCase()] = iso;
+          });
+        }
+      } catch {}
+
       renderTopWallets();
     }
 
@@ -1027,6 +1051,21 @@
           <div class="stat-card">
             <div class="label">TVL</div>
             <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
+          </div>`);
+
+        const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
+        let createdLabel = '—';
+        if (deployIso) {
+          try {
+            createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric'
+            });
+          } catch {}
+        }
+        cards.push(`
+          <div class="stat-card">
+            <div class="label">Created</div>
+            <div class="value num-bold">${createdLabel}</div>
           </div>`);
       }
 
