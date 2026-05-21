@@ -195,6 +195,13 @@
       transition: opacity 0.15s;
     }
     .chart-toolbar .action-btn:hover { opacity: 0.85; color: #fff; border-color: var(--accent); }
+    .chart-section-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.6rem;
+    }
 
     .network-panel {
       border-top: 1px solid var(--stroke);
@@ -412,14 +419,30 @@
     </nav>
 
     <header>
-      <h1>TVL by Chain</h1>
-      <p>Total Value Locked across Fusion vaults. Click a chain in the legend to isolate it, drag on the chart to zoom either axis, double-click to reset.</p>
+      <h1>TVL</h1>
+      <p>Total Value Locked across Fusion vaults. The top chart aggregates every network into a single bar; the breakdown below splits TVL by chain. Drag on either chart to zoom, double-click to reset.</p>
     </header>
 
     <div id="statsRow" class="stats-row"></div>
 
     <div class="chart-card">
-      <div class="chart-toolbar">
+      <div class="chart-section-title">Total — all networks</div>
+      <div class="chart-toolbar" id="totalToolbar">
+        <div class="group">
+          <span class="group-label">Range</span>
+          <button data-total-range="30">30d</button>
+          <button data-total-range="90">90d</button>
+          <button data-total-range="180">180d</button>
+          <button data-total-range="all" class="active">All</button>
+        </div>
+        <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
+      </div>
+      <div id="totalTvlChart"><div class="loading">Loading data…</div></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-section-title">By network</div>
+      <div class="chart-toolbar" id="networkToolbar">
         <div class="group">
           <span class="group-label">Range</span>
           <button data-range="30">30d</button>
@@ -798,6 +821,103 @@
       }
     }
 
+    // Total TVL series: sum of all chains per day, bucketized to match the
+    // selected range so bars are readable (1d/3d/7d like the by-chain chart).
+    const TOTAL_BAR_COLOR = '#8429FF';
+    let curTotalRange = 'all';
+
+    function totalTvlSeries(range) {
+      if (!state) return [];
+      const { perChain, anchorDay } = state;
+      const cutoff = range !== 'all' ? anchorDay - parseInt(range, 10) : null;
+      const byDay = new Map();
+      for (const c of Object.keys(perChain)) {
+        for (const p of perChain[c]) {
+          if (cutoff != null && p.day < cutoff) continue;
+          byDay.set(p.day, (byDay.get(p.day) || 0) + Math.max(0, p.tvl));
+        }
+      }
+      let pts = [...byDay.entries()].map(([day, tvl]) => ({ day, tvl })).sort((a, b) => a.day - b.day);
+      const bDays = bucketDaysFor(range);
+      if (bDays > 1) pts = bucketize(pts, bDays);
+      return pts;
+    }
+
+    function totalTvlTraceLayout(range) {
+      const pts = totalTvlSeries(range);
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: pts.map(p => p.tvl),
+        type: 'bar',
+        name: 'Total TVL',
+        marker: { color: TOTAL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
+        hovertemplate: `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`,
+      };
+      const layout = {
+        autosize: true,
+        margin: { l: 78, r: 24, t: 8, b: 60 },
+        plot_bgcolor: '#FFFFFF',
+        paper_bgcolor: '#FFFFFF',
+        font: { family: 'Poppins, -apple-system, sans-serif', color: '#70747A', size: 12 },
+        xaxis: {
+          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
+          linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date',
+          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
+        },
+        yaxis: {
+          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
+          linecolor: '#E5E5E5', tickfont: { size: 11 }, tickformat: '$,.2s',
+          rangemode: 'tozero',
+          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
+        },
+        bargap: 0.18,
+        showlegend: false,
+        hovermode: 'x',
+        dragmode: 'zoom',
+      };
+      return { trace, layout };
+    }
+
+    function redrawTotal() {
+      const { trace, layout } = totalTvlTraceLayout(curTotalRange);
+      Plotly.react('totalTvlChart', [trace], layout, CONFIG);
+    }
+
+    // PNG export — transparent paper/plot bg + gridlines hidden, mirroring the
+    // /address chart export so the asset drops cleanly into decks/socials.
+    async function downloadTotalPng() {
+      const gd = document.getElementById('totalTvlChart');
+      const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
+      const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
+      try {
+        await Plotly.relayout(gd, {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor:  'rgba(0,0,0,0)',
+          'xaxis.showgrid': false,
+          'yaxis.showgrid': false,
+          'xaxis.minor.showgrid': false,
+          'yaxis.minor.showgrid': false,
+        });
+        const stamp = new Date().toISOString().slice(0, 10);
+        await Plotly.downloadImage(gd, {
+          format: 'png',
+          filename: `fusion-total-tvl-${stamp}`,
+          width:  gd.clientWidth,
+          height: gd.clientHeight,
+          scale: 2,
+        });
+      } finally {
+        await Plotly.relayout(gd, {
+          paper_bgcolor: origPaper,
+          plot_bgcolor:  origPlot,
+          'xaxis.showgrid': true,
+          'yaxis.showgrid': true,
+          'xaxis.minor.showgrid': true,
+          'yaxis.minor.showgrid': true,
+        });
+      }
+    }
+
     function downloadBaseCsv() {
       const rows = baseSeries();
       if (!rows.length) return;
@@ -943,23 +1063,23 @@
           });
         });
       };
-      wire('.chart-toolbar .group:nth-child(1)', (d) => curRange = d.range);
-      wire('.chart-toolbar .group:nth-child(2)', (d) => curScale = d.scale);
+      wire('#networkToolbar .group:nth-child(1)', (d) => curRange = d.range);
+      wire('#networkToolbar .group:nth-child(2)', (d) => curScale = d.scale);
       // group 3 = Type. Custom handler so we also re-render the network panel
       // (its width-slider label changes from "px" to "" in bar mode).
-      document.querySelectorAll('.chart-toolbar .group:nth-child(3) button').forEach(btn => {
+      document.querySelectorAll('#networkToolbar .group:nth-child(3) button').forEach(btn => {
         btn.addEventListener('click', () => {
           curType = btn.dataset.type;
-          document.querySelectorAll('.chart-toolbar .group:nth-child(3) button').forEach(b => b.classList.toggle('active', b === btn));
+          document.querySelectorAll('#networkToolbar .group:nth-child(3) button').forEach(b => b.classList.toggle('active', b === btn));
           renderNetworkPanel();
           redraw({ resetAxes: true });
         });
       });
       // group 4 = Curve (line shape). Restyle-only so user zoom is preserved.
-      document.querySelectorAll('.chart-toolbar .group:nth-child(4) button').forEach(btn => {
+      document.querySelectorAll('#networkToolbar .group:nth-child(4) button').forEach(btn => {
         btn.addEventListener('click', () => {
           curShape = btn.dataset.shape;
-          document.querySelectorAll('.chart-toolbar .group:nth-child(4) button').forEach(b => b.classList.toggle('active', b === btn));
+          document.querySelectorAll('#networkToolbar .group:nth-child(4) button').forEach(b => b.classList.toggle('active', b === btn));
           if (curType === 'line') {
             Plotly.restyle('tvlChart', {
               'line.shape': curShape,
@@ -970,8 +1090,20 @@
           // a later switch back to Line uses the user's chosen curve.
         });
       });
-      wire('.chart-toolbar .group:nth-child(5)', (d) => curStack = d.stack);
+      wire('#networkToolbar .group:nth-child(5)', (d) => curStack = d.stack);
       document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
+
+      // Total chart toolbar (scoped to #totalToolbar so it doesn't collide
+      // with the by-network selectors above).
+      document.querySelectorAll('#totalToolbar button[data-total-range]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          curTotalRange = btn.dataset.totalRange;
+          document.querySelectorAll('#totalToolbar button[data-total-range]')
+            .forEach(b => b.classList.toggle('active', b === btn));
+          redrawTotal();
+        });
+      });
+      document.getElementById('downloadTotalPng').addEventListener('click', downloadTotalPng);
     }
 
     (async function () {
@@ -984,7 +1116,10 @@
         renderBaseTable();
         document.getElementById('downloadBaseCsv').addEventListener('click', downloadBaseCsv);
         document.getElementById('downloadChartPng').addEventListener('click', downloadChartPng);
-        // First plot
+        // Total TVL chart (rendered first, sits above the by-network chart)
+        const totalTL = totalTvlTraceLayout(curTotalRange);
+        Plotly.newPlot('totalTvlChart', [totalTL.trace], totalTL.layout, CONFIG);
+        // By-network chart
         Plotly.newPlot(
           'tvlChart',
           makeTraces(state, curRange, curStack, chainConfig, curType, curShape),
