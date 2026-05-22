@@ -303,6 +303,10 @@
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
+          <div class="tvl-chart-range-group" id="tvlChartDenom" style="display:none">
+            <button data-denom="usd" class="active">USD</button>
+            <button data-denom="asset" id="tvlDenomAssetBtn">Asset</button>
+          </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
         </div>
         <div id="tvlChart"></div>
@@ -405,7 +409,8 @@
       // Historical TVL snapshots (on-chain totalAssets × historical price).
       // When present, the vault chart uses these instead of walking backward
       // from current TVL — accurate for leveraged-yield vaults whose flow
-      // accounting can't reproduce true historical TVL.
+      // accounting can't reproduce true historical TVL. Stores both USD and
+      // underlying-asset values so the chart can offer a denomination toggle.
       window.tvlSnapshotsByAddr = {};
       try {
         const snapRes = await fetch('../tvl-snapshots.json');
@@ -413,10 +418,12 @@
           const snap = await snapRes.json();
           Object.entries(snap.vaults || {}).forEach(([addr, v]) => {
             const series = (v.snapshots || [])
-              .filter(s => s.tvlUsd != null && s.day != null)
-              .map(s => ({ day: s.day, tvl: s.tvlUsd }))
+              .filter(s => s.tvlUsd != null && s.day != null && typeof s.assets === 'number')
+              .map(s => ({ day: s.day, tvlUsd: s.tvlUsd, assets: s.assets }))
               .sort((a, b) => a.day - b.day);
-            if (series.length) window.tvlSnapshotsByAddr[addr.toLowerCase()] = series;
+            if (series.length) {
+              window.tvlSnapshotsByAddr[addr.toLowerCase()] = { symbol: v.symbol || null, series };
+            }
           });
         }
       } catch {}
@@ -545,6 +552,8 @@
     const TVL_BAR_COLOR = '#8429FF';
     let __tvlState = null;
     let __tvlRange = 'all';
+    let __tvlDenom = 'usd';            // 'usd' or 'asset'
+    let __tvlAssetSymbol = null;       // set when snapshots exist for the vault
 
     function buildVaultSeries(addr, vaultInfo) {
       const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
@@ -553,14 +562,12 @@
 
       // Prefer on-chain TVL snapshots when available. They're true historical
       // TVL (totalAssets × price) and don't break on yield/leverage drift.
-      const snapshots = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
-      if (snapshots && snapshots.length) {
-        // Collapse to one point per day (keep the latest snapshot in each day).
+      // pts carry both tvlUsd and assets so the chart can flip denominations.
+      const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+      if (snap && snap.series && snap.series.length) {
+        const series = snap.series;
         const byDay = new Map();
-        for (const s of snapshots) {
-          const prev = byDay.get(s.day);
-          if (!prev || s.tvl >= 0) byDay.set(s.day, s);
-        }
+        for (const s of series) byDay.set(s.day, s);
         const sorted = [...byDay.values()].sort((a, b) => a.day - b.day);
         // Forward-fill missing days between min and max so the bar chart
         // doesn't show gaps where the sampler skipped a day (block-time
@@ -568,19 +575,19 @@
         const pts = [];
         const minDay = sorted[0].day;
         const maxDay = sorted[sorted.length - 1].day;
-        const known = new Map(sorted.map(s => [s.day, s.tvl]));
-        let lastTvl = sorted[0].tvl;
+        const known = new Map(sorted.map(s => [s.day, s]));
+        let last = sorted[0];
         for (let d = minDay; d <= maxDay; d++) {
-          if (known.has(d)) lastTvl = known.get(d);
-          pts.push({ day: d, tvl: lastTvl });
+          if (known.has(d)) last = known.get(d);
+          pts.push({ day: d, tvlUsd: last.tvlUsd, assets: last.assets });
         }
-        return { pts, anchorDay, minDay };
+        return { pts, anchorDay, minDay, hasAssets: true, symbol: snap.symbol };
       }
 
       // Fallback: walk backward from current TVL using flow accounting.
       // Inaccurate for leveraged-yield vaults — run the TVL Snapshots
       // workflow to populate tvl-snapshots.json and switch to the
-      // on-chain series above.
+      // on-chain series above. assets unavailable in this mode.
       const usable = (window.allEvents || []).filter(e =>
         !e.synthetic &&
         e.vault && e.vault.toLowerCase() === addr &&
@@ -601,11 +608,11 @@
       let tvl = vaultInfo.tvl || 0;
       const pts = [];
       for (let d = anchorDay; d >= minDay; d--) {
-        pts.push({ day: d, tvl });
+        pts.push({ day: d, tvlUsd: tvl, assets: null });
         tvl = tvl - (net[d] || 0);
       }
       pts.reverse();
-      return { pts, anchorDay, minDay };
+      return { pts, anchorDay, minDay, hasAssets: false, symbol: null };
     }
 
     function tvlMakeTraceLayout(state, range, vaultInfo) {
@@ -615,13 +622,21 @@
       if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
 
       const DAY_MS = 86400 * 1000;
+      // Pick denom-dependent field, axis format, hover template.
+      const denomIsAsset = __tvlDenom === 'asset' && state.hasAssets;
+      const yValues = pts.map(p => Math.max(0, denomIsAsset ? p.assets : p.tvlUsd));
+      const tickFmt = denomIsAsset ? ',.3~s' : '$,.2s';
+      const sym = state.symbol || '';
+      const hoverFmt = denomIsAsset
+        ? `<b>%{x|%b %d, %Y}</b><br>%{y:,.4~r} ${sym}<extra></extra>`
+        : `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`;
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
-        y: pts.map(p => Math.max(0, p.tvl)),
+        y: yValues,
         type: 'bar',
         name: vaultInfo.name || 'TVL',
         marker: { color: TVL_BAR_COLOR, cornerradius: 4, line: { width: 0 } },
-        hovertemplate: `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`,
+        hovertemplate: hoverFmt,
       };
       const layout = {
         autosize: true,
@@ -638,7 +653,7 @@
         yaxis: {
           showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
           showline: true, linecolor: '#999999', linewidth: 1,
-          tickfont: { size: 10 }, tickformat: '$,.2s',
+          tickfont: { size: 10 }, tickformat: tickFmt,
           rangemode: 'tozero',
           minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
         },
@@ -667,6 +682,18 @@
       card.style.display = '';
       __tvlState = buildVaultSeries(addr, vaultInfo);
       __tvlState.vaultInfo = vaultInfo;
+      // Reset denom to USD when switching vaults; the asset toggle only makes
+      // sense for vaults whose snapshots include underlying amounts.
+      __tvlDenom = 'usd';
+      __tvlAssetSymbol = __tvlState.symbol || null;
+      const denomGroup = document.getElementById('tvlChartDenom');
+      const denomAssetBtn = document.getElementById('tvlDenomAssetBtn');
+      if (__tvlState.hasAssets && __tvlAssetSymbol) {
+        denomGroup.style.display = '';
+        denomAssetBtn.textContent = __tvlAssetSymbol;
+      } else {
+        denomGroup.style.display = 'none';
+      }
       const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
       Plotly.newPlot('tvlChart', [trace], layout, TVL_CONFIG);
       const reactChart = () => {
@@ -679,6 +706,15 @@
         btn.onclick = () => {
           __tvlRange = btn.dataset.range;
           document.querySelectorAll('#tvlChartRange button').forEach(b => b.classList.toggle('active', b === btn));
+          reactChart();
+        };
+      });
+      // Denomination toggle (USD vs underlying asset)
+      document.querySelectorAll('#tvlChartDenom button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.denom === __tvlDenom);
+        btn.onclick = () => {
+          __tvlDenom = btn.dataset.denom;
+          document.querySelectorAll('#tvlChartDenom button').forEach(b => b.classList.toggle('active', b === btn));
           reactChart();
         };
       });
@@ -699,9 +735,12 @@
           });
           const stamp = new Date().toISOString().slice(0, 10);
           const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol)
+            ? __tvlAssetSymbol.toLowerCase()
+            : 'usd';
           await Plotly.downloadImage(gd, {
             format: 'png',
-            filename: `fusion-tvl-${slug}-${stamp}`,
+            filename: `fusion-tvl-${slug}-${denomSlug}-${stamp}`,
             width: gd.clientWidth,
             height: gd.clientHeight,
             scale: 2,
