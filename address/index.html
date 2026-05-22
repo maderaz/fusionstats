@@ -561,10 +561,19 @@
           const prev = byDay.get(s.day);
           if (!prev || s.tvl >= 0) byDay.set(s.day, s);
         }
-        const pts = [...byDay.values()]
-          .map(s => ({ day: s.day, tvl: s.tvl }))
-          .sort((a, b) => a.day - b.day);
-        const minDay = pts.length ? pts[0].day : anchorDay;
+        const sorted = [...byDay.values()].sort((a, b) => a.day - b.day);
+        // Forward-fill missing days between min and max so the bar chart
+        // doesn't show gaps where the sampler skipped a day (block-time
+        // drift means ~1 in 7 days lands outside the ~7200-block step).
+        const pts = [];
+        const minDay = sorted[0].day;
+        const maxDay = sorted[sorted.length - 1].day;
+        const known = new Map(sorted.map(s => [s.day, s.tvl]));
+        let lastTvl = sorted[0].tvl;
+        for (let d = minDay; d <= maxDay; d++) {
+          if (known.has(d)) lastTvl = known.get(d);
+          pts.push({ day: d, tvl: lastTvl });
+        }
         return { pts, anchorDay, minDay };
       }
 
