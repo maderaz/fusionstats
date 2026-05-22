@@ -14,6 +14,7 @@ const OUTPUT_FILE = path.join(__dirname, 'activity-events.json');
 const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
 const FACTORY_FILE = path.join(__dirname, 'vaults.json');
 const DEPLOYMENTS_FILE = path.join(__dirname, 'vault-deployments.json');
+const TVL_SNAPSHOTS_FILE = path.join(__dirname, 'tvl-snapshots.json');
 
 // Minimum TVL ($) for a vault to be actively scanned.
 const MIN_TVL_USD = 1000;
@@ -260,6 +261,35 @@ function saveDeployments(cache) {
   cache.updatedAt = new Date().toISOString();
   fs.writeFileSync(DEPLOYMENTS_FILE, JSON.stringify(cache, null, 2) + '\n');
 }
+
+function loadTvlSnapshots() {
+  try { return JSON.parse(fs.readFileSync(TVL_SNAPSHOTS_FILE, 'utf8')); }
+  catch { return { updatedAt: null, vaults: {} }; }
+}
+
+function saveTvlSnapshots(data) {
+  data.updatedAt = new Date().toISOString();
+  fs.writeFileSync(TVL_SNAPSHOTS_FILE, JSON.stringify(data, null, 2) + '\n');
+}
+
+// Approx blocks/day per chain — used to step through history at ~daily cadence
+// when snapshotting totalAssets(). Derived from observed block times.
+const BLOCKS_PER_DAY = {
+  ethereum:    7_200,   // 12s
+  base:       43_200,   // 2s
+  arbitrum:  345_600,   // 0.25s
+  plasma:      7_200,
+  avalanche:  43_200,
+  unichain:   21_600,   // 4s
+  _default:    7_200,
+};
+
+// totalAssets() — ERC-4626 read function selector
+const TOTAL_ASSETS_SELECTOR = '0x01e1d114';
+// asset() — ERC-4626 read function selector
+const ASSET_SELECTOR = '0x38d52e0f';
+// decimals() — ERC-20
+const DECIMALS_SELECTOR = '0x313ce567';
 
 // DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
 async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
@@ -804,6 +834,105 @@ async function gapFillAll(chainFilter) {
   console.log(`\n=== GAP-FILL DONE — ${ok} ok, ${failed} failed, ${skipped} skipped (${Math.round((Date.now() - startedAt) / 60000)}min) ===\n`);
 }
 
+// Walk the historical block range from deployment to current at ~daily
+// cadence, calling totalAssets() and pricing the result. Output is a
+// time-series of real TVL — independent of deposit/withdraw event coverage,
+// so leveraged-yield vaults stop wrapping to zero on the chart.
+async function tvlSnapshotsForVault(vault, chainArg) {
+  const deployCache = loadDeployments();
+  const dep = deployCache.deployments?.[vault];
+  if (!dep || !dep.block) {
+    throw new Error(`No deployment block cached for ${vault} — run --find-deployments first`);
+  }
+  const chain = chainArg || dep.chain;
+  if (!CHAIN_RPCS[chain]) throw new Error(`Unsupported chain: ${chain}`);
+
+  // Vault metadata (decimals + underlying token)
+  const VAULTS = loadVaults();
+  const meta = VAULTS.find(v => v.address === vault);
+  if (!meta) throw new Error(`Vault ${vault} not in ipor-vaults.json (below TVL filter?)`);
+  const underlyingToken = meta.underlyingToken;
+  if (!underlyingToken) throw new Error(`No underlyingToken known for ${vault}`);
+
+  // Resolve decimals on-chain (truth) rather than trusting the symbol table.
+  // ERC20 `decimals()` returns uint8 padded to 32 bytes.
+  let decimals = meta.decimals;
+  try {
+    const raw = await rpcCall(chain, 'eth_call', [{ to: underlyingToken, data: DECIMALS_SELECTOR }, 'latest']);
+    if (raw && raw !== '0x') decimals = parseInt(raw, 16);
+  } catch {}
+
+  const currentBlock = await getBlockNumber(chain);
+  const bpd = BLOCKS_PER_DAY[chain] || BLOCKS_PER_DAY._default;
+
+  const all = loadTvlSnapshots();
+  const existing = all.vaults[vault]?.snapshots || [];
+  const haveBlock = new Set(existing.map(s => s.block));
+
+  // Generate the target block list: one sample per ~day from deploy to now.
+  const wanted = [];
+  for (let b = dep.block; b <= currentBlock; b += bpd) wanted.push(b);
+  if (wanted[wanted.length - 1] !== currentBlock) wanted.push(currentBlock);
+  const todo = wanted.filter(b => !haveBlock.has(b));
+
+  console.log(`\n=== TVL snapshots for ${vault} on ${chain} ===`);
+  console.log(`Deploy block: ${dep.block} (${dep.deployedAt || '?'})`);
+  console.log(`Current block: ${currentBlock}`);
+  console.log(`Underlying: ${underlyingToken} (${meta.symbol}, decimals=${decimals})`);
+  console.log(`Sampling ${todo.length} new blocks (${existing.length} cached)\n`);
+
+  const snapshots = [...existing];
+
+  // Process in batches of 5 to keep RPC concurrency reasonable while still
+  // benefiting from parallelism. Each block needs: totalAssets, timestamp,
+  // historical price. The first two are RPC; the last is HTTP to DeFi Llama.
+  for (let i = 0; i < todo.length; i += 5) {
+    const batch = todo.slice(i, i + 5);
+    const results = await Promise.all(batch.map(async (block) => {
+      try {
+        const [raw, ts] = await Promise.all([
+          rpcCall(chain, 'eth_call', [{ to: vault, data: TOTAL_ASSETS_SELECTOR }, '0x' + block.toString(16)]),
+          getBlockTimestamp(chain, block),
+        ]);
+        if (!raw || raw === '0x') return null;
+        const assets = Number(BigInt(raw)) / 10 ** decimals;
+        const price = await fetchHistoricalPrice(meta.symbol, underlyingToken, ts, chain);
+        const tvlUsd = price != null ? assets * price : null;
+        return { block, timestamp: ts, day: Math.floor(ts / 86400), assets, priceUsd: price, tvlUsd };
+      } catch (e) {
+        return { block, error: e.message };
+      }
+    }));
+    for (const r of results) {
+      if (!r || r.error) continue;
+      snapshots.push(r);
+    }
+    const done = i + batch.length;
+    if (done % 25 < 5 || done === todo.length) {
+      console.log(`  ${done}/${todo.length} sampled (${snapshots.length} total points)`);
+      // Checkpoint
+      all.vaults[vault] = {
+        chain,
+        symbol: meta.symbol,
+        underlyingToken,
+        decimals,
+        snapshots: snapshots.sort((a, b) => a.block - b.block),
+      };
+      saveTvlSnapshots(all);
+    }
+  }
+
+  all.vaults[vault] = {
+    chain,
+    symbol: meta.symbol,
+    underlyingToken,
+    decimals,
+    snapshots: snapshots.sort((a, b) => a.block - b.block),
+  };
+  saveTvlSnapshots(all);
+  console.log(`\nWrote ${snapshots.length} snapshots for ${vault} → ${TVL_SNAPSHOTS_FILE}`);
+}
+
 async function main() {
   // CLI: --deepest <vault> [chain] [fromBlock]
   const args = process.argv.slice(2);
@@ -831,6 +960,46 @@ async function main() {
       process.exit(1);
     }
     await deepestScanVault(vault, chain, fromBlock);
+    return;
+  }
+
+  // --tvl-snapshots <vault> [chain]
+  // Build historical TVL series via totalAssets() at ~one sample per day from
+  // deployment to now. Output: tvl-snapshots.json. The /address chart prefers
+  // these snapshots over the deposit-walk approximation when available.
+  if (args[0] === '--tvl-snapshots') {
+    const vault = (args[1] || '').toLowerCase();
+    const chain = args[2] || null;
+    if (!/^0x[a-f0-9]{40}$/.test(vault)) {
+      console.error('Usage: node collect-activity.js --tvl-snapshots <vault> [chain]');
+      process.exit(1);
+    }
+    await tvlSnapshotsForVault(vault, chain);
+    return;
+  }
+
+  // --tvl-snapshots-all [chain]
+  // Same as above for every tracked vault (>$1K TVL) with a known deployment.
+  if (args[0] === '--tvl-snapshots-all') {
+    const chainFilter = args[1] || null;
+    const deployCache = loadDeployments();
+    const VAULTS = loadVaults();
+    let targets = VAULTS.filter(v => CHAIN_RPCS[v.chain] && deployCache.deployments[v.address]);
+    if (chainFilter) targets = targets.filter(v => v.chain === chainFilter);
+    const chainOrder = { plasma: 0, avalanche: 1, unichain: 2, arbitrum: 3, base: 4, ethereum: 5 };
+    targets.sort((a, b) => (chainOrder[a.chain] ?? 99) - (chainOrder[b.chain] ?? 99) || (b.tvl || 0) - (a.tvl || 0));
+    console.log(`\n=== TVL SNAPSHOTS — ALL — ${targets.length} vaults ${chainFilter ? `[${chainFilter}]` : ''} ===\n`);
+    let ok = 0, failed = 0;
+    const started = Date.now();
+    const GLOBAL_DEADLINE = started + 5 * 60 * 60 * 1000;
+    for (let i = 0; i < targets.length; i++) {
+      if (Date.now() > GLOBAL_DEADLINE) { console.log('Global deadline hit, stopping'); break; }
+      const v = targets[i];
+      console.log(`\n[${i + 1}/${targets.length}] ${v.name} [${v.chain}]`);
+      try { await tvlSnapshotsForVault(v.address, v.chain); ok++; }
+      catch (e) { console.log(`  FAILED: ${e.message}`); failed++; }
+    }
+    console.log(`\n=== DONE — ${ok} ok, ${failed} failed ===\n`);
     return;
   }
 
