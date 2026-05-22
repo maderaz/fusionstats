@@ -544,7 +544,14 @@ function tagSyntheticEvents(events, vaults) {
 // from explicit fromBlock (default ~24 months back) to currentBlock, supporting
 // both backward fill (extending historical coverage) and forward delta.
 // Merges into activity-events.json with dedup by tx+logIdx.
-async function deepestScanVault(vaultAddr, chain, fromBlockArg) {
+//
+// When `forceFullRange` is true, the existing coverage markers are ignored
+// and the entire [startBlock, currentBlock] range is rescanned. Useful when
+// previous markers wrongly claim coverage of a window that wasn't actually
+// scanned end-to-end (e.g. a workflow that ran past its budget and updated
+// markers anyway). Idempotent — events dedup by tx+logIdx.
+async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
+  const { forceFullRange = false } = opts;
   const vault = vaultAddr.toLowerCase();
   const DEEP_BACKFILL = {
     ethereum:  5_000_000,    // ~24 months at 12s/block
@@ -576,7 +583,9 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg) {
   const ranges = [];
   const existingFrom = data.lastBlock?.[`${vault}:from`];
   const existingTo   = data.lastBlock?.[vault];
-  if (existingTo && existingFrom) {
+  if (forceFullRange) {
+    ranges.push({ from: startBlock, to: currentBlock, label: 'force-full' });
+  } else if (existingTo && existingFrom) {
     if (startBlock < existingFrom) ranges.push({ from: startBlock, to: existingFrom - 1, label: 'backward' });
     if (existingTo + 1 <= currentBlock) ranges.push({ from: existingTo + 1, to: currentBlock, label: 'forward' });
   } else {
@@ -822,6 +831,45 @@ async function main() {
       process.exit(1);
     }
     await deepestScanVault(vault, chain, fromBlock);
+    return;
+  }
+
+  // --rescan-vault <vault> [chain]
+  // Force-rescans the full [deployment, current] window for ONE vault. Pulls
+  // deployment block from vault-deployments.json (or binary-searches it if
+  // missing). Bypasses the lastBlock coverage markers so a previously-scanned
+  // window gets re-checked end-to-end. Dedup keeps it idempotent.
+  if (args[0] === '--rescan-vault') {
+    const vault = (args[1] || '').toLowerCase();
+    let chain = args[2] || null;
+    if (!/^0x[a-f0-9]{40}$/.test(vault)) {
+      console.error('Usage: node collect-activity.js --rescan-vault <vault> [chain]');
+      process.exit(1);
+    }
+    const cache = loadDeployments();
+    let deployBlock = cache.deployments?.[vault]?.block;
+    chain = chain || cache.deployments?.[vault]?.chain;
+    if (!chain) {
+      console.error(`Chain not provided and not in deployments cache for ${vault}`);
+      process.exit(1);
+    }
+    if (!deployBlock) {
+      console.log(`Deployment block not cached — binary-searching on ${chain}...`);
+      const cur = await getBlockNumber(chain);
+      deployBlock = await findDeploymentBlock(chain, vault, cur);
+      const ts = await getBlockTimestamp(chain, deployBlock).catch(() => 0);
+      cache.deployments[vault] = {
+        chain,
+        block: deployBlock,
+        deployedAt: ts ? new Date(ts * 1000).toISOString() : null,
+        source: 'binarySearch',
+      };
+      saveDeployments(cache);
+      console.log(`Found deployment block: ${deployBlock}`);
+    } else {
+      console.log(`Deployment block from cache: ${deployBlock} (${cache.deployments[vault].deployedAt || 'no timestamp'})`);
+    }
+    await deepestScanVault(vault, chain, deployBlock, { forceFullRange: true });
     return;
   }
 

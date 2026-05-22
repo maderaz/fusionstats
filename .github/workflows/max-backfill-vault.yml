@@ -1,0 +1,72 @@
+name: Max Backfill — Single Vault (Force Rescan)
+
+# Manual-only — force-rescans the full [deployment, current] window for ONE
+# vault, ignoring any existing coverage markers. Uses the cached deployment
+# block from vault-deployments.json (binary-searches the chain if missing).
+# Dedup makes it idempotent: re-runs add new events found, never duplicate.
+#
+# Use when: a previous deep-backfill marker claims coverage of a window that
+# the chart suggests is empty/incomplete, and you want to verify end-to-end.
+
+on:
+  workflow_dispatch:
+    inputs:
+      vault:
+        description: 'Vault address (0x...)'
+        required: true
+        default: '0xb8a451107a9f87fde481d4d686247d6e43ed715e'
+      chain:
+        description: 'Chain (leave blank to read from deployments cache)'
+        required: false
+        default: ''
+      throttle_ms:
+        description: 'Min ms between RPC calls per endpoint'
+        required: false
+        default: '200'
+
+permissions:
+  contents: write
+
+jobs:
+  rescan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Refresh IPOR vault list
+        continue-on-error: true
+        run: node collect-ipor-vaults.js
+
+      - name: Force rescan from deployment block
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-activity.js --rescan-vault ${{ inputs.vault }} ${{ inputs.chain }}
+
+      - name: Commit & push results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f activity-events.json vault-deployments.json 2>/dev/null || true
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Max backfill rescan: ${{ inputs.vault }} [skip ci]"
+
+          BACKUP="max-backfill/${{ github.run_id }}"
+          git push origin "HEAD:refs/heads/$BACKUP"
+          echo "Backup branch pushed: $BACKUP"
+
+          git fetch origin ${{ github.ref_name }}
+          if ! git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }}; then
+            git rebase --abort || true
+            echo "::warning::Rebase failed; result preserved on branch $BACKUP — merge manually."
+            exit 1
+          fi
+          for i in 1 2 3 4; do
+            if git push; then break; fi
+            sleep $((2**i))
+          done
