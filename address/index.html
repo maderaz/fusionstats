@@ -402,6 +402,25 @@
         }
       } catch {}
 
+      // Historical TVL snapshots (on-chain totalAssets × historical price).
+      // When present, the vault chart uses these instead of walking backward
+      // from current TVL — accurate for leveraged-yield vaults whose flow
+      // accounting can't reproduce true historical TVL.
+      window.tvlSnapshotsByAddr = {};
+      try {
+        const snapRes = await fetch('../tvl-snapshots.json');
+        if (snapRes.ok) {
+          const snap = await snapRes.json();
+          Object.entries(snap.vaults || {}).forEach(([addr, v]) => {
+            const series = (v.snapshots || [])
+              .filter(s => s.tvlUsd != null && s.day != null)
+              .map(s => ({ day: s.day, tvl: s.tvlUsd }))
+              .sort((a, b) => a.day - b.day);
+            if (series.length) window.tvlSnapshotsByAddr[addr.toLowerCase()] = series;
+          });
+        }
+      } catch {}
+
       renderTopWallets();
     }
 
@@ -532,6 +551,27 @@
       const DAY = 86400;
       const anchorDay = Math.floor(anchorTs / DAY);
 
+      // Prefer on-chain TVL snapshots when available. They're true historical
+      // TVL (totalAssets × price) and don't break on yield/leverage drift.
+      const snapshots = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+      if (snapshots && snapshots.length) {
+        // Collapse to one point per day (keep the latest snapshot in each day).
+        const byDay = new Map();
+        for (const s of snapshots) {
+          const prev = byDay.get(s.day);
+          if (!prev || s.tvl >= 0) byDay.set(s.day, s);
+        }
+        const pts = [...byDay.values()]
+          .map(s => ({ day: s.day, tvl: s.tvl }))
+          .sort((a, b) => a.day - b.day);
+        const minDay = pts.length ? pts[0].day : anchorDay;
+        return { pts, anchorDay, minDay };
+      }
+
+      // Fallback: walk backward from current TVL using flow accounting.
+      // Inaccurate for leveraged-yield vaults — run the TVL Snapshots
+      // workflow to populate tvl-snapshots.json and switch to the
+      // on-chain series above.
       const usable = (window.allEvents || []).filter(e =>
         !e.synthetic &&
         e.vault && e.vault.toLowerCase() === addr &&
