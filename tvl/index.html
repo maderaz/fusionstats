@@ -879,23 +879,36 @@
       return { trace, layout };
     }
 
-    // Square (1:1) figure for social export — down-samples to ~24 bars and
-    // uses large axis fonts + few ticks so labels stay legible at 1080×1080.
-    function totalTvlSquareFigure(range) {
+    // Square (1:1) figure for social export — honours the visible x-window,
+    // down-samples to ~24 bars, sets an explicit bar width (date-axis bars
+    // otherwise default to the smallest gap and render hair-thin), and uses
+    // large axis fonts so labels stay legible at 1080×1080.
+    function totalTvlSquareFigure(range, visibleDays) {
       let pts = totalTvlSeries(range);
+      if (visibleDays && visibleDays.length === 2) {
+        const [lo, hi] = visibleDays;
+        const f = pts.filter(p => p.day >= lo && p.day <= hi);
+        if (f.length) pts = f;
+      }
       const TARGET_BARS = 24;
+      let bucketDays = 1;
       if (pts.length > TARGET_BARS) {
         const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
-        pts = bucketize(pts, Math.ceil(spanDays / TARGET_BARS));
+        bucketDays = Math.ceil(spanDays / TARGET_BARS);
+        pts = bucketize(pts, bucketDays);
       }
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: pts.map(p => p.tvl),
         type: 'bar',
         name: 'Total TVL',
+        width: bucketDays * 0.82 * DAY_MS,
         marker: { color: TOTAL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
         hoverinfo: 'skip',
       };
+      const pad = bucketDays * 0.6 * DAY_MS;
+      const xMin = pts.length ? pts[0].day * DAY_MS - pad : undefined;
+      const xMax = pts.length ? pts[pts.length - 1].day * DAY_MS + pad : undefined;
       const layout = {
         margin: { l: 132, r: 28, t: 24, b: 96 },
         plot_bgcolor: 'rgba(0,0,0,0)',
@@ -905,6 +918,7 @@
           showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
           tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
           ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+          range: (xMin != null ? [xMin, xMax] : undefined), autorange: (xMin == null),
         },
         yaxis: {
           showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
@@ -923,30 +937,36 @@
     }
 
     // PNG export. 'wide' snapshots the live chart at on-screen proportions.
-    // 'square' renders a dedicated 1080×1080 figure off-screen (down-sampled
-    // bars + large axis fonts) so labels are legible in 1:1 social posts.
+    // 'square' re-renders the live chart as a 1080×1080 figure (honouring the
+    // current zoom window, down-sampled bars, large fonts), captures it, then
+    // restores the on-screen view.
     async function downloadTotalPng(aspect) {
       const stamp = new Date().toISOString().slice(0, 10);
+      const gd = document.getElementById('totalTvlChart');
 
       if (aspect === 'square') {
-        const { trace, layout } = totalTvlSquareFigure(curTotalRange);
-        const tmp = document.createElement('div');
-        tmp.style.cssText = 'position:absolute;left:-9999px;top:0;width:1080px;height:1080px';
-        document.body.appendChild(tmp);
+        let visibleDays = null;
         try {
-          await Plotly.newPlot(tmp, [trace], layout, { staticPlot: true });
-          const url = await Plotly.toImage(tmp, { format: 'png', width: 1080, height: 1080, scale: 2 });
+          const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
+          if (xr && xr.length === 2) {
+            visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
+          }
+        } catch {}
+        const { trace, layout } = totalTvlSquareFigure(curTotalRange, visibleDays);
+        const savedData = gd.data, savedLayout = gd.layout;
+        try {
+          await Plotly.react(gd, [trace], layout, CONFIG);
+          const url = await Plotly.toImage(gd, { format: 'png', width: 1080, height: 1080, scale: 2 });
           const a = document.createElement('a');
           a.href = url;
           a.download = `fusion-total-tvl-1x1-${stamp}.png`;
           document.body.appendChild(a); a.click(); a.remove();
         } finally {
-          Plotly.purge(tmp); tmp.remove();
+          await Plotly.react(gd, savedData, savedLayout, CONFIG);
         }
         return;
       }
 
-      const gd = document.getElementById('totalTvlChart');
       const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
       const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
       try {
