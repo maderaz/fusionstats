@@ -754,7 +754,11 @@
       return { trace, layout };
     }
 
-
+    const TVL_CONFIG = {
+      responsive: true, displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
+      scrollZoom: false, doubleClick: 'reset',
+    };
 
     function renderTvlChart(addr, vaultInfo, events) {
       const card = document.getElementById('tvlChartCard');
