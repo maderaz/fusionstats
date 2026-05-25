@@ -10,13 +10,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Scope — "all" snapshots every vault (~2-3h); "single" only the vault(s) below'
+        description: 'Scope — "all" snapshots every vault (~2-3h); "single" only the vault(s) below; "repair" only backfills missing USD (fast, no RPC)'
         required: true
         default: 'all'
         type: choice
         options:
           - all
           - single
+          - repair
       vault:
         description: 'Vault address(es), space-separated — ONLY used when mode = single'
         required: false
@@ -66,6 +67,10 @@ jobs:
         env:
           RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
         run: node collect-activity.js --tvl-snapshots-all ${{ inputs.chain }}
+
+      - name: Repair missing USD prices (no RPC)
+        if: ${{ inputs.mode == 'repair' }}
+        run: node collect-activity.js --repair-prices ${{ inputs.chain }}
 
       - name: Commit & push results
         if: always()
