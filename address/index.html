@@ -308,6 +308,7 @@
             <button data-denom="asset" id="tvlDenomAssetBtn">Asset</button>
           </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
+          <button id="downloadTvlPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
         </div>
         <div id="tvlChart"></div>
       </div>
@@ -749,12 +750,17 @@
           reactChart();
         };
       });
-      // Download PNG — transparent paper/plot bg + hidden gridlines (incl. minor).
-      // Axis lines, tick labels and bars stay. scale:2 keeps the preview proportions.
-      document.getElementById('downloadTvlPng').onclick = async () => {
+      // Export — transparent paper/plot bg + hidden gridlines (incl. minor).
+      // Axis lines, tick labels and bars stay. `aspect` picks the output canvas:
+      // 'wide' keeps the on-screen proportions; 'square' renders 1080×1080 for
+      // 1:1 social posts (Twitter). scale:2 keeps fonts crisp at the target size.
+      const exportTvlPng = async (aspect) => {
         const gd = document.getElementById('tvlChart');
         const origPaper = gd.layout.paper_bgcolor;
         const origPlot  = gd.layout.plot_bgcolor;
+        const dims = aspect === 'square'
+          ? { width: 1080, height: 1080 }
+          : { width: gd.clientWidth, height: gd.clientHeight };
         try {
           await Plotly.relayout(gd, {
             paper_bgcolor: 'rgba(0,0,0,0)',
@@ -769,11 +775,12 @@
           const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol)
             ? __tvlAssetSymbol.toLowerCase()
             : 'usd';
+          const aspectSlug = aspect === 'square' ? '-1x1' : '';
           await Plotly.downloadImage(gd, {
             format: 'png',
-            filename: `fusion-tvl-${slug}-${denomSlug}-${stamp}`,
-            width: gd.clientWidth,
-            height: gd.clientHeight,
+            filename: `fusion-tvl-${slug}-${denomSlug}${aspectSlug}-${stamp}`,
+            width: dims.width,
+            height: dims.height,
             scale: 2,
           });
         } finally {
@@ -787,6 +794,8 @@
           });
         }
       };
+      document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
+      document.getElementById('downloadTvlPngSquare').onclick = () => exportTvlPng('square');
     }
 
     // Rebalance / fuse activity (only renders when address is a known vault and has rebalance data)
