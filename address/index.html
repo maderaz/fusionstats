@@ -1188,18 +1188,27 @@
             createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
               year: 'numeric', month: 'short', day: 'numeric'
             });
-            // Gap detection: how many days between deployment and the earliest
-            // event we currently have for this vault. >14d ⇒ likely backfill
-            // hasn't reached creation — flag for gap-fill workflow.
+            // Gap detection measured against what actually drives the chart.
+            // The chart prefers on-chain TVL snapshots, so when they exist the
+            // gap is deployment → earliest snapshot day. Only when there are no
+            // snapshots do we fall back to earliest event (the walked-back
+            // chart's left edge). >14d ⇒ run the TVL Snapshots workflow.
             const deployTs = Math.floor(new Date(deployIso).getTime() / 1000);
-            const earliestEvent = (s.events || []).reduce(
-              (min, e) => (e.timestamp && (!min || e.timestamp < min)) ? e.timestamp : min,
-              null
-            );
-            if (earliestEvent && deployTs && earliestEvent > deployTs) {
-              const gapDays = Math.round((earliestEvent - deployTs) / 86400);
+            const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+            let earliestDataTs = null;
+            if (snap && snap.series && snap.series.length) {
+              earliestDataTs = snap.series[0].day * 86400;
+            } else {
+              earliestDataTs = (s.events || []).reduce(
+                (min, e) => (e.timestamp && (!min || e.timestamp < min)) ? e.timestamp : min,
+                null
+              );
+            }
+            if (earliestDataTs && deployTs && earliestDataTs > deployTs) {
+              const gapDays = Math.round((earliestDataTs - deployTs) / 86400);
               if (gapDays > 14) {
-                gapSub = `<div class="sub" style="color:var(--red)">⚠ ${gapDays}d data gap</div>`;
+                const hint = (snap && snap.series && snap.series.length) ? '' : ' — run TVL Snapshots';
+                gapSub = `<div class="sub" style="color:var(--red)">⚠ ${gapDays}d data gap${hint}</div>`;
               }
             }
           } catch {}
