@@ -417,9 +417,12 @@
         if (snapRes.ok) {
           const snap = await snapRes.json();
           Object.entries(snap.vaults || {}).forEach(([addr, v]) => {
+            // Keep any point with a valid on-chain assets reading. tvlUsd may
+            // be null if a day's price lookup failed — the asset series stays
+            // accurate, and USD is forward-filled across the gap downstream.
             const series = (v.snapshots || [])
-              .filter(s => s.tvlUsd != null && s.day != null && typeof s.assets === 'number')
-              .map(s => ({ day: s.day, tvlUsd: s.tvlUsd, assets: s.assets }))
+              .filter(s => s.day != null && typeof s.assets === 'number')
+              .map(s => ({ day: s.day, tvlUsd: (typeof s.tvlUsd === 'number' ? s.tvlUsd : null), assets: s.assets }))
               .sort((a, b) => a.day - b.day);
             if (series.length) {
               window.tvlSnapshotsByAddr[addr.toLowerCase()] = { symbol: v.symbol || null, series };
@@ -595,14 +598,17 @@
         // Forward-fill missing days between min and max so the bar chart
         // doesn't show gaps where the sampler skipped a day (block-time
         // drift means ~1 in 7 days lands outside the ~7200-block step).
+        // Also forward-fills tvlUsd across the occasional null price.
         let pts = [];
         const minDay = sorted[0].day;
         const maxDay = sorted[sorted.length - 1].day;
         const known = new Map(sorted.map(s => [s.day, s]));
         let last = sorted[0];
+        let lastUsd = sorted.find(s => s.tvlUsd != null)?.tvlUsd ?? 0;
         for (let d = minDay; d <= maxDay; d++) {
           if (known.has(d)) last = known.get(d);
-          pts.push({ day: d, tvlUsd: last.tvlUsd, assets: last.assets });
+          if (last.tvlUsd != null) lastUsd = last.tvlUsd;
+          pts.push({ day: d, tvlUsd: lastUsd, assets: last.assets });
         }
         pts = prependLeadBars(pts, deployIso);
         return { pts, anchorDay, minDay: pts[0].day, hasAssets: true, symbol: snap.symbol };

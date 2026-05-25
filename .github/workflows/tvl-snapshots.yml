@@ -54,6 +54,13 @@ jobs:
           RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
         run: node collect-activity.js --tvl-snapshots ${{ inputs.vault }} ${{ inputs.chain }}
 
+      - name: Find deployment blocks (so no vault is skipped)
+        if: ${{ inputs.mode == 'all' }}
+        continue-on-error: true
+        env:
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+        run: node collect-activity.js --find-deployments ${{ inputs.chain }}
+
       - name: Snapshot TVL (all tracked vaults)
         if: ${{ inputs.mode == 'all' }}
         env:
@@ -65,7 +72,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f tvl-snapshots.json 2>/dev/null || true
+          git add -f tvl-snapshots.json vault-deployments.json 2>/dev/null || true
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "TVL snapshots: ${{ inputs.mode }} ${{ inputs.vault || '' }} [skip ci]"
 
