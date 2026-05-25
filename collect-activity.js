@@ -840,9 +840,22 @@ async function gapFillAll(chainFilter) {
 // so leveraged-yield vaults stop wrapping to zero on the chart.
 async function tvlSnapshotsForVault(vault, chainArg) {
   const deployCache = loadDeployments();
-  const dep = deployCache.deployments?.[vault];
+  let dep = deployCache.deployments?.[vault];
+  // Self-heal: if the deployment block isn't cached, binary-search it now so
+  // single-vault runs work for any address without a separate setup step.
   if (!dep || !dep.block) {
-    throw new Error(`No deployment block cached for ${vault} — run --find-deployments first`);
+    const chain = chainArg || dep?.chain;
+    if (!chain || !CHAIN_RPCS[chain]) {
+      throw new Error(`No deployment block cached for ${vault} and no usable chain to search`);
+    }
+    console.log(`Deployment block not cached for ${vault} — binary-searching on ${chain}...`);
+    const cur = await getBlockNumber(chain);
+    const block = await findDeploymentBlock(chain, vault, cur);
+    const ts = await getBlockTimestamp(chain, block).catch(() => 0);
+    dep = { chain, block, deployedAt: ts ? new Date(ts * 1000).toISOString() : null, source: 'binarySearch' };
+    deployCache.deployments[vault] = dep;
+    saveDeployments(deployCache);
+    console.log(`Found deployment block: ${block}`);
   }
   const chain = chainArg || dep.chain;
   if (!CHAIN_RPCS[chain]) throw new Error(`Unsupported chain: ${chain}`);
