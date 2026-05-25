@@ -555,10 +555,33 @@
     let __tvlDenom = 'usd';            // 'usd' or 'asset'
     let __tvlAssetSymbol = null;       // set when snapshots exist for the vault
 
+    // Prepend a short run of zero-height bars before the vault's first data
+    // point (anchored to the creation date when known). This gives every
+    // single-product TVL chart a clean "growth from zero" baseline. Lead width
+    // scales with the data span (5%, clamped 3–14 bars) so it reads as an
+    // intentional runway on both young and long-lived vaults.
+    function prependLeadBars(pts, deployIso) {
+      if (!pts.length) return pts;
+      const DAY = 86400;
+      const firstDay = pts[0].day;
+      let creationDay = firstDay;
+      if (deployIso) {
+        const t = new Date(deployIso).getTime();
+        if (!isNaN(t)) creationDay = Math.floor(t / 1000 / DAY);
+      }
+      const span = pts[pts.length - 1].day - firstDay;
+      const lead = Math.min(14, Math.max(3, Math.round(span * 0.05)));
+      const startDay = Math.min(creationDay, firstDay) - lead;
+      const out = [];
+      for (let d = startDay; d < firstDay; d++) out.push({ day: d, tvlUsd: 0, assets: 0 });
+      return out.concat(pts);
+    }
+
     function buildVaultSeries(addr, vaultInfo) {
       const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
       const DAY = 86400;
       const anchorDay = Math.floor(anchorTs / DAY);
+      const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
 
       // Prefer on-chain TVL snapshots when available. They're true historical
       // TVL (totalAssets × price) and don't break on yield/leverage drift.
@@ -572,7 +595,7 @@
         // Forward-fill missing days between min and max so the bar chart
         // doesn't show gaps where the sampler skipped a day (block-time
         // drift means ~1 in 7 days lands outside the ~7200-block step).
-        const pts = [];
+        let pts = [];
         const minDay = sorted[0].day;
         const maxDay = sorted[sorted.length - 1].day;
         const known = new Map(sorted.map(s => [s.day, s]));
@@ -581,7 +604,8 @@
           if (known.has(d)) last = known.get(d);
           pts.push({ day: d, tvlUsd: last.tvlUsd, assets: last.assets });
         }
-        return { pts, anchorDay, minDay, hasAssets: true, symbol: snap.symbol };
+        pts = prependLeadBars(pts, deployIso);
+        return { pts, anchorDay, minDay: pts[0].day, hasAssets: true, symbol: snap.symbol };
       }
 
       // Fallback: walk backward from current TVL using flow accounting.
@@ -606,13 +630,14 @@
       }
 
       let tvl = vaultInfo.tvl || 0;
-      const pts = [];
+      let pts = [];
       for (let d = anchorDay; d >= minDay; d--) {
         pts.push({ day: d, tvlUsd: tvl, assets: null });
         tvl = tvl - (net[d] || 0);
       }
       pts.reverse();
-      return { pts, anchorDay, minDay, hasAssets: false, symbol: null };
+      pts = prependLeadBars(pts, deployIso);
+      return { pts, anchorDay, minDay: pts[0].day, hasAssets: false, symbol: null };
     }
 
     function tvlMakeTraceLayout(state, range, vaultInfo) {
