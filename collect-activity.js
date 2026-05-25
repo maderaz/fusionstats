@@ -311,6 +311,47 @@ async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
   }
 }
 
+// Resilient, cached price lookup for the snapshot collector. Distinguishes
+// "rate-limited / transient" (retry with backoff) from "genuinely no data"
+// (cache the null so we don't keep hammering). Cache key is per chain+token+day
+// because many vaults share an underlying and we sample ~once per day — this
+// collapses ~11k raw lookups in a full run to a few hundred network calls.
+const _priceDayCache = new Map();
+
+async function fetchHistoricalPriceStrict(symbol, tokenAddr, timestamp, chain) {
+  if (isStablecoin(symbol)) return 1.0;
+  if (!tokenAddr) tokenAddr = TOKEN_ADDRESSES[symbol];
+  if (!tokenAddr) return null;
+  const llamaChain = LLAMA_CHAIN[chain] || 'ethereum';
+  const url = `https://coins.llama.fi/prices/historical/${timestamp}/${llamaChain}:${tokenAddr}`;
+  const res = await fetch(url);
+  if (res.status === 429 || res.status >= 500) {
+    throw new Error(`retryable ${res.status}`); // rate-limited / server error
+  }
+  if (!res.ok) return null; // 4xx other than 429 → treat as no data
+  const json = await res.json();
+  const coins = json.coins || {};
+  const match = Object.keys(coins).find(k => k.toLowerCase() === `${llamaChain}:${tokenAddr.toLowerCase()}`);
+  return match ? coins[match].price : null;
+}
+
+async function priceForDay(symbol, tokenAddr, timestamp, chain) {
+  const day = Math.floor(timestamp / 86400);
+  const key = `${chain}:${(tokenAddr || symbol || '').toLowerCase()}:${day}`;
+  if (_priceDayCache.has(key)) return _priceDayCache.get(key);
+  let price = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      price = await fetchHistoricalPriceStrict(symbol, tokenAddr, timestamp, chain);
+      break; // resolved (a real price or a genuine null)
+    } catch {
+      await new Promise(r => setTimeout(r, 600 * Math.pow(2, attempt))); // 0.6→9.6s backoff
+    }
+  }
+  _priceDayCache.set(key, price); // cache the resolved value (incl. genuine null)
+  return price;
+}
+
 // Batch price lookups: group events by symbol+day, fetch one price per group
 async function enrichWithPrices(events) {
   // Group by underlyingToken + day (don't need per-second precision)
@@ -895,10 +936,32 @@ async function tvlSnapshotsForVault(vault, chainArg) {
   console.log(`Sampling ${todo.length} new blocks (${existing.length} cached)\n`);
 
   const snapshots = [...existing];
+  const writeBack = () => {
+    all.vaults[vault] = {
+      chain, symbol: meta.symbol, underlyingToken, decimals,
+      snapshots: snapshots.sort((a, b) => a.block - b.block),
+    };
+    saveTvlSnapshots(all);
+  };
 
-  // Process in batches of 5 to keep RPC concurrency reasonable while still
-  // benefiting from parallelism. Each block needs: totalAssets, timestamp,
-  // historical price. The first two are RPC; the last is HTTP to DeFi Llama.
+  // Repair pass: backfill USD for existing points whose price came back null
+  // (typically rate-limited on a prior run). Cheap — no RPC, just cached price
+  // lookups against the stored timestamps.
+  const needsPrice = snapshots.filter(s => s.tvlUsd == null && typeof s.assets === 'number' && s.timestamp);
+  if (needsPrice.length) {
+    console.log(`Repairing ${needsPrice.length} points with missing USD…`);
+    let fixed = 0;
+    for (const s of needsPrice) {
+      const price = await priceForDay(meta.symbol, underlyingToken, s.timestamp, chain);
+      if (price != null) { s.priceUsd = price; s.tvlUsd = s.assets * price; fixed++; }
+      if (fixed && fixed % 25 === 0) writeBack();
+    }
+    console.log(`  repaired ${fixed}/${needsPrice.length}`);
+    writeBack();
+  }
+
+  // Process new blocks in batches of 5. Each block needs: totalAssets,
+  // timestamp (RPC) + historical price (cached HTTP to DeFi Llama).
   for (let i = 0; i < todo.length; i += 5) {
     const batch = todo.slice(i, i + 5);
     const results = await Promise.all(batch.map(async (block) => {
@@ -909,7 +972,7 @@ async function tvlSnapshotsForVault(vault, chainArg) {
         ]);
         if (!raw || raw === '0x') return null;
         const assets = Number(BigInt(raw)) / 10 ** decimals;
-        const price = await fetchHistoricalPrice(meta.symbol, underlyingToken, ts, chain);
+        const price = await priceForDay(meta.symbol, underlyingToken, ts, chain);
         const tvlUsd = price != null ? assets * price : null;
         return { block, timestamp: ts, day: Math.floor(ts / 86400), assets, priceUsd: price, tvlUsd };
       } catch (e) {
@@ -923,27 +986,13 @@ async function tvlSnapshotsForVault(vault, chainArg) {
     const done = i + batch.length;
     if (done % 25 < 5 || done === todo.length) {
       console.log(`  ${done}/${todo.length} sampled (${snapshots.length} total points)`);
-      // Checkpoint
-      all.vaults[vault] = {
-        chain,
-        symbol: meta.symbol,
-        underlyingToken,
-        decimals,
-        snapshots: snapshots.sort((a, b) => a.block - b.block),
-      };
-      saveTvlSnapshots(all);
+      writeBack();
     }
   }
 
-  all.vaults[vault] = {
-    chain,
-    symbol: meta.symbol,
-    underlyingToken,
-    decimals,
-    snapshots: snapshots.sort((a, b) => a.block - b.block),
-  };
-  saveTvlSnapshots(all);
-  console.log(`\nWrote ${snapshots.length} snapshots for ${vault} → ${TVL_SNAPSHOTS_FILE}`);
+  writeBack();
+  const withUsd = snapshots.filter(s => typeof s.tvlUsd === 'number').length;
+  console.log(`\nWrote ${snapshots.length} snapshots (${withUsd} priced) for ${vault} → ${TVL_SNAPSHOTS_FILE}`);
 }
 
 async function main() {
@@ -973,6 +1022,33 @@ async function main() {
       process.exit(1);
     }
     await deepestScanVault(vault, chain, fromBlock);
+    return;
+  }
+
+  // --repair-prices [chain]
+  // Fast pass over tvl-snapshots.json that only backfills USD for points whose
+  // price came back null (rate-limited on a prior run). No RPC — just cached
+  // DeFi Llama lookups against the stored timestamps.
+  if (args[0] === '--repair-prices') {
+    const chainFilter = args[1] || null;
+    const all = loadTvlSnapshots();
+    let totalNeeds = 0, totalFixed = 0;
+    for (const [vault, v] of Object.entries(all.vaults || {})) {
+      if (chainFilter && v.chain !== chainFilter) continue;
+      const needs = (v.snapshots || []).filter(s => s.tvlUsd == null && typeof s.assets === 'number' && s.timestamp);
+      if (!needs.length) continue;
+      console.log(`[${v.symbol || vault.slice(0, 10)}] repairing ${needs.length} points…`);
+      let fixed = 0;
+      for (const s of needs) {
+        const price = await priceForDay(v.symbol, v.underlyingToken, s.timestamp, v.chain);
+        if (price != null) { s.priceUsd = price; s.tvlUsd = s.assets * price; fixed++; }
+        if (fixed && fixed % 50 === 0) saveTvlSnapshots(all);
+      }
+      totalNeeds += needs.length; totalFixed += fixed;
+      saveTvlSnapshots(all);
+      console.log(`  ${fixed}/${needs.length} fixed`);
+    }
+    console.log(`\n=== REPAIR DONE — ${totalFixed}/${totalNeeds} USD points backfilled ===\n`);
     return;
   }
 
