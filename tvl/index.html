@@ -436,6 +436,7 @@
           <button data-total-range="all" class="active">All</button>
         </div>
         <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
+        <button id="downloadTotalPngSquare" class="action-btn" type="button">Download 1:1</button>
       </div>
       <div id="totalTvlChart"><div class="loading">Loading data…</div></div>
     </div>
@@ -885,10 +886,14 @@
 
     // PNG export — transparent paper/plot bg + gridlines hidden, mirroring the
     // /address chart export so the asset drops cleanly into decks/socials.
-    async function downloadTotalPng() {
+    // aspect 'square' renders 1080×1080 for 1:1 social posts (Twitter).
+    async function downloadTotalPng(aspect) {
       const gd = document.getElementById('totalTvlChart');
       const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
       const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
+      const dims = aspect === 'square'
+        ? { width: 1080, height: 1080 }
+        : { width: gd.clientWidth, height: gd.clientHeight };
       try {
         await Plotly.relayout(gd, {
           paper_bgcolor: 'rgba(0,0,0,0)',
@@ -901,9 +906,9 @@
         const stamp = new Date().toISOString().slice(0, 10);
         await Plotly.downloadImage(gd, {
           format: 'png',
-          filename: `fusion-total-tvl-${stamp}`,
-          width:  gd.clientWidth,
-          height: gd.clientHeight,
+          filename: `fusion-total-tvl${aspect === 'square' ? '-1x1' : ''}-${stamp}`,
+          width:  dims.width,
+          height: dims.height,
           scale: 2,
         });
       } finally {
@@ -1103,7 +1108,8 @@
           redrawTotal();
         });
       });
-      document.getElementById('downloadTotalPng').addEventListener('click', downloadTotalPng);
+      document.getElementById('downloadTotalPng').addEventListener('click', () => downloadTotalPng('wide'));
+      document.getElementById('downloadTotalPngSquare').addEventListener('click', () => downloadTotalPng('square'));
     }
 
     (async function () {
