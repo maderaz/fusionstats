@@ -879,21 +879,76 @@
       return { trace, layout };
     }
 
+    // Square (1:1) figure for social export — down-samples to ~24 bars and
+    // uses large axis fonts + few ticks so labels stay legible at 1080×1080.
+    function totalTvlSquareFigure(range) {
+      let pts = totalTvlSeries(range);
+      const TARGET_BARS = 24;
+      if (pts.length > TARGET_BARS) {
+        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
+        pts = bucketize(pts, Math.ceil(spanDays / TARGET_BARS));
+      }
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: pts.map(p => p.tvl),
+        type: 'bar',
+        name: 'Total TVL',
+        marker: { color: TOTAL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
+        hoverinfo: 'skip',
+      };
+      const layout = {
+        margin: { l: 132, r: 28, t: 24, b: 96 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Poppins, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
+        xaxis: {
+          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
+          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+        },
+        yaxis: {
+          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          tickfont: { size: 26 }, tickformat: '$,.2s', rangemode: 'tozero', nticks: 5,
+          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+        },
+        bargap: 0.18,
+        showlegend: false,
+      };
+      return { trace, layout };
+    }
+
     function redrawTotal() {
       const { trace, layout } = totalTvlTraceLayout(curTotalRange);
       Plotly.react('totalTvlChart', [trace], layout, CONFIG);
     }
 
-    // PNG export — transparent paper/plot bg + gridlines hidden, mirroring the
-    // /address chart export so the asset drops cleanly into decks/socials.
-    // aspect 'square' renders 1080×1080 for 1:1 social posts (Twitter).
+    // PNG export. 'wide' snapshots the live chart at on-screen proportions.
+    // 'square' renders a dedicated 1080×1080 figure off-screen (down-sampled
+    // bars + large axis fonts) so labels are legible in 1:1 social posts.
     async function downloadTotalPng(aspect) {
+      const stamp = new Date().toISOString().slice(0, 10);
+
+      if (aspect === 'square') {
+        const { trace, layout } = totalTvlSquareFigure(curTotalRange);
+        const tmp = document.createElement('div');
+        tmp.style.cssText = 'position:absolute;left:-9999px;top:0;width:1080px;height:1080px';
+        document.body.appendChild(tmp);
+        try {
+          await Plotly.newPlot(tmp, [trace], layout, { staticPlot: true });
+          const url = await Plotly.toImage(tmp, { format: 'png', width: 1080, height: 1080, scale: 2 });
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `fusion-total-tvl-1x1-${stamp}.png`;
+          document.body.appendChild(a); a.click(); a.remove();
+        } finally {
+          Plotly.purge(tmp); tmp.remove();
+        }
+        return;
+      }
+
       const gd = document.getElementById('totalTvlChart');
       const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
       const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
-      const dims = aspect === 'square'
-        ? { width: 1080, height: 1080 }
-        : { width: gd.clientWidth, height: gd.clientHeight };
       try {
         await Plotly.relayout(gd, {
           paper_bgcolor: 'rgba(0,0,0,0)',
@@ -903,12 +958,11 @@
           'xaxis.minor.showgrid': false,
           'yaxis.minor.showgrid': false,
         });
-        const stamp = new Date().toISOString().slice(0, 10);
         await Plotly.downloadImage(gd, {
           format: 'png',
-          filename: `fusion-total-tvl${aspect === 'square' ? '-1x1' : ''}-${stamp}`,
-          width:  dims.width,
-          height: dims.height,
+          filename: `fusion-total-tvl-${stamp}`,
+          width:  gd.clientWidth,
+          height: gd.clientHeight,
           scale: 2,
         });
       } finally {

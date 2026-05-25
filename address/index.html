@@ -697,11 +697,64 @@
       return { trace, layout };
     }
 
-    const TVL_CONFIG = {
-      responsive: true, displaylogo: false,
-      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
-      scrollZoom: false, doubleClick: 'reset',
-    };
+    // Square (1:1) figure for social export. Buckets the series down to ~24
+    // bars and uses large axis fonts + few ticks so labels stay legible at
+    // 1080×1080 (where the on-screen 10px ticks would be ant-sized).
+    function tvlMakeSquareFigure(state, range, vaultInfo) {
+      let cutoff = null;
+      if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
+      let pts = state.pts;
+      if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
+
+      // Down-sample to ~24 buckets, keeping the last (latest) value per bucket
+      // since TVL is a balance, not a flow.
+      const TARGET_BARS = 24;
+      if (pts.length > TARGET_BARS) {
+        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
+        const bucketDays = Math.ceil(spanDays / TARGET_BARS);
+        const buckets = new Map();
+        for (const p of pts) {
+          const key = Math.floor(p.day / bucketDays) * bucketDays;
+          const cur = buckets.get(key);
+          if (!cur || p.day > cur.day) buckets.set(key, { day: p.day, tvlUsd: p.tvlUsd, assets: p.assets });
+        }
+        pts = [...buckets.values()].sort((a, b) => a.day - b.day);
+      }
+
+      const DAY_MS = 86400 * 1000;
+      const denomIsAsset = __tvlDenom === 'asset' && state.hasAssets;
+      const yValues = pts.map(p => Math.max(0, denomIsAsset ? p.assets : p.tvlUsd));
+      const tickFmt = denomIsAsset ? ',.3~s' : '$,.2s';
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: yValues,
+        type: 'bar',
+        name: vaultInfo.name || 'TVL',
+        marker: { color: TVL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
+        hoverinfo: 'skip',
+      };
+      const layout = {
+        margin: { l: 132, r: 28, t: 24, b: 96 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Poppins, sans-serif', color: '#3a3a3a', size: 26 },
+        xaxis: {
+          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
+          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+        },
+        yaxis: {
+          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          tickfont: { size: 26 }, tickformat: tickFmt, rangemode: 'tozero', nticks: 5,
+          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+        },
+        bargap: 0.18,
+        showlegend: false,
+      };
+      return { trace, layout };
+    }
+
+
 
     function renderTvlChart(addr, vaultInfo, events) {
       const card = document.getElementById('tvlChartCard');
@@ -750,17 +803,36 @@
           reactChart();
         };
       });
-      // Export — transparent paper/plot bg + hidden gridlines (incl. minor).
-      // Axis lines, tick labels and bars stay. `aspect` picks the output canvas:
-      // 'wide' keeps the on-screen proportions; 'square' renders 1080×1080 for
-      // 1:1 social posts (Twitter). scale:2 keeps fonts crisp at the target size.
+      // Export. 'wide' snapshots the live chart at on-screen proportions.
+      // 'square' renders a dedicated 1080×1080 figure off-screen (down-sampled
+      // bars + large axis fonts) so labels are legible in 1:1 social posts.
       const exportTvlPng = async (aspect) => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol) ? __tvlAssetSymbol.toLowerCase() : 'usd';
+
+        if (aspect === 'square') {
+          const { trace, layout } = tvlMakeSquareFigure(__tvlState, __tvlRange, vaultInfo);
+          const tmp = document.createElement('div');
+          tmp.style.cssText = 'position:absolute;left:-9999px;top:0;width:1080px;height:1080px';
+          document.body.appendChild(tmp);
+          try {
+            await Plotly.newPlot(tmp, [trace], layout, { staticPlot: true });
+            const url = await Plotly.toImage(tmp, { format: 'png', width: 1080, height: 1080, scale: 2 });
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fusion-tvl-${slug}-${denomSlug}-1x1-${stamp}.png`;
+            document.body.appendChild(a); a.click(); a.remove();
+          } finally {
+            Plotly.purge(tmp); tmp.remove();
+          }
+          return;
+        }
+
+        // Wide: snapshot the live chart with transparent bg + gridlines hidden.
         const gd = document.getElementById('tvlChart');
         const origPaper = gd.layout.paper_bgcolor;
         const origPlot  = gd.layout.plot_bgcolor;
-        const dims = aspect === 'square'
-          ? { width: 1080, height: 1080 }
-          : { width: gd.clientWidth, height: gd.clientHeight };
         try {
           await Plotly.relayout(gd, {
             paper_bgcolor: 'rgba(0,0,0,0)',
@@ -770,17 +842,11 @@
             'xaxis.minor.showgrid': false,
             'yaxis.minor.showgrid': false,
           });
-          const stamp = new Date().toISOString().slice(0, 10);
-          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol)
-            ? __tvlAssetSymbol.toLowerCase()
-            : 'usd';
-          const aspectSlug = aspect === 'square' ? '-1x1' : '';
           await Plotly.downloadImage(gd, {
             format: 'png',
-            filename: `fusion-tvl-${slug}-${denomSlug}${aspectSlug}-${stamp}`,
-            width: dims.width,
-            height: dims.height,
+            filename: `fusion-tvl-${slug}-${denomSlug}-${stamp}`,
+            width: gd.clientWidth,
+            height: gd.clientHeight,
             scale: 2,
           });
         } finally {
