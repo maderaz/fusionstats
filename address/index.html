@@ -739,7 +739,10 @@
       if (!pts.length) pts = state.pts.slice(); // never export an empty figure
 
       // Down-sample to ~24 buckets, keeping the last (latest) value per bucket
-      // since TVL is a balance, not a flow.
+      // since TVL is a balance, not a flow. Bars are positioned on the bucket
+      // KEY (not the source day) so spacing is uniform — otherwise an uneven
+      // last gap can be narrower than the fixed bar width and the last two bars
+      // overlap.
       const TARGET_BARS = 24;
       let bucketDays = 1;
       if (pts.length > TARGET_BARS) {
@@ -749,7 +752,7 @@
         for (const p of pts) {
           const key = Math.floor(p.day / bucketDays) * bucketDays;
           const cur = buckets.get(key);
-          if (!cur || p.day > cur.day) buckets.set(key, { day: p.day, tvlUsd: p.tvlUsd, assets: p.assets });
+          if (!cur || p.day > cur._src) buckets.set(key, { day: key, tvlUsd: p.tvlUsd, assets: p.assets, _src: p.day });
         }
         pts = [...buckets.values()].sort((a, b) => a.day - b.day);
       }
