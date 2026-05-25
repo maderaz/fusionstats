@@ -92,6 +92,10 @@
     .tvl-chart-range-group button { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.65rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
     .tvl-chart-range-group button:hover { color: var(--accent); border-color: var(--accent); }
     .tvl-chart-range-group button.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+    .tvl-color-swatch { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 26px; border: 1px solid var(--stroke); border-radius: 5px; cursor: pointer; overflow: hidden; padding: 2px; }
+    .tvl-color-swatch input[type="color"] { width: 100%; height: 100%; border: none; padding: 0; background: none; cursor: pointer; }
+    #tvlAxisInvert { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
+    #tvlAxisInvert:hover { color: var(--accent); border-color: var(--accent); }
     .tvl-chart-export { margin-left: auto; font-family: inherit; font-size: 0.7rem; padding: 0.35rem 0.8rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 5px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
     .tvl-chart-export:hover { opacity: 0.85; }
     #tvlChart { width: 100%; height: 380px; }
@@ -306,6 +310,12 @@
           <div class="tvl-chart-range-group" id="tvlChartDenom" style="display:none">
             <button data-denom="usd" class="active">USD</button>
             <button data-denom="asset" id="tvlDenomAssetBtn">Asset</button>
+          </div>
+          <div class="tvl-chart-range-group" id="tvlChartStyle">
+            <label class="tvl-color-swatch" title="Bar color">
+              <input type="color" id="tvlBarColor" value="#8429FF">
+            </label>
+            <button id="tvlAxisInvert" type="button" title="Invert axis colors (black ⇄ white)">Axis ⬤</button>
           </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
           <button id="downloadTvlPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
@@ -558,6 +568,16 @@
     let __tvlRange = 'all';
     let __tvlDenom = 'usd';            // 'usd' or 'asset'
     let __tvlAssetSymbol = null;       // set when snapshots exist for the vault
+    let __tvlBarColor = TVL_BAR_COLOR; // user-tweakable bar color
+    let __tvlAxisDark = true;          // true = black axis/labels, false = white
+
+    // Axis + background palette derived from the invert toggle. On-screen the
+    // plot bg flips so a white axis stays visible; exports keep transparent bg.
+    function tvlAxisColors() {
+      return __tvlAxisDark
+        ? { axis: '#3a3a3a', line: '#999999', grid: '#C8C8C8', gridMinor: '#E0E0E0', bg: '#FFFFFF' }
+        : { axis: '#FFFFFF', line: '#FFFFFF', grid: '#555555', gridMinor: '#3a3a3a', bg: '#141414' };
+    }
 
     // Prepend a short run of zero-height bars before the vault's first data
     // point (anchored to the creation date when known). This gives every
@@ -662,32 +682,33 @@
       const hoverFmt = denomIsAsset
         ? `<b>%{x|%b %d, %Y}</b><br>%{y:,.4~r} ${sym}<extra></extra>`
         : `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`;
+      const c = tvlAxisColors();
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: yValues,
         type: 'bar',
         name: vaultInfo.name || 'TVL',
-        marker: { color: TVL_BAR_COLOR, cornerradius: 4, line: { width: 0 } },
+        marker: { color: __tvlBarColor, cornerradius: 4, line: { width: 0 } },
         hovertemplate: hoverFmt,
       };
       const layout = {
         autosize: true,
         margin: { l: 70, r: 16, t: 8, b: 48 },
-        plot_bgcolor: '#FFFFFF',
-        paper_bgcolor: '#FFFFFF',
-        font: { family: 'Poppins, sans-serif', color: '#70747A', size: 11 },
+        plot_bgcolor: c.bg,
+        paper_bgcolor: c.bg,
+        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
         xaxis: {
-          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: '#999999', linewidth: 1,
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
           tickfont: { size: 10 }, type: 'date',
-          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
+          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 6 },
         },
         yaxis: {
-          showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: '#999999', linewidth: 1,
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
           tickfont: { size: 10 }, tickformat: tickFmt,
           rangemode: 'tozero',
-          minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
+          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 4 },
         },
         bargap: 0.18,
         showlegend: false,
@@ -734,13 +755,14 @@
       const denomIsAsset = __tvlDenom === 'asset' && state.hasAssets;
       const yValues = pts.map(p => Math.max(0, denomIsAsset ? p.assets : p.tvlUsd));
       const tickFmt = denomIsAsset ? ',.3~s' : '$,.2s';
+      const c = tvlAxisColors();
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: yValues,
         type: 'bar',
         name: vaultInfo.name || 'TVL',
         width: bucketDays * 0.82 * DAY_MS,   // uniform fat bars, in ms
-        marker: { color: TVL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
+        marker: { color: __tvlBarColor, cornerradius: 6, line: { width: 0 } },
         hoverinfo: 'skip',
       };
       // Pin the x-range to the data extent (+half a bar each side) so bars and
@@ -752,17 +774,17 @@
         margin: { l: 132, r: 28, t: 24, b: 96 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, sans-serif', color: '#3a3a3a', size: 26 },
+        font: { family: 'Poppins, sans-serif', color: c.axis, size: 26 },
         xaxis: {
-          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
           tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
-          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+          ticks: 'outside', ticklen: 8, tickcolor: c.line,
           range: [xMin, xMax], autorange: false,
         },
         yaxis: {
-          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
+          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
           tickfont: { size: 26 }, tickformat: tickFmt, rangemode: 'tozero', nticks: 5,
-          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
+          ticks: 'outside', ticklen: 8, tickcolor: c.line,
         },
         bargap: 0.18,
         showlegend: false,
@@ -823,6 +845,23 @@
           reactChart();
         };
       });
+      // Bar color picker
+      const barColorInput = document.getElementById('tvlBarColor');
+      if (barColorInput) {
+        barColorInput.value = __tvlBarColor;
+        barColorInput.oninput = () => { __tvlBarColor = barColorInput.value; reactChart(); };
+      }
+      // Axis invert toggle (black ⇄ white axis lines + labels). White axis pairs
+      // with a dark preview bg so it stays visible; exports keep transparent bg.
+      const axisBtn = document.getElementById('tvlAxisInvert');
+      if (axisBtn) {
+        axisBtn.textContent = __tvlAxisDark ? 'Axis ⬤' : 'Axis ◯';
+        axisBtn.onclick = () => {
+          __tvlAxisDark = !__tvlAxisDark;
+          axisBtn.textContent = __tvlAxisDark ? 'Axis ⬤' : 'Axis ◯';
+          reactChart();
+        };
+      }
       // Export. 'wide' snapshots the live chart at on-screen proportions.
       // 'square' re-renders the live chart as a 1080×1080 figure (honouring the
       // current zoom window, down-sampled bars, large fonts), captures it, then
