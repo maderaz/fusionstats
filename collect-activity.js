@@ -963,18 +963,26 @@ async function main() {
     return;
   }
 
-  // --tvl-snapshots <vault> [chain]
+  // --tvl-snapshots <vault> [vault2 …] [chain]
   // Build historical TVL series via totalAssets() at ~one sample per day from
   // deployment to now. Output: tvl-snapshots.json. The /address chart prefers
   // these snapshots over the deposit-walk approximation when available.
+  // Accepts multiple vault addresses; chain is read per-vault from the
+  // deployments cache (an explicit chain arg, if given, applies to all).
   if (args[0] === '--tvl-snapshots') {
-    const vault = (args[1] || '').toLowerCase();
-    const chain = args[2] || null;
-    if (!/^0x[a-f0-9]{40}$/.test(vault)) {
-      console.error('Usage: node collect-activity.js --tvl-snapshots <vault> [chain]');
+    const rest = args.slice(1);
+    const vaults = rest.filter(a => /^0x[a-f0-9]{40}$/i.test(a)).map(a => a.toLowerCase());
+    const chain = rest.find(a => !/^0x[a-f0-9]{40}$/i.test(a)) || null;
+    if (!vaults.length) {
+      console.error('Usage: node collect-activity.js --tvl-snapshots <vault> [vault2 …] [chain]');
       process.exit(1);
     }
-    await tvlSnapshotsForVault(vault, chain);
+    let ok = 0, failed = 0;
+    for (const v of vaults) {
+      try { await tvlSnapshotsForVault(v, chain); ok++; }
+      catch (e) { console.log(`FAILED ${v}: ${e.message}`); failed++; }
+    }
+    if (vaults.length > 1) console.log(`\n=== ${ok} ok, ${failed} failed ===\n`);
     return;
   }
 
