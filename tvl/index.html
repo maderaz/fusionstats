@@ -436,6 +436,7 @@
           <button data-total-range="all" class="active">All</button>
         </div>
         <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
+        <button id="downloadTotalPng43" class="action-btn" type="button">Download 4:3</button>
         <button id="downloadTotalPngSquare" class="action-btn" type="button">Download 1:1</button>
       </div>
       <div id="totalTvlChart"><div class="loading">Loading data…</div></div>
@@ -862,7 +863,7 @@
         font: { family: 'Poppins, -apple-system, sans-serif', color: '#70747A', size: 12 },
         xaxis: {
           showgrid: true, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date',
+          linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date', tickformat: '%b %d',
           minor: { showgrid: true, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
         },
         yaxis: {
@@ -916,7 +917,7 @@
         font: { family: 'Poppins, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
         xaxis: {
           showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
-          tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
+          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
           ticks: 'outside', ticklen: 8, tickcolor: '#999999',
           range: (xMin != null ? [xMin, xMax] : undefined), autorange: (xMin == null),
         },
@@ -944,7 +945,9 @@
       const stamp = new Date().toISOString().slice(0, 10);
       const gd = document.getElementById('totalTvlChart');
 
-      if (aspect === 'square') {
+      if (aspect === 'square' || aspect === '43') {
+        const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
+        const ratioSlug = aspect === '43' ? '4x3' : '1x1';
         let visibleDays = null;
         try {
           const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
@@ -956,10 +959,10 @@
         const savedData = gd.data, savedLayout = gd.layout;
         try {
           await Plotly.react(gd, [trace], layout, CONFIG);
-          const url = await Plotly.toImage(gd, { format: 'png', width: 1080, height: 1080, scale: 2 });
+          const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
           const a = document.createElement('a');
           a.href = url;
-          a.download = `fusion-total-tvl-1x1-${stamp}.png`;
+          a.download = `fusion-total-tvl-${ratioSlug}-${stamp}.png`;
           document.body.appendChild(a); a.click(); a.remove();
         } finally {
           await Plotly.react(gd, savedData, savedLayout, CONFIG);
@@ -1183,6 +1186,7 @@
         });
       });
       document.getElementById('downloadTotalPng').addEventListener('click', () => downloadTotalPng('wide'));
+      document.getElementById('downloadTotalPng43').addEventListener('click', () => downloadTotalPng('43'));
       document.getElementById('downloadTotalPngSquare').addEventListener('click', () => downloadTotalPng('square'));
     }
 

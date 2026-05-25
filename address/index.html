@@ -97,6 +97,7 @@
     #tvlAxisInvert { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
     #tvlAxisInvert:hover { color: var(--accent); border-color: var(--accent); }
     .tvl-chart-export { margin-left: auto; font-family: inherit; font-size: 0.7rem; padding: 0.35rem 0.8rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 5px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+    .tvl-chart-export ~ .tvl-chart-export { margin-left: 0; }
     .tvl-chart-export:hover { opacity: 0.85; }
     #tvlChart { width: 100%; height: 380px; }
 
@@ -318,6 +319,7 @@
             <button id="tvlAxisInvert" type="button" title="Invert axis colors (black ⇄ white)">Axis ⬤</button>
           </div>
           <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
+          <button id="downloadTvlPng43" class="tvl-chart-export" type="button">Download 4:3</button>
           <button id="downloadTvlPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
         </div>
         <div id="tvlChart"></div>
@@ -700,7 +702,7 @@
         xaxis: {
           showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
           showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, type: 'date',
+          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
           minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 6 },
         },
         yaxis: {
@@ -777,7 +779,7 @@
         font: { family: 'Poppins, sans-serif', color: c.axis, size: 26 },
         xaxis: {
           showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
-          tickfont: { size: 26 }, type: 'date', nticks: 5, tickangle: 0,
+          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
           ticks: 'outside', ticklen: 8, tickcolor: c.line,
           range: [xMin, xMax], autorange: false,
         },
@@ -863,16 +865,18 @@
         };
       }
       // Export. 'wide' snapshots the live chart at on-screen proportions.
-      // 'square' re-renders the live chart as a 1080×1080 figure (honouring the
-      // current zoom window, down-sampled bars, large fonts), captures it, then
-      // restores the on-screen view.
+      // 'square' (1080×1080) and '43' (1440×1080) re-render the live chart as a
+      // social figure (current zoom window, down-sampled bars, large fonts),
+      // capture it, then restore the on-screen view.
       const exportTvlPng = async (aspect) => {
         const stamp = new Date().toISOString().slice(0, 10);
         const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol) ? __tvlAssetSymbol.toLowerCase() : 'usd';
         const gd = document.getElementById('tvlChart');
 
-        if (aspect === 'square') {
+        if (aspect === 'square' || aspect === '43') {
+          const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
+          const ratioSlug = aspect === '43' ? '4x3' : '1x1';
           // Read the currently-displayed x-window (zoom or full) so the export
           // matches what's on screen. _fullLayout.xaxis.range is [lo, hi] in ms.
           let visibleDays = null;
@@ -888,10 +892,10 @@
           const savedData = gd.data, savedLayout = gd.layout;
           try {
             await Plotly.react(gd, [trace], layout, TVL_CONFIG);
-            const url = await Plotly.toImage(gd, { format: 'png', width: 1080, height: 1080, scale: 2 });
+            const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
             const a = document.createElement('a');
             a.href = url;
-            a.download = `fusion-tvl-${slug}-${denomSlug}-1x1-${stamp}.png`;
+            a.download = `fusion-tvl-${slug}-${denomSlug}-${ratioSlug}-${stamp}.png`;
             document.body.appendChild(a); a.click(); a.remove();
           } finally {
             await Plotly.react(gd, savedData, savedLayout, TVL_CONFIG);
@@ -930,6 +934,7 @@
         }
       };
       document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
+      document.getElementById('downloadTvlPng43').onclick = () => exportTvlPng('43');
       document.getElementById('downloadTvlPngSquare').onclick = () => exportTvlPng('square');
     }
 
