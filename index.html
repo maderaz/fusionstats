@@ -731,6 +731,30 @@
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_SYNTHETIC_KEY = 'fusionstats_filter_synthetic';
 
+    // Per-symbol USD price taken from the MOST RECENT priced event of that
+    // symbol (by timestamp). Used to value events the price API hasn't filled
+    // yet (usdValue null). Picking by timestamp matters: activity-events.json
+    // is in scan/append order, not time order, so "last in array" can grab a
+    // months-old price (e.g. WETH at $4.4K from last September). One shared
+    // lookup keeps the cards, the flow chart and the table consistent.
+    let priceBySymbol = {};
+    function buildPriceLookup(events) {
+      const best = {}; // symbol -> { ts, price }
+      for (const e of events) {
+        if (e.usdValue == null || !(e.assets > 0) || !e.symbol) continue;
+        const ts = e.timestamp || 0;
+        if (!best[e.symbol] || ts > best[e.symbol].ts) best[e.symbol] = { ts, price: e.usdValue / e.assets };
+      }
+      priceBySymbol = {};
+      for (const sym in best) priceBySymbol[sym] = best[sym].price;
+    }
+    // Best-effort USD for an event: exact when priced, else symbol fallback.
+    function eventUsd(e) {
+      if (e.usdValue != null) return e.usdValue;
+      if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) return e.assets * priceBySymbol[e.symbol];
+      return null;
+    }
+
     // Frontend fallback re-classifier — covers older JSON snapshots that pre-date
     // the backend tagger. Only applies the two cheapest heuristics; the full set
     // (recurring-keeper, address-pair, near-block-pair) lives in collect-activity.js
@@ -779,7 +803,8 @@
         if (type && e.type !== type) return false;
         if (chain && (e.chain || 'ethereum') !== chain) return false;
         if (minAmount > 0) {
-          const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
+          const u = eventUsd(e);
+          const usd = u != null ? Math.abs(u) : 0;
           if (usd < minAmount) return false;
         }
         if (product && e.vaultName !== product) return false;
@@ -860,26 +885,20 @@
         // Tag synthetic events not flagged by the backend (handles older JSONs).
         reclassifySyntheticFallback(events, vaultInfo);
 
+        // Build the shared most-recent-by-time price lookup before anything
+        // that values events (cards, chart, table all read it).
+        buildPriceLookup(events);
+
         // Net inflows (deposits - withdrawals) in USD — synthetic excluded so
         // a flashloan-loop bot can't make 24h flow look like a $50M inflow.
-        // Falls back to a per-symbol price derived from any priced event, so
-        // flows the price API hasn't filled yet still count — and these cards
-        // stay consistent with the daily-net-flow chart, which already does.
-        const flowPriceBySymbol = {};
-        events.forEach(e => {
-          if (e.usdValue != null && e.assets > 0 && e.symbol) flowPriceBySymbol[e.symbol] = e.usdValue / e.assets;
-        });
-        const flowUsdOf = e => {
-          if (e.usdValue != null) return e.usdValue;
-          if (e.assets > 0 && e.symbol && flowPriceBySymbol[e.symbol]) return e.assets * flowPriceBySymbol[e.symbol];
-          return null;
-        };
+        // eventUsd() falls back to the shared per-symbol price for flows the
+        // price API hasn't filled yet, keeping cards/chart/table consistent.
         function netFlowUsd(evts, seconds) {
           const cutoff = Math.floor(Date.now() / 1000) - seconds;
           let net = 0;
           evts.forEach(e => {
             if (e.synthetic || (e.timestamp || 0) <= cutoff) return;
-            const usd = flowUsdOf(e);
+            const usd = eventUsd(e);
             if (usd == null) return;
             net += e.type === 'deposit' ? usd : -usd;
           });
@@ -968,24 +987,13 @@
       events = events.filter(e => !e.synthetic);
       if (!events.length) return;
 
-      // Build price lookup for events missing usdValue
-      const priceBySymbol = {};
-      events.forEach(e => {
-        if (e.usdValue != null && e.assets > 0 && e.symbol) {
-          priceBySymbol[e.symbol] = e.usdValue / e.assets;
-        }
-      });
-
       const now = Date.now();
       const today = Math.floor(now / 86400000);
       const buckets = new Array(days).fill(0);
 
       events.forEach(e => {
         if (!e.timestamp) return;
-        let usd = e.usdValue;
-        if (usd == null && e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) {
-          usd = e.assets * priceBySymbol[e.symbol];
-        }
+        const usd = eventUsd(e);   // shared most-recent-by-time fallback
         if (usd == null) return;
         const day = Math.floor(e.timestamp / 86400);
         const idx = days - 1 - (today - day);
@@ -1058,8 +1066,15 @@
         const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
         const sym = e.symbol || '?';
         const name = e.vaultName || shortAddr(e.vault);
-        const usd = e.usdValue != null ? `<span class="usd-value">$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : '';
-        const usdMobile = e.usdValue != null ? `$${e.usdValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '';
+        // Show exact USD when priced; otherwise an estimate (~) from the
+        // latest same-symbol price, so rows whose price feed is lagging still
+        // appear with a value (and match the net-flow cards/chart).
+        const estUsd = e.usdValue != null ? e.usdValue : eventUsd(e);
+        const fmtUsdAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const estPrefix = e.usdValue == null ? '~' : '';
+        const estTitle = e.usdValue == null ? ` title="estimated from latest ${sym} price — exact USD pending"` : '';
+        const usd = estUsd != null ? `<span class="usd-value"${estTitle}>${estPrefix}${fmtUsdAmt(estUsd)}</span>` : '';
+        const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
