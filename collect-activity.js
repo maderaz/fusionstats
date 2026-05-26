@@ -290,6 +290,14 @@ const TOTAL_ASSETS_SELECTOR = '0x01e1d114';
 const ASSET_SELECTOR = '0x38d52e0f';
 // decimals() — ERC-20
 const DECIMALS_SELECTOR = '0x313ce567';
+// convertToAssets(uint256) — ERC-4626; value of N shares in underlying terms
+const CONVERT_TO_ASSETS_SELECTOR = '0x07a2d13a';
+
+// Build calldata for convertToAssets(shares) — selector + 32-byte uint.
+function convertToAssetsData(shares) {
+  return CONVERT_TO_ASSETS_SELECTOR + shares.toString(16).padStart(64, '0');
+}
+
 
 // DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
 async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
@@ -949,6 +957,24 @@ async function tvlSnapshotsForVault(vault, chainArg) {
     if (raw && raw !== '0x') decimals = parseInt(raw, 16);
   } catch {}
 
+  // Share-token decimals = decimals() on the vault itself (ERC-4626 share is
+  // the vault). Needed to ask convertToAssets for exactly 1.0 share.
+  let shareDecimals = decimals;
+  try {
+    const raw = await rpcCall(chain, 'eth_call', [{ to: vault, data: DECIMALS_SELECTOR }, 'latest']);
+    if (raw && raw !== '0x') shareDecimals = parseInt(raw, 16);
+  } catch {}
+  const oneShare = 10n ** BigInt(shareDecimals);
+  // Share price in underlying terms: value of 1 share. ~1.0 at deploy, grows
+  // with yield. Returns null on revert (e.g. block before deploy).
+  const sharePriceAt = async (blockHex) => {
+    try {
+      const raw = await rpcCall(chain, 'eth_call', [{ to: vault, data: convertToAssetsData(oneShare) }, blockHex]);
+      if (!raw || raw === '0x') return null;
+      return Number(BigInt(raw)) / 10 ** decimals;
+    } catch { return null; }
+  };
+
   const currentBlock = await getBlockNumber(chain);
   const bpd = BLOCKS_PER_DAY[chain] || BLOCKS_PER_DAY._default;
 
@@ -971,7 +997,7 @@ async function tvlSnapshotsForVault(vault, chainArg) {
   const snapshots = [...existing];
   const writeBack = () => {
     all.vaults[vault] = {
-      chain, symbol: meta.symbol, underlyingToken, decimals,
+      chain, symbol: meta.symbol, underlyingToken, decimals, shareDecimals,
       snapshots: snapshots.sort((a, b) => a.block - b.block),
     };
     saveTvlSnapshots(all);
@@ -993,21 +1019,43 @@ async function tvlSnapshotsForVault(vault, chainArg) {
     writeBack();
   }
 
+  // Share-price backfill: fill `sharePrice` for existing snapshots that predate
+  // this field (one convertToAssets call per stored block, no extra timestamp
+  // fetch). Bounded by checkpointing.
+  const needsShare = snapshots.filter(s => s.sharePrice == null && s.block);
+  if (needsShare.length) {
+    console.log(`Backfilling share price for ${needsShare.length} existing points…`);
+    let done = 0;
+    for (let i = 0; i < needsShare.length; i += 5) {
+      const batch = needsShare.slice(i, i + 5);
+      await Promise.all(batch.map(async (s) => {
+        const sp = await sharePriceAt('0x' + s.block.toString(16));
+        if (sp != null) s.sharePrice = sp;
+      }));
+      done += batch.length;
+      if (done % 50 < 5) writeBack();
+    }
+    writeBack();
+  }
+
   // Process new blocks in batches of 5. Each block needs: totalAssets,
-  // timestamp (RPC) + historical price (cached HTTP to DeFi Llama).
+  // share price (convertToAssets), block timestamp (RPC) + historical USD
+  // price (cached HTTP to DeFi Llama).
   for (let i = 0; i < todo.length; i += 5) {
     const batch = todo.slice(i, i + 5);
     const results = await Promise.all(batch.map(async (block) => {
       try {
-        const [raw, ts] = await Promise.all([
-          rpcCall(chain, 'eth_call', [{ to: vault, data: TOTAL_ASSETS_SELECTOR }, '0x' + block.toString(16)]),
+        const blockHex = '0x' + block.toString(16);
+        const [raw, ts, sharePrice] = await Promise.all([
+          rpcCall(chain, 'eth_call', [{ to: vault, data: TOTAL_ASSETS_SELECTOR }, blockHex]),
           getBlockTimestamp(chain, block),
+          sharePriceAt(blockHex),
         ]);
         if (!raw || raw === '0x') return null;
         const assets = Number(BigInt(raw)) / 10 ** decimals;
         const price = await priceForDay(meta.symbol, underlyingToken, ts, chain);
         const tvlUsd = price != null ? assets * price : null;
-        return { block, timestamp: ts, day: Math.floor(ts / 86400), assets, priceUsd: price, tvlUsd };
+        return { block, timestamp: ts, day: Math.floor(ts / 86400), assets, priceUsd: price, tvlUsd, sharePrice };
       } catch (e) {
         return { block, error: e.message };
       }
