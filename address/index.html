@@ -96,6 +96,7 @@
     .tvl-color-swatch input[type="color"] { width: 100%; height: 100%; border: none; padding: 0; background: none; cursor: pointer; }
     #tvlAxisInvert { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
     #tvlAxisInvert:hover { color: var(--accent); border-color: var(--accent); }
+    .sp-gain { font-size: 0.72rem; font-weight: 600; color: var(--green, #16a34a); }
     .tvl-chart-export { margin-left: auto; font-family: inherit; font-size: 0.7rem; padding: 0.35rem 0.8rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 5px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
     .tvl-chart-export ~ .tvl-chart-export { margin-left: 0; }
     .tvl-chart-export:hover { opacity: 0.85; }
@@ -324,6 +325,20 @@
         </div>
         <div id="tvlChart"></div>
       </div>
+      <div id="sharePriceCard" class="tvl-chart-card" style="display:none">
+        <div class="tvl-chart-toolbar">
+          <span class="tvl-chart-title">Share price over time</span>
+          <div class="tvl-chart-range-group" id="spRange">
+            <button data-range="30">30d</button>
+            <button data-range="90">90d</button>
+            <button data-range="180">180d</button>
+            <button data-range="all" class="active">All</button>
+          </div>
+          <span id="spGain" class="sp-gain"></span>
+          <button id="downloadSpPng" class="tvl-chart-export" type="button">Download PNG</button>
+        </div>
+        <div id="sharePriceChart"></div>
+      </div>
       <div class="panels" id="panels"></div>
       <div class="history-card" id="rebalanceCard" style="display:none"></div>
       <div class="history-card" id="historyCard"></div>
@@ -435,7 +450,7 @@
             // accurate, and USD is forward-filled across the gap downstream.
             const series = (v.snapshots || [])
               .filter(s => s.day != null && typeof s.assets === 'number')
-              .map(s => ({ day: s.day, tvlUsd: (typeof s.tvlUsd === 'number' ? s.tvlUsd : null), assets: s.assets }))
+              .map(s => ({ day: s.day, tvlUsd: (typeof s.tvlUsd === 'number' ? s.tvlUsd : null), assets: s.assets, sharePrice: (typeof s.sharePrice === 'number' ? s.sharePrice : null) }))
               .sort((a, b) => a.day - b.day);
             if (series.length) {
               window.tvlSnapshotsByAddr[addr.toLowerCase()] = { symbol: v.symbol || null, series };
@@ -552,6 +567,7 @@
       renderStats(s, addr, vaultInfo);
       renderFlowChart(events);
       renderTvlChart(addr, vaultInfo, events);
+      renderSharePriceChart(addr, vaultInfo);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
       const panelsEl = document.getElementById('panels');
@@ -939,6 +955,125 @@
       document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
       document.getElementById('downloadTvlPng43').onclick = () => exportTvlPng('43');
       document.getElementById('downloadTvlPngSquare').onclick = () => exportTvlPng('square');
+    }
+
+    // ── Share price over time ──────────────────────────────────────────────
+    // Reconstructed from on-chain convertToAssets(1 share) snapshots: value of
+    // one share in underlying terms. ~1.0 at deploy, trends up with yield.
+    let __spState = null;
+    let __spRange = 'all';
+
+    function buildSharePriceSeries(addr) {
+      const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+      if (!snap || !snap.series) return null;
+      const raw = snap.series.filter(s => typeof s.sharePrice === 'number' && s.day != null);
+      if (raw.length < 2) return null;
+      // One point per day, forward-filled so the line is continuous.
+      const byDay = new Map();
+      for (const s of raw) byDay.set(s.day, s.sharePrice);
+      const sorted = [...byDay.entries()].sort((a, b) => a[0] - b[0]);
+      const minDay = sorted[0][0], maxDay = sorted[sorted.length - 1][0];
+      const known = new Map(sorted);
+      const pts = [];
+      let last = sorted[0][1];
+      for (let d = minDay; d <= maxDay; d++) {
+        if (known.has(d)) last = known.get(d);
+        pts.push({ day: d, sp: last });
+      }
+      return { pts, symbol: snap.symbol || '' };
+    }
+
+    function spMakeTraceLayout(state, range) {
+      let pts = state.pts;
+      if (range !== 'all') {
+        const cutoff = pts[pts.length - 1].day - parseInt(range, 10);
+        const f = pts.filter(p => p.day >= cutoff);
+        if (f.length > 1) pts = f;
+      }
+      const DAY_MS = 86400 * 1000;
+      const c = tvlAxisColors();
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: pts.map(p => p.sp),
+        type: 'scatter', mode: 'lines',
+        line: { color: __tvlBarColor, width: 2.5, shape: 'spline', smoothing: 0.6 },
+        fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.08)',
+        hovertemplate: `<b>%{x|%b %d, %Y}</b><br>1 share = %{y:.4~f} ${state.symbol}<extra></extra>`,
+      };
+      // Tight y-range around the data so the yield curve is legible (not a flat
+      // line pinned near zero). Pad 8% each side.
+      const ys = pts.map(p => p.sp);
+      const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.08 || hi * 0.02;
+      const layout = {
+        autosize: true,
+        margin: { l: 70, r: 16, t: 8, b: 48 },
+        plot_bgcolor: c.bg, paper_bgcolor: c.bg,
+        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
+        xaxis: {
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
+          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
+        },
+        yaxis: {
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
+          tickfont: { size: 10 }, tickformat: '.4~f',
+          range: [Math.max(0, lo - pad), hi + pad],
+        },
+        showlegend: false, hovermode: 'x', dragmode: 'zoom',
+      };
+      return { trace, layout };
+    }
+
+    function renderSharePriceChart(addr, vaultInfo) {
+      try { renderSharePriceChartInner(addr, vaultInfo); }
+      catch (e) {
+        console.error('share price chart failed:', e);
+        const card = document.getElementById('sharePriceCard');
+        if (card) card.style.display = 'none';
+      }
+    }
+    function renderSharePriceChartInner(addr, vaultInfo) {
+      const card = document.getElementById('sharePriceCard');
+      __spState = (vaultInfo && typeof Plotly !== 'undefined') ? buildSharePriceSeries(addr) : null;
+      if (!__spState) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      __spRange = 'all';
+
+      // Total gain badge (first → last share price over the full series).
+      const first = __spState.pts[0].sp, lastV = __spState.pts[__spState.pts.length - 1].sp;
+      const gainPct = first > 0 ? (lastV / first - 1) * 100 : 0;
+      const gainEl = document.getElementById('spGain');
+      gainEl.textContent = (gainPct >= 0 ? '+' : '') + gainPct.toFixed(2) + '% since inception';
+      gainEl.style.color = gainPct >= 0 ? 'var(--green)' : 'var(--red)';
+
+      const draw = () => {
+        const { trace, layout } = spMakeTraceLayout(__spState, __spRange);
+        Plotly.react('sharePriceChart', [trace], layout, TVL_CONFIG);
+      };
+      const init = spMakeTraceLayout(__spState, __spRange);
+      Plotly.newPlot('sharePriceChart', [init.trace], init.layout, TVL_CONFIG);
+
+      document.querySelectorAll('#spRange button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.range === __spRange);
+        btn.onclick = () => {
+          __spRange = btn.dataset.range;
+          document.querySelectorAll('#spRange button').forEach(b => b.classList.toggle('active', b === btn));
+          draw();
+        };
+      });
+      document.getElementById('downloadSpPng').onclick = async () => {
+        const gd = document.getElementById('sharePriceChart');
+        const oP = gd.layout.paper_bgcolor, oPl = gd.layout.plot_bgcolor;
+        try {
+          await Plotly.relayout(gd, { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 'xaxis.showgrid': false, 'yaxis.showgrid': false });
+          const stamp = new Date().toISOString().slice(0, 10);
+          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
+        } finally {
+          await Plotly.relayout(gd, { paper_bgcolor: oP, plot_bgcolor: oPl, 'xaxis.showgrid': true, 'yaxis.showgrid': true });
+        }
+      };
     }
 
     // Rebalance / fuse activity (only renders when address is a known vault and has rebalance data)
