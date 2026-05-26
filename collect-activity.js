@@ -352,6 +352,39 @@ async function priceForDay(symbol, tokenAddr, timestamp, chain) {
   return price;
 }
 
+// Backfill usdValue for events the price API left null (enrichment lag). Uses
+// the cached + retried priceForDay, so repeated runs are cheap and converge,
+// and each event is valued at its OWN historical price (not a current proxy).
+// Most-recent first — those matter most for the headline cards. Bounded by
+// count + wall-clock so it fits inside the regular collector's timeout.
+async function repairActivityPrices(events, vaults = [], { limit = Infinity, deadlineMs = Infinity } = {}) {
+  // Resolve underlying token / chain / symbol from vault metadata when the
+  // event itself lacks them (older events predate those fields).
+  const vmeta = new Map(vaults.map(v => [(v.address || '').toLowerCase(), v]));
+  const tokenOf = e => e.underlyingToken || vmeta.get((e.vault || '').toLowerCase())?.underlyingToken || TOKEN_ADDRESSES[e.symbol] || null;
+  const chainOf = e => e.chain || vmeta.get((e.vault || '').toLowerCase())?.chain || 'ethereum';
+  const symbolOf = e => e.symbol || vmeta.get((e.vault || '').toLowerCase())?.symbol || null;
+
+  const todo = events
+    .map(e => ({ e, token: tokenOf(e), chain: chainOf(e), symbol: symbolOf(e) }))
+    .filter(x => x.e.usdValue == null && x.e.assets > 0 && x.e.timestamp && x.symbol && x.token && LLAMA_CHAIN[x.chain])
+    .sort((a, b) => (b.e.timestamp || 0) - (a.e.timestamp || 0));
+  if (!todo.length) return 0;
+  const start = Date.now();
+  let fixed = 0, tried = 0;
+  for (const { e, token, chain, symbol } of todo) {
+    if (tried >= limit || Date.now() - start > deadlineMs) break;
+    tried++;
+    const price = await priceForDay(symbol, token, e.timestamp, chain);
+    if (price != null) {
+      e.usdValue = Math.round(e.assets * price * 100) / 100;
+      fixed++;
+    }
+  }
+  console.log(`Price repair: filled ${fixed}/${tried} (${todo.length} missing usdValue total)`);
+  return fixed;
+}
+
 // Batch price lookups: group events by symbol+day, fetch one price per group
 async function enrichWithPrices(events) {
   // Group by underlyingToken + day (don't need per-second precision)
@@ -1006,6 +1039,22 @@ async function main() {
     return;
   }
 
+  // --repair-prices-activity
+  // One-shot, unbounded sweep that backfills usdValue for every null-priced
+  // event in activity-events.json. The regular collect run does a bounded
+  // version each cycle; use this to clear a large backlog at once.
+  if (args[0] === '--repair-prices-activity') {
+    let data = { events: [] };
+    try { data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch {}
+    const before = (data.events || []).filter(e => e.usdValue == null).length;
+    console.log(`Repairing ${before} null-priced events…`);
+    const fixed = await repairActivityPrices(data.events || [], loadVaults(), {});
+    data.updatedAt = new Date().toISOString();
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+    console.log(`Done: filled ${fixed}, ${before - fixed} still unpriced (no DeFi Llama coverage).`);
+    return;
+  }
+
   // --gap-fill [chain]
   if (args[0] === '--gap-fill') {
     const chainFilter = args[1] || null;
@@ -1352,6 +1401,13 @@ async function main() {
     seen.add(key);
     return true;
   });
+
+  // Self-heal: backfill USD for events whose price arrived null. Bounded so it
+  // never threatens the collector's timeout; the cache + most-recent-first
+  // ordering means each 20-min run clears the freshest gaps and chips away at
+  // any backlog. Public repo ⇒ unlimited minutes, so running it every cycle is
+  // free. For a full one-shot sweep use: node collect-activity.js --repair-prices-activity
+  await repairActivityPrices(data.events, VAULTS, { limit: 300, deadlineMs: 90_000 });
 
   tagSyntheticEvents(data.events, VAULTS);
 
