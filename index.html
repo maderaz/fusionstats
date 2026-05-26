@@ -862,11 +862,27 @@
 
         // Net inflows (deposits - withdrawals) in USD — synthetic excluded so
         // a flashloan-loop bot can't make 24h flow look like a $50M inflow.
+        // Falls back to a per-symbol price derived from any priced event, so
+        // flows the price API hasn't filled yet still count — and these cards
+        // stay consistent with the daily-net-flow chart, which already does.
+        const flowPriceBySymbol = {};
+        events.forEach(e => {
+          if (e.usdValue != null && e.assets > 0 && e.symbol) flowPriceBySymbol[e.symbol] = e.usdValue / e.assets;
+        });
+        const flowUsdOf = e => {
+          if (e.usdValue != null) return e.usdValue;
+          if (e.assets > 0 && e.symbol && flowPriceBySymbol[e.symbol]) return e.assets * flowPriceBySymbol[e.symbol];
+          return null;
+        };
         function netFlowUsd(evts, seconds) {
           const cutoff = Math.floor(Date.now() / 1000) - seconds;
-          const filtered = evts.filter(e => !e.synthetic && (e.timestamp || 0) > cutoff && e.usdValue != null);
           let net = 0;
-          filtered.forEach(e => { net += e.type === 'deposit' ? e.usdValue : -e.usdValue; });
+          evts.forEach(e => {
+            if (e.synthetic || (e.timestamp || 0) <= cutoff) return;
+            const usd = flowUsdOf(e);
+            if (usd == null) return;
+            net += e.type === 'deposit' ? usd : -usd;
+          });
           return net;
         }
 
