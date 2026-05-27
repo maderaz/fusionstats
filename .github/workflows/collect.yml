@@ -47,4 +47,14 @@ jobs:
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update data files [skip ci]"
           git pull --rebase --autostash origin ${{ github.ref_name }} || true
-          git push
+          # Retry with backoff: GitHub occasionally rejects a ref update with a
+          # transient "fatal error in commit_refs"; a re-pull + retry clears it
+          # (and also resolves a race with another cron pushing meanwhile).
+          for i in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
+            sleep $((2**i))
+            git pull --rebase --autostash origin ${{ github.ref_name }} || true
+          done
+          echo "::error::push still failing after retries"
+          exit 1

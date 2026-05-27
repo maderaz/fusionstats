@@ -35,4 +35,12 @@ jobs:
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "Update rebalance data [skip ci]"
           git pull --rebase --autostash origin ${{ github.ref_name }} || true
-          git push
+          # Retry with backoff — transient GitHub "commit_refs" rejections / races.
+          for i in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
+            sleep $((2**i))
+            git pull --rebase --autostash origin ${{ github.ref_name }} || true
+          done
+          echo "::error::push still failing after retries"
+          exit 1
