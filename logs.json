@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1678578894.576655,
-    "fusionBorrowed": 14680798.85879544,
-    "fusionCollateral": 16875710.475029364,
-    "sharePercent": 0.8745968930163394,
-    "activeVaults": 18,
-    "totalVaults": 98,
-    "vaultErrors": 0,
-    "durationMs": 8620,
-    "historyEntries": 156,
-    "timestamp": "2026-04-27T11:25:15.565Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1677165481.1558762,
-    "fusionBorrowed": 13735687.376501283,
-    "fusionCollateral": 15794651.401403233,
-    "sharePercent": 0.8189822370440669,
-    "activeVaults": 18,
-    "totalVaults": 99,
-    "vaultErrors": 0,
-    "durationMs": 9666,
-    "historyEntries": 151,
-    "timestamp": "2026-04-27T13:07:33.969Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1680100538.3522615,
     "fusionBorrowed": 15072216.500047091,
     "fusionCollateral": 17335017.740688547,
@@ -7413,5 +7381,24 @@
     "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?",
     "stack": "Error: Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?\n    at gql (/home/runner/work/fusionstats/fusionstats/collect.js:70:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async fetchTotalLoans (/home/runner/work/fusionstats/fusionstats/collect.js:75:16)\n    at async collect (/home/runner/work/fusionstats/fusionstats/collect.js:140:18)",
     "timestamp": "2026-05-31T16:43:56.393Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-05-31T17:52:33.716Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?",
+    "stack": "Error: Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?\n    at gql (/home/runner/work/fusionstats/fusionstats/collect.js:70:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async fetchTotalLoans (/home/runner/work/fusionstats/fusionstats/collect.js:75:16)\n    at async collect (/home/runner/work/fusionstats/fusionstats/collect.js:140:18)",
+    "timestamp": "2026-05-31T17:52:33.718Z"
   }
 ]
