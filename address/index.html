@@ -336,6 +336,7 @@
           </div>
           <span id="spGain" class="sp-gain"></span>
           <button id="downloadSpPng" class="tvl-chart-export" type="button">Download PNG</button>
+          <button id="downloadSpLinePng" class="tvl-chart-export" type="button" title="Just the line — no fill, no x-axis, transparent bg">Download line</button>
         </div>
         <div id="sharePriceChart"></div>
       </div>
@@ -1072,6 +1073,35 @@
           await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
         } finally {
           await Plotly.relayout(gd, { paper_bgcolor: oP, plot_bgcolor: oPl, 'xaxis.showgrid': true, 'yaxis.showgrid': true });
+        }
+      };
+      // "Download line" — minimalist export for overlay/composition use.
+      // Strips the area-fill gradient and the entire x-axis, keeps the y-axis
+      // for value reference, transparent paper + plot bg.
+      document.getElementById('downloadSpLinePng').onclick = async () => {
+        const gd = document.getElementById('sharePriceChart');
+        const trace = gd.data[0] || {};
+        const origFill = trace.fill, origFillColor = trace.fillcolor;
+        const oP = gd.layout.paper_bgcolor, oPl = gd.layout.plot_bgcolor;
+        try {
+          await Plotly.restyle(gd, { fill: 'none', fillcolor: 'rgba(0,0,0,0)' });
+          await Plotly.relayout(gd, {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor:  'rgba(0,0,0,0)',
+            'xaxis.visible': false,
+            'yaxis.showgrid': false,
+          });
+          const stamp = new Date().toISOString().slice(0, 10);
+          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-line-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
+        } finally {
+          await Plotly.restyle(gd, { fill: origFill || 'tozeroy', fillcolor: origFillColor || 'rgba(132,41,255,0.08)' });
+          await Plotly.relayout(gd, {
+            paper_bgcolor: oP,
+            plot_bgcolor:  oPl,
+            'xaxis.visible': true,
+            'yaxis.showgrid': true,
+          });
         }
       };
     }
