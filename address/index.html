@@ -334,6 +334,13 @@
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
+          <label class="tvl-color-swatch" title="Line color">
+            <input type="color" id="spLineColor" value="#8429FF">
+          </label>
+          <div class="tvl-chart-range-group" id="spShape">
+            <button data-shape="spline" class="active">Smooth</button>
+            <button data-shape="linear">Sharp</button>
+          </div>
           <span id="spGain" class="sp-gain"></span>
           <button id="downloadSpPng" class="tvl-chart-export" type="button">Download PNG</button>
           <button id="downloadSpLinePng" class="tvl-chart-export" type="button" title="Just the line — no fill, no x-axis, transparent bg">Download line</button>
@@ -963,6 +970,14 @@
     // one share in underlying terms. ~1.0 at deploy, trends up with yield.
     let __spState = null;
     let __spRange = 'all';
+    let __spLineColor = '#8429FF';
+    let __spShape = 'spline';   // 'spline' = smooth, 'linear' = sharp/zig-zag
+    // Derive a soft fill from any hex/rgb-ish color (graceful for invalid inputs).
+    function rgbaFromColor(c, alpha) {
+      const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c || '');
+      if (m) return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`;
+      return `rgba(132,41,255,${alpha})`;
+    }
 
     function buildSharePriceSeries(addr) {
       const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
@@ -997,8 +1012,8 @@
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: pts.map(p => p.sp),
         type: 'scatter', mode: 'lines',
-        line: { color: __tvlBarColor, width: 2.5, shape: 'spline', smoothing: 0.6 },
-        fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.08)',
+        line: { color: __spLineColor, width: 2.5, shape: __spShape, smoothing: __spShape === 'spline' ? 0.6 : 0 },
+        fill: 'tozeroy', fillcolor: rgbaFromColor(__spLineColor, 0.08),
         hovertemplate: `<b>%{x|%b %d, %Y}</b><br>1 share = %{y:.4~f} ${state.symbol}<extra></extra>`,
       };
       // Tight y-range around the data so the yield curve is legible (not a flat
@@ -1063,6 +1078,19 @@
           draw();
         };
       });
+      const lineColorInput = document.getElementById('spLineColor');
+      if (lineColorInput) {
+        lineColorInput.value = __spLineColor;
+        lineColorInput.oninput = () => { __spLineColor = lineColorInput.value; draw(); };
+      }
+      document.querySelectorAll('#spShape button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === __spShape);
+        btn.onclick = () => {
+          __spShape = btn.dataset.shape;
+          document.querySelectorAll('#spShape button').forEach(b => b.classList.toggle('active', b === btn));
+          draw();
+        };
+      });
       document.getElementById('downloadSpPng').onclick = async () => {
         const gd = document.getElementById('sharePriceChart');
         const oP = gd.layout.paper_bgcolor, oPl = gd.layout.plot_bgcolor;
@@ -1095,7 +1123,7 @@
           const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
           await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-line-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
         } finally {
-          await Plotly.restyle(gd, { fill: origFill || 'tozeroy', fillcolor: origFillColor || 'rgba(132,41,255,0.08)' });
+          await Plotly.restyle(gd, { fill: origFill || 'tozeroy', fillcolor: origFillColor || rgbaFromColor(__spLineColor, 0.08) });
           await Plotly.relayout(gd, {
             paper_bgcolor: oP,
             plot_bgcolor:  oPl,
