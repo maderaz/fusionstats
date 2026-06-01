@@ -809,7 +809,6 @@
               where: { chainId_in: [1], whitelisted: true }
             ) {
               items {
-                uniqueKey
                 loanAsset { symbol }
                 state { borrowAssetsUsd }
               }
@@ -819,6 +818,11 @@
         })
       });
       const json = await res.json();
+      if (json.errors) {
+        const msg = json.errors[0]?.message || 'unknown';
+        log(`Total Morpho loans: GraphQL error — ${msg}`);
+        throw new Error(`Morpho API: ${msg}`);
+      }
       const { items, pageInfo } = json.data.markets;
       const total = items.reduce((sum, m) => sum + (m.state?.borrowAssetsUsd || 0), 0);
       log(`Total Morpho loans: ${formatUsd(total)} across ${items.length}/${pageInfo.countTotal} markets`);
@@ -841,7 +845,6 @@
               address
               marketPositions {
                 market {
-                  uniqueKey
                   loanAsset { symbol }
                   collateralAsset { symbol }
                 }
