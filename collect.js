@@ -77,7 +77,7 @@ async function fetchTotalLoans() {
       first: 1000
       orderBy: BorrowAssetsUsd
       orderDirection: Desc
-      where: { chainId_in: [1], whitelisted: true }
+      where: { chainId_in: [1], listed: true }
     ) {
       items { state { borrowAssetsUsd } }
       pageInfo { count countTotal }
@@ -94,8 +94,6 @@ async function fetchVaultPositions(address) {
       query: `{
         userByAddress(chainId: 1, address: "${address}") {
           marketPositions {
-            borrowAssetsUsd
-            supplyAssetsUsd
             state {
               borrowAssetsUsd
               collateralUsd

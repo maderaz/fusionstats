@@ -806,7 +806,7 @@
               first: 1000
               orderBy: BorrowAssetsUsd
               orderDirection: Desc
-              where: { chainId_in: [1], whitelisted: true }
+              where: { chainId_in: [1], listed: true }
             ) {
               items {
                 loanAsset { symbol }
@@ -848,8 +848,6 @@
                   loanAsset { symbol }
                   collateralAsset { symbol }
                 }
-                borrowAssetsUsd
-                supplyAssetsUsd
                 state {
                   borrowAssetsUsd
                   supplyAssetsUsd
