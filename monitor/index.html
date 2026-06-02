@@ -91,29 +91,38 @@
     }
     .vault-name a { color: inherit; text-decoration: none; }
     .vault-name a:hover { color: var(--accent); }
-    .chain-pill {
-      display: inline-block;
-      font-size: 0.6rem; font-weight: 500;
-      padding: 0.1rem 0.4rem; border-radius: 999px;
-      background: var(--accent-bg); color: var(--accent);
-      text-transform: lowercase;
+    .vault-name .sub {
+      display: block;
+      font-size: 0.62rem; color: var(--text-secondary);
+      font-weight: 400; text-transform: uppercase; letter-spacing: 0.04em;
+      margin-top: 1px;
     }
-    .sym { color: var(--text-body); font-weight: 500; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .pct { font-weight: 600; }
     .pct.pos { color: var(--green); }
     .pct.neg { color: var(--red); }
     .pct.flag { background: rgba(220,38,38,0.08); padding: 0.1rem 0.35rem; border-radius: 4px; }
-    .spark-cell { width: 120px; padding: 0.15rem 0.75rem; }
-    .spark { display: block; width: 110px; height: 28px; }
+    .spark-cell { width: 130px; padding: 0.15rem 0.5rem; }
+    .spark { display: block; width: 120px; height: 28px; }
     .spark .line { fill: none; stroke-width: 1.5; }
-    .spark .dot { fill: currentColor; }
+    .spark .dot { stroke: white; stroke-width: 1; }   /* trend-colored fill set inline */
     .na { color: var(--text-secondary); font-style: italic; }
     .loading { padding: 3rem; text-align: center; color: var(--text-secondary); }
     .err { padding: 1.5rem; color: var(--red); font-size: 0.85rem; }
     .footnote {
       margin-top: 1rem; font-size: 0.7rem; color: var(--text-secondary);
       line-height: 1.5;
+    }
+    /* Mobile: tighter padding so all columns fit without horizontal scroll. */
+    @media (max-width: 640px) {
+      .container { padding: 1rem 0.5rem; }
+      table { font-size: 0.72rem; }
+      thead th, tbody td { padding: 0.4rem 0.3rem; }
+      thead th:first-child, tbody td:first-child { padding-left: 0.55rem; }
+      thead th:last-child, tbody td:last-child { padding-right: 0.55rem; }
+      .vault-name { max-width: 38vw; }
+      .spark-cell { width: 90px; padding: 0.15rem 0.3rem; }
+      .spark { width: 84px; height: 24px; }
     }
   </style>
 </head>
@@ -152,23 +161,21 @@
         <thead>
           <tr>
             <th>Vault</th>
-            <th>Chain</th>
-            <th>Symbol</th>
+            <th>Trajectory</th>
             <th class="num">Latest</th>
             <th class="num">Δ window</th>
-            <th>Trajectory</th>
           </tr>
         </thead>
         <tbody id="rows">
-          <tr><td colspan="6" class="loading">Loading snapshots…</td></tr>
+          <tr><td colspan="4" class="loading">Loading snapshots…</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="footnote">
       Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
-      "Δ window" = first→last sharePrice in the chosen window.
-      Yield-positive vaults should mostly drift up; sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error).
+      Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
+      "Δ window" = first→last sharePrice in the chosen window. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Filter by chain via the toolbar.
     </div>
   </div>
 
@@ -189,11 +196,12 @@
       return sign + v.toFixed(2) + '%';
     }
 
-    // Build SVG sparkline of values across the window. Pads vertically by 8% so
-    // the line never touches the edges.
-    function sparkSvg(vals, color) {
+    // Build SVG sparkline. `lineColor` reflects the window Δ% (overall mood);
+    // `dotColor` reflects current momentum (last vs prev → up/down/flat) so the
+    // endpoint signals whether the price is moving up or down right now.
+    function sparkSvg(vals, lineColor, dotColor) {
       if (!vals || vals.length < 2) return '<span class="na">no data</span>';
-      const W = 110, H = 28, PAD_X = 1, PAD_Y = 3;
+      const W = 120, H = 28, PAD_X = 2, PAD_Y = 4;
       const lo = Math.min(...vals), hi = Math.max(...vals);
       const range = (hi - lo) || (hi * 0.001) || 1;
       const innerW = W - 2 * PAD_X;
@@ -205,10 +213,20 @@
       }).join(' ');
       const lastX = (PAD_X + innerW).toFixed(1);
       const lastY = (PAD_Y + (1 - (vals[vals.length - 1] - lo) / range) * innerH).toFixed(1);
-      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="color:${color}">
-        <polyline class="line" points="${pts}" stroke="${color}"/>
-        <circle class="dot" cx="${lastX}" cy="${lastY}" r="1.6"/>
+      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <polyline class="line" points="${pts}" stroke="${lineColor}"/>
+        <circle class="dot" cx="${lastX}" cy="${lastY}" r="2.4" fill="${dotColor}"/>
       </svg>`;
+    }
+
+    // Current momentum: green if last > prev, red if last < prev, grey if flat
+    // or insufficient data. Drives the sparkline endpoint dot color.
+    function momentumColor(vals) {
+      if (!vals || vals.length < 2) return '#9BA3AF';
+      const last = vals[vals.length - 1], prev = vals[vals.length - 2];
+      if (last > prev) return '#16A34A';
+      if (last < prev) return '#DC2626';
+      return '#9BA3AF';
     }
 
     function colorFor(pct) {
@@ -263,20 +281,22 @@
         `${filtered.length} vaults · window ${state.window}d`;
       document.getElementById('windowLabel').textContent = state.window;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">No vaults match.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="loading">No vaults match.</td></tr>';
         return;
       }
       tbody.innerHTML = applySort(filtered).map(r => {
-        const color = colorFor(r.deltaPct);
+        const lineColor = colorFor(r.deltaPct);
+        const dotColor = momentumColor(r.vals);
         const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
         const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
         return `<tr>
-          <td class="vault-name" title="${r.name}"><a href="/address/?a=${r.addr}">${r.name}</a></td>
-          <td><span class="chain-pill">${r.chain}</span></td>
-          <td class="sym">${r.symbol}</td>
+          <td class="vault-name" title="${r.name}">
+            <a href="/address/?a=${r.addr}">${r.name}</a>
+            <span class="sub">${r.symbol}</span>
+          </td>
+          <td class="spark-cell">${sparkSvg(r.vals, lineColor, dotColor)}</td>
           <td class="num">${fmtPrice(r.latest)}</td>
           <td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>
-          <td class="spark-cell">${sparkSvg(r.vals, color)}</td>
         </tr>`;
       }).join('');
     }
@@ -335,7 +355,7 @@
         render(allRows);
       } catch (e) {
         document.getElementById('rows').innerHTML =
-          `<tr><td colspan="6" class="err">Failed to load: ${e.message}</td></tr>`;
+          `<tr><td colspan="4" class="err">Failed to load: ${e.message}</td></tr>`;
       }
     }
     load();
