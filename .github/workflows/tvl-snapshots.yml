@@ -7,6 +7,12 @@ name: TVL Snapshots — Build Historical Series
 # whose chart wraps to zero too early.
 
 on:
+  schedule:
+    # Daily incremental refresh. Snapshots are daily-granularity, and the
+    # per-vault scan only fetches blocks it doesn't already have, so a
+    # scheduled run just appends the new day(s) per vault — fast, unlike the
+    # initial full backfill. Keeps the /address TVL + share-price charts current.
+    - cron: '0 6 * * *'   # 06:00 UTC daily
   workflow_dispatch:
     inputs:
       mode:
@@ -52,20 +58,21 @@ jobs:
       - name: Snapshot TVL (single vault)
         if: ${{ inputs.mode == 'single' }}
         env:
-          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms || '200' }}
         run: node collect-activity.js --tvl-snapshots ${{ inputs.vault }} ${{ inputs.chain }}
 
+      # Scheduled runs have no inputs ⇒ inputs.mode is empty; treat that as "all".
       - name: Find deployment blocks (so no vault is skipped)
-        if: ${{ inputs.mode == 'all' }}
+        if: ${{ github.event_name == 'schedule' || inputs.mode == 'all' }}
         continue-on-error: true
         env:
-          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms || '200' }}
         run: node collect-activity.js --find-deployments ${{ inputs.chain }}
 
       - name: Snapshot TVL (all tracked vaults)
-        if: ${{ inputs.mode == 'all' }}
+        if: ${{ github.event_name == 'schedule' || inputs.mode == 'all' }}
         env:
-          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms || '200' }}
         run: node collect-activity.js --tvl-snapshots-all ${{ inputs.chain }}
 
       - name: Repair missing USD prices (no RPC)
@@ -79,19 +86,25 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f tvl-snapshots.json vault-deployments.json 2>/dev/null || true
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "TVL snapshots: ${{ inputs.mode }} ${{ inputs.vault || '' }} [skip ci]"
+          MODE="${{ inputs.mode || 'scheduled' }}"
+          git commit -m "TVL snapshots: $MODE ${{ inputs.vault || '' }} [skip ci]"
 
-          BACKUP="tvl-snapshots/${{ github.run_id }}"
-          git push origin "HEAD:refs/heads/$BACKUP"
-          echo "Backup branch pushed: $BACKUP"
+          # Backup branch only for manual runs (the expensive full backfills worth
+          # protecting). Daily scheduled runs are cheap + idempotent, so skip the
+          # ref clutter and just rebase+push with retry like the other crons.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            BACKUP="tvl-snapshots/${{ github.run_id }}"
+            git push origin "HEAD:refs/heads/$BACKUP" && echo "Backup branch pushed: $BACKUP"
+          fi
 
           git fetch origin ${{ github.ref_name }}
-          if ! git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }}; then
-            git rebase --abort || true
-            echo "::warning::Rebase failed; result preserved on branch $BACKUP — merge manually."
-            exit 1
-          fi
-          for i in 1 2 3 4; do
-            if git push; then break; fi
+          git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }} || git rebase --abort || true
+          for i in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
             sleep $((2**i))
+            git fetch origin ${{ github.ref_name }}
+            git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }} || git rebase --abort || true
           done
+          echo "::error::push still failing after retries"
+          exit 1
