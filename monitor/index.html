@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor — Fusion Stats</title>
+  <script src="/nav.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --surface: #FFFFFF;
+      --stroke: #E5E5E5;
+      --stroke-light: #F0F0F0;
+      --text: #000000;
+      --text-body: #70747A;
+      --text-secondary: #9BA3AF;
+      --accent: #8429FF;
+      --accent-bg: rgba(132, 41, 255, 0.10);
+      --green: #16A34A;
+      --red: #DC2626;
+      --amber: #D97706;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', -apple-system, sans-serif;
+      color: var(--text);
+      background: #F8F9FB;
+      margin: 0;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    header h1 {
+      font-size: 1.5rem; font-weight: 700; color: var(--accent);
+      margin: 0 0 0.25rem;
+      letter-spacing: -0.02em;
+    }
+    header p { color: var(--text-body); font-size: 0.85rem; margin: 0 0 1.5rem; }
+
+    .toolbar {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+      margin-bottom: 1rem;
+    }
+    .toolbar .group { display: flex; gap: 0.15rem; }
+    .toolbar .group-label {
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-secondary); margin-right: 0.4rem; align-self: center;
+    }
+    .toolbar button, .toolbar select {
+      font-family: inherit; font-size: 0.7rem;
+      padding: 0.3rem 0.65rem;
+      border: 1px solid var(--stroke);
+      background: var(--surface); color: var(--text-body);
+      border-radius: 5px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .toolbar button:hover { color: var(--accent); border-color: var(--accent); }
+    .toolbar button.active {
+      color: var(--accent); background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+    .stat-pill { font-size: 0.7rem; color: var(--text-secondary); margin-left: auto; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    thead th {
+      text-align: left;
+      font-size: 0.6rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      padding: 0.55rem 0.75rem;
+      background: #FAFAFB;
+      border-bottom: 1px solid var(--stroke);
+      position: sticky; top: 0;
+    }
+    thead th.num { text-align: right; }
+    tbody td {
+      padding: 0.35rem 0.75rem;             /* narrow rows */
+      border-bottom: 1px solid var(--stroke-light);
+      vertical-align: middle;
+    }
+    tbody tr:hover { background: #F8F9FB; }
+    .vault-name {
+      font-weight: 500; color: var(--text);
+      max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .vault-name a { color: inherit; text-decoration: none; }
+    .vault-name a:hover { color: var(--accent); }
+    .chain-pill {
+      display: inline-block;
+      font-size: 0.6rem; font-weight: 500;
+      padding: 0.1rem 0.4rem; border-radius: 999px;
+      background: var(--accent-bg); color: var(--accent);
+      text-transform: lowercase;
+    }
+    .sym { color: var(--text-body); font-weight: 500; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pct { font-weight: 600; }
+    .pct.pos { color: var(--green); }
+    .pct.neg { color: var(--red); }
+    .pct.flag { background: rgba(220,38,38,0.08); padding: 0.1rem 0.35rem; border-radius: 4px; }
+    .spark-cell { width: 120px; padding: 0.15rem 0.75rem; }
+    .spark { display: block; width: 110px; height: 28px; }
+    .spark .line { fill: none; stroke-width: 1.5; }
+    .spark .dot { fill: currentColor; }
+    .na { color: var(--text-secondary); font-style: italic; }
+    .loading { padding: 3rem; text-align: center; color: var(--text-secondary); }
+    .err { padding: 1.5rem; color: var(--red); font-size: 0.85rem; }
+    .footnote {
+      margin-top: 1rem; font-size: 0.7rem; color: var(--text-secondary);
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Share-Price Monitor</h1>
+      <p>Latest <span id="windowLabel">30</span> share-price data points per vault. Sort by anomaly to surface vaults that nuked recently.</p>
+    </header>
+
+    <div class="toolbar">
+      <div class="group" id="sortGroup">
+        <span class="group-label">Sort by</span>
+        <button data-sort="anomaly" class="active">Anomaly</button>
+        <button data-sort="worst">Worst %</button>
+        <button data-sort="best">Best %</button>
+        <button data-sort="name">Name</button>
+        <button data-sort="tvl">TVL</button>
+      </div>
+      <div class="group" id="windowGroup">
+        <span class="group-label">Window</span>
+        <button data-window="14">14d</button>
+        <button data-window="30" class="active">30d</button>
+        <button data-window="60">60d</button>
+        <button data-window="90">90d</button>
+      </div>
+      <div class="group" id="chainGroup">
+        <span class="group-label">Chain</span>
+        <button data-chain="" class="active">All</button>
+      </div>
+      <span class="stat-pill" id="statPill"></span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Vault</th>
+            <th>Chain</th>
+            <th>Symbol</th>
+            <th class="num">Latest</th>
+            <th class="num">Δ window</th>
+            <th>Trajectory</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="6" class="loading">Loading snapshots…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footnote">
+      Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
+      "Δ window" = first→last sharePrice in the chosen window.
+      Yield-positive vaults should mostly drift up; sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error).
+    </div>
+  </div>
+
+  <script>
+    let allRows = [];
+    let state = { sort: 'anomaly', window: 30, chain: '' };
+
+    function fmtPrice(v) {
+      if (v == null) return '—';
+      const abs = Math.abs(v);
+      if (abs >= 100) return v.toFixed(2);
+      if (abs >= 1) return v.toFixed(4);
+      return v.toPrecision(4);
+    }
+    function fmtPct(v) {
+      if (v == null) return '—';
+      const sign = v >= 0 ? '+' : '';
+      return sign + v.toFixed(2) + '%';
+    }
+
+    // Build SVG sparkline of values across the window. Pads vertically by 8% so
+    // the line never touches the edges.
+    function sparkSvg(vals, color) {
+      if (!vals || vals.length < 2) return '<span class="na">no data</span>';
+      const W = 110, H = 28, PAD_X = 1, PAD_Y = 3;
+      const lo = Math.min(...vals), hi = Math.max(...vals);
+      const range = (hi - lo) || (hi * 0.001) || 1;
+      const innerW = W - 2 * PAD_X;
+      const innerH = H - 2 * PAD_Y;
+      const pts = vals.map((v, i) => {
+        const x = PAD_X + (i / (vals.length - 1)) * innerW;
+        const y = PAD_Y + (1 - (v - lo) / range) * innerH;
+        return x.toFixed(1) + ',' + y.toFixed(1);
+      }).join(' ');
+      const lastX = (PAD_X + innerW).toFixed(1);
+      const lastY = (PAD_Y + (1 - (vals[vals.length - 1] - lo) / range) * innerH).toFixed(1);
+      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="color:${color}">
+        <polyline class="line" points="${pts}" stroke="${color}"/>
+        <circle class="dot" cx="${lastX}" cy="${lastY}" r="1.6"/>
+      </svg>`;
+    }
+
+    function colorFor(pct) {
+      if (pct == null) return '#9BA3AF';
+      if (pct < -2) return '#DC2626';   // red — nuking
+      if (pct < 0)  return '#D97706';   // amber — drifting down
+      if (pct >  5) return '#16A34A';   // green — strong gain
+      return '#8429FF';                  // flagship — normal slow yield
+    }
+
+    function compute(snapshots) {
+      const out = [];
+      for (const [addr, v] of Object.entries(snapshots || {})) {
+        const ser = (v.snapshots || [])
+          .filter(s => typeof s.sharePrice === 'number' && s.day != null)
+          .sort((a, b) => a.day - b.day);
+        // window slice — last N points
+        const win = ser.slice(-state.window);
+        const vals = win.map(s => s.sharePrice);
+        const first = vals[0], last = vals[vals.length - 1];
+        const deltaPct = (vals.length >= 2 && first > 0) ? (last / first - 1) * 100 : null;
+        // overall (inception → now) gain for anomaly detection context
+        const incFirst = ser[0]?.sharePrice;
+        const incLast = ser[ser.length - 1]?.sharePrice;
+        const incPct = (incFirst > 0 && incLast > 0) ? (incLast / incFirst - 1) * 100 : null;
+        out.push({
+          addr, name: v.symbol ? (v.symbol + ' vault') : addr.slice(0, 10),
+          // overwrite with vault name from ipor-vaults.json below
+          symbol: v.symbol || '?',
+          chain: v.chain || 'unknown',
+          tvl: 0,                       // filled from ipor-vaults.json below
+          vals, latest: last, deltaPct, incPct,
+        });
+      }
+      return out;
+    }
+
+    function applySort(rows) {
+      const s = [...rows];
+      if (state.sort === 'name') s.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      else if (state.sort === 'worst') s.sort((a, b) => (a.deltaPct ?? Infinity) - (b.deltaPct ?? Infinity));
+      else if (state.sort === 'best') s.sort((a, b) => (b.deltaPct ?? -Infinity) - (a.deltaPct ?? -Infinity));
+      else if (state.sort === 'tvl') s.sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
+      else /* anomaly */ s.sort((a, b) => Math.abs(b.deltaPct ?? 0) - Math.abs(a.deltaPct ?? 0));
+      return s;
+    }
+
+    function render(rows) {
+      const tbody = document.getElementById('rows');
+      const filtered = state.chain ? rows.filter(r => r.chain === state.chain) : rows;
+      document.getElementById('statPill').textContent =
+        `${filtered.length} vaults · window ${state.window}d`;
+      document.getElementById('windowLabel').textContent = state.window;
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No vaults match.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = applySort(filtered).map(r => {
+        const color = colorFor(r.deltaPct);
+        const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
+        const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
+        return `<tr>
+          <td class="vault-name" title="${r.name}"><a href="/address/?a=${r.addr}">${r.name}</a></td>
+          <td><span class="chain-pill">${r.chain}</span></td>
+          <td class="sym">${r.symbol}</td>
+          <td class="num">${fmtPrice(r.latest)}</td>
+          <td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>
+          <td class="spark-cell">${sparkSvg(r.vals, color)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function load() {
+      try {
+        const [snapRes, iporRes] = await Promise.all([
+          fetch('/tvl-snapshots.json?t=' + Date.now()),
+          fetch('/ipor-vaults.json?t=' + Date.now()).catch(() => null),
+        ]);
+        if (!snapRes.ok) throw new Error('tvl-snapshots.json HTTP ' + snapRes.status);
+        const snap = await snapRes.json();
+        let ipor = null;
+        try { if (iporRes && iporRes.ok) ipor = await iporRes.json(); } catch {}
+
+        const nameByAddr = {};
+        const tvlByAddr = {};
+        if (ipor && Array.isArray(ipor.vaults)) {
+          for (const v of ipor.vaults) {
+            const a = (v.address || '').toLowerCase();
+            if (a) { nameByAddr[a] = v.name || v.token || a; tvlByAddr[a] = v.tvl || 0; }
+          }
+        }
+
+        allRows = compute(snap.vaults).map(r => ({
+          ...r,
+          name: nameByAddr[r.addr] || r.name,
+          tvl: tvlByAddr[r.addr] || 0,
+        }));
+
+        // Build chain filter dynamically from data
+        const chains = [...new Set(allRows.map(r => r.chain))].sort();
+        const chainGroup = document.getElementById('chainGroup');
+        for (const c of chains) {
+          const b = document.createElement('button');
+          b.dataset.chain = c;
+          b.textContent = c;
+          chainGroup.appendChild(b);
+        }
+
+        const wireGroup = (groupId, stateKey, cast) => {
+          const g = document.getElementById(groupId);
+          g.querySelectorAll('button').forEach(b => {
+            b.onclick = () => {
+              const v = cast ? cast(b.dataset[stateKey]) : b.dataset[stateKey];
+              state[stateKey] = v;
+              g.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+              render(allRows);
+            };
+          });
+        };
+        wireGroup('sortGroup', 'sort');
+        wireGroup('windowGroup', 'window', Number);
+        wireGroup('chainGroup', 'chain');
+
+        render(allRows);
+      } catch (e) {
+        document.getElementById('rows').innerHTML =
+          `<tr><td colspan="6" class="err">Failed to load: ${e.message}</td></tr>`;
+      }
+    }
+    load();
+  </script>
+</body>
+</html>
