@@ -1531,7 +1531,16 @@
       const cards = [];
 
       if (isVault) {
-        const tvl = vaultInfo.tvl || 0;
+        // Prefer the latest on-chain totalAssets snapshot (matches the TVL chart
+        // and the official IPOR app) over ipor-vaults.json `tvl`, which can be
+        // stale/mis-sourced — e.g. TESS WBTC read $692K (≈10 WBTC) from the API
+        // while totalAssets was 15 WBTC ($1.04M). Fall back to the API value.
+        const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+        let tvl = vaultInfo.tvl || 0;
+        if (snap && snap.series && snap.series.length) {
+          const lastUsd = [...snap.series].reverse().find(p => typeof p.tvlUsd === 'number');
+          if (lastUsd) tvl = lastUsd.tvlUsd;
+        }
         cards.push(`
           <div class="stat-card">
             <div class="label">TVL</div>
