@@ -752,6 +752,15 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
   const existingTo   = data.lastBlock?.[vault];
   if (forceFullRange) {
     ranges.push({ from: startBlock, to: currentBlock, label: 'force-full' });
+    // Purge existing events for this vault before re-scanning. Otherwise the
+    // tx+logIdx dedup keeps the first-seen copy (typically the old, possibly
+    // mis-parsed one), so freshly re-parsed events would be discarded and the
+    // rescan accomplishes nothing for already-seen txs. Safe — the rescan
+    // covers the full [deployment, current] range, so every dropped event will
+    // be re-added with correct decimals.
+    const before = data.events.length;
+    data.events = data.events.filter(e => e.vault !== vault);
+    console.log(`  force-full: purged ${before - data.events.length} existing events for ${vault}`);
   } else if (existingTo && existingFrom) {
     if (startBlock < existingFrom) ranges.push({ from: startBlock, to: existingFrom - 1, label: 'backward' });
     if (existingTo + 1 <= currentBlock) ranges.push({ from: existingTo + 1, to: currentBlock, label: 'forward' });
