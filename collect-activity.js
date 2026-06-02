@@ -144,7 +144,7 @@ const DECIMALS_BY_SYMBOL = {
   syrupUSDT: 6, syrupUSDC: 6, stcUSD: 18, wsrUSD: 18, rUSD: 18, srUSD: 18,
   PYUSD: 6,
   WETH: 18, stETH: 18, wstETH: 18, weETH: 18, cbETH: 18, rETH: 18,
-  WBTC: 8, cbBTC: 8, tBTC: 18, PAXG: 18, XAUt: 6,
+  WBTC: 8, cbBTC: 8, tBTC: 18, PAXG: 18, XAUt: 6, 'BTC.b': 8,
   BOLD: 18, mHYPER: 18, EURC: 6, ZCHF: 18, slvlUSD: 18, csUSDL: 18, sUSDf: 18,
 };
 
@@ -1119,6 +1119,17 @@ async function tvlSnapshotsForVault(vault, chainArg) {
         const assets = Number(BigInt(raw)) / 10 ** decimals;
         const price = await priceForDay(meta.symbol, underlyingToken, ts, chain);
         const tvlUsd = price != null ? assets * price : null;
+        // Sanity guard: a vault whose totalAssets() × price exceeds $1B is
+        // almost certainly a parse error (e.g. Tanken WETH Base — IPOR labels
+        // it WETH but its asset() actually returns Base USDC, and totalAssets
+        // returns a value in an unrelated internal scale → 4.9e12). Better to
+        // drop the snapshot than write garbage that downstream UIs have to
+        // defend against forever.
+        const SANITY_CEILING_USD = 1e9;
+        if (typeof tvlUsd === 'number' && tvlUsd >= SANITY_CEILING_USD) {
+          console.log(`  block ${block}: REJECTED snapshot — tvlUsd $${tvlUsd.toExponential(2)} exceeds $1B sanity ceiling (assets=${assets}, price=${price})`);
+          return null;
+        }
         return { block, timestamp: ts, day: Math.floor(ts / 86400), assets, priceUsd: price, tvlUsd, sharePrice };
       } catch (e) {
         return { block, error: e.message };
