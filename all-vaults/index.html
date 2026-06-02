@@ -522,14 +522,36 @@
     let sortDir = 'desc';
 
     async function loadData() {
-      // Load both sources in parallel
-      const [iporRes, factoryRes] = await Promise.allSettled([
+      // Load all three sources in parallel
+      const [iporRes, factoryRes, snapRes] = await Promise.allSettled([
         fetch('../ipor-vaults.json?t=' + Date.now()).then(r => r.ok ? r.json() : null),
         fetch('../vaults.json?t=' + Date.now()).then(r => r.ok ? r.json() : null),
+        fetch('../tvl-snapshots.json?t=' + Date.now()).then(r => r.ok ? r.json() : null),
       ]);
 
       const iporData = iporRes.status === 'fulfilled' ? iporRes.value : null;
       const factoryData = factoryRes.status === 'fulfilled' ? factoryRes.value : null;
+      const snapData = snapRes.status === 'fulfilled' ? snapRes.value : null;
+
+      // Latest on-chain TVL (totalAssets × price) per vault address. Preferred
+      // over ipor-vaults.json `tvl`, which can be stale/mis-sourced (e.g. TESS
+      // WBTC read ~$692K from the API while totalAssets was 15 WBTC ≈ $1.04M).
+      // Sanity ceiling: no Fusion vault is anywhere near $2B. A snapshot above
+      // it is a parse error (e.g. a vault cached with wrong decimals produced a
+      // 4.9e12 reading) — reject it and fall back to the API value rather than
+      // letting one bad point blow up the totals.
+      const MAX_SANE_TVL = 2e9;
+      const snapTvlByAddr = {};
+      if (snapData && snapData.vaults) {
+        for (const [addr, v] of Object.entries(snapData.vaults)) {
+          const series = (v.snapshots || []).filter(s => typeof s.tvlUsd === 'number' && s.tvlUsd >= 0 && s.tvlUsd < MAX_SANE_TVL);
+          if (series.length) snapTvlByAddr[addr.toLowerCase()] = series[series.length - 1].tvlUsd;
+        }
+      }
+      const bestTvl = (addr, apiTvl) => {
+        const s = snapTvlByAddr[(addr || '').toLowerCase()];
+        return (typeof s === 'number') ? s : (apiTvl || 0);
+      };
 
       // Build a lookup of block→deployment date from factory data (ethereum only)
       const deploymentByAddress = {};
@@ -562,7 +584,7 @@
             name,
             ticker: v.token || v.symbol || '?',
             address: (v.address || '').toLowerCase(),
-            tvl: v.tvl || 0,
+            tvl: bestTvl(v.address, v.tvl),
             deployedAt: deploymentByAddress[(v.address || '').toLowerCase()] || null,
           };
         });
