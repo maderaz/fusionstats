@@ -15,6 +15,7 @@ const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
 const FACTORY_FILE = path.join(__dirname, 'vaults.json');
 const DEPLOYMENTS_FILE = path.join(__dirname, 'vault-deployments.json');
 const TVL_SNAPSHOTS_FILE = path.join(__dirname, 'tvl-snapshots.json');
+const DECIMALS_CACHE_FILE = path.join(__dirname, 'vault-decimals.json');
 
 // Minimum TVL ($) for a vault to be actively scanned.
 const MIN_TVL_USD = 1000;
@@ -141,6 +142,7 @@ const FALLBACK_VAULTS = [
 const DECIMALS_BY_SYMBOL = {
   USDC: 6, USDT: 6, DAI: 18, USDe: 18, crvUSD: 18, sUSDe: 18, GHO: 18,
   syrupUSDT: 6, syrupUSDC: 6, stcUSD: 18, wsrUSD: 18, rUSD: 18, srUSD: 18,
+  PYUSD: 6,
   WETH: 18, stETH: 18, wstETH: 18, weETH: 18, cbETH: 18, rETH: 18,
   WBTC: 8, cbBTC: 8, tBTC: 18, PAXG: 18, XAUt: 6,
   BOLD: 18, mHYPER: 18, EURC: 6, ZCHF: 18, slvlUSD: 18, csUSDL: 18, sUSDf: 18,
@@ -149,6 +151,19 @@ const DECIMALS_BY_SYMBOL = {
 function decimalsFor(symbol) {
   if (symbol && DECIMALS_BY_SYMBOL[symbol] != null) return DECIMALS_BY_SYMBOL[symbol];
   return 18;
+}
+
+// On-chain decimals cache keyed by lowercase underlying-token address. Avoids
+// the whack-a-mole of maintaining DECIMALS_BY_SYMBOL whenever a new token
+// (e.g. PYUSD) shows up in a fresh vault — getting it wrong silently buries
+// every event of that vault at assets=0.
+function loadDecimalsCache() {
+  try { return JSON.parse(fs.readFileSync(DECIMALS_CACHE_FILE, 'utf8')); }
+  catch { return { updatedAt: null, decimals: {} }; }
+}
+function saveDecimalsCache(cache) {
+  cache.updatedAt = new Date().toISOString();
+  fs.writeFileSync(DECIMALS_CACHE_FILE, JSON.stringify(cache, null, 2) + '\n');
 }
 
 // Load vaults from ipor-vaults.json — ALL chains with supported RPCs.
@@ -172,15 +187,20 @@ function loadVaults() {
   console.log(`Loaded ${iporData.vaults.length} total vaults, ${all.length} on supported chains, ` +
               `${tracked.length} above $${MIN_TVL_USD} TVL [${chainSummary}]`);
 
-  return tracked.map(v => ({
-    address: v.address.toLowerCase(),
-    chain: v.chain || 'ethereum',
-    name: v.name || 'Unknown',
-    symbol: v.token || '?',
-    decimals: decimalsFor(v.token),
-    underlyingToken: v.assetAddress || null,
-    tvl: v.tvl || 0,
-  }));
+  const decCache = loadDecimalsCache();
+  return tracked.map(v => {
+    const assetKey = (v.assetAddress || '').toLowerCase();
+    const cached = assetKey && decCache.decimals[assetKey];
+    return {
+      address: v.address.toLowerCase(),
+      chain: v.chain || 'ethereum',
+      name: v.name || 'Unknown',
+      symbol: v.token || '?',
+      decimals: cached != null ? cached : decimalsFor(v.token),
+      underlyingToken: v.assetAddress || null,
+      tvl: v.tvl || 0,
+    };
+  });
 }
 
 // Stablecoin detection: symbol contains USD/DAI
@@ -298,6 +318,41 @@ function convertToAssetsData(shares) {
   return CONVERT_TO_ASSETS_SELECTOR + shares.toString(16).padStart(64, '0');
 }
 
+// Resolve underlying-token decimals on-chain for any vault whose underlying
+// isn't in the cache yet. Bounded so it can run inside the regular collector
+// without threatening the timeout — cached values persist forever (token
+// decimals are immutable).
+async function ensureDecimalsCache(vaults, { deadlineMs = 60_000 } = {}) {
+  const cache = loadDecimalsCache();
+  const start = Date.now();
+  let fetched = 0, failed = 0;
+  for (const v of vaults) {
+    if (!v.underlyingToken || !CHAIN_RPCS[v.chain]) continue;
+    const key = v.underlyingToken.toLowerCase();
+    if (cache.decimals[key] != null) continue;
+    if (Date.now() - start > deadlineMs) break;
+    try {
+      const raw = await rpcCall(v.chain, 'eth_call', [{ to: v.underlyingToken, data: DECIMALS_SELECTOR }, 'latest']);
+      if (raw && raw !== '0x') {
+        const d = parseInt(raw, 16);
+        if (Number.isFinite(d) && d >= 0 && d <= 36) {
+          cache.decimals[key] = d;
+          fetched++;
+          // Warn loudly when the cache disagrees with the symbol-table guess —
+          // any vault already collected under the wrong decimals has zero-amount
+          // events that need a --rescan-vault to repair.
+          const guessed = decimalsFor(v.symbol);
+          if (guessed !== d) {
+            console.log(`  decimals[${v.symbol}] from chain: ${d} (table said ${guessed}) — ${v.name} ${v.address} — RESCAN NEEDED`);
+          }
+        }
+      }
+    } catch (e) { failed++; }
+  }
+  if (fetched) saveDecimalsCache(cache);
+  if (fetched || failed) console.log(`Decimals cache: +${fetched} resolved, ${failed} failed, ${Object.keys(cache.decimals).length} total`);
+  return cache;
+}
 
 // DeFi Llama historical price: https://coins.llama.fi/prices/historical/{ts}/ethereum:{addr}
 async function fetchHistoricalPrice(symbol, tokenAddr, timestamp, chain) {
@@ -1087,6 +1142,16 @@ async function main() {
     return;
   }
 
+  // --resolve-decimals
+  // Resolve underlying-token decimals on-chain for every tracked vault, cache
+  // in vault-decimals.json. Idempotent. Mostly useful when a new vault appears
+  // with an unknown token and you want to backfill the cache without running
+  // the whole collector.
+  if (args[0] === '--resolve-decimals') {
+    await ensureDecimalsCache(loadVaults(), { deadlineMs: 10 * 60_000 });
+    return;
+  }
+
   // --repair-prices-activity
   // One-shot, unbounded sweep that backfills usdValue for every null-priced
   // event in activity-events.json. The regular collect run does a bounded
@@ -1302,6 +1367,11 @@ async function main() {
 
   console.log('=== Vault Activity Collector ===\n');
 
+  // First pass: resolve underlying-token decimals on-chain for any new vault
+  // (cache persists; cheap on subsequent runs). MUST happen before loadVaults
+  // is consumed so freshly-discovered tokens get the right decimals from the
+  // start and don't end up with assets=0 events.
+  await ensureDecimalsCache(loadVaults(), { deadlineMs: 60_000 });
   const VAULTS = loadVaults();
 
   // Load existing data
