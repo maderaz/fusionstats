@@ -570,17 +570,27 @@
     }
 
     function renderResults(addr, events) {
-      const s = computeStats(events);
       const vaultInfo = (window.iporVaultsByAddr || {})[addr];
+      // On a VAULT page, scope the stats cards / net-flow chart / event history
+      // to events ON this vault (e.vault === addr) — i.e. deposits & withdrawals
+      // INTO the vault. A vault address also appears as owner/sender on OTHER
+      // vaults' events when it allocates capital downstream (e.g. TESS WBTC
+      // depositing into TESS USDC Optimiser); counting those inflated net flow
+      // far past the vault's own TVL. On a WALLET page (not a vault), keep the
+      // full cross-vault activity — that's the point of a wallet lookup.
+      const scoped = vaultInfo
+        ? events.filter(e => e.vault && e.vault.toLowerCase() === addr)
+        : events;
+      const s = computeStats(scoped);
       renderStats(s, addr, vaultInfo);
-      renderFlowChart(events);
-      renderTvlChart(addr, vaultInfo, events);
+      renderFlowChart(scoped);
+      renderTvlChart(addr, vaultInfo, scoped);
       renderSharePriceChart(addr, vaultInfo);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
       const panelsEl = document.getElementById('panels');
       if (panelsEl) panelsEl.innerHTML = '';
-      renderHistory(events);
+      renderHistory(scoped);
       renderRebalances(addr);
     }
 
