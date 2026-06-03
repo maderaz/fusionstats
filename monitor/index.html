@@ -87,6 +87,15 @@
       position: sticky; top: 0;
     }
     thead th.num { text-align: right; }
+    thead th .tip {
+      display: inline-block; margin-left: 0.25rem;
+      width: 12px; height: 12px; line-height: 12px; text-align: center;
+      border-radius: 50%; border: 1px solid var(--text-secondary);
+      font-size: 0.55rem; color: var(--text-secondary);
+      cursor: help; vertical-align: middle;
+      text-transform: none; font-weight: 600;
+    }
+    thead th .tip:hover { color: var(--accent); border-color: var(--accent); }
     tbody td {
       padding: 0.35rem 0.75rem;             /* narrow rows */
       border-bottom: 1px solid var(--stroke-light);
@@ -113,6 +122,12 @@
     .pct.pos { color: var(--green); }
     .pct.neg { color: var(--red); }
     .pct.flag { background: rgba(220,38,38,0.08); padding: 0.1rem 0.35rem; border-radius: 4px; }
+    .dflag {
+      font-size: 0.66rem; font-weight: 600; color: var(--amber);
+      background: rgba(217,119,6,0.10); padding: 0.1rem 0.4rem; border-radius: 4px;
+      cursor: help; white-space: nowrap;
+    }
+    .dflag-inline { color: var(--amber); cursor: help; }
     .spark-cell { width: 130px; padding: 0.15rem 0.5rem; }
     .spark { display: block; width: 120px; height: 28px; }
     .spark .line { fill: none; stroke-width: 1.5; }
@@ -173,10 +188,10 @@
         <table>
           <thead>
             <tr>
-              <th>Vault</th>
-              <th>Trajectory</th>
-              <th class="num">Latest</th>
-              <th class="num">Δ window</th>
+              <th>Vault<span class="tip" title="Vault name, with its underlying asset and current TVL below. Click the name to open the full vault page.">i</span></th>
+              <th>Trajectory<span class="tip" title="Share-price sparkline over the selected window. Line color = overall window move (green up / red down / purple ≈ flat yield). The endpoint dot = current momentum: green if the latest point is above the previous one, red if below.">i</span></th>
+              <th class="num">Latest<span class="tip" title="Most recent share price = convertToAssets(1 share) in underlying terms. ~1.0 at vault inception and drifts up as yield accrues.">i</span></th>
+              <th class="num">Δ window<span class="tip" title="Percent change in share price from the first to the last point in the selected window (e.g. 30d). Positive = the vault earned yield over the period; negative = share price fell (loss/fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -275,33 +290,56 @@
           .filter(s => typeof s.sharePrice === 'number' && s.day != null)
           .sort((a, b) => a.day - b.day);
         // window slice — last N points
-        const win = ser.slice(-state.window);
-        const vals = win.map(s => s.sharePrice);
-        const first = vals[0], last = vals[vals.length - 1];
-        const deltaPct = (vals.length >= 2 && first > 0) ? (last / first - 1) * 100 : null;
-        // overall (inception → now) gain for anomaly detection context
-        const incFirst = ser[0]?.sharePrice;
-        const incLast = ser[ser.length - 1]?.sharePrice;
-        const incPct = (incFirst > 0 && incLast > 0) ? (incLast / incFirst - 1) * 100 : null;
+        const win = ser.slice(-state.window).map(s => s.sharePrice);
+
+        // Plausibility filter: an ERC-4626 yield vault's share price lives near
+        // 1.0 by construction and drifts slowly. Readings outside [0.1, 100]
+        // are scaling artifacts — some vaults' historical snapshots are off by
+        // 100x (e.g. 0.0109 instead of 1.09, a 2-decimal glitch). Drop those so
+        // a bad point can't manufacture a +9927% "gain".
+        const clean = win.filter(x => x >= 0.1 && x <= 100);
+
+        let deltaPct = null, dataFlag = null, vals = clean;
+        if (clean.length >= 2) {
+          deltaPct = (clean[clean.length - 1] / clean[0] - 1) * 100;
+          // Residual discontinuity even after filtering, or an implausible
+          // magnitude → don't trust the number; flag the row.
+          let maxJump = 1;
+          for (let i = 1; i < clean.length; i++) {
+            const r = clean[i] > 0 && clean[i - 1] > 0 ? Math.max(clean[i] / clean[i - 1], clean[i - 1] / clean[i]) : Infinity;
+            if (r > maxJump) maxJump = r;
+          }
+          if (Math.abs(deltaPct) > 300 || maxJump > 3) { dataFlag = 'anomaly'; }
+        } else if (win.length >= 2) {
+          // Had data, but it was all implausible → can't compute a trustworthy
+          // delta. Surface as a data glitch rather than a fake number.
+          dataFlag = 'glitch';
+          vals = win;   // keep raw for the sparkline shape so the issue is visible
+        }
+        const latest = win.length ? win[win.length - 1] : null;
+
         out.push({
           addr, name: v.symbol ? (v.symbol + ' vault') : addr.slice(0, 10),
-          // overwrite with vault name from ipor-vaults.json below
           symbol: v.symbol || '?',
           chain: v.chain || 'unknown',
           tvl: 0,                       // filled from ipor-vaults.json below
-          vals, latest: last, deltaPct, incPct,
+          vals, latest, deltaPct, dataFlag,
         });
       }
       return out;
     }
 
+    // Sort key that pushes flagged/untrustworthy rows out of the top ranks so a
+    // data glitch never crowds out a genuine top/bottom performer.
+    function sortDelta(r) { return r.dataFlag ? null : r.deltaPct; }
+
     function applySort(rows) {
       const s = [...rows];
       if (state.sort === 'name') s.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      else if (state.sort === 'worst') s.sort((a, b) => (a.deltaPct ?? Infinity) - (b.deltaPct ?? Infinity));
-      else if (state.sort === 'best') s.sort((a, b) => (b.deltaPct ?? -Infinity) - (a.deltaPct ?? -Infinity));
+      else if (state.sort === 'worst') s.sort((a, b) => (sortDelta(a) ?? Infinity) - (sortDelta(b) ?? Infinity));
+      else if (state.sort === 'best') s.sort((a, b) => (sortDelta(b) ?? -Infinity) - (sortDelta(a) ?? -Infinity));
       else if (state.sort === 'tvl') s.sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
-      else /* anomaly */ s.sort((a, b) => Math.abs(b.deltaPct ?? 0) - Math.abs(a.deltaPct ?? 0));
+      else /* anomaly */ s.sort((a, b) => Math.abs(sortDelta(b) ?? 0) - Math.abs(sortDelta(a) ?? 0));
       return s;
     }
 
@@ -316,14 +354,27 @@
         return;
       }
       tbody.innerHTML = applySort(filtered).map(r => {
-        const lineColor = colorFor(r.deltaPct);
-        const dotColor = momentumColor(r.vals);
-        const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
-        const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
+        const isGlitch = r.dataFlag === 'glitch';
+        const isAnomaly = r.dataFlag === 'anomaly';
+        const lineColor = r.dataFlag ? '#9BA3AF' : colorFor(r.deltaPct);
+        const dotColor = r.dataFlag ? '#9BA3AF' : momentumColor(r.vals);
         const tvlStr = fmtTvl(r.tvl);
         const sub = tvlStr
           ? `<span class="sym">${r.symbol}</span><span class="sep">•</span><span class="tvl">${tvlStr}</span>`
           : `<span class="sym">${r.symbol}</span>`;
+        // Δ cell: real number for clean rows; a flagged marker for data issues
+        // so a 100x scaling artifact never reads as a +9927% gain.
+        let deltaCell;
+        if (isGlitch) {
+          deltaCell = `<td class="num"><span class="dflag" title="Share-price snapshots for this vault are off-scale (a ~100x decimals glitch). Δ suppressed until the data is rescanned.">⚠ data</span></td>`;
+        } else if (isAnomaly) {
+          const cls = r.deltaPct >= 0 ? 'pos' : 'neg';
+          deltaCell = `<td class="num pct ${cls}"><span class="dflag-inline" title="Large/discontinuous move — likely a data artifact, treat with caution.">⚠</span> ${fmtPct(r.deltaPct)}</td>`;
+        } else {
+          const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
+          const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
+          deltaCell = `<td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>`;
+        }
         return `<tr>
           <td class="vault-name" title="${r.name}">
             <a href="/address/?a=${r.addr}">${r.name}</a>
@@ -331,7 +382,7 @@
           </td>
           <td class="spark-cell">${sparkSvg(r.vals, lineColor, dotColor)}</td>
           <td class="num">${fmtPrice(r.latest)}</td>
-          <td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>
+          ${deltaCell}
         </tr>`;
       }).join('');
     }
