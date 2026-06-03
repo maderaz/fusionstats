@@ -128,6 +128,21 @@
       cursor: help; white-space: nowrap;
     }
     .dflag-inline { color: var(--amber); cursor: help; }
+    .px-cell { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .px-from { color: var(--text-secondary); }
+    .px-arrow { margin: 0 0.3rem; color: var(--text-secondary); opacity: 0.7; }
+    .px-to { color: var(--text); font-weight: 600; }
+    /* Click/tap tooltip popover (native title doesn't work on touch) */
+    .tip-pop {
+      position: fixed; z-index: 200; max-width: 280px;
+      background: #1a1a24; color: #f0f0f5;
+      font-size: 0.72rem; font-weight: 400; line-height: 1.45;
+      text-transform: none; letter-spacing: normal;
+      padding: 0.6rem 0.75rem; border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+      display: none;
+    }
+    .tip-pop.show { display: block; }
     .spark-cell { width: 130px; padding: 0.15rem 0.5rem; }
     .spark { display: block; width: 120px; height: 28px; }
     .spark .line { fill: none; stroke-width: 1.5; }
@@ -188,10 +203,10 @@
         <table>
           <thead>
             <tr>
-              <th>Vault<span class="tip" title="Vault name, with its underlying asset and current TVL below. Click the name to open the full vault page.">i</span></th>
-              <th>Trajectory<span class="tip" title="Share-price sparkline over the selected window. Line color = overall window move (green up / red down / purple ≈ flat yield). The endpoint dot = current momentum: green if the latest point is above the previous one, red if below.">i</span></th>
-              <th class="num">Latest<span class="tip" title="Most recent share price = convertToAssets(1 share) in underlying terms. ~1.0 at vault inception and drifts up as yield accrues.">i</span></th>
-              <th class="num">Δ window<span class="tip" title="Percent change in share price from the first to the last point in the selected window (e.g. 30d). Positive = the vault earned yield over the period; negative = share price fell (loss/fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
+              <th>Vault<span class="tip" data-tip="Vault name, with its underlying asset and current TVL below. Tap the name to open the full vault page.">i</span></th>
+              <th>Trajectory<span class="tip" data-tip="Share-price sparkline over the selected window. Line color = overall window move (green up / red down / purple ≈ flat yield). The endpoint dot = current momentum: green if the latest point is above the previous one, red if below.">i</span></th>
+              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the window and now. ~1.0 at vault inception, drifts up as yield accrues. Shown as a pair so the Δ window beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
+              <th class="num">Δ window<span class="tip" data-tip="Percent change in share price from the first to the last point in the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -316,14 +331,18 @@
           dataFlag = 'glitch';
           vals = win;   // keep raw for the sparkline shape so the issue is visible
         }
-        const latest = win.length ? win[win.length - 1] : null;
+        // first/last of the trusted (clean) window — these are the exact two
+        // values the Δ window is computed from, so showing "first → last" in
+        // the Latest column makes the percentage self-explanatory.
+        const winFirst = clean.length >= 2 ? clean[0] : null;
+        const winLast = clean.length ? clean[clean.length - 1] : (win.length ? win[win.length - 1] : null);
 
         out.push({
           addr, name: v.symbol ? (v.symbol + ' vault') : addr.slice(0, 10),
           symbol: v.symbol || '?',
           chain: v.chain || 'unknown',
           tvl: 0,                       // filled from ipor-vaults.json below
-          vals, latest, deltaPct, dataFlag,
+          vals, winFirst, latest: winLast, deltaPct, dataFlag,
         });
       }
       return out;
@@ -366,22 +385,28 @@
         // so a 100x scaling artifact never reads as a +9927% gain.
         let deltaCell;
         if (isGlitch) {
-          deltaCell = `<td class="num"><span class="dflag" title="Share-price snapshots for this vault are off-scale (a ~100x decimals glitch). Δ suppressed until the data is rescanned.">⚠ data</span></td>`;
+          deltaCell = `<td class="num"><span class="dflag tip" data-tip="Share-price snapshots for this vault are off-scale (a ~100x decimals glitch). Δ suppressed until the data is rescanned.">⚠ data</span></td>`;
         } else if (isAnomaly) {
           const cls = r.deltaPct >= 0 ? 'pos' : 'neg';
-          deltaCell = `<td class="num pct ${cls}"><span class="dflag-inline" title="Large/discontinuous move — likely a data artifact, treat with caution.">⚠</span> ${fmtPct(r.deltaPct)}</td>`;
+          deltaCell = `<td class="num pct ${cls}"><span class="dflag-inline tip" data-tip="Large or discontinuous move — likely a data artifact, treat with caution.">⚠</span> ${fmtPct(r.deltaPct)}</td>`;
         } else {
           const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
           const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
           deltaCell = `<td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>`;
         }
+        // Latest cell: show the window's "first → last" so the Δ% is obvious
+        // at a glance (e.g. 1.0001 → 1.0005). Falls back to the single latest
+        // value when there's no trustworthy starting point.
+        const latestCell = (r.winFirst != null && r.latest != null)
+          ? `<span class="px-from">${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to">${fmtPrice(r.latest)}</span>`
+          : (r.latest != null ? fmtPrice(r.latest) : '—');
         return `<tr>
           <td class="vault-name" title="${r.name}">
             <a href="/address/?a=${r.addr}">${r.name}</a>
             <span class="sub">${sub}</span>
           </td>
           <td class="spark-cell">${sparkSvg(r.vals, lineColor, dotColor)}</td>
-          <td class="num">${fmtPrice(r.latest)}</td>
+          <td class="num px-cell">${latestCell}</td>
           ${deltaCell}
         </tr>`;
       }).join('');
@@ -432,6 +457,36 @@
       }
     }
     load();
+
+    // Click/tap tooltips for the (i) column-header markers. Native `title`
+    // doesn't appear on touch devices, so drive a visible popover from a click.
+    (function () {
+      const pop = document.createElement('div');
+      pop.className = 'tip-pop';
+      document.body.appendChild(pop);
+      let openEl = null;
+      const hide = () => { pop.classList.remove('show'); openEl = null; };
+      document.addEventListener('click', (e) => {
+        const tip = e.target.closest('.tip');
+        if (!tip) { if (openEl) hide(); return; }
+        e.stopPropagation();
+        if (openEl === tip) { hide(); return; }
+        pop.textContent = tip.getAttribute('data-tip') || '';
+        pop.classList.add('show');
+        openEl = tip;
+        // Position below the marker, clamped to the viewport.
+        const r = tip.getBoundingClientRect();
+        const pr = pop.getBoundingClientRect();
+        let left = r.left + r.width / 2 - pr.width / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - pr.width - 8));
+        let top = r.bottom + 6;
+        if (top + pr.height > window.innerHeight - 8) top = r.top - pr.height - 6;
+        pop.style.left = left + 'px';
+        pop.style.top = Math.max(8, top) + 'px';
+      });
+      window.addEventListener('resize', hide);
+      window.addEventListener('scroll', hide, true);
+    })();
   </script>
 </body>
 </html>
