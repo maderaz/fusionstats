@@ -8,12 +8,12 @@
 (function () {
   const PAGES = [
     { href: '/',                       label: 'Activity' },
+    { href: '/monitor',                label: 'Monitor', badge: 'NEW' },
     { href: '/all-vaults',             label: 'All Vaults' },
     { href: '/tvl',                    label: 'TVL' },
     { href: '/dominance',              label: 'Dominance' },
     { href: '/address',                label: 'Address' },
     { href: '/spark',                  label: 'Spark' },
-    { href: '/monitor',                label: 'Monitor' },
     { href: '/rebalance-methodology',  label: 'Rebalance Docs' },
     { href: '/logs',                   label: 'Logs' },
     { href: '/video',                  label: 'Video' },
@@ -77,6 +77,18 @@
       border-left-color: var(--accent, #8429FF);
       font-weight: 600;
     }
+    .fnav-badge {
+      display: inline-block;
+      margin-left: 0.5rem;
+      font-size: 0.55rem; font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 0.08rem 0.4rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #8429FF, #6C00FF);
+      color: #fff;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
     .fnav-hamburger {
       position: fixed; top: 12px; left: 12px; z-index: 102;
       width: 40px; height: 40px;
@@ -97,9 +109,10 @@
     }
   `;
 
-  const links = PAGES.map(p =>
-    `<a href="${p.href}"${isActive(p.href) ? ' class="active"' : ''}>${p.label}</a>`
-  ).join('');
+  const links = PAGES.map(p => {
+    const badge = p.badge ? `<span class="fnav-badge">${p.badge}</span>` : '';
+    return `<a href="${p.href}"${isActive(p.href) ? ' class="active"' : ''}>${p.label}${badge}</a>`;
+  }).join('');
 
   const inject = () => {
     // Style first so legacy nav is hidden immediately.
