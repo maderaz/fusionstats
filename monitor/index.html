@@ -394,12 +394,17 @@
           const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
           deltaCell = `<td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>`;
         }
-        // Latest cell: show the window's "first → last" so the Δ% is obvious
-        // at a glance (e.g. 1.0001 → 1.0005). Falls back to the single latest
-        // value when there's no trustworthy starting point.
-        const latestCell = (r.winFirst != null && r.latest != null)
-          ? `<span class="px-from">${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to">${fmtPrice(r.latest)}</span>`
-          : (r.latest != null ? fmtPrice(r.latest) : '—');
+        // Start → Now cell: the window's first and last so the Δ% beside it is
+        // obvious at a glance. For glitch rows we suppress the pair too — the
+        // raw value would be off-scale garbage (e.g. 1.02e12 for Tanken).
+        let latestCell;
+        if (isGlitch) {
+          latestCell = '<span class="na">—</span>';
+        } else if (r.winFirst != null && r.latest != null) {
+          latestCell = `<span class="px-from">${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to">${fmtPrice(r.latest)}</span>`;
+        } else {
+          latestCell = (r.latest != null ? fmtPrice(r.latest) : '—');
+        }
         return `<tr>
           <td class="vault-name" title="${r.name}">
             <a href="/address/?a=${r.addr}">${r.name}</a>
