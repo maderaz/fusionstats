@@ -1,38 +1,6 @@
 [
   {
     "level": "info",
-    "event": "collect_skipped",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1746900316.6901078,
-    "fusionBorrowed": 17232659.25609091,
-    "fusionCollateral": 19874479.42516534,
-    "sharePercent": 0.9864706698743992,
-    "activeVaults": 19,
-    "totalVaults": 100,
-    "vaultErrors": 0,
-    "durationMs": 19518,
-    "reason": "dedup",
-    "timestamp": "2026-04-29T17:31:38.528Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1742923251.150007,
-    "fusionBorrowed": 17232711.634064097,
-    "fusionCollateral": 19874538.16780533,
-    "sharePercent": 0.9887246396359504,
-    "activeVaults": 19,
-    "totalVaults": 100,
-    "vaultErrors": 0,
-    "durationMs": 17493,
-    "historyEntries": 144,
-    "timestamp": "2026-04-29T18:06:56.107Z"
-  },
-  {
-    "level": "info",
     "event": "collect",
     "errors": [],
     "warnings": [],
@@ -7283,5 +7251,24 @@
     "durationMs": 33546,
     "historyEntries": 81,
     "timestamp": "2026-06-03T02:01:37.424Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-06-03T07:13:07.002Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+    "timestamp": "2026-06-03T07:13:07.005Z"
   }
 ]
