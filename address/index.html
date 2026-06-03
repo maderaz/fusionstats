@@ -1542,10 +1542,48 @@
           const lastUsd = [...snap.series].reverse().find(p => typeof p.tvlUsd === 'number');
           if (lastUsd) tvl = lastUsd.tvlUsd;
         }
+        // Strategy P&L (since inception) = TVL − cumulative net deposits across
+        // ALL non-synthetic events on this vault. Surfaces the gap between
+        // "what depositors put in" and "what they own now" so the cards
+        // reconcile visually: TVL = inception net flow + strategy P&L.
+        //
+        // We gate this to stablecoin underlyings only. For volatile underlyings
+        // (WBTC, WETH, …) events store usdValue at event-time but TVL is
+        // current-price, so the gap conflates token-price drift with real
+        // strategy P&L and is misleading. Stablecoins have price = 1 by
+        // construction, so the math reconciles cleanly.
+        const sym = (vaultInfo.token || '').toUpperCase();
+        const stableLike = /USD|DAI|GHO|EURC|EUR$|ZCHF/.test(sym);
+        let pnlLine = '';
+        if (stableLike) {
+          let inceptionNet = 0, inceptionEvCount = 0;
+          for (const e of (window.allEvents || [])) {
+            if (e.synthetic) continue;
+            if (!e.vault || e.vault.toLowerCase() !== addr.toLowerCase()) continue;
+            if (typeof e.usdValue !== 'number') continue;
+            inceptionNet += (e.type === 'deposit' ? e.usdValue : -e.usdValue);
+            inceptionEvCount++;
+          }
+          // Show only when the data is meaningful and the gap is more than
+          // rounding noise. Also cap at |30%|: real strategy P&L lives well
+          // inside this band; values past it almost always mean the backfill
+          // doesn't cover vault inception (so the cumulative net is missing
+          // history) — surfacing them as "loss" would mislead, not reconcile.
+          if (inceptionEvCount >= 2 && Math.abs(inceptionNet) > 1000 && tvl > 0) {
+            const pnl = tvl - inceptionNet;
+            const pnlPct = (pnl / inceptionNet) * 100;
+            if (Math.abs(pnl) > 100 && Math.abs(pnlPct) > 0.5 && Math.abs(pnlPct) <= 30) {
+              const color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+              const sign = pnl >= 0 ? '+' : '−';
+              pnlLine = `<div class="sub" style="color:${color}" title="Current TVL minus cumulative net deposits since inception. Positive = yield earned; negative = strategy loss (e.g. leveraged-loop drawdown). Stablecoin underlyings only; values past ±30% suppressed as they typically indicate incomplete event history rather than real P&L.">${sign}${fmtUsdPlain(Math.abs(pnl))} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%) since inception</div>`;
+            }
+          }
+        }
         cards.push(`
           <div class="stat-card">
             <div class="label">TVL</div>
             <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
+            ${pnlLine}
           </div>`);
       }
 
