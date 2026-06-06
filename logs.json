@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1786055661.0512912,
-    "fusionBorrowed": 15876635.276907926,
-    "fusionCollateral": 18364069.381123867,
-    "sharePercent": 0.8889216401891289,
-    "activeVaults": 21,
-    "totalVaults": 101,
-    "vaultErrors": 0,
-    "durationMs": 7414,
-    "historyEntries": 145,
-    "timestamp": "2026-05-01T12:38:32.524Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1775613532.7796493,
-    "fusionBorrowed": 15851898.00706405,
-    "fusionCollateral": 18362608.689777475,
-    "sharePercent": 0.8927560932839119,
-    "activeVaults": 21,
-    "totalVaults": 101,
-    "vaultErrors": 0,
-    "durationMs": 5927,
-    "historyEntries": 145,
-    "timestamp": "2026-05-01T14:03:25.446Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1778744398.957814,
     "fusionBorrowed": 15997259.616186427,
     "fusionCollateral": 18489367.631383106,
@@ -7244,5 +7212,24 @@
     "durationMs": 6565,
     "historyEntries": 99,
     "timestamp": "2026-06-05T23:57:46.591Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-06-06T02:39:59.366Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+    "timestamp": "2026-06-06T02:39:59.369Z"
   }
 ]
