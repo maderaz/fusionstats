@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1787947714.3573935,
-    "fusionBorrowed": 15997302.250324775,
-    "fusionCollateral": 18413116.9155326,
-    "sharePercent": 0.8947298694399666,
-    "activeVaults": 21,
-    "totalVaults": 101,
-    "vaultErrors": 0,
-    "durationMs": 4938,
-    "historyEntries": 145,
-    "timestamp": "2026-05-01T16:11:11.578Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1787167261.4687457,
-    "fusionBorrowed": 15963220.308239317,
-    "fusionCollateral": 18412248.1726492,
-    "sharePercent": 0.8932135593800147,
-    "activeVaults": 21,
-    "totalVaults": 101,
-    "vaultErrors": 0,
-    "durationMs": 8068,
-    "historyEntries": 145,
-    "timestamp": "2026-05-01T17:14:21.195Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1805110082.227902,
     "fusionBorrowed": 15963758.555509277,
     "fusionCollateral": 18403291.031246416,
@@ -7231,5 +7199,24 @@
     "durationMs": 7450,
     "historyEntries": 100,
     "timestamp": "2026-06-06T06:15:51.016Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-06-06T08:46:36.730Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+    "timestamp": "2026-06-06T08:46:36.733Z"
   }
 ]
