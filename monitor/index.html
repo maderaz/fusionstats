@@ -75,7 +75,7 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
-    table { width: 100%; min-width: 540px; border-collapse: collapse; font-size: 0.78rem; }
+    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.78rem; }
     thead th {
       text-align: left;
       font-size: 0.6rem; font-weight: 500;
@@ -117,6 +117,10 @@
     .vault-name .sub .sym { text-transform: uppercase; letter-spacing: 0.04em; }
     .vault-name .sub .sep { margin: 0 0.3rem; opacity: 0.6; }
     .vault-name .sub .tvl { font-variant-numeric: tabular-nums; }
+    .vault-name .sub .app-cta {
+      color: var(--accent); text-decoration: none; font-weight: 500;
+    }
+    .vault-name .sub .app-cta:hover { text-decoration: underline; text-underline-offset: 2px; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .pct { font-weight: 600; }
     .pct.pos { color: var(--green); }
@@ -168,7 +172,7 @@
   <div class="container">
     <header>
       <h1>Share-Price Monitor</h1>
-      <p>Latest <strong>7</strong> share-price data points per vault. Sort by Worst Δ to surface vaults that nuked recently.</p>
+      <p>Latest <strong id="windowLabel">7</strong> share-price data points per vault. Sort by Worst Δ to surface vaults that nuked recently.</p>
     </header>
 
     <div class="toolbar">
@@ -178,8 +182,18 @@
           <option value="best">Best Δ% (top performers)</option>
           <option value="worst">Worst Δ%</option>
           <option value="anomaly">Anomaly (|Δ%|)</option>
+          <option value="apy">APY</option>
           <option value="name">Name</option>
           <option value="tvl">TVL</option>
+        </select>
+      </label>
+      <label class="field">
+        <span class="field-label">Timeframe</span>
+        <select id="windowSel">
+          <option value="7">7d</option>
+          <option value="30">30d</option>
+          <option value="90">90d</option>
+          <option value="0">All</option>
         </select>
       </label>
       <label class="field">
@@ -194,14 +208,15 @@
         <table>
           <thead>
             <tr>
-              <th>Vault<span class="tip" data-tip="Vault name, with its underlying asset and current TVL below. Tap the name to open the full vault page.">i</span></th>
-              <th>Trajectory<span class="tip" data-tip="Sparkline of the last 7 share-price data points (≈ last 7 days, since snapshots are daily). Line color reflects the 7-point move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
-              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the 7-point window and now. ~1.0 at vault inception, drifts up with yield. Shown as a pair so the Δ 7d beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
-              <th class="num">Δ 7d<span class="tip" data-tip="Percent change in share price across the last 7 data points (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
+              <th>Vault<span class="tip" data-tip="Vault name, with its underlying asset, current TVL, and a quick link to open it in the IPOR Fusion app. Tap the name to open the full vault page on Fusion Stats.">i</span></th>
+              <th>Trajectory<span class="tip" data-tip="Sparkline of the share-price points in the selected timeframe (snapshots are daily). Line color reflects the period move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
+              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Shown as a pair so the Δ beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
+              <th class="num">Δ <span id="deltaLabel">7d</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
+              <th class="num">APY<span class="tip" data-tip="Annualized return extrapolated from the selected window using the compound formula (1 + r)^(365 / days) − 1, where r is the period share-price ratio and days is the actual elapsed time between the first and last trusted points. Approximates yield if the recent trend held for a full year — sensible for stable yield vaults, spiky for volatile ones, and suppressed (⚠) for off-scale snapshot data.">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
-            <tr><td colspan="4" class="loading">Loading snapshots…</td></tr>
+            <tr><td colspan="5" class="loading">Loading snapshots…</td></tr>
           </tbody>
         </table>
       </div>
@@ -209,19 +224,32 @@
 
     <div class="footnote">
       Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
-      Line color reflects the 7-point Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
-      "Δ 7d" = first→last sharePrice across the last 7 data points (snapshots are daily, so this is roughly the last week). Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Filter by chain via the toolbar.
+      Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
+      "Δ" = first→last sharePrice across the selected timeframe (snapshots are daily). APY extrapolates that move to a full year via the compound formula <code>(1 + r)^(365/days) − 1</code>. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Use the toolbar to switch timeframe or filter by chain.
     </div>
   </div>
 
   <script>
     let allRows = [];
     let rawData = { snap: null, names: {}, tvls: {} };
-    // Trajectory window is hard-fixed to the last 7 data points (snapshots are
-    // daily, so this is ~last week). Start → Now and Δ 7d are computed from
-    // these same 7 points so the table reconciles row-internally.
-    const WINDOW_POINTS = 7;
-    let state = { sort: 'best', chain: '' };
+    // Trajectory window defaults to the last 7 daily snapshots; the toolbar lets
+    // the user widen it to 30d / 90d / All. Start → Now, Δ and APY all derive
+    // from the same window so the table reconciles row-internally.
+    let state = { sort: 'best', chain: '', window: 7 };
+
+    function windowLabel() {
+      return state.window > 0 ? state.window + 'd' : 'all';
+    }
+    function windowCountLabel() {
+      return state.window > 0 ? String(state.window) : 'all available';
+    }
+    function updateWindowLabels() {
+      const wl = document.getElementById('windowLabel');
+      const dl = document.getElementById('deltaLabel');
+      if (wl) wl.textContent = windowCountLabel();
+      if (dl) dl.textContent = windowLabel();
+    }
+
     function recompute() {
       if (!rawData.snap) return;
       allRows = compute(rawData.snap.vaults).map(r => ({
@@ -229,6 +257,7 @@
         name: rawData.names[r.addr] || r.name,
         tvl: rawData.tvls[r.addr] || 0,
       }));
+      updateWindowLabels();
       render(allRows);
     }
 
@@ -299,25 +328,39 @@
         const ser = (v.snapshots || [])
           .filter(s => typeof s.sharePrice === 'number' && s.day != null)
           .sort((a, b) => a.day - b.day);
-        // window slice — last N points
-        const win = ser.slice(-WINDOW_POINTS).map(s => s.sharePrice);
+        // window slice — last N points (state.window > 0) or the whole series
+        // for "All". Keep full snapshot objects so we have each point's day
+        // index for APY annualization.
+        const winPts = state.window > 0 ? ser.slice(-state.window) : ser.slice();
+        const win = winPts.map(s => s.sharePrice);
 
         // Plausibility filter: an ERC-4626 yield vault's share price lives near
         // 1.0 by construction and drifts slowly. Readings outside [0.1, 100]
         // are scaling artifacts — some vaults' historical snapshots are off by
         // 100x (e.g. 0.0109 instead of 1.09, a 2-decimal glitch). Drop those so
         // a bad point can't manufacture a +9927% "gain".
-        const clean = win.filter(x => x >= 0.1 && x <= 100);
+        const cleanPts = winPts.filter(p => p.sharePrice >= 0.1 && p.sharePrice <= 100);
+        const clean = cleanPts.map(p => p.sharePrice);
 
         let deltaPct = null, dataFlag = null, vals = clean;
+        let apyPct = null;
         if (clean.length >= 2) {
           deltaPct = (clean[clean.length - 1] / clean[0] - 1) * 100;
+          // Annualize the period return based on the ACTUAL elapsed days between
+          // the first and last trusted points (snapshots usually land daily, so
+          // ~6 days for 7 points — but block-time drift can skip a day, in which
+          // case using a hard-coded "7d → ×52" annualization would be wrong).
+          const daysSpan = (cleanPts[cleanPts.length - 1].day - cleanPts[0].day) || 1;
+          const r = clean[clean.length - 1] / clean[0];
+          if (r > 0 && daysSpan > 0) {
+            apyPct = (Math.pow(r, 365 / daysSpan) - 1) * 100;
+          }
           // Residual discontinuity even after filtering, or an implausible
           // magnitude → don't trust the number; flag the row.
           let maxJump = 1;
           for (let i = 1; i < clean.length; i++) {
-            const r = clean[i] > 0 && clean[i - 1] > 0 ? Math.max(clean[i] / clean[i - 1], clean[i - 1] / clean[i]) : Infinity;
-            if (r > maxJump) maxJump = r;
+            const rr = clean[i] > 0 && clean[i - 1] > 0 ? Math.max(clean[i] / clean[i - 1], clean[i - 1] / clean[i]) : Infinity;
+            if (rr > maxJump) maxJump = rr;
           }
           if (Math.abs(deltaPct) > 300 || maxJump > 3) { dataFlag = 'anomaly'; }
         } else if (win.length >= 2) {
@@ -337,21 +380,23 @@
           symbol: v.symbol || '?',
           chain: v.chain || 'unknown',
           tvl: 0,                       // filled from ipor-vaults.json below
-          vals, winFirst, latest: winLast, deltaPct, dataFlag,
+          vals, winFirst, latest: winLast, deltaPct, apyPct, dataFlag,
         });
       }
       return out;
     }
 
-    // Sort key that pushes flagged/untrustworthy rows out of the top ranks so a
+    // Sort keys that push flagged/untrustworthy rows out of the top ranks so a
     // data glitch never crowds out a genuine top/bottom performer.
     function sortDelta(r) { return r.dataFlag ? null : r.deltaPct; }
+    function sortApy(r) { return r.dataFlag ? null : r.apyPct; }
 
     function applySort(rows) {
       const s = [...rows];
       if (state.sort === 'name') s.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       else if (state.sort === 'worst') s.sort((a, b) => (sortDelta(a) ?? Infinity) - (sortDelta(b) ?? Infinity));
       else if (state.sort === 'best') s.sort((a, b) => (sortDelta(b) ?? -Infinity) - (sortDelta(a) ?? -Infinity));
+      else if (state.sort === 'apy') s.sort((a, b) => (sortApy(b) ?? -Infinity) - (sortApy(a) ?? -Infinity));
       else if (state.sort === 'tvl') s.sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
       else /* anomaly */ s.sort((a, b) => Math.abs(sortDelta(b) ?? 0) - Math.abs(sortDelta(a) ?? 0));
       return s;
@@ -361,9 +406,9 @@
       const tbody = document.getElementById('rows');
       const filtered = state.chain ? rows.filter(r => r.chain === state.chain) : rows;
       document.getElementById('statPill').textContent =
-        `${filtered.length} vaults · last 7 points`;
+        `${filtered.length} vaults · ${windowCountLabel()} points`;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="loading">No vaults match.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">No vaults match.</td></tr>';
         return;
       }
       tbody.innerHTML = applySort(filtered).map(r => {
@@ -372,9 +417,11 @@
         const lineColor = r.dataFlag ? '#9BA3AF' : colorFor(r.deltaPct);
         const dotColor = r.dataFlag ? '#9BA3AF' : momentumColor(r.vals);
         const tvlStr = fmtTvl(r.tvl);
+        const appUrl = `https://app.ipor.io/fusion/${r.chain}/${r.addr}`;
+        const appLink = `<span class="sep">•</span><a class="app-cta" href="${appUrl}" target="_blank" rel="noopener">Open in App ↗</a>`;
         const sub = tvlStr
-          ? `<span class="sym">${r.symbol}</span><span class="sep">•</span><span class="tvl">${tvlStr}</span>`
-          : `<span class="sym">${r.symbol}</span>`;
+          ? `<span class="sym">${r.symbol}</span><span class="sep">•</span><span class="tvl">${tvlStr}</span>${appLink}`
+          : `<span class="sym">${r.symbol}</span>${appLink}`;
         // Δ cell: real number for clean rows; a flagged marker for data issues
         // so a 100x scaling artifact never reads as a +9927% gain.
         let deltaCell;
@@ -387,6 +434,18 @@
           const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
           const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
           deltaCell = `<td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>`;
+        }
+        // APY cell: extrapolated annualized return for clean rows. Suppressed
+        // for glitch rows, marked ⚠ for anomalies, '—' if we couldn't compute.
+        let apyCell;
+        if (isGlitch || r.apyPct == null) {
+          apyCell = '<td class="num"><span class="na">—</span></td>';
+        } else if (isAnomaly) {
+          const cls = r.apyPct >= 0 ? 'pos' : 'neg';
+          apyCell = `<td class="num pct ${cls}"><span class="dflag-inline tip" data-tip="Annualized from a flagged window — treat with caution.">⚠</span> ${fmtPct(r.apyPct)}</td>`;
+        } else {
+          const cls = r.apyPct >= 0 ? 'pos' : 'neg';
+          apyCell = `<td class="num pct ${cls}">${fmtPct(r.apyPct)}</td>`;
         }
         // Start → Now cell: the window's first and last so the Δ% beside it is
         // obvious at a glance. For glitch rows we suppress the pair too — the
@@ -407,6 +466,7 @@
           <td class="spark-cell">${sparkSvg(r.vals, lineColor, dotColor)}</td>
           <td class="num px-cell">${latestCell}</td>
           ${deltaCell}
+          ${apyCell}
         </tr>`;
       }).join('');
     }
@@ -443,29 +503,32 @@
         });
 
         const sortSel = document.getElementById('sortSel');
+        const windowSel = document.getElementById('windowSel');
         sortSel.value = state.sort;
+        windowSel.value = String(state.window);
         sortSel.onchange = () => { state.sort = sortSel.value; render(allRows); };
+        windowSel.onchange = () => {
+          state.window = parseInt(windowSel.value, 10) || 0;
+          recompute();
+        };
         chainSel.onchange = () => { state.chain = chainSel.value; render(allRows); };
       } catch (e) {
         document.getElementById('rows').innerHTML =
-          `<tr><td colspan="4" class="err">Failed to load: ${e.message}</td></tr>`;
+          `<tr><td colspan="5" class="err">Failed to load: ${e.message}</td></tr>`;
       }
     }
     load();
 
-    // Click/tap tooltips for the (i) column-header markers. Native `title`
-    // doesn't appear on touch devices, so drive a visible popover from a click.
+    // Hover tooltips for the (i) markers. Native `title` doesn't appear on
+    // touch devices, so we drive a visible popover ourselves. Desktop: show on
+    // mouseover, hide on mouseout. Touch (no hover): tap toggles via click.
     (function () {
       const pop = document.createElement('div');
       pop.className = 'tip-pop';
       document.body.appendChild(pop);
       let openEl = null;
       const hide = () => { pop.classList.remove('show'); openEl = null; };
-      document.addEventListener('click', (e) => {
-        const tip = e.target.closest('.tip');
-        if (!tip) { if (openEl) hide(); return; }
-        e.stopPropagation();
-        if (openEl === tip) { hide(); return; }
+      const show = (tip) => {
         pop.textContent = tip.getAttribute('data-tip') || '';
         pop.classList.add('show');
         openEl = tip;
@@ -478,6 +541,28 @@
         if (top + pr.height > window.innerHeight - 8) top = r.top - pr.height - 6;
         pop.style.left = left + 'px';
         pop.style.top = Math.max(8, top) + 'px';
+      };
+      // mouseover/mouseout bubble (mouseenter/mouseleave don't), so we delegate
+      // and gate on the target actually entering/leaving the .tip element.
+      document.addEventListener('mouseover', (e) => {
+        const tip = e.target.closest('.tip');
+        if (!tip || tip === openEl) return;
+        show(tip);
+      });
+      document.addEventListener('mouseout', (e) => {
+        const tip = e.target.closest('.tip');
+        if (!tip || tip !== openEl) return;
+        const related = e.relatedTarget;
+        if (related && tip.contains(related)) return;   // moved within the tip
+        hide();
+      });
+      // Touch fallback: tap to toggle, tap elsewhere to dismiss.
+      document.addEventListener('click', (e) => {
+        const tip = e.target.closest('.tip');
+        if (!tip) { if (openEl) hide(); return; }
+        e.stopPropagation();
+        if (openEl === tip) hide();
+        else show(tip);
       });
       window.addEventListener('resize', hide);
       window.addEventListener('scroll', hide, true);
