@@ -364,6 +364,21 @@
     document.getElementById('themeToggle').addEventListener('click',function(){const d=document.documentElement.getAttribute('data-theme')==='dark';if(d){document.documentElement.removeAttribute('data-theme');localStorage.setItem('theme','light');this.innerHTML='&#9790;'}else{document.documentElement.setAttribute('data-theme','dark');localStorage.setItem('theme','dark');this.innerHTML='&#9788;'}});
     if(document.documentElement.getAttribute('data-theme')==='dark')document.getElementById('themeToggle').innerHTML='&#9788;';
 
+    // Per-chain block explorer base URLs. Used to point the Explorer button
+    // at the right scanner for the vault's actual deployment network (was
+    // hardcoded to etherscan.io, which 404'd for Base / Arbitrum / etc.).
+    const EXPLORERS = {
+      ethereum: 'https://etherscan.io/address/',
+      arbitrum: 'https://arbiscan.io/address/',
+      base: 'https://basescan.org/address/',
+      unichain: 'https://uniscan.xyz/address/',
+      plasma: 'https://plasmascan.to/address/',
+      avalanche: 'https://snowtrace.io/address/',
+      tac: 'https://explorer.tac.build/address/',
+      ink: 'https://explorer.inkonchain.com/address/',
+      katana: 'https://explorer.katanarpc.com/address/',
+    };
+
     // Helpers
     function shortAddr(a){return a.slice(0,6)+'…'+a.slice(-4)}
     function escapeHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -552,13 +567,18 @@
       }
       const events = getEventsForAddr(addr);
       document.getElementById('introSection').style.display = 'none';
-      // Set explorer link
+      // Detect the vault's deployment chain from ipor-vaults.json so the app
+      // and explorer links point at the right network (the previous hardcoded
+      // /ethereum/ slug broke Open in App for Base / Arbitrum / etc. vaults).
+      // Wallet addresses aren't in iporVaultsByAddr → fall back to ethereum.
+      const vaultInfo = (window.iporVaultsByAddr || {})[addr];
+      const chain = (vaultInfo && vaultInfo.chain) || 'ethereum';
+      const explorerBase = EXPLORERS[chain] || EXPLORERS.ethereum;
       const explorerBtn = document.getElementById('explorerBtn');
-      explorerBtn.href = `https://etherscan.io/address/${addr}`;
+      explorerBtn.href = `${explorerBase}${addr}`;
       explorerBtn.style.display = '';
-      // Set app link (use ethereum as default chain for vault addresses)
       const appBtn = document.getElementById('appBtn');
-      appBtn.href = `https://app.ipor.io/fusion/ethereum/${addr}`;
+      appBtn.href = `https://app.ipor.io/fusion/${chain}/${addr}`;
       appBtn.style.display = '';
       if (events.length === 0) {
         document.getElementById('resultSection').style.display = 'none';
