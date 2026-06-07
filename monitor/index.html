@@ -168,7 +168,7 @@
   <div class="container">
     <header>
       <h1>Share-Price Monitor</h1>
-      <p>Latest <span id="windowLabel">30</span> share-price data points per vault. Sort by anomaly to surface vaults that nuked recently.</p>
+      <p>Latest <strong>7</strong> share-price data points per vault. Sort by Worst Δ to surface vaults that nuked recently.</p>
     </header>
 
     <div class="toolbar">
@@ -180,15 +180,6 @@
           <option value="anomaly">Anomaly (|Δ%|)</option>
           <option value="name">Name</option>
           <option value="tvl">TVL</option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="field-label">Window</span>
-        <select id="windowSel">
-          <option value="14">14d</option>
-          <option value="30" selected>30d</option>
-          <option value="60">60d</option>
-          <option value="90">90d</option>
         </select>
       </label>
       <label class="field">
@@ -204,9 +195,9 @@
           <thead>
             <tr>
               <th>Vault<span class="tip" data-tip="Vault name, with its underlying asset and current TVL below. Tap the name to open the full vault page.">i</span></th>
-              <th>Trajectory<span class="tip" data-tip="Share-price sparkline over the selected window. Line color = overall window move (green up / red down / purple ≈ flat yield). The endpoint dot = current momentum: green if the latest point is above the previous one, red if below.">i</span></th>
-              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the window and now. ~1.0 at vault inception, drifts up as yield accrues. Shown as a pair so the Δ window beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
-              <th class="num">Δ window<span class="tip" data-tip="Percent change in share price from the first to the last point in the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
+              <th>Trajectory<span class="tip" data-tip="Sparkline of the last 7 share-price data points (≈ last 7 days, since snapshots are daily). Line color reflects the 7-point move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
+              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the 7-point window and now. ~1.0 at vault inception, drifts up with yield. Shown as a pair so the Δ 7d beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
+              <th class="num">Δ 7d<span class="tip" data-tip="Percent change in share price across the last 7 data points (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -218,15 +209,19 @@
 
     <div class="footnote">
       Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
-      Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
-      "Δ window" = first→last sharePrice in the chosen window. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Filter by chain via the toolbar.
+      Line color reflects the 7-point Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
+      "Δ 7d" = first→last sharePrice across the last 7 data points (snapshots are daily, so this is roughly the last week). Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Filter by chain via the toolbar.
     </div>
   </div>
 
   <script>
     let allRows = [];
     let rawData = { snap: null, names: {}, tvls: {} };
-    let state = { sort: 'best', window: 30, chain: '' };
+    // Trajectory window is hard-fixed to the last 7 data points (snapshots are
+    // daily, so this is ~last week). Start → Now and Δ 7d are computed from
+    // these same 7 points so the table reconciles row-internally.
+    const WINDOW_POINTS = 7;
+    let state = { sort: 'best', chain: '' };
     function recompute() {
       if (!rawData.snap) return;
       allRows = compute(rawData.snap.vaults).map(r => ({
@@ -305,7 +300,7 @@
           .filter(s => typeof s.sharePrice === 'number' && s.day != null)
           .sort((a, b) => a.day - b.day);
         // window slice — last N points
-        const win = ser.slice(-state.window).map(s => s.sharePrice);
+        const win = ser.slice(-WINDOW_POINTS).map(s => s.sharePrice);
 
         // Plausibility filter: an ERC-4626 yield vault's share price lives near
         // 1.0 by construction and drifts slowly. Readings outside [0.1, 100]
@@ -366,8 +361,7 @@
       const tbody = document.getElementById('rows');
       const filtered = state.chain ? rows.filter(r => r.chain === state.chain) : rows;
       document.getElementById('statPill').textContent =
-        `${filtered.length} vaults · window ${state.window}d`;
-      document.getElementById('windowLabel').textContent = state.window;
+        `${filtered.length} vaults · last 7 points`;
       if (!filtered.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="loading">No vaults match.</td></tr>';
         return;
@@ -449,12 +443,8 @@
         });
 
         const sortSel = document.getElementById('sortSel');
-        const windowSel = document.getElementById('windowSel');
         sortSel.value = state.sort;
-        windowSel.value = String(state.window);
-        // Window changes the compute() slice; sort/chain only re-render.
         sortSel.onchange = () => { state.sort = sortSel.value; render(allRows); };
-        windowSel.onchange = () => { state.window = Number(windowSel.value); recompute(); };
         chainSel.onchange = () => { state.chain = chainSel.value; render(allRows); };
       } catch (e) {
         document.getElementById('rows').innerHTML =
