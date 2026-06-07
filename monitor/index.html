@@ -96,6 +96,15 @@
       text-transform: none; font-weight: 600;
     }
     thead th .tip:hover { color: var(--accent); border-color: var(--accent); }
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { color: var(--accent); background: var(--accent-bg); }
+    thead th .sort-arrow {
+      display: inline-block; margin-left: 0.25rem;
+      font-size: 0.65rem; color: var(--text-secondary);
+      opacity: 0.4; vertical-align: middle;
+    }
+    thead th.sort-active { color: var(--accent); }
+    thead th.sort-active .sort-arrow { opacity: 1; color: var(--accent); }
     tbody td {
       padding: 0.35rem 0.75rem;             /* narrow rows */
       border-bottom: 1px solid var(--stroke-light);
@@ -136,6 +145,12 @@
     .px-from { color: var(--text-secondary); }
     .px-arrow { margin: 0 0.3rem; color: var(--text-secondary); opacity: 0.7; }
     .px-to { color: var(--text); font-weight: 600; }
+    .px-from[data-tip], .px-to[data-tip] { cursor: help; }
+    .px-from[data-tip]:hover, .px-to[data-tip]:hover {
+      text-decoration: underline dotted;
+      text-decoration-color: var(--text-secondary);
+      text-underline-offset: 2px;
+    }
     /* Click/tap tooltip popover (native title doesn't work on touch) */
     .tip-pop {
       position: fixed; z-index: 200; max-width: 280px;
@@ -172,13 +187,14 @@
   <div class="container">
     <header>
       <h1>Share-Price Monitor</h1>
-      <p>Latest <strong id="windowLabel">7</strong> share-price data points per vault. Sort by Worst Δ to surface vaults that nuked recently.</p>
+      <p>Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Click column headers to sort, or pick Worst Δ to surface vaults that nuked recently.</p>
     </header>
 
     <div class="toolbar">
       <label class="field">
         <span class="field-label">Sort by</span>
         <select id="sortSel">
+          <option value="" disabled hidden>Custom (header click)</option>
           <option value="best">Best Δ% (top performers)</option>
           <option value="worst">Worst Δ%</option>
           <option value="anomaly">Anomaly (|Δ%|)</option>
@@ -208,11 +224,11 @@
         <table>
           <thead>
             <tr>
-              <th>Vault<span class="tip" data-tip="Vault name, with its underlying asset, current TVL, and a quick link to open it in the IPOR Fusion app. Tap the name to open the full vault page on Fusion Stats.">i</span></th>
-              <th>Trajectory<span class="tip" data-tip="Sparkline of the share-price points in the selected timeframe (snapshots are daily). Line color reflects the period move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
-              <th class="num">Start → Now<span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Shown as a pair so the Δ beside it is self-explanatory — e.g. 1.0001 → 1.0005 is +0.04%.">i</span></th>
-              <th class="num">Δ <span id="deltaLabel">7d</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
-              <th class="num">APY<span class="tip" data-tip="Annualized return extrapolated from the selected window using the compound formula (1 + r)^(365 / days) − 1, where r is the period share-price ratio and days is the actual elapsed time between the first and last trusted points. Approximates yield if the recent trend held for a full year — sensible for stable yield vaults, spiky for volatile ones, and suppressed (⚠) for off-scale snapshot data.">i</span></th>
+              <th class="sortable" data-sort="name">Vault<span class="sort-arrow" data-arrow="name">↕</span><span class="tip" data-tip="Vault name, with its underlying asset, current TVL, and a quick link to open it in the IPOR Fusion app. Tap the name to open the full vault page on Fusion Stats. Click the column header to sort by name.">i</span></th>
+              <th>Trajectory<span class="tip" data-tip="Sparkline of the share-price points in the selected timeframe. Line color reflects the period move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
+              <th class="num sortable" data-sort="latest">Start → Now<span class="sort-arrow" data-arrow="latest">↕</span><span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Hover either number for its exact UTC timestamp. Click the header to sort by latest price.">i</span></th>
+              <th class="num sortable" data-sort="delta">Δ <span id="deltaLabel">7d</span><span class="sort-arrow" data-arrow="delta">↕</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. Click the header to sort. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
+              <th class="num sortable" data-sort="apy">APY<span class="sort-arrow" data-arrow="apy">↕</span><span class="tip" data-tip="Annualized return extrapolated from the selected window using the compound formula (1 + r)^(365 / days) − 1, where r = (last sharePrice / first sharePrice) and days = actual elapsed time (timestamp-based, not point-count) between the first and last trusted points. Approximates yield if the recent trend held for a full year — sensible for stable yield vaults, spiky for volatile ones and short windows. Hidden when the window spans less than ~12 hours of data, suppressed (⚠) for off-scale snapshots.">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -225,29 +241,67 @@
     <div class="footnote">
       Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
       Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
-      "Δ" = first→last sharePrice across the selected timeframe (snapshots are daily). APY extrapolates that move to a full year via the compound formula <code>(1 + r)^(365/days) − 1</code>. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Use the toolbar to switch timeframe or filter by chain.
+      "Δ" = first→last sharePrice across the selected timeframe. APY annualizes that move via the compound formula <code>(1 + r)^(365 / days) − 1</code> where <code>days</code> is the actual elapsed time (in seconds, not point count) between the first and last trusted snapshots — so vaults sampled multiple times per day don't get a bogus 50000% APY from intra-day noise. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Click column headers to sort, use the toolbar to switch timeframe or filter by chain.
     </div>
   </div>
 
   <script>
     let allRows = [];
     let rawData = { snap: null, names: {}, tvls: {} };
-    // Trajectory window defaults to the last 7 daily snapshots; the toolbar lets
-    // the user widen it to 30d / 90d / All. Start → Now, Δ and APY all derive
-    // from the same window so the table reconciles row-internally.
-    let state = { sort: 'best', chain: '', window: 7 };
+    // Trajectory window defaults to 7 days; the toolbar lets the user widen it
+    // to 30 / 90 days or All. Start → Now, Δ and APY all derive from the same
+    // window so the table reconciles row-internally. Sort state is split into a
+    // key + direction so both the dropdown and clickable column headers can
+    // drive it without duplicating enums.
+    let state = { sortKey: 'delta', sortDir: 'desc', chain: '', window: 7 };
+
+    // Translation table between the Sort dropdown (preset combinations) and
+    // (sortKey, sortDir) state. Keeps the two UIs in sync without forking enums.
+    const DROPDOWN_PRESETS = {
+      best:    { key: 'delta',   dir: 'desc' },
+      worst:   { key: 'delta',   dir: 'asc'  },
+      anomaly: { key: 'anomaly', dir: 'desc' },
+      apy:     { key: 'apy',     dir: 'desc' },
+      name:    { key: 'name',    dir: 'asc'  },
+      tvl:     { key: 'tvl',     dir: 'desc' },
+    };
+    function presetFor(key, dir) {
+      for (const [name, p] of Object.entries(DROPDOWN_PRESETS)) {
+        if (p.key === key && p.dir === dir) return name;
+      }
+      return '';   // header-driven combination with no dropdown equivalent
+    }
 
     function windowLabel() {
       return state.window > 0 ? state.window + 'd' : 'all';
     }
-    function windowCountLabel() {
-      return state.window > 0 ? String(state.window) : 'all available';
+    function windowDaysLabel() {
+      return state.window > 0 ? `last ${state.window} days` : 'all history';
     }
     function updateWindowLabels() {
       const wl = document.getElementById('windowLabel');
       const dl = document.getElementById('deltaLabel');
-      if (wl) wl.textContent = windowCountLabel();
+      if (wl) wl.textContent = windowDaysLabel();
       if (dl) dl.textContent = windowLabel();
+    }
+
+    // Sync the Sort dropdown and the column-header arrows to whatever
+    // (sortKey, sortDir) state currently holds. Called after any sort change
+    // — from the dropdown OR from a header click — so both UIs always agree.
+    function syncSortUI() {
+      const sortSel = document.getElementById('sortSel');
+      if (sortSel) sortSel.value = presetFor(state.sortKey, state.sortDir);
+      document.querySelectorAll('thead th.sortable').forEach(th => {
+        const k = th.getAttribute('data-sort');
+        const arrow = th.querySelector('.sort-arrow');
+        if (k === state.sortKey) {
+          th.classList.add('sort-active');
+          if (arrow) arrow.textContent = state.sortDir === 'desc' ? '↓' : '↑';
+        } else {
+          th.classList.remove('sort-active');
+          if (arrow) arrow.textContent = '↕';
+        }
+      });
     }
 
     function recompute() {
@@ -279,6 +333,14 @@
       if (v >= 1e6) return '$' + (v / 1e6).toFixed(2).replace(/\.00$/, '') + 'M';
       if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
       return '$' + v.toFixed(0);
+    }
+    function fmtDate(ts) {
+      if (!ts) return '';
+      const d = new Date(ts * 1000);
+      const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      return `${date} · ${hh}:${mm} UTC`;
     }
 
     // Build SVG sparkline. `lineColor` reflects the window Δ% (overall mood);
@@ -326,12 +388,21 @@
       const out = [];
       for (const [addr, v] of Object.entries(snapshots || {})) {
         const ser = (v.snapshots || [])
-          .filter(s => typeof s.sharePrice === 'number' && s.day != null)
-          .sort((a, b) => a.day - b.day);
-        // window slice — last N points (state.window > 0) or the whole series
-        // for "All". Keep full snapshot objects so we have each point's day
-        // index for APY annualization.
-        const winPts = state.window > 0 ? ser.slice(-state.window) : ser.slice();
+          .filter(s => typeof s.sharePrice === 'number' && s.day != null && typeof s.timestamp === 'number')
+          .sort((a, b) => a.timestamp - b.timestamp);
+        // window slice — keep points whose `day` (UNIX days since epoch) is
+        // within the last N calendar days of the vault's most recent point.
+        // Day-bucketing (not "last N points") because the collector samples
+        // sub-daily now — slicing by point count would give a couple of HOURS
+        // of data for high-cadence vaults when the user asked for 7d. "All"
+        // keeps the whole series.
+        let winPts;
+        if (state.window > 0 && ser.length) {
+          const maxDay = ser[ser.length - 1].day;
+          winPts = ser.filter(s => s.day >= maxDay - state.window + 1);
+        } else {
+          winPts = ser.slice();
+        }
         const win = winPts.map(s => s.sharePrice);
 
         // Plausibility filter: an ERC-4626 yield vault's share price lives near
@@ -344,15 +415,21 @@
 
         let deltaPct = null, dataFlag = null, vals = clean;
         let apyPct = null;
+        let firstTs = null, lastTs = null;
         if (clean.length >= 2) {
           deltaPct = (clean[clean.length - 1] / clean[0] - 1) * 100;
-          // Annualize the period return based on the ACTUAL elapsed days between
-          // the first and last trusted points (snapshots usually land daily, so
-          // ~6 days for 7 points — but block-time drift can skip a day, in which
-          // case using a hard-coded "7d → ×52" annualization would be wrong).
-          const daysSpan = (cleanPts[cleanPts.length - 1].day - cleanPts[0].day) || 1;
+          // Annualize the period return using the ACTUAL elapsed seconds between
+          // the first and last trusted points (not the `day` field, which is
+          // truncated to whole UNIX days — multiple sub-daily snapshots map to
+          // the same day, which used to give daysSpan=0 → fallback to 1 → APY
+          // annualized as if an hour of intra-day noise were a 1-day return).
+          firstTs = cleanPts[0].timestamp;
+          lastTs = cleanPts[cleanPts.length - 1].timestamp;
+          const daysSpan = (lastTs - firstTs) / 86400;
           const r = clean[clean.length - 1] / clean[0];
-          if (r > 0 && daysSpan > 0) {
+          // Require at least ~12h of span before annualizing — anything shorter
+          // is intra-day noise and produces nonsense like 50000% APY.
+          if (r > 0 && daysSpan >= 0.5) {
             apyPct = (Math.pow(r, 365 / daysSpan) - 1) * 100;
           }
           // Residual discontinuity even after filtering, or an implausible
@@ -374,6 +451,7 @@
         // the Latest column makes the percentage self-explanatory.
         const winFirst = clean.length >= 2 ? clean[0] : null;
         const winLast = clean.length ? clean[clean.length - 1] : (win.length ? win[win.length - 1] : null);
+        const lastPointTs = winPts.length ? winPts[winPts.length - 1].timestamp : null;
 
         out.push({
           addr, name: v.symbol ? (v.symbol + ' vault') : addr.slice(0, 10),
@@ -381,24 +459,37 @@
           chain: v.chain || 'unknown',
           tvl: 0,                       // filled from ipor-vaults.json below
           vals, winFirst, latest: winLast, deltaPct, apyPct, dataFlag,
+          firstTs, lastTs: lastTs || lastPointTs,
         });
       }
       return out;
     }
 
-    // Sort keys that push flagged/untrustworthy rows out of the top ranks so a
-    // data glitch never crowds out a genuine top/bottom performer.
-    function sortDelta(r) { return r.dataFlag ? null : r.deltaPct; }
-    function sortApy(r) { return r.dataFlag ? null : r.apyPct; }
+    // Extract the comparable value for each sort key. Flagged rows return null
+    // so they get pushed to the bottom regardless of direction (a 100x scaling
+    // artifact shouldn't crowd out a genuine top/bottom performer).
+    function sortValue(r, key) {
+      if (key === 'name')    return (r.name || '').toLowerCase();
+      if (key === 'tvl')     return r.tvl || 0;
+      if (key === 'anomaly') return r.dataFlag ? null : Math.abs(r.deltaPct ?? 0);
+      if (key === 'latest')  return r.dataFlag ? null : r.latest;
+      if (key === 'delta')   return r.dataFlag ? null : r.deltaPct;
+      if (key === 'apy')     return r.dataFlag ? null : r.apyPct;
+      return null;
+    }
 
     function applySort(rows) {
       const s = [...rows];
-      if (state.sort === 'name') s.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      else if (state.sort === 'worst') s.sort((a, b) => (sortDelta(a) ?? Infinity) - (sortDelta(b) ?? Infinity));
-      else if (state.sort === 'best') s.sort((a, b) => (sortDelta(b) ?? -Infinity) - (sortDelta(a) ?? -Infinity));
-      else if (state.sort === 'apy') s.sort((a, b) => (sortApy(b) ?? -Infinity) - (sortApy(a) ?? -Infinity));
-      else if (state.sort === 'tvl') s.sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
-      else /* anomaly */ s.sort((a, b) => Math.abs(sortDelta(b) ?? 0) - Math.abs(sortDelta(a) ?? 0));
+      const key = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+      s.sort((a, b) => {
+        const av = sortValue(a, key), bv = sortValue(b, key);
+        // Null/flagged rows go to the bottom regardless of direction.
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        if (typeof av === 'string') return dir * av.localeCompare(bv);
+        return dir * (av - bv);
+      });
       return s;
     }
 
@@ -406,7 +497,7 @@
       const tbody = document.getElementById('rows');
       const filtered = state.chain ? rows.filter(r => r.chain === state.chain) : rows;
       document.getElementById('statPill').textContent =
-        `${filtered.length} vaults · ${windowCountLabel()} points`;
+        `${filtered.length} vaults · ${windowDaysLabel()}`;
       if (!filtered.length) {
         tbody.innerHTML = '<tr><td colspan="5" class="loading">No vaults match.</td></tr>';
         return;
@@ -450,13 +541,17 @@
         // Start → Now cell: the window's first and last so the Δ% beside it is
         // obvious at a glance. For glitch rows we suppress the pair too — the
         // raw value would be off-scale garbage (e.g. 1.02e12 for Tanken).
+        // Each price is wrapped in a hover-tooltip showing its exact UTC date.
         let latestCell;
         if (isGlitch) {
           latestCell = '<span class="na">—</span>';
         } else if (r.winFirst != null && r.latest != null) {
-          latestCell = `<span class="px-from">${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to">${fmtPrice(r.latest)}</span>`;
+          const fromTip = r.firstTs ? ` data-tip="Window start: ${fmtDate(r.firstTs)}"` : '';
+          const toTip = r.lastTs ? ` data-tip="Latest snapshot: ${fmtDate(r.lastTs)}"` : '';
+          latestCell = `<span class="px-from"${fromTip}>${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to"${toTip}>${fmtPrice(r.latest)}</span>`;
         } else {
-          latestCell = (r.latest != null ? fmtPrice(r.latest) : '—');
+          const toTip = r.lastTs ? ` data-tip="Latest snapshot: ${fmtDate(r.lastTs)}"` : '';
+          latestCell = (r.latest != null ? `<span class="px-to"${toTip}>${fmtPrice(r.latest)}</span>` : '—');
         }
         return `<tr>
           <td class="vault-name" title="${r.name}">
@@ -504,14 +599,39 @@
 
         const sortSel = document.getElementById('sortSel');
         const windowSel = document.getElementById('windowSel');
-        sortSel.value = state.sort;
         windowSel.value = String(state.window);
-        sortSel.onchange = () => { state.sort = sortSel.value; render(allRows); };
+        sortSel.onchange = () => {
+          const preset = DROPDOWN_PRESETS[sortSel.value];
+          if (preset) { state.sortKey = preset.key; state.sortDir = preset.dir; }
+          syncSortUI();
+          render(allRows);
+        };
         windowSel.onchange = () => {
           state.window = parseInt(windowSel.value, 10) || 0;
           recompute();
         };
         chainSel.onchange = () => { state.chain = chainSel.value; render(allRows); };
+
+        // Click any sortable column header to sort by it. Re-clicking the
+        // active header flips direction so users can drill in either way
+        // without hunting for a dropdown.
+        document.querySelectorAll('thead th.sortable').forEach(th => {
+          th.addEventListener('click', (e) => {
+            // Don't sort when clicking the (i) tooltip marker inside the header.
+            if (e.target.closest('.tip')) return;
+            const key = th.getAttribute('data-sort');
+            if (state.sortKey === key) {
+              state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+              state.sortKey = key;
+              state.sortDir = (key === 'name') ? 'asc' : 'desc';
+            }
+            syncSortUI();
+            render(allRows);
+          });
+        });
+
+        syncSortUI();
       } catch (e) {
         document.getElementById('rows').innerHTML =
           `<tr><td colspan="5" class="err">Failed to load: ${e.message}</td></tr>`;
@@ -545,12 +665,12 @@
       // mouseover/mouseout bubble (mouseenter/mouseleave don't), so we delegate
       // and gate on the target actually entering/leaving the .tip element.
       document.addEventListener('mouseover', (e) => {
-        const tip = e.target.closest('.tip');
+        const tip = e.target.closest('[data-tip]');
         if (!tip || tip === openEl) return;
         show(tip);
       });
       document.addEventListener('mouseout', (e) => {
-        const tip = e.target.closest('.tip');
+        const tip = e.target.closest('[data-tip]');
         if (!tip || tip !== openEl) return;
         const related = e.relatedTarget;
         if (related && tip.contains(related)) return;   // moved within the tip
@@ -558,7 +678,7 @@
       });
       // Touch fallback: tap to toggle, tap elsewhere to dismiss.
       document.addEventListener('click', (e) => {
-        const tip = e.target.closest('.tip');
+        const tip = e.target.closest('[data-tip]');
         if (!tip) { if (openEl) hide(); return; }
         e.stopPropagation();
         if (openEl === tip) hide();
