@@ -326,6 +326,28 @@
         </div>
         <div id="tvlChart"></div>
       </div>
+      <div id="holdersChartCard" class="tvl-chart-card" style="display:none">
+        <div class="tvl-chart-toolbar">
+          <span class="tvl-chart-title">Holders over time</span>
+          <div class="tvl-chart-range-group" id="holdersChartRange">
+            <button data-range="30">30d</button>
+            <button data-range="90">90d</button>
+            <button data-range="180">180d</button>
+            <button data-range="all" class="active">All</button>
+          </div>
+          <div class="tvl-chart-range-group" id="holdersChartStyle">
+            <label class="tvl-color-swatch" title="Bar color">
+              <input type="color" id="holdersBarColor" value="#8429FF">
+            </label>
+            <button id="holdersAxisInvert" type="button" title="Invert axis colors (black ⇄ white)">Axis ⬤</button>
+          </div>
+          <span id="holdersNow" class="sp-gain"></span>
+          <button id="downloadHoldersPng" class="tvl-chart-export" type="button">Download PNG</button>
+          <button id="downloadHoldersPng43" class="tvl-chart-export" type="button">Download 4:3</button>
+          <button id="downloadHoldersPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
+        </div>
+        <div id="holdersChart"></div>
+      </div>
       <div id="sharePriceCard" class="tvl-chart-card" style="display:none">
         <div class="tvl-chart-toolbar">
           <span class="tvl-chart-title">Share price over time</span>
@@ -606,6 +628,7 @@
       renderStats(s, addr, vaultInfo);
       renderFlowChart(scoped);
       renderTvlChart(addr, vaultInfo, scoped);
+      renderHoldersChart(addr, vaultInfo, scoped);
       renderSharePriceChart(addr, vaultInfo);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
@@ -630,19 +653,25 @@
 
     // Axis + background palette derived from the invert toggle. On-screen the
     // plot bg flips so a white axis stays visible; exports keep transparent bg.
-    function tvlAxisColors() {
-      return __tvlAxisDark
+    // Shared by the TVL and Holders bar charts (each owns its own dark flag).
+    function axisColors(dark) {
+      return dark
         ? { axis: '#3a3a3a', line: '#999999', grid: '#C8C8C8', gridMinor: '#E0E0E0', bg: '#FFFFFF' }
         : { axis: '#FFFFFF', line: '#FFFFFF', grid: '#555555', gridMinor: '#3a3a3a', bg: '#141414' };
     }
+    function tvlAxisColors() { return axisColors(__tvlAxisDark); }
 
     // Prepend a short run of zero-height bars before the vault's first data
     // point (anchored to the creation date when known). This gives every
     // single-product TVL chart a clean "growth from zero" baseline. Lead width
     // scales with the data span (5%, clamped 3–14 bars) so it reads as an
     // intentional runway on both young and long-lived vaults.
-    function prependLeadBars(pts, deployIso) {
+    // makeZero(day) builds the empty lead bar for the metric being charted —
+    // defaults to the TVL shape; the Holders chart passes a {day, holders:0}
+    // factory so it gets the same runway without a NaN-valued lead.
+    function prependLeadBars(pts, deployIso, makeZero) {
       if (!pts.length) return pts;
+      makeZero = makeZero || (day => ({ day, tvlUsd: 0, assets: 0 }));
       const DAY = 86400;
       const firstDay = pts[0].day;
       let creationDay = firstDay;
@@ -654,7 +683,7 @@
       const lead = Math.min(14, Math.max(3, Math.round(span * 0.05)));
       const startDay = Math.min(creationDay, firstDay) - lead;
       const out = [];
-      for (let d = startDay; d < firstDay; d++) out.push({ day: d, tvlUsd: 0, assets: 0 });
+      for (let d = startDay; d < firstDay; d++) out.push(makeZero(d));
       return out.concat(pts);
     }
 
@@ -994,6 +1023,310 @@
       document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
       document.getElementById('downloadTvlPng43').onclick = () => exportTvlPng('43');
       document.getElementById('downloadTvlPngSquare').onclick = () => exportTvlPng('square');
+    }
+
+    // ── Holders over time ──────────────────────────────────────────────────
+    // Same bar-chart style as the TVL chart, but the bars count distinct
+    // share-holders rather than dollars. Holder count is a step function that
+    // only moves on a deposit (mint) or withdrawal (burn), and activity events
+    // carry the share delta + owner for every one of those, so we can replay
+    // them to get an exact count — within the same blind spot as the TVL
+    // flow-accounting fallback: pure wallet→wallet share transfers (no vault
+    // event) aren't observable here. For these vaults that's rare.
+    let __holdersState = null;
+    let __holdersRange = 'all';
+    let __holdersBarColor = TVL_BAR_COLOR;
+    let __holdersAxisDark = true;
+
+    // Integer tick spacing that avoids fractional duplicate ticks on small
+    // holder counts (e.g. a 0–4 vault would otherwise tick 0,0.5,1,…).
+    function holdersDtick(maxY) {
+      if (maxY <= 5) return 1;
+      if (maxY <= 10) return 2;
+      if (maxY <= 25) return 5;
+      if (maxY <= 60) return 10;
+      return undefined; // let Plotly auto-pick for big holder bases
+    }
+
+    function buildHoldersSeries(addr, events) {
+      const DAY = 86400;
+      const anchorTs = window.iporAnchorTs || (Date.now() / 1000);
+      const anchorDay = Math.floor(anchorTs / DAY);
+      const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
+
+      const usable = (events || []).filter(e =>
+        !e.synthetic &&
+        e.vault && e.vault.toLowerCase() === addr &&
+        typeof e.shares === 'number' &&
+        typeof e.timestamp === 'number' &&
+        e.timestamp <= anchorTs
+      ).sort((a, b) =>
+        (a.timestamp - b.timestamp) ||
+        ((a.block || 0) - (b.block || 0)) ||
+        ((a.logIdx || 0) - (b.logIdx || 0))
+      );
+      if (!usable.length) return null;
+
+      // Replay mints/burns, tracking each owner's running share balance. A
+      // holder is counted while their balance sits above EPS (dust from
+      // rounding shouldn't keep a fully-exited wallet on the books).
+      const EPS = 1e-9;
+      const bal = {};
+      let count = 0;
+      const byDay = new Map();   // day → end-of-day holder count
+      for (const e of usable) {
+        const who = (e.owner || e.receiver || e.sender || '').toLowerCase();
+        if (!who) continue;
+        const before = bal[who] || 0;
+        let after = before + (e.type === 'deposit' ? e.shares : -e.shares);
+        if (after < EPS) after = 0;
+        if (before <= EPS && after > EPS) count++;
+        else if (before > EPS && after <= EPS) count--;
+        bal[who] = after;
+        byDay.set(Math.floor(e.timestamp / DAY), count);
+      }
+
+      // One point per day, forward-filled out to the anchor day so the right
+      // edge reads as today's live count and there are no gaps between bars.
+      const firstDay = Math.floor(usable[0].timestamp / DAY);
+      let pts = [];
+      let last = 0;
+      for (let d = firstDay; d <= anchorDay; d++) {
+        if (byDay.has(d)) last = byDay.get(d);
+        pts.push({ day: d, holders: last });
+      }
+      pts = prependLeadBars(pts, deployIso, day => ({ day, holders: 0 }));
+      return { pts, anchorDay, minDay: pts[0].day, current: last };
+    }
+
+    function holdersMakeTraceLayout(state, range) {
+      let cutoff = null;
+      if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
+      let pts = state.pts;
+      if (cutoff != null) pts = pts.filter(p => p.day >= cutoff);
+
+      const DAY_MS = 86400 * 1000;
+      const yValues = pts.map(p => p.holders);
+      const maxY = yValues.reduce((m, v) => Math.max(m, v), 0);
+      const c = axisColors(__holdersAxisDark);
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: yValues,
+        type: 'bar',
+        name: 'Holders',
+        marker: { color: __holdersBarColor, cornerradius: 4, line: { width: 0 } },
+        hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:,d} holders<extra></extra>',
+      };
+      const layout = {
+        autosize: true,
+        margin: { l: 56, r: 16, t: 8, b: 48 },
+        plot_bgcolor: c.bg,
+        paper_bgcolor: c.bg,
+        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
+        xaxis: {
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
+          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
+          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 6 },
+        },
+        yaxis: {
+          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
+          showline: true, linecolor: c.line, linewidth: 1,
+          tickfont: { size: 10 }, tickformat: ',d', dtick: holdersDtick(maxY),
+          rangemode: 'tozero',
+          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 4 },
+        },
+        bargap: 0.18,
+        showlegend: false,
+        hovermode: 'x',
+        dragmode: 'zoom',
+      };
+      return { trace, layout };
+    }
+
+    // Square / 4:3 social figure — parallels tvlMakeSquareFigure. Down-samples
+    // to ~24 bars keeping the LAST count per bucket (holders is a level, like
+    // TVL, not a flow), pins the x-range so bars and ticks share one system.
+    function holdersMakeSquareFigure(state, range, visibleDays) {
+      const DAY_MS = 86400 * 1000;
+      let pts = state.pts;
+      if (visibleDays && visibleDays.length === 2) {
+        const [lo, hi] = visibleDays;
+        pts = pts.filter(p => p.day >= lo && p.day <= hi);
+      } else if (range !== 'all') {
+        const cutoff = state.anchorDay - parseInt(range, 10);
+        pts = pts.filter(p => p.day >= cutoff);
+      }
+      if (!pts.length) pts = state.pts.slice();
+
+      const TARGET_BARS = 24;
+      let bucketDays = 1;
+      if (pts.length > TARGET_BARS) {
+        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
+        bucketDays = Math.ceil(spanDays / TARGET_BARS);
+        const buckets = new Map();
+        for (const p of pts) {
+          const key = Math.floor(p.day / bucketDays) * bucketDays;
+          const cur = buckets.get(key);
+          if (!cur || p.day > cur._src) buckets.set(key, { day: key, holders: p.holders, _src: p.day });
+        }
+        pts = [...buckets.values()].sort((a, b) => a.day - b.day);
+      }
+
+      const yValues = pts.map(p => p.holders);
+      const maxY = yValues.reduce((m, v) => Math.max(m, v), 0);
+      const c = axisColors(__holdersAxisDark);
+      const trace = {
+        x: pts.map(p => new Date(p.day * DAY_MS)),
+        y: yValues,
+        type: 'bar',
+        name: 'Holders',
+        width: bucketDays * 0.82 * DAY_MS,
+        marker: { color: __holdersBarColor, cornerradius: 6, line: { width: 0 } },
+        hoverinfo: 'skip',
+      };
+      const pad = bucketDays * 0.6 * DAY_MS;
+      const xMin = pts[0].day * DAY_MS - pad;
+      const xMax = pts[pts.length - 1].day * DAY_MS + pad;
+      const layout = {
+        margin: { l: 110, r: 28, t: 24, b: 96 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Poppins, sans-serif', color: c.axis, size: 26 },
+        xaxis: {
+          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
+          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
+          ticks: 'outside', ticklen: 8, tickcolor: c.line,
+          range: [xMin, xMax], autorange: false,
+        },
+        yaxis: {
+          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
+          tickfont: { size: 26 }, tickformat: ',d', dtick: holdersDtick(maxY),
+          rangemode: 'tozero', ticks: 'outside', ticklen: 8, tickcolor: c.line,
+        },
+        bargap: 0.18,
+        showlegend: false,
+      };
+      return { trace, layout };
+    }
+
+    function renderHoldersChart(addr, vaultInfo, events) {
+      try { renderHoldersChartInner(addr, vaultInfo, events); }
+      catch (e) {
+        console.error('holders chart failed:', e);
+        const card = document.getElementById('holdersChartCard');
+        if (card) card.style.display = 'none';
+      }
+    }
+    function renderHoldersChartInner(addr, vaultInfo, events) {
+      const card = document.getElementById('holdersChartCard');
+      // Only on vault pages, and only when we can reconstruct a series.
+      __holdersState = (vaultInfo && typeof Plotly !== 'undefined')
+        ? buildHoldersSeries(addr, events) : null;
+      if (!__holdersState) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      __holdersRange = 'all';
+
+      const nowEl = document.getElementById('holdersNow');
+      if (nowEl) {
+        nowEl.textContent = __holdersState.current.toLocaleString() + ' holders now';
+        nowEl.style.color = 'var(--text-secondary)';
+      }
+
+      const reactChart = () => {
+        const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange);
+        Plotly.react('holdersChart', [trace], layout, TVL_CONFIG);
+      };
+      const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange);
+      Plotly.newPlot('holdersChart', [trace], layout, TVL_CONFIG);
+
+      document.querySelectorAll('#holdersChartRange button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.range === __holdersRange);
+        btn.onclick = () => {
+          __holdersRange = btn.dataset.range;
+          document.querySelectorAll('#holdersChartRange button').forEach(b => b.classList.toggle('active', b === btn));
+          reactChart();
+        };
+      });
+      const barColorInput = document.getElementById('holdersBarColor');
+      if (barColorInput) {
+        barColorInput.value = __holdersBarColor;
+        barColorInput.oninput = () => { __holdersBarColor = barColorInput.value; reactChart(); };
+      }
+      const axisBtn = document.getElementById('holdersAxisInvert');
+      if (axisBtn) {
+        axisBtn.textContent = __holdersAxisDark ? 'Axis ⬤' : 'Axis ◯';
+        axisBtn.onclick = () => {
+          __holdersAxisDark = !__holdersAxisDark;
+          axisBtn.textContent = __holdersAxisDark ? 'Axis ⬤' : 'Axis ◯';
+          reactChart();
+        };
+      }
+
+      const exportHoldersPng = async (aspect) => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        const gd = document.getElementById('holdersChart');
+
+        if (aspect === 'square' || aspect === '43') {
+          const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
+          const ratioSlug = aspect === '43' ? '4x3' : '1x1';
+          let visibleDays = null;
+          try {
+            const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
+            if (xr && xr.length === 2) {
+              const DAY_MS = 86400 * 1000;
+              visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
+            }
+          } catch {}
+          const { trace, layout } = holdersMakeSquareFigure(__holdersState, __holdersRange, visibleDays);
+          const savedData = gd.data, savedLayout = gd.layout;
+          try {
+            await Plotly.react(gd, [trace], layout, TVL_CONFIG);
+            const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fusion-holders-${slug}-${ratioSlug}-${stamp}.png`;
+            document.body.appendChild(a); a.click(); a.remove();
+          } finally {
+            await Plotly.react(gd, savedData, savedLayout, TVL_CONFIG);
+          }
+          return;
+        }
+
+        // Wide: snapshot the live chart with transparent bg + gridlines hidden.
+        const origPaper = gd.layout.paper_bgcolor;
+        const origPlot  = gd.layout.plot_bgcolor;
+        try {
+          await Plotly.relayout(gd, {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor:  'rgba(0,0,0,0)',
+            'xaxis.showgrid': false,
+            'yaxis.showgrid': false,
+            'xaxis.minor.showgrid': false,
+            'yaxis.minor.showgrid': false,
+          });
+          await Plotly.downloadImage(gd, {
+            format: 'png',
+            filename: `fusion-holders-${slug}-${stamp}`,
+            width: gd.clientWidth,
+            height: gd.clientHeight,
+            scale: 2,
+          });
+        } finally {
+          await Plotly.relayout(gd, {
+            paper_bgcolor: origPaper,
+            plot_bgcolor:  origPlot,
+            'xaxis.showgrid': true,
+            'yaxis.showgrid': true,
+            'xaxis.minor.showgrid': true,
+            'yaxis.minor.showgrid': true,
+          });
+        }
+      };
+      document.getElementById('downloadHoldersPng').onclick = () => exportHoldersPng('wide');
+      document.getElementById('downloadHoldersPng43').onclick = () => exportHoldersPng('43');
+      document.getElementById('downloadHoldersPngSquare').onclick = () => exportHoldersPng('square');
     }
 
     // ── Share price over time ──────────────────────────────────────────────
