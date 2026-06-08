@@ -2,10 +2,9 @@ name: Collect Vault Holders
 
 on:
   schedule:
-    # Heavier than the Spark scan (many vaults × multi-chain Transfer scans),
-    # so we run twice a day rather than every 6h. Daily granularity is the
-    # chart resolution anyway.
-    - cron: '45 1,13 * * *'
+    # Multi-chain Transfer-log scan across all ≥$1K-TVL vaults. Chart
+    # resolution is daily anyway, so one run a day is plenty.
+    - cron: '45 1 * * *'
   workflow_dispatch:
     inputs:
       vault:
@@ -14,6 +13,9 @@ on:
       chain:
         description: 'Chain filter (optional, e.g. base, arbitrum)'
         required: false
+      min-tvl:
+        description: 'Override minimum TVL floor in USD (default 1000)'
+        required: false
 
 permissions:
   contents: write
@@ -21,9 +23,9 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    # 50min cap — the full scan currently fits in well under this; bound so a
-    # hung RPC can't tie up a runner.
-    timeout-minutes: 50
+    # Generous outer cap — per-vault budget inside the collector keeps any
+    # single chain from running away. Full fleet sweep currently ~30-90 min.
+    timeout-minutes: 290
     steps:
       - uses: actions/checkout@v4
 
@@ -36,9 +38,13 @@ jobs:
           ARGS=""
           if [ -n "${{ github.event.inputs.vault }}" ]; then ARGS="$ARGS --vault=${{ github.event.inputs.vault }}"; fi
           if [ -n "${{ github.event.inputs.chain }}" ]; then ARGS="$ARGS --chain=${{ github.event.inputs.chain }}"; fi
+          if [ -n "${{ github.event.inputs['min-tvl'] }}" ]; then ARGS="$ARGS --min-tvl=${{ github.event.inputs['min-tvl'] }}"; fi
           node collect-vault-holders.js $ARGS
 
       - name: Commit & push data files
+        # Always run, even if the scan step times out — the collector writes
+        # after each vault, so partial progress is worth committing.
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

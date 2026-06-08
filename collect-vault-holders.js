@@ -63,12 +63,24 @@ const CHAIN_RPCS = {
     'https://api.avax.network/ext/bc/C/rpc',
   ],
   unichain: [
+    'https://unichain-rpc.publicnode.com',
+    'https://unichain.drpc.org',
     'https://mainnet.unichain.org',
   ],
   plasma: [
     'https://evm-rpc.plasma.io/api',
   ],
 };
+
+// Wall-clock budget per single RPC call. Node's fetch() doesn't time out by
+// default, so a hanging endpoint would block the whole scan until the
+// workflow's outer timeout fires. AbortController gives us bounded calls.
+const RPC_CALL_TIMEOUT_MS = 25_000;
+
+// Wall-clock budget per vault scan. A single misbehaving vault on a slow chain
+// shouldn't burn the whole 5h budget — abort and move to the next vault. The
+// collector writes after each vault, so partial progress is always preserved.
+const VAULT_TIMEOUT_MS = 14 * 60 * 1000;
 
 // Approx block time per chain (seconds). Used to estimate days back when we
 // don't have a precise deployment block.
@@ -114,11 +126,14 @@ function rpcFactory(chain) {
     const order = [active, ...eps.map((_, i) => i).filter(i => i !== active)];
     let lastErr;
     for (const idx of order) {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), RPC_CALL_TIMEOUT_MS);
       try {
         const res = await fetch(eps[idx], {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }),
+          signal: ctl.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
@@ -127,6 +142,8 @@ function rpcFactory(chain) {
         return json.result;
       } catch (e) {
         lastErr = e;
+      } finally {
+        clearTimeout(t);
       }
     }
     throw new Error(`all ${chain} RPCs failed for ${method}: ${lastErr && lastErr.message}`);
@@ -327,9 +344,14 @@ function loadEligibleVaults(args) {
   }
   // Only chains we have RPCs for.
   vaults = vaults.filter(x => CHAIN_RPCS[x.chain]);
-  // Skip very small vaults unless explicitly targeted.
+  // Skip dust vaults unless explicitly targeted. The fleet has ~360 vaults
+  // under $1K TVL (test/abandoned) that aren't worth a Transfer scan; the
+  // sub-$1K tier rounds to 1-2 holders anyway and the event-derived fallback
+  // covers them. $1K captures every vault with real activity (58 across the
+  // 6 supported chains as of ship date).
   if (!args.vault) {
-    vaults = vaults.filter(x => (x.tvl || 0) >= 100_000);
+    const floor = parseFloat(args['min-tvl'] || '1000');
+    vaults = vaults.filter(x => (x.tvl || 0) >= floor);
   }
   return vaults;
 }
@@ -351,9 +373,17 @@ async function main() {
 
   for (const v of vaults) {
     try {
-      const result = await scanVault(v, args);
+      // Per-vault deadline: a stuck chain shouldn't be allowed to consume
+      // the whole runner budget. The collector writes after each vault, so
+      // skipping one keeps the rest of the fleet up to date.
+      const result = await Promise.race([
+        scanVault(v, args),
+        new Promise((_, rej) => setTimeout(
+          () => rej(new Error(`vault scan exceeded ${Math.round(VAULT_TIMEOUT_MS / 1000)}s budget`)),
+          VAULT_TIMEOUT_MS,
+        )),
+      ]);
       if (result) byAddr.set(result.address, result);
-      // Persist after each vault so a later failure doesn't lose earlier work.
       const out = {
         updatedAt: new Date().toISOString(),
         vaults: [...byAddr.values()].sort((a, b) => (b.totalHolders || 0) - (a.totalHolders || 0)),
