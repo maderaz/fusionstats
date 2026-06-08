@@ -892,14 +892,24 @@
 
         // Net inflows (deposits - withdrawals) in USD — synthetic excluded so
         // a flashloan-loop bot can't make 24h flow look like a $50M inflow.
-        // eventUsd() falls back to the shared per-symbol price for flows the
-        // price API hasn't filled yet, keeping cards/chart/table consistent.
+        // Flows are re-priced at the latest per-symbol price (priceBySymbol)
+        // so the headline reflects today's USD value of the unit-asset flow
+        // rather than USD-at-deposit-time. Without this re-pricing a 30% drop
+        // in ETH leaves the 30d card showing inflows that USD-denominated
+        // TVL never realized, and the headline diverges from the official
+        // TVL series. If a symbol has no recent priced sample we fall back
+        // to the event's stored usdValue.
         function netFlowUsd(evts, seconds) {
           const cutoff = Math.floor(Date.now() / 1000) - seconds;
           let net = 0;
           evts.forEach(e => {
             if (e.synthetic || (e.timestamp || 0) <= cutoff) return;
-            const usd = eventUsd(e);
+            let usd = null;
+            if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) {
+              usd = e.assets * priceBySymbol[e.symbol];
+            } else if (e.usdValue != null) {
+              usd = e.usdValue;
+            }
             if (usd == null) return;
             net += e.type === 'deposit' ? usd : -usd;
           });
@@ -972,7 +982,7 @@
         return `<div class="stat-card">
           <div class="label">${label}</div>
           <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
-          <div class="sub">net inflow</div>
+          <div class="sub">net inflow <span class="info-tip" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></div>
         </div>`;
       }
 
