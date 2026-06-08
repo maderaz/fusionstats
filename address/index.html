@@ -505,6 +505,32 @@
         }
       } catch {}
 
+      // On-chain holder series from collect-vault-holders.js (Transfer-log
+      // replay). Source of truth for the Holders chart — covers wallet→wallet
+      // share transfers that the activity-events reconstruction misses.
+      // Per-vault entries land in window.vaultHoldersByAddr keyed by address
+      // (lowercase). Falls back to event-derived series when absent.
+      window.vaultHoldersByAddr = {};
+      try {
+        const holdRes = await fetch('../vault-holders.json');
+        if (holdRes.ok) {
+          const h = await holdRes.json();
+          (h.vaults || []).forEach(v => {
+            if (!v.address) return;
+            const series = (v.series || [])
+              .filter(s => s.day != null && typeof s.holders === 'number')
+              .sort((a, b) => a.day - b.day);
+            if (series.length) {
+              window.vaultHoldersByAddr[v.address.toLowerCase()] = {
+                series,
+                totalHolders: v.totalHolders,
+                updatedAt: v.updatedAt,
+              };
+            }
+          });
+        }
+      } catch {}
+
       renderTopWallets();
     }
 
@@ -1054,6 +1080,35 @@
       const anchorDay = Math.floor(anchorTs / DAY);
       const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
 
+      // Preferred path: on-chain Transfer-log replay from vault-holders.json.
+      // Captures every wallet→wallet share transfer, not just Deposit/Withdraw.
+      const onChain = (window.vaultHoldersByAddr || {})[addr.toLowerCase()];
+      if (onChain && onChain.series && onChain.series.length) {
+        const series = onChain.series;
+        // Forward-fill to the anchor day so the right edge reads as "today" even
+        // if the last snapshot is a few hours behind the scheduled scan.
+        const firstDay = series[0].day;
+        const lastDay = Math.max(series[series.length - 1].day, anchorDay);
+        const byDay = new Map(series.map(s => [s.day, s.holders]));
+        let pts = [];
+        let last = series[0].holders;
+        for (let d = firstDay; d <= lastDay; d++) {
+          if (byDay.has(d)) last = byDay.get(d);
+          pts.push({ day: d, holders: last });
+        }
+        pts = prependLeadBars(pts, deployIso, day => ({ day, holders: 0 }));
+        return {
+          pts,
+          anchorDay: lastDay,
+          minDay: pts[0].day,
+          current: onChain.totalHolders != null ? onChain.totalHolders : last,
+          source: 'on-chain',
+        };
+      }
+
+      // Fallback: replay ERC-4626 Deposit/Withdraw events. Under-counts when
+      // shares move wallet→wallet without a vault event (yield-protocol wrappers,
+      // LP positions, etc.) — that's the gap the on-chain scan above fills.
       const usable = (events || []).filter(e =>
         !e.synthetic &&
         e.vault && e.vault.toLowerCase() === addr &&
@@ -1096,7 +1151,7 @@
         pts.push({ day: d, holders: last });
       }
       pts = prependLeadBars(pts, deployIso, day => ({ day, holders: 0 }));
-      return { pts, anchorDay, minDay: pts[0].day, current: last };
+      return { pts, anchorDay, minDay: pts[0].day, current: last, source: 'events' };
     }
 
     function holdersMakeTraceLayout(state, range) {
@@ -1229,7 +1284,12 @@
 
       const nowEl = document.getElementById('holdersNow');
       if (nowEl) {
-        nowEl.textContent = __holdersState.current.toLocaleString() + ' holders now';
+        const isOnChain = __holdersState.source === 'on-chain';
+        const tip = isOnChain
+          ? 'On-chain holder count: replays every Transfer event on the vault share token.'
+          : 'Estimated from deposit/withdraw events — misses wallet→wallet share transfers. Run the Collect Vault Holders workflow to populate the on-chain series.';
+        nowEl.innerHTML = __holdersState.current.toLocaleString() + ' holders now'
+          + ` <span class="info-tip" data-tip="${tip}">&#9432;</span>`;
         nowEl.style.color = 'var(--text-secondary)';
       }
 

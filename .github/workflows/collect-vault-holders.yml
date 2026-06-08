@@ -1,0 +1,56 @@
+name: Collect Vault Holders
+
+on:
+  schedule:
+    # Heavier than the Spark scan (many vaults × multi-chain Transfer scans),
+    # so we run twice a day rather than every 6h. Daily granularity is the
+    # chart resolution anyway.
+    - cron: '45 1,13 * * *'
+  workflow_dispatch:
+    inputs:
+      vault:
+        description: 'Single vault address (optional)'
+        required: false
+      chain:
+        description: 'Chain filter (optional, e.g. base, arbitrum)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    # 50min cap — the full scan currently fits in well under this; bound so a
+    # hung RPC can't tie up a runner.
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Scan vault holders
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.vault }}" ]; then ARGS="$ARGS --vault=${{ github.event.inputs.vault }}"; fi
+          if [ -n "${{ github.event.inputs.chain }}" ]; then ARGS="$ARGS --chain=${{ github.event.inputs.chain }}"; fi
+          node collect-vault-holders.js $ARGS
+
+      - name: Commit & push data files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add vault-holders.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Update vault-holders.json [skip ci]"
+          git pull --rebase --autostash origin ${{ github.ref_name }} || true
+          for i in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
+            sleep $((2**i))
+            git pull --rebase --autostash origin ${{ github.ref_name }} || true
+          done
+          echo "::error::push still failing after retries"
+          exit 1
