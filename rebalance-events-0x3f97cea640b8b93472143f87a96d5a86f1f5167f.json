@@ -1,11 +1,82 @@
 {
   "vault": "0x3f97cea640b8b93472143f87a96d5a86f1f5167f",
   "chain": "arbitrum",
-  "updatedAt": "2026-06-08T06:45:59.196Z",
+  "updatedAt": "2026-06-09T06:11:57.851Z",
   "blockRange": {
     "from": 452993201,
-    "to": 471260697
+    "to": 471595577
   },
-  "txCount": 0,
-  "rebalances": []
+  "txCount": 1,
+  "rebalances": [
+    {
+      "tx": "0xc73ccd07a90c1f3618a4092fa55384e0019b156bd92fb5b43ce9cef9012341bc",
+      "block": 471309629,
+      "timestamp": 1780913411,
+      "flows": [
+        {
+          "token": "0x724dc807b04555b71ed48a6896b6f41593b8c637",
+          "symbol": "aArbUSDCn",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 0.000037,
+          "usdValue": 0
+        },
+        {
+          "token": "0x9c4ec768c28520b50860ea7a15bd7213a9ff58bf",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1679.13939,
+          "usdValue": 1678.4
+        },
+        {
+          "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1679.139427,
+          "usdValue": 1678.61
+        },
+        {
+          "token": "0x1a996cb54bb95462040408c06122d45d6cdb6096",
+          "symbol": "fUSDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 1507.180726,
+          "usdValue": 1678.6
+        },
+        {
+          "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000037,
+          "usdValue": 0
+        },
+        {
+          "token": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1679.13939,
+          "usdValue": 1678.61
+        },
+        {
+          "token": "0x1a996cb54bb95462040408c06122d45d6cdb6096",
+          "symbol": "fUSDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 1507.180726,
+          "usdValue": 1678.6
+        }
+      ]
+    }
+  ]
 }
