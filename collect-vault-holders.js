@@ -31,8 +31,17 @@ const fs = require('fs');
 const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'vault-holders.json');
+// Sidecar — per-vault scan state (toBlock, balance map). Read+written by the
+// collector only; the frontend never fetches it. Lets each cron run resume
+// from the last persisted block instead of re-scanning the whole history.
+const STATE_FILE = path.join(__dirname, 'vault-holders-state.json');
 const IPOR_VAULTS_FILE = path.join(__dirname, 'ipor-vaults.json');
 const DEPLOYMENTS_FILE = path.join(__dirname, 'vault-deployments.json');
+
+// Checkpoint cadence — flush both output + state every N completed scan
+// chunks. Bounds how much progress is lost if a vault hits its time budget
+// mid-scan (the next run resumes from the last checkpoint, not from scratch).
+const CHECKPOINT_CHUNKS = 50;
 
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
@@ -77,10 +86,12 @@ const CHAIN_RPCS = {
 // workflow's outer timeout fires. AbortController gives us bounded calls.
 const RPC_CALL_TIMEOUT_MS = 25_000;
 
-// Wall-clock budget per vault scan. A single misbehaving vault on a slow chain
-// shouldn't burn the whole 5h budget — abort and move to the next vault. The
-// collector writes after each vault, so partial progress is always preserved.
-const VAULT_TIMEOUT_MS = 14 * 60 * 1000;
+// Wall-clock budget per vault scan. Bounded so one slow chain can't burn the
+// whole workflow budget. Mid-scan checkpoints (CHECKPOINT_CHUNKS) ensure that
+// even a vault that hits the budget mid-backfill leaves usable resume state
+// for the next run. Post-backfill runs are seconds, so this only constrains
+// first-time scans of large vaults.
+const VAULT_TIMEOUT_MS = 25 * 60 * 1000;
 
 // Approx block time per chain (seconds). Used to estimate days back when we
 // don't have a precise deployment block.
@@ -180,50 +191,9 @@ async function scanRange(rpc, addr, from, to, out) {
   }
 }
 
-// Build per-day end-of-day holder counts.
-//
-// We don't fetch per-block timestamps (too many RPC calls). Instead we sample
-// the timestamp at the first and last block of each scan chunk and linearly
-// interpolate. Block time is ~constant on a chain over the scan window, so the
-// error is well under one day — fine for daily buckets.
-async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize) {
-  const allLogs = [];
-  const segments = []; // [{from, to, fromTs, toTs}]
-  for (let from = fromBlock; from <= toBlock; from += chunkSize) {
-    const to = Math.min(toBlock, from + chunkSize - 1);
-    const start = Date.now();
-    await scanRange(rpc, vault, from, to, allLogs);
-    // Two timestamps per segment for linear interpolation. We accept that a
-    // block range with no logs still costs us 2 eth_getBlockByNumber calls;
-    // they're cheap compared to the eth_getLogs above.
-    try {
-      const [bFrom, bTo] = await Promise.all([getBlock(rpc, from), getBlock(rpc, to)]);
-      segments.push({
-        from, to,
-        fromTs: bFrom ? parseInt(bFrom.timestamp, 16) : null,
-        toTs:   bTo   ? parseInt(bTo.timestamp,   16) : null,
-      });
-    } catch (e) {
-      segments.push({ from, to, fromTs: null, toTs: null });
-    }
-    const pct = Math.round(((to - fromBlock) / Math.max(1, toBlock - fromBlock)) * 100);
-    process.stdout.write(`\r  blocks ${from}–${to} (${pct}%, ${allLogs.length} logs, ${Date.now()-start}ms)   `);
-  }
-  process.stdout.write('\n');
-
-  // Sort logs in block order. eth_getLogs returns ordered within a request but
-  // our halving may interleave segments.
-  allLogs.sort((a, b) =>
-    parseInt(a.blockNumber, 16) - parseInt(b.blockNumber, 16) ||
-    parseInt(a.logIndex,   16) - parseInt(b.logIndex,   16)
-  );
-
-  // Replay: track balance per address (BigInt) and a running holder count.
-  const bal = new Map();
-  let count = 0;
-  const byDay = new Map(); // day → count at end of day
+// Replay one chunk's logs into the running balance/byDay/count state.
+function replayLogs(logs, bal, byDay, segments, countRef) {
   const DAY = 86400;
-
   function tsForBlock(blk) {
     for (const s of segments) {
       if (blk >= s.from && blk <= s.to && s.fromTs != null && s.toTs != null) {
@@ -234,8 +204,13 @@ async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize) {
     }
     return null;
   }
-
-  for (const lg of allLogs) {
+  // Sort: eth_getLogs returns ordered within a single request, but halving
+  // can interleave segments.
+  logs.sort((a, b) =>
+    parseInt(a.blockNumber, 16) - parseInt(b.blockNumber, 16) ||
+    parseInt(a.logIndex,   16) - parseInt(b.logIndex,   16)
+  );
+  for (const lg of logs) {
     const blk = parseInt(lg.blockNumber, 16);
     const ts = tsForBlock(blk);
     const day = ts != null ? Math.floor(ts / DAY) : null;
@@ -245,26 +220,90 @@ async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize) {
     if (from !== ZERO_ADDR) {
       const before = bal.get(from) || 0n;
       const after = before - val;
-      const wasHolder = before > 0n;
-      const isHolder = after > 0n;
-      if (wasHolder && !isHolder) count--;
+      if (before > 0n && !(after > 0n)) countRef.count--;
       if (after === 0n) bal.delete(from); else bal.set(from, after);
     }
     if (to !== ZERO_ADDR) {
       const before = bal.get(to) || 0n;
       const after = before + val;
-      const wasHolder = before > 0n;
-      const isHolder = after > 0n;
-      if (!wasHolder && isHolder) count++;
+      if (!(before > 0n) && after > 0n) countRef.count++;
       bal.set(to, after);
     }
-    if (day != null) byDay.set(day, count);
+    if (day != null) byDay.set(day, countRef.count);
+  }
+}
+
+// Build per-day end-of-day holder counts.
+//
+// We don't fetch per-block timestamps (too many RPC calls). Instead we sample
+// the timestamp at the first and last block of each scan chunk and linearly
+// interpolate. Block time is ~constant on a chain over the scan window, so the
+// error is well under one day — fine for daily buckets.
+//
+// opts.resumeBal / opts.resumeByDay carry forward prior state for incremental
+// runs. opts.onCheckpoint is called every CHECKPOINT_CHUNKS chunks with the
+// last successfully-scanned block + a serializable view of (bal, byDay, count)
+// — caller persists, so a timed-out scan still leaves measurable progress.
+async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize, opts = {}) {
+  const bal = new Map();
+  const byDay = new Map();
+  const countRef = { count: 0 };
+  if (opts.resumeBal) {
+    for (const [a, hex] of Object.entries(opts.resumeBal)) {
+      const v = BigInt(hex);
+      if (v > 0n) { bal.set(a.toLowerCase(), v); countRef.count++; }
+    }
+  }
+  if (opts.resumeByDay) {
+    for (const [d, c] of Object.entries(opts.resumeByDay)) byDay.set(+d, c);
   }
 
-  // Forward-fill: emit one (day, holders) per day from first to today, so the
-  // chart never shows gaps even on days with zero activity.
+  let chunksDone = 0;
+  let lastSuccessfulBlock = fromBlock - 1; // nothing scanned yet
+  const totalBlocks = Math.max(1, toBlock - fromBlock);
+
+  for (let from = fromBlock; from <= toBlock; from += chunkSize) {
+    const to = Math.min(toBlock, from + chunkSize - 1);
+    const start = Date.now();
+    const logs = [];
+    await scanRange(rpc, vault, from, to, logs);
+    const segments = [];
+    try {
+      const [bFrom, bTo] = await Promise.all([getBlock(rpc, from), getBlock(rpc, to)]);
+      segments.push({
+        from, to,
+        fromTs: bFrom ? parseInt(bFrom.timestamp, 16) : null,
+        toTs:   bTo   ? parseInt(bTo.timestamp,   16) : null,
+      });
+    } catch {
+      segments.push({ from, to, fromTs: null, toTs: null });
+    }
+    replayLogs(logs, bal, byDay, segments, countRef);
+    lastSuccessfulBlock = to;
+    chunksDone++;
+    const pct = Math.round(((to - fromBlock) / totalBlocks) * 100);
+    process.stdout.write(`\r  blocks ${from}–${to} (${pct}%, ${countRef.count} holders, ${Date.now() - start}ms)   `);
+    if (opts.onCheckpoint && chunksDone % CHECKPOINT_CHUNKS === 0) {
+      await opts.onCheckpoint(snapshot(bal, byDay, countRef.count, lastSuccessfulBlock));
+    }
+  }
+  process.stdout.write('\n');
+
+  return snapshot(bal, byDay, countRef.count, lastSuccessfulBlock);
+}
+
+// Pack the running state into a serializable snapshot. Caller picks what to
+// persist (output vs sidecar).
+function snapshot(bal, byDay, count, lastBlock) {
+  const balOut = {};
+  for (const [a, v] of bal.entries()) if (v > 0n) balOut[a] = '0x' + v.toString(16);
+  const byDayOut = {};
+  for (const [d, c] of byDay.entries()) byDayOut[d] = c;
+  // Series rebuild — forward-fill from first known day to today so the right
+  // edge of the chart always reads as "now" even on idle days.
+  const DAY = 86400;
   const days = [...byDay.keys()].sort((a, b) => a - b);
-  let series = [];
+  const series = [];
   if (days.length) {
     const today = Math.floor(Date.now() / 1000 / DAY);
     let last = 0;
@@ -273,17 +312,14 @@ async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize) {
       series.push({ day: d, holders: last });
     }
   }
-
-  // Top holders (current state, BigInt → human via decimals on caller).
   const top = [...bal.entries()]
     .filter(([_, v]) => v > 0n)
     .sort((a, b) => (b[1] > a[1] ? 1 : b[1] < a[1] ? -1 : 0))
     .slice(0, TOP_N);
-
-  return { series, totalHolders: count, top };
+  return { series, byDay: byDayOut, bal: balOut, totalHolders: count, top, lastBlock };
 }
 
-async function scanVault(vault, args) {
+async function scanVault(vault, args, persistedState, checkpoint) {
   const chain = vault.chain;
   const addr = vault.address.toLowerCase();
   if (!CHAIN_RPCS[chain]) {
@@ -294,41 +330,89 @@ async function scanVault(vault, args) {
   const head = parseInt(await rpc('eth_blockNumber', []), 16);
 
   // Deploy block from vault-deployments.json when present; otherwise estimate
-  // 14d back from head using the chain's average block time (Fusion vaults
-  // are uniformly young).
+  // a lookback window from head using the chain's average block time.
   const deps = JSON.parse(fs.readFileSync(DEPLOYMENTS_FILE, 'utf8')).deployments || {};
   const dep = deps[addr];
   const blockSec = CHAIN_BLOCK_SEC[chain] || 12;
   const lookbackDays = parseInt(args['lookback-days'] || '180', 10);
-  const fromBlock = dep && dep.block
+  const deployBlock = dep && dep.block
     ? dep.block
     : Math.max(1, head - Math.floor((lookbackDays * 86400) / blockSec));
+
+  // Resume from the last persisted block if state is present. Forces a full
+  // rescan when --force is passed (useful if the per-vault decimals or some
+  // other field changed).
+  const force = !!args.force;
+  const prior = !force ? persistedState : null;
+  const fromBlock = (prior && Number.isFinite(prior.lastBlock))
+    ? prior.lastBlock + 1
+    : deployBlock;
+
+  if (fromBlock > head) {
+    // Up to date — rebuild Maps from sidecar state and snapshot so the
+    // series's right edge gets forward-filled to today.
+    const balMap = new Map();
+    if (prior?.bal) {
+      for (const [a, hex] of Object.entries(prior.bal)) {
+        const v = BigInt(hex);
+        if (v > 0n) balMap.set(a.toLowerCase(), v);
+      }
+    }
+    const byDayMap = new Map();
+    if (prior?.byDay) {
+      for (const [d, c] of Object.entries(prior.byDay)) byDayMap.set(+d, c);
+    }
+    const snap = snapshot(balMap, byDayMap, prior?.totalHolders || 0, head);
+    return packResult(vault, deployBlock, head, snap);
+  }
 
   const decimals = Number.isFinite(vault.decimals) ? vault.decimals : 18;
   const chunk = CHAIN_CHUNK[chain] || 10_000;
   console.log(`\n[${chain}] ${addr} (${vault.name || ''})`);
-  console.log(`  scanning ${fromBlock}–${head} (${(head - fromBlock).toLocaleString()} blocks, chunk=${chunk})`);
+  console.log(`  scanning ${fromBlock}–${head} (${(head - fromBlock).toLocaleString()} blocks, ${prior ? 'incremental' : 'fresh'})`);
 
-  const { series, totalHolders, top } = await buildHolderSeries(rpc, addr, fromBlock, head, chunk);
+  let lastSnap = null;
+  const snap = await buildHolderSeries(rpc, addr, fromBlock, head, chunk, {
+    resumeBal: prior?.bal,
+    resumeByDay: prior?.byDay,
+    onCheckpoint: async (s) => {
+      lastSnap = s;
+      // Persist mid-scan: even if the per-vault timeout fires before the
+      // final return, the next run resumes from the last checkpointed block.
+      await checkpoint(packResult(vault, deployBlock, s.lastBlock, s));
+    },
+  });
+  return packResult(vault, deployBlock, head, snap);
+}
 
-  const topHolders = top.map(([address, balUnits], i) => ({
-    rank: i + 1,
-    address,
-    balance: Number(balUnits) / Math.pow(10, decimals),
-  }));
-
+// Split the scan snapshot into the public output (frontend reads this) and
+// the sidecar state (only the collector reads this).
+function packResult(vault, deployBlock, head, snap) {
+  const decimals = Number.isFinite(vault.decimals) ? vault.decimals : 18;
   return {
-    address: addr,
-    chain,
-    symbol: vault.symbol || vault.token || null,
-    name: vault.name || null,
-    decimals,
-    fromBlock,
-    toBlock: head,
-    updatedAt: new Date().toISOString(),
-    totalHolders,
-    series,
-    topHolders,
+    public: {
+      address: vault.address.toLowerCase(),
+      chain: vault.chain,
+      symbol: vault.symbol || vault.token || null,
+      name: vault.name || null,
+      decimals,
+      fromBlock: deployBlock,
+      toBlock: head,
+      updatedAt: new Date().toISOString(),
+      totalHolders: snap.totalHolders,
+      series: snap.series,
+      topHolders: snap.top.map(([address, balUnits], i) => ({
+        rank: i + 1,
+        address,
+        balance: Number(balUnits) / Math.pow(10, decimals),
+      })),
+    },
+    state: {
+      lastBlock: snap.lastBlock,
+      totalHolders: snap.totalHolders,
+      bal: snap.bal,
+      byDay: snap.byDay,
+    },
   };
 }
 
@@ -356,6 +440,26 @@ function loadEligibleVaults(args) {
   return vaults;
 }
 
+function loadJson(file, fallback) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { return fallback; }
+}
+
+function persist(outByAddr, stateByAddr) {
+  const out = {
+    updatedAt: new Date().toISOString(),
+    vaults: [...outByAddr.values()].sort((a, b) => (b.totalHolders || 0) - (a.totalHolders || 0)),
+  };
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(out, null, 2) + '\n');
+  // Sidecar — bal map + byDay map per vault, keyed by lowercase address.
+  const state = {
+    version: 1,
+    updatedAt: new Date().toISOString(),
+    vaults: Object.fromEntries(stateByAddr.entries()),
+  };
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state) + '\n');
+}
+
 async function main() {
   const args = parseArgs();
   const vaults = loadEligibleVaults(args);
@@ -365,33 +469,43 @@ async function main() {
     return;
   }
 
-  // Merge with prior output so a single-vault run doesn't drop data for the
-  // rest of the catalog.
-  let existing = { vaults: [] };
-  try { existing = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch {}
-  const byAddr = new Map((existing.vaults || []).map(v => [v.address.toLowerCase(), v]));
+  // Merge with prior output / state so a single-vault run doesn't drop data
+  // for the rest of the fleet.
+  const existingOut = loadJson(OUTPUT_FILE, { vaults: [] });
+  const existingState = loadJson(STATE_FILE, { vaults: {} });
+  const outByAddr = new Map((existingOut.vaults || []).map(v => [v.address.toLowerCase(), v]));
+  const stateByAddr = new Map(Object.entries(existingState.vaults || {}));
 
   for (const v of vaults) {
+    const addr = v.address.toLowerCase();
+    const persistedState = stateByAddr.get(addr) || null;
+
+    // Mid-scan checkpoint: updates both files so a timed-out scan still
+    // leaves the next run with usable resume state.
+    const checkpoint = async (packed) => {
+      outByAddr.set(addr, packed.public);
+      stateByAddr.set(addr, packed.state);
+      persist(outByAddr, stateByAddr);
+    };
+
     try {
-      // Per-vault deadline: a stuck chain shouldn't be allowed to consume
-      // the whole runner budget. The collector writes after each vault, so
-      // skipping one keeps the rest of the fleet up to date.
-      const result = await Promise.race([
-        scanVault(v, args),
+      const packed = await Promise.race([
+        scanVault(v, args, persistedState, checkpoint),
         new Promise((_, rej) => setTimeout(
           () => rej(new Error(`vault scan exceeded ${Math.round(VAULT_TIMEOUT_MS / 1000)}s budget`)),
           VAULT_TIMEOUT_MS,
         )),
       ]);
-      if (result) byAddr.set(result.address, result);
-      const out = {
-        updatedAt: new Date().toISOString(),
-        vaults: [...byAddr.values()].sort((a, b) => (b.totalHolders || 0) - (a.totalHolders || 0)),
-      };
-      fs.writeFileSync(OUTPUT_FILE, JSON.stringify(out, null, 2) + '\n');
-      console.log(`  → wrote ${out.vaults.length} vaults (this one: ${result?.totalHolders} holders)`);
+      if (packed) {
+        outByAddr.set(addr, packed.public);
+        stateByAddr.set(addr, packed.state);
+        persist(outByAddr, stateByAddr);
+        console.log(`  → ${outByAddr.size} vaults total (this: ${packed.public.totalHolders} holders, lastBlock ${packed.state.lastBlock})`);
+      }
     } catch (e) {
-      console.error(`failed for ${v.address}:`, e.message);
+      // Timeout / fatal — log and move on. Last checkpoint persists, so
+      // partial progress isn't lost.
+      console.error(`failed for ${addr}:`, e.message);
     }
   }
 }
