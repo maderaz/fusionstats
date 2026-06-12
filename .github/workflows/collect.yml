@@ -2,7 +2,13 @@ name: Collect Fusion Stats
 
 on:
   schedule:
-    - cron: '0,20,40 * * * *'  # every 20 minutes
+    # Every 5 minutes. GitHub Actions silently drops a large fraction of
+    # scheduled fires under load (we observed ~70% drop on the prior
+    # `0,20,40 * * * *` schedule, leading to 3-5h gaps between successful
+    # runs and 160-200 min "min ago" staleness on the frontend). Each run
+    # is ~45-90s and idempotent — scheduling more often shrinks the worst
+    # tail without piling up concurrent work.
+    - cron: '*/5 * * * *'
   workflow_dispatch:       # manual trigger from GitHub UI
 
 permissions:

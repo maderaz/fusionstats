@@ -2,9 +2,10 @@ name: Collect Vault Holders
 
 on:
   schedule:
-    # Multi-chain Transfer-log scan across all ≥$1K-TVL vaults. Chart
-    # resolution is daily anyway, so one run a day is plenty.
-    - cron: '45 1 * * *'
+    # Twice daily — incremental scans + mid-scan checkpoints make
+    # post-backfill runs seconds per vault, so a second cron is essentially
+    # free and gives the chart a fresh right edge by midday.
+    - cron: '45 1,13 * * *'
   workflow_dispatch:
     inputs:
       vault:
