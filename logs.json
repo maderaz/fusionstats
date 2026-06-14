@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1865543030.779091,
-    "fusionBorrowed": 12337164.971404376,
-    "fusionCollateral": 14257160.287903821,
-    "sharePercent": 0.6613176307303997,
-    "activeVaults": 23,
-    "totalVaults": 103,
-    "vaultErrors": 0,
-    "durationMs": 19902,
-    "historyEntries": 147,
-    "timestamp": "2026-05-07T10:03:36.884Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1862431594.384963,
-    "fusionBorrowed": 12326293.379867727,
-    "fusionCollateral": 14249020.94211137,
-    "sharePercent": 0.6618387175684849,
-    "activeVaults": 23,
-    "totalVaults": 103,
-    "vaultErrors": 0,
-    "durationMs": 7121,
-    "historyEntries": 145,
-    "timestamp": "2026-05-07T12:09:26.427Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1871316805.3756163,
     "fusionBorrowed": 18189327.930662315,
     "fusionCollateral": 20698046.786914125,
@@ -7192,5 +7160,24 @@
     "durationMs": 11094,
     "historyEntries": 138,
     "timestamp": "2026-06-14T20:23:28.616Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-06-14T21:48:32.171Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+    "timestamp": "2026-06-14T21:48:32.175Z"
   }
 ]
