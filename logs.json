@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1865252526.8479314,
-    "fusionBorrowed": 14237665.476238936,
-    "fusionCollateral": 16335849.062424002,
-    "sharePercent": 0.7633103438438441,
-    "activeVaults": 22,
-    "totalVaults": 104,
-    "vaultErrors": 0,
-    "durationMs": 5157,
-    "historyEntries": 148,
-    "timestamp": "2026-05-09T08:52:37.449Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1865282916.7341018,
-    "fusionBorrowed": 14237727.450920533,
-    "fusionCollateral": 16338455.189252913,
-    "sharePercent": 0.7633012302417467,
-    "activeVaults": 22,
-    "totalVaults": 104,
-    "vaultErrors": 0,
-    "durationMs": 10033,
-    "historyEntries": 149,
-    "timestamp": "2026-05-09T09:59:37.610Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1866967121.6345625,
     "fusionBorrowed": 15686878.375195114,
     "fusionCollateral": 17962640.294074237,
@@ -7166,5 +7134,24 @@
     "durationMs": 10813,
     "historyEntries": 136,
     "timestamp": "2026-06-18T13:57:25.881Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-06-18T16:56:51.460Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
+    "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
+    "timestamp": "2026-06-18T16:56:51.464Z"
   }
 ]
