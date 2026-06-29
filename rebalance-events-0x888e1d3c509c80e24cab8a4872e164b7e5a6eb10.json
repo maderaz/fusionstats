@@ -1,13 +1,637 @@
 {
   "vault": "0x888e1d3c509c80e24cab8a4872e164b7e5a6eb10",
   "chain": "ethereum",
-  "updatedAt": "2026-06-24T06:49:24.275Z",
+  "updatedAt": "2026-06-29T07:00:55.303Z",
   "blockRange": {
     "from": 25256885,
-    "to": 25385789
+    "to": 25421692
   },
-  "txCount": 30,
+  "txCount": 42,
   "rebalances": [
+    {
+      "tx": "0x1bd25c0e2f60a14d9c59c23162690ca66798d3f92038bc2fb0fac3606dd7c31b",
+      "block": 25400049,
+      "timestamp": 1782455735,
+      "flows": [
+        {
+          "token": "0x3a4de44b29995a3d8cd02d46243e1563e55bcc8b",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 222.343342,
+          "usdValue": null
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.981454,
+          "usdValue": 19.94
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 222.343342,
+          "usdValue": 221.93
+        },
+        {
+          "token": "0x3a4de44b29995a3d8cd02d46243e1563e55bcc8b",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 222.343342,
+          "usdValue": null
+        }
+      ]
+    },
+    {
+      "tx": "0x7396214691c9769d97585d9b4d898b2c153a8ae6da6fac72db87d1363d837958",
+      "block": 25399001,
+      "timestamp": 1782443075,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.940555,
+          "usdValue": 0.94
+        }
+      ]
+    },
+    {
+      "tx": "0x052ab1f9b0c909d7eaf6add04cd1b1272259fd1d4a317a715e3e343ab968d4dd",
+      "block": 25395972,
+      "timestamp": 1782406547,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 9321.534933,
+          "usdValue": 9317.83
+        }
+      ]
+    },
+    {
+      "tx": "0xd1f784693d869e39affdccf21d1999605c4ea74551f963820ed5340ecf43955b",
+      "block": 25395971,
+      "timestamp": 1782406535,
+      "flows": [
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 9258.928629,
+          "usdValue": 9244.56
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 9247.503231,
+          "usdValue": 9243.83
+        }
+      ]
+    },
+    {
+      "tx": "0xa901ea816457e147a9b61459145776b2a59dcecf647f98274450f54cd57c577d",
+      "block": 25395970,
+      "timestamp": 1782406523,
+      "flows": [
+        {
+          "token": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+          "symbol": "variableDebtEthUSDT",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 65643.970229,
+          "usdValue": -65534.75
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 65667.737084,
+          "usdValue": 65565.86
+        },
+        {
+          "token": "0x4579a27af00a62c0eb156349f31b345c08386419",
+          "symbol": "aEthsUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 33399.76796,
+          "usdValue": 41246.4
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 33790.009727,
+          "usdValue": 33727.9
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 33399.76796,
+          "usdValue": 41246.4
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 33794.388785,
+          "usdValue": 33732.27
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 65667.737084,
+          "usdValue": 65565.86
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 131.335474,
+          "usdValue": 131.13
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 65667.737084,
+          "usdValue": 65565.86
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 33399.76796,
+          "usdValue": 41246.4
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 33794.388785,
+          "usdValue": 33732.27
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 41273.991064,
+          "usdValue": 41209.96
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 33784.010123,
+          "usdValue": 33731.6
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 131.17371,
+          "usdValue": 131.12
+        }
+      ]
+    },
+    {
+      "tx": "0x295d4b5170e5528aecf1fa797aa61021361ebca7d896475235bba49a4022a70b",
+      "block": 25395121,
+      "timestamp": 1782396287,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 7534.361352,
+          "usdValue": 7531.37
+        }
+      ]
+    },
+    {
+      "tx": "0xec7c54ef2c07fd78bdad09d7591efc7c9b1dfecdb9911371062378ede44a0d34",
+      "block": 25395119,
+      "timestamp": 1782396263,
+      "flows": [
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 6208.051841,
+          "usdValue": 6198.42
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 6199.082163,
+          "usdValue": 6196.62
+        }
+      ]
+    },
+    {
+      "tx": "0x35c03d38f4520c453736fcb186905d8638d3bd7d9e3355aa21aa1e98db1100e3",
+      "block": 25395118,
+      "timestamp": 1782396251,
+      "flows": [
+        {
+          "token": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+          "symbol": "variableDebtEthUSDT",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 43849.863515,
+          "usdValue": -43776.9
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 44027.614811,
+          "usdValue": 43959.31
+        },
+        {
+          "token": "0x4579a27af00a62c0eb156349f31b345c08386419",
+          "symbol": "aEthsUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 22393.455367,
+          "usdValue": 27654.36
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 22626.247985,
+          "usdValue": 22584.66
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 22393.455367,
+          "usdValue": 27654.36
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 22657.950687,
+          "usdValue": 22616.3
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 44027.614811,
+          "usdValue": 43959.31
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 88.055229,
+          "usdValue": 87.92
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 44027.614811,
+          "usdValue": 43959.31
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 22393.455367,
+          "usdValue": 27654.36
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 22657.950687,
+          "usdValue": 22616.3
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 27673.577481,
+          "usdValue": 27630.64
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 22650.1444,
+          "usdValue": 22615
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 87.928042,
+          "usdValue": 87.89
+        }
+      ]
+    },
+    {
+      "tx": "0xdf5abc400384e03bde9dd5eabd630bb879646221956f42ea3a0ded396f240a48",
+      "block": 25388832,
+      "timestamp": 1782320495,
+      "flows": [
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.893557,
+          "usdValue": 0.89
+        }
+      ]
+    },
+    {
+      "tx": "0xb45aa48e87677b42fdb530017bb1f1e129c96660240b537b4cf6ec3d9a1252cd",
+      "block": 25388829,
+      "timestamp": 1782320459,
+      "flows": [
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1362.766983,
+          "usdValue": 1360.65
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1361.000622,
+          "usdValue": 1360.46
+        }
+      ]
+    },
+    {
+      "tx": "0x2e5f1a3c59fcb5db6c994bc1b8e59a7e664a8fae8aadda91806d048bff601d60",
+      "block": 25388828,
+      "timestamp": 1782320447,
+      "flows": [
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 6.369387,
+          "usdValue": 6.36
+        },
+        {
+          "token": "0x4579a27af00a62c0eb156349f31b345c08386419",
+          "symbol": "aEthsUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 3.239866,
+          "usdValue": 4
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 3.239866,
+          "usdValue": 4
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 3.278045,
+          "usdValue": 3.27
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 6.369387,
+          "usdValue": 6.36
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.012738,
+          "usdValue": 0.01
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 6.369387,
+          "usdValue": 6.36
+        },
+        {
+          "token": "0x6df1c1e379bc5a00a7b4c6e67a203333772f45a8",
+          "symbol": "variableDebtEthUSDT",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 254.088208,
+          "usdValue": -253.67
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 3.239866,
+          "usdValue": 4
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.323197,
+          "usdValue": 0.32
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 3.278045,
+          "usdValue": 3.27
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 4.004017,
+          "usdValue": 4
+        },
+        {
+          "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "symbol": "USDT",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 3.275632,
+          "usdValue": 3.27
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.01272,
+          "usdValue": 0.01
+        }
+      ]
+    },
+    {
+      "tx": "0x47f1fa87bd2405b257f3390a6166d47f11906e8a8f579d2ec72a1a5a9fffe9b9",
+      "block": 25388109,
+      "timestamp": 1782311783,
+      "flows": [
+        {
+          "token": "0x3a4de44b29995a3d8cd02d46243e1563e55bcc8b",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 306.190622,
+          "usdValue": null
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 46.150229,
+          "usdValue": 46.07
+        },
+        {
+          "token": "0x4f5923fc5fd4a93352581b38b7cd26943012decf",
+          "symbol": "aEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 306.190622,
+          "usdValue": 305.63
+        },
+        {
+          "token": "0x3a4de44b29995a3d8cd02d46243e1563e55bcc8b",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 306.190622,
+          "usdValue": null
+        }
+      ]
+    },
     {
       "tx": "0xdea92d71193655b409c8990d1415dbe39ccde19bf687153e222313660df15b7a",
       "block": 25379652,
