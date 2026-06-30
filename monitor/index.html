@@ -200,6 +200,7 @@
           <option value="worst">Worst Δ%</option>
           <option value="anomaly">Anomaly (|Δ%|)</option>
           <option value="apy">APY</option>
+          <option value="feapy">FE APY (fee-adjusted)</option>
           <option value="name">Name</option>
           <option value="tvl">TVL</option>
         </select>
@@ -230,10 +231,11 @@
               <th class="num sortable" data-sort="latest">Start → Now<span class="sort-arrow" data-arrow="latest">↕</span><span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Hover either number for its exact UTC timestamp. Click the header to sort by latest price.">i</span></th>
               <th class="num sortable" data-sort="delta">Δ <span id="deltaLabel">7d</span><span class="sort-arrow" data-arrow="delta">↕</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. Click the header to sort. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
               <th class="num sortable" data-sort="apy">APY<span class="sort-arrow" data-arrow="apy">↕</span><span class="tip" data-tip="Annualized return extrapolated from the selected window using the compound formula (1 + r)^(365 / days) − 1, where r = (last sharePrice / first sharePrice) and days = actual elapsed time (timestamp-based, not point-count) between the first and last trusted points. Approximates yield if the recent trend held for a full year — sensible for stable yield vaults, spiky for volatile ones and short windows. Hidden when the window spans less than ~12 hours of data, suppressed (⚠) for off-scale snapshots.">i</span></th>
+              <th class="num sortable" data-sort="feapy">FE APY<span class="sort-arrow" data-arrow="feapy">↕</span><span class="tip" data-tip="APR shown in the IPOR app (api.ipor.io) net of the vault's on-chain performance and management fees: APR×(1−perfFee) − mgmtFee. Distinct from the APY column at left, which is annualized from this vault's own share-price trajectory. Shows the gross APR (muted) when the on-chain fees can't be read.">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
-            <tr><td colspan="5" class="loading">Loading snapshots…</td></tr>
+            <tr><td colspan="6" class="loading">Loading snapshots…</td></tr>
           </tbody>
         </table>
       </div>
@@ -248,7 +250,7 @@
 
   <script>
     let allRows = [];
-    let rawData = { snap: null, names: {}, tvls: {} };
+    let rawData = { snap: null, names: {}, tvls: {}, fe: {}, feMeta: null };
     // Trajectory window defaults to 7 days; the toolbar lets the user widen it
     // to 30 / 90 days or All. Start → Now, Δ and APY all derive from the same
     // window so the table reconciles row-internally. Sort state is split into a
@@ -263,6 +265,7 @@
       worst:   { key: 'delta',   dir: 'asc'  },
       anomaly: { key: 'anomaly', dir: 'desc' },
       apy:     { key: 'apy',     dir: 'desc' },
+      feapy:   { key: 'feapy',   dir: 'desc' },
       name:    { key: 'name',    dir: 'asc'  },
       tvl:     { key: 'tvl',     dir: 'desc' },
     };
@@ -311,6 +314,8 @@
         ...r,
         name: rawData.names[r.addr] || r.name,
         tvl: rawData.tvls[r.addr] || 0,
+        // FE APY (API-derived, fee-adjusted) keyed by lowercase address.
+        fe: rawData.fe[r.addr] || null,
       }));
       updateWindowLabels();
       render(allRows);
@@ -476,6 +481,7 @@
       if (key === 'latest')  return r.dataFlag ? null : r.latest;
       if (key === 'delta')   return r.dataFlag ? null : r.deltaPct;
       if (key === 'apy')     return r.dataFlag ? null : r.apyPct;
+      if (key === 'feapy')   return r.fe?.feApyPct ?? null;
       return null;
     }
 
@@ -500,7 +506,7 @@
       document.getElementById('statPill').textContent =
         `${filtered.length} vaults · ${windowDaysLabel()}`;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="loading">No vaults match.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No vaults match.</td></tr>';
         return;
       }
       tbody.innerHTML = applySort(filtered).map(r => {
@@ -539,6 +545,22 @@
           const cls = r.apyPct >= 0 ? 'pos' : 'neg';
           apyCell = `<td class="num pct ${cls}">${fmtPct(r.apyPct)}</td>`;
         }
+        // FE APY cell: the APR the IPOR app reports, net of the vault's on-chain
+        // perf/mgmt fees (api.ipor.io + on-chain reads, refreshed by the
+        // collect-fe-apy cron). Falls back to the muted gross APR when fees
+        // couldn't be read for that chain; '—' when the API has no entry.
+        let feApyCell;
+        const fe = r.fe;
+        const fmt2 = (n) => n == null ? '—' : n.toFixed(2);
+        if (fe && fe.feApyPct != null) {
+          const cls = fe.feApyPct >= 0 ? 'pos' : 'neg';
+          const tip = `${fmt2(fe.aprPct)}% APR − ${fmt2(fe.perfPct)}% perf − ${fmt2(fe.mgmtPct)}% mgmt → ${fmt2(fe.feApyPct)}% net`;
+          feApyCell = `<td class="num pct ${cls}"><span data-tip="${tip}">${fmtPct(fe.feApyPct)}</span></td>`;
+        } else if (fe && fe.aprPct != null) {
+          feApyCell = `<td class="num"><span class="na" title="fees unavailable — gross APR" data-tip="On-chain fees couldn't be read for this vault — showing gross APR (${fmt2(fe.aprPct)}%) without the fee deduction.">${fmtPct(fe.aprPct)}</span></td>`;
+        } else {
+          feApyCell = '<td class="num"><span class="na">—</span></td>';
+        }
         // Start → Now cell: the window's first and last so the Δ% beside it is
         // obvious at a glance. For glitch rows we suppress the pair too — the
         // raw value would be off-scale garbage (e.g. 1.02e12 for Tanken).
@@ -563,20 +585,26 @@
           <td class="num px-cell">${latestCell}</td>
           ${deltaCell}
           ${apyCell}
+          ${feApyCell}
         </tr>`;
       }).join('');
     }
 
     async function load() {
       try {
-        const [snapRes, iporRes] = await Promise.all([
+        const [snapRes, iporRes, feRes] = await Promise.all([
           fetch('/tvl-snapshots.json?t=' + Date.now()),
           fetch('/ipor-vaults.json?t=' + Date.now()).catch(() => null),
+          // FE APY data — data-source.js redirects this to the raw CDN so it
+          // stays fresh between code deploys. Optional: degrade gracefully.
+          fetch('/fe-apy.json?t=' + Date.now()).catch(() => null),
         ]);
         if (!snapRes.ok) throw new Error('tvl-snapshots.json HTTP ' + snapRes.status);
         const snap = await snapRes.json();
         let ipor = null;
         try { if (iporRes && iporRes.ok) ipor = await iporRes.json(); } catch {}
+        let feData = null;
+        try { if (feRes && feRes.ok) feData = await feRes.json(); } catch {}
 
         const nameByAddr = {};
         const tvlByAddr = {};
@@ -587,7 +615,16 @@
           }
         }
 
-        rawData = { snap, names: nameByAddr, tvls: tvlByAddr };
+        // FE APY keyed by lowercase address (the collector already lowercases,
+        // but normalize defensively so the merge by r.addr never misses).
+        const feByAddr = {};
+        if (feData && feData.vaults && typeof feData.vaults === 'object') {
+          for (const [a, v] of Object.entries(feData.vaults)) {
+            feByAddr[a.toLowerCase()] = v;
+          }
+        }
+
+        rawData = { snap, names: nameByAddr, tvls: tvlByAddr, fe: feByAddr, feMeta: feData };
         recompute();
 
         // Build chain filter dynamically from data
@@ -635,7 +672,7 @@
         syncSortUI();
       } catch (e) {
         document.getElementById('rows').innerHTML =
-          `<tr><td colspan="5" class="err">Failed to load: ${e.message}</td></tr>`;
+          `<tr><td colspan="6" class="err">Failed to load: ${e.message}</td></tr>`;
       }
     }
     load();
