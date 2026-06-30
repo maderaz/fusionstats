@@ -188,7 +188,7 @@
   <div class="container">
     <header>
       <h1>Share-Price Monitor</h1>
-      <p>Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Click column headers to sort, or pick Worst Δ to surface vaults that nuked recently.</p>
+      <p>Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Default-sorted by <strong>Deviation</strong> — the gap between the advertised FE APY and the realized sharePrice APY (the on-chain truth) — so vaults whose front-end rate drifts from reality surface first. Click any column header to re-sort.</p>
     </header>
 
     <div class="toolbar">
@@ -196,10 +196,11 @@
         <span class="field-label">Sort by</span>
         <select id="sortSel">
           <option value="" disabled hidden>Custom (header click)</option>
+          <option value="deviation">Deviation (FE vs sharePrice)</option>
           <option value="best">Best Δ% (top performers)</option>
           <option value="worst">Worst Δ%</option>
           <option value="anomaly">Anomaly (|Δ%|)</option>
-          <option value="apy">APY</option>
+          <option value="apy">sharePrice APY (realized)</option>
           <option value="feapy">FE APY (fee-adjusted)</option>
           <option value="name">Name</option>
           <option value="tvl">TVL</option>
@@ -230,12 +231,13 @@
               <th>Trajectory<span class="tip" data-tip="Sparkline of the share-price points in the selected timeframe. Line color reflects the period move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
               <th class="num sortable" data-sort="latest">Start → Now<span class="sort-arrow" data-arrow="latest">↕</span><span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Hover either number for its exact UTC timestamp. Click the header to sort by latest price.">i</span></th>
               <th class="num sortable" data-sort="delta">Δ <span id="deltaLabel">7d</span><span class="sort-arrow" data-arrow="delta">↕</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. Click the header to sort. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
-              <th class="num sortable" data-sort="apy">APY<span class="sort-arrow" data-arrow="apy">↕</span><span class="tip" data-tip="Annualized return extrapolated from the selected window using the compound formula (1 + r)^(365 / days) − 1, where r = (last sharePrice / first sharePrice) and days = actual elapsed time (timestamp-based, not point-count) between the first and last trusted points. Approximates yield if the recent trend held for a full year — sensible for stable yield vaults, spiky for volatile ones and short windows. Hidden when the window spans less than ~12 hours of data, suppressed (⚠) for off-scale snapshots.">i</span></th>
-              <th class="num sortable" data-sort="feapy">FE APY<span class="sort-arrow" data-arrow="feapy">↕</span><span class="tip" data-tip="APR shown in the IPOR app (api.ipor.io) net of the vault's on-chain performance and management fees: APR×(1−perfFee) − mgmtFee. Distinct from the APY column at left, which is annualized from this vault's own share-price trajectory. Shows the gross APR (muted) when the on-chain fees can't be read.">i</span></th>
+              <th class="num sortable" data-sort="apy">sharePrice <span id="apyWindowLabel">7d</span> APY<span class="sort-arrow" data-arrow="apy">↕</span><span class="tip" data-tip="The vault's REALIZED annualized return, derived only from its on-chain share price (= convertToAssets(1 share)) over the selected window via the compound formula (1 + r)^(365 / days) − 1, where r = last/first sharePrice and days = actual elapsed time between the first and last trusted points. Share price already reflects every fee and loss, so this is the ground truth of what the vault actually earned. Hidden when the window spans less than ~12 hours of data, suppressed (⚠) for off-scale snapshots.">i</span></th>
+              <th class="num sortable" data-sort="feapy">FE APY<span class="sort-arrow" data-arrow="feapy">↕</span><span class="tip" data-tip="APR shown in the IPOR app (api.ipor.io) net of the vault's on-chain performance and management fees: APR×(1−perfFee) − mgmtFee. This is the forward-looking rate the front end advertises — compare it against the sharePrice APY (the realized truth) via the Deviation column. Shows the gross APR (muted) when the on-chain fees can't be read.">i</span></th>
+              <th class="num sortable" data-sort="deviation">Deviation<span class="sort-arrow" data-arrow="deviation">↕</span><span class="tip" data-tip="FE APY minus the sharePrice APY (the realized, on-chain truth) in percentage points. Surfaces vaults where the advertised front-end rate diverges from what the vault actually earned: a large positive value means FE APY overstates reality, negative means it understates. Sorted by absolute deviation by default so the biggest divergences sit on top. '—' until the FE APY (fee-adjusted) is computed by the collector.">i</span></th>
             </tr>
           </thead>
           <tbody id="rows">
-            <tr><td colspan="6" class="loading">Loading snapshots…</td></tr>
+            <tr><td colspan="7" class="loading">Loading snapshots…</td></tr>
           </tbody>
         </table>
       </div>
@@ -244,7 +246,7 @@
     <div class="footnote">
       Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
       Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
-      "Δ" = first→last sharePrice across the selected timeframe. APY annualizes that move via the compound formula <code>(1 + r)^(365 / days) − 1</code> where <code>days</code> is the actual elapsed time (in seconds, not point count) between the first and last trusted snapshots — so vaults sampled multiple times per day don't get a bogus 50000% APY from intra-day noise. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Click column headers to sort, use the toolbar to switch timeframe or filter by chain.
+      "Δ" = first→last sharePrice across the selected timeframe. <strong>sharePrice APY</strong> annualizes that move via the compound formula <code>(1 + r)^(365 / days) − 1</code> where <code>days</code> is the actual elapsed time (in seconds, not point count) between the first and last trusted snapshots — so vaults sampled multiple times per day don't get a bogus 50000% APY from intra-day noise. It is the realized, on-chain truth (share price already nets out every fee and loss). <strong>FE APY</strong> is the rate the IPOR app advertises, fee-adjusted (<code>APR×(1−perfFee) − mgmtFee</code>). <strong>Deviation</strong> = FE APY − sharePrice APY in percentage points: small = the front-end rate matches reality, large (±) = it diverges and warrants a look. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Click column headers to sort, use the toolbar to switch timeframe or filter by chain.
     </div>
   </div>
 
@@ -256,7 +258,7 @@
     // window so the table reconciles row-internally. Sort state is split into a
     // key + direction so both the dropdown and clickable column headers can
     // drive it without duplicating enums.
-    let state = { sortKey: 'delta', sortDir: 'desc', chain: '', window: 7 };
+    let state = { sortKey: 'deviation', sortDir: 'desc', chain: '', window: 7 };
 
     // Translation table between the Sort dropdown (preset combinations) and
     // (sortKey, sortDir) state. Keeps the two UIs in sync without forking enums.
@@ -266,6 +268,7 @@
       anomaly: { key: 'anomaly', dir: 'desc' },
       apy:     { key: 'apy',     dir: 'desc' },
       feapy:   { key: 'feapy',   dir: 'desc' },
+      deviation: { key: 'deviation', dir: 'desc' },
       name:    { key: 'name',    dir: 'asc'  },
       tvl:     { key: 'tvl',     dir: 'desc' },
     };
@@ -285,8 +288,10 @@
     function updateWindowLabels() {
       const wl = document.getElementById('windowLabel');
       const dl = document.getElementById('deltaLabel');
+      const al = document.getElementById('apyWindowLabel');
       if (wl) wl.textContent = windowDaysLabel();
       if (dl) dl.textContent = windowLabel();
+      if (al) al.textContent = windowLabel();
     }
 
     // Sync the Sort dropdown and the column-header arrows to whatever
@@ -310,13 +315,23 @@
 
     function recompute() {
       if (!rawData.snap) return;
-      allRows = compute(rawData.snap.vaults).map(r => ({
-        ...r,
-        name: rawData.names[r.addr] || r.name,
-        tvl: rawData.tvls[r.addr] || 0,
+      allRows = compute(rawData.snap.vaults).map(r => {
         // FE APY (API-derived, fee-adjusted) keyed by lowercase address.
-        fe: rawData.fe[r.addr] || null,
-      }));
+        const fe = rawData.fe[r.addr] || null;
+        // Deviation = FE APY − sharePrice APY (the realized on-chain truth).
+        // Only meaningful when we have a fee-adjusted FE APY AND a trusted
+        // sharePrice APY for this window; otherwise null → sinks in the sort.
+        const deviationPct = (fe && fe.feApyPct != null && r.apyPct != null && !r.dataFlag)
+          ? fe.feApyPct - r.apyPct
+          : null;
+        return {
+          ...r,
+          name: rawData.names[r.addr] || r.name,
+          tvl: rawData.tvls[r.addr] || 0,
+          fe,
+          deviationPct,
+        };
+      });
       updateWindowLabels();
       render(allRows);
     }
@@ -482,6 +497,9 @@
       if (key === 'delta')   return r.dataFlag ? null : r.deltaPct;
       if (key === 'apy')     return r.dataFlag ? null : r.apyPct;
       if (key === 'feapy')   return r.fe?.feApyPct ?? null;
+      // Deviation sorts by absolute magnitude — a manager wants the biggest
+      // gaps between FE rate and on-chain truth on top, regardless of sign.
+      if (key === 'deviation') return r.deviationPct == null ? null : Math.abs(r.deviationPct);
       return null;
     }
 
@@ -506,7 +524,7 @@
       document.getElementById('statPill').textContent =
         `${filtered.length} vaults · ${windowDaysLabel()}`;
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading">No vaults match.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="loading">No vaults match.</td></tr>';
         return;
       }
       tbody.innerHTML = applySort(filtered).map(r => {
@@ -561,6 +579,21 @@
         } else {
           feApyCell = '<td class="num"><span class="na">—</span></td>';
         }
+        // Deviation cell: FE APY − sharePrice APY in percentage points. Share
+        // price is the absolute on-chain truth, so this exposes where the
+        // advertised front-end rate drifts from reality. Colored by magnitude
+        // (green ≈ in line, amber = watch, red = big gap); '—' until the
+        // fee-adjusted FE APY exists and the sharePrice APY is trusted.
+        let deviationCell;
+        if (r.deviationPct == null) {
+          deviationCell = '<td class="num"><span class="na">—</span></td>';
+        } else {
+          const ad = Math.abs(r.deviationPct);
+          const col = ad < 1 ? 'var(--green)' : ad < 3 ? 'var(--amber)' : 'var(--red)';
+          const flag = ad >= 3 ? ' flag' : '';
+          const tip = `FE APY ${fmtPct(fe.feApyPct)} − sharePrice APY ${fmtPct(r.apyPct)} = ${fmtPct(r.deviationPct)} (pp)`;
+          deviationCell = `<td class="num pct${flag}" style="color:${col}"><span data-tip="${tip}">${fmtPct(r.deviationPct)}</span></td>`;
+        }
         // Start → Now cell: the window's first and last so the Δ% beside it is
         // obvious at a glance. For glitch rows we suppress the pair too — the
         // raw value would be off-scale garbage (e.g. 1.02e12 for Tanken).
@@ -586,6 +619,7 @@
           ${deltaCell}
           ${apyCell}
           ${feApyCell}
+          ${deviationCell}
         </tr>`;
       }).join('');
     }
@@ -672,7 +706,7 @@
         syncSortUI();
       } catch (e) {
         document.getElementById('rows').innerHTML =
-          `<tr><td colspan="6" class="err">Failed to load: ${e.message}</td></tr>`;
+          `<tr><td colspan="7" class="err">Failed to load: ${e.message}</td></tr>`;
       }
     }
     load();
