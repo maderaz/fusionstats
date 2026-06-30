@@ -8,7 +8,6 @@
 (function () {
   const PAGES = [
     { href: '/',                       label: 'Activity' },
-    { href: '/future',                 label: 'Fusion Earn', badge: 'NEW' },
     { href: '/monitor',                label: 'Monitor', badge: 'NEW' },
     { href: '/all-vaults',             label: 'All Vaults' },
     { href: '/tvl',                    label: 'TVL' },
