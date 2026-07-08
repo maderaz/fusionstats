@@ -120,6 +120,21 @@ body::before {
 .uk-side-foot a { color: var(--fg-dim); font-size: 11.5px; display: inline-flex; gap: 6px; align-items: center; }
 .uk-side-foot a:hover { color: var(--accent); }
 
+/* one-click "copy AI-agent instructions" box */
+.uk-aibox {
+  display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%;
+  margin: 6px 0 2px; padding: 11px 12px; cursor: pointer; font-family: inherit;
+  border: 1px solid rgba(132,41,255,0.32); background: rgba(132,41,255,0.06); border-radius: 11px;
+  transition: border-color .14s, background .14s;
+}
+.uk-aibox:hover { border-color: var(--accent); background: rgba(132,41,255,0.10); }
+.uk-aibox .ic { font-size: 14px; line-height: 1.3; flex: none; }
+.uk-aibox .tx { display: flex; flex-direction: column; gap: 3px; }
+.uk-aibox .tx b { font-size: 12px; font-weight: 600; color: var(--fg); line-height: 1.25; }
+.uk-aibox .tx em { font-style: normal; font-size: 10.5px; color: var(--fg-dim); line-height: 1.4; }
+.uk-aibox.done { border-color: #1B9E57; background: rgba(27,158,87,0.09); }
+.uk-aibox.done .tx b { color: #1B9E57; }
+
 /* ===================== MAIN ===================== */
 .uk-main { margin-left: 244px; position: relative; z-index: 1; padding: 40px 44px 120px; max-width: 1200px; }
 .uk-hero { border-bottom: 1px solid var(--hairline); padding-bottom: 26px; margin-bottom: 30px; }
@@ -386,6 +401,14 @@ body::before {
     <a href="#button"       data-filter="button"><span class="dot"></span> Button <span class="ct" id="ct-button"></span></a>
     <a href="#deposit-area" data-filter="deposit-area"><span class="dot"></span> Deposit Area <span class="ct" id="ct-deposit"></span></a>
   </nav>
+
+  <button class="uk-aibox" onclick="ukCopyAgent(this)" aria-label="Copy AI agent instructions">
+    <span class="ic">📋</span>
+    <span class="tx">
+      <b>Copy AI-agent instructions</b>
+      <em>Click to copy instructions for your AI agent on how to interact with this UI library — paste &amp; go.</em>
+    </span>
+  </button>
 
   <div class="uk-side-foot">
     <a href="/ui-kit/manifest.json" target="_blank" rel="noopener">
@@ -1039,6 +1062,34 @@ function ukCopy(btn) {
   var done = function () { btn.classList.add('done'); btn.textContent = 'Copied'; setTimeout(function () { btn.classList.remove('done'); btn.textContent = 'Copy'; }, 1400); };
   if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
   else { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e) {} t.remove(); done(); }
+}
+
+/* ---- one-click: copy AI-agent instructions (the kit's llms.txt) ----
+   llms.txt is the entry point: it states the reimplement-not-runtime rules
+   and links onward to manifest.json + fusion-ui.css (+ raw-CDN fallbacks).
+   We copy the live llms.txt when reachable, else a pointer to it. */
+function ukCopyAgent(btn) {
+  var b = btn.querySelector('b');
+  var orig = b.textContent;
+  var header =
+    "# Paste this into your AI agent. This is the Fusion UI Kit's llms.txt —\n" +
+    "# a design spec you REIMPLEMENT (not a runtime library). It links onward\n" +
+    "# to the component manifest (manifest.json) and stylesheet (fusion-ui.css).\n\n";
+  var fallback = header +
+    "Fusion UI Kit guide: https://fusionecosystem.xyz/llms.txt\n" +
+    "Raw mirror if that host is blocked by your sandbox:\n" +
+    "https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/llms.txt\n";
+  function copy(text) {
+    function done() {
+      btn.classList.add('done'); b.textContent = 'Copied ✓ — paste into your agent';
+      setTimeout(function () { btn.classList.remove('done'); b.textContent = orig; }, 2400);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+    else { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e) {} t.remove(); done(); }
+  }
+  fetch('/llms.txt').then(function (r) { return r.ok ? r.text() : Promise.reject(); })
+    .then(function (txt) { copy(header + txt); })
+    .catch(function () { copy(fallback); });
 }
 
 /* ---- mobile drawer ---- */
