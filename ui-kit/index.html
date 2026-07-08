@@ -42,16 +42,22 @@
   /* radii */
   --r-btn: 21.5px; --r-arrow: 50px; --r-field: 12px; --r-max: 6px; --r-icon: 50px;
 
-  /* --- page chrome (documentation shell, near-black) --- */
-  --bg:        #08090B;
-  --panel:     #0E1013;
-  --panel-2:   #101317;
-  --hairline:  #1C2026;
-  --hairline-2:#262B33;
-  --fg:        #E7E9EC;
-  --fg-dim:    #8A9099;
-  --fg-faint:  #5B616B;
-  --accent:    #A37FFF;
+  /* --- page chrome (documentation shell, light) --- */
+  --bg:        #FFFFFF;
+  --panel:     #FFFFFF;
+  --panel-2:   #F7F7F9;
+  --hairline:  #ECECEF;
+  --hairline-2:#E2E2E7;
+  --fg:        #0B0C0E;
+  --fg-dim:    #63676E;
+  --fg-faint:  #9AA0A8;
+  --accent:    #7A22F0;
+  /* --- component canvas (dark: the app surface these components are drawn for;
+         the buttons use white text / light icons, so the stage stays dark) --- */
+  --stage:      #12151B;
+  --stage-line: #242A32;
+  --stage-fg:   #AEB4BD;
+  --stage-faint:#6C727B;
 
   --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-num: 'Source Sans 3', 'Source Sans Pro', sans-serif;
@@ -75,14 +81,14 @@ h1,h2,h3,h4 { font-weight: 600; margin: 0; letter-spacing: -0.01em; }
 /* faint dot grid on the canvas */
 body::before {
   content:""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background-image: radial-gradient(rgba(255,255,255,0.028) 1px, transparent 1.2px);
+  background-image: radial-gradient(rgba(17,24,39,0.05) 1px, transparent 1.2px);
   background-size: 22px 22px;
 }
 
 /* ===================== SIDEBAR (kit-local, not the site nav) ===================== */
 .uk-sidebar {
   position: fixed; left: 0; top: 0; bottom: 0; width: 244px; z-index: 20;
-  background: linear-gradient(180deg, #0B0D10 0%, #08090B 100%);
+  background: #FCFCFD;
   border-right: 1px solid var(--hairline);
   display: flex; flex-direction: column; padding: 22px 16px;
 }
@@ -105,8 +111,8 @@ body::before {
   color: var(--fg-dim); font-size: 13.5px; font-weight: 500;
   transition: background .14s, color .14s;
 }
-.uk-menu a:hover { color: var(--fg); background: rgba(255,255,255,0.03); }
-.uk-menu a.active { color: #fff; background: rgba(132,41,255,0.14); box-shadow: inset 0 0 0 1px rgba(132,41,255,0.28); }
+.uk-menu a:hover { color: var(--fg); background: rgba(10,12,20,0.04); }
+.uk-menu a.active { color: var(--accent); background: rgba(132,41,255,0.09); box-shadow: inset 0 0 0 1px rgba(132,41,255,0.22); }
 .uk-menu a .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; }
 .uk-menu a.active .dot { background: var(--accent); opacity: 1; }
 .uk-menu a .ct { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-faint); }
@@ -122,37 +128,23 @@ body::before {
 .uk-meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .uk-chip {
   display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--fg-dim);
-  border: 1px solid var(--hairline-2); border-radius: 999px; padding: 5px 11px; background: rgba(255,255,255,0.015);
+  border: 1px solid var(--hairline-2); border-radius: 999px; padding: 5px 11px; background: var(--panel-2);
 }
 .uk-chip b { color: var(--fg); font-weight: 600; }
 .uk-chip .g { width: 6px; height: 6px; border-radius: 50%; background: #1FB96B; box-shadow: 0 0 0 3px rgba(31,185,107,0.16); }
 
-/* AI-agent guidance panel */
-.uk-agent { border: 1px solid var(--hairline-2); border-radius: 14px; background: var(--panel); margin-bottom: 34px; overflow: hidden; }
-.uk-agent > summary {
-  cursor: pointer; list-style: none; padding: 15px 18px; display: flex; align-items: center; gap: 11px;
-  font-size: 13px; font-weight: 600; color: var(--fg);
+/* slim "human reference" note — agents consume the files, not this page */
+.uk-note {
+  display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap;
+  padding: 12px 16px; margin-bottom: 32px;
+  border: 1px solid var(--hairline); border-radius: 11px; background: var(--panel-2);
+  font-size: 13px; color: var(--fg-dim);
 }
-.uk-agent > summary::-webkit-details-marker { display: none; }
-.uk-agent > summary .ic { width: 17px; height: 17px; color: var(--accent); flex: none; }
-.uk-agent > summary .hint { margin-left: auto; color: var(--fg-faint); font-weight: 400; font-size: 11.5px; }
-.uk-agent .body { padding: 4px 18px 20px; border-top: 1px solid var(--hairline); }
-.uk-agent .body p { color: var(--fg-dim); font-size: 13px; margin: 14px 0 10px; }
-.uk-agent code { font-family: var(--font-mono); font-size: 12px; color: var(--accent); background: rgba(132,41,255,0.10); padding: 1px 6px; border-radius: 5px; }
-.uk-agent ul { margin: 8px 0 0; padding-left: 18px; color: var(--fg-dim); font-size: 13px; }
-.uk-agent ul li { margin: 6px 0; }
-.uk-agent ul li b { color: var(--fg); font-weight: 600; }
-.uk-attr-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12.5px; }
-.uk-attr-table th, .uk-attr-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
-.uk-attr-table th { color: var(--fg-faint); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-.uk-attr-table td:first-child { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; }
-.uk-attr-table td { color: var(--fg-dim); }
-.uk-consume { margin: 4px 0 2px; padding: 13px 15px; border: 1px solid rgba(132,41,255,0.35); background: rgba(132,41,255,0.07); border-radius: 11px; font-size: 13px; color: var(--fg-dim); line-height: 1.55; }
-.uk-consume b { color: var(--fg); font-weight: 600; }
-.uk-consume .files { display: block; margin-top: 9px; }
-.uk-consume .files a { color: var(--accent); font-family: var(--font-mono); font-size: 12px; }
-.uk-consume .files a:hover { text-decoration: underline; }
-.uk-consume .files span { color: var(--fg-faint); margin: 0 6px; }
+.uk-note b { color: var(--fg); font-weight: 600; }
+.uk-note .lnks { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.uk-note a { color: var(--accent); font-family: var(--font-mono); font-size: 12px; }
+.uk-note a:hover { text-decoration: underline; }
+.uk-note .sep { color: var(--fg-faint); }
 
 /* section + component scaffolding */
 .uk-section { margin-bottom: 14px; }
@@ -165,6 +157,7 @@ body::before {
 .uk-component {
   border: 1px solid var(--hairline); border-radius: 16px; background: var(--panel);
   margin-bottom: 22px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(10,12,20,0.04), 0 4px 16px rgba(10,12,20,0.03);
 }
 .uk-component__head { padding: 20px 22px 4px; }
 .uk-component__head .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -179,12 +172,14 @@ body::before {
 
 /* the live stage where components are shown */
 .uk-stage {
-  margin: 18px 22px 4px; padding: 26px; border-radius: 12px;
+  margin: 18px 22px 18px; padding: 28px; border-radius: 12px; color: var(--stage-fg);
   background:
-    linear-gradient(0deg, rgba(0,0,0,0.35), rgba(0,0,0,0.35)),
-    repeating-conic-gradient(#0c0e11 0% 25%, #0a0c0f 0% 50%) 0 0 / 20px 20px;
-  border: 1px solid var(--hairline);
+    linear-gradient(0deg, rgba(0,0,0,0.22), rgba(0,0,0,0.22)),
+    repeating-conic-gradient(#14171D 0% 25%, #101319 0% 50%) 0 0 / 20px 20px;
+  border: 1px solid var(--stage-line);
 }
+.uk-stage .uk-state__label { color: var(--stage-fg); }
+.uk-stage .uk-anatomy .a { color: var(--stage-fg); }
 .uk-states { display: flex; flex-wrap: wrap; gap: 30px 34px; align-items: flex-start; }
 .uk-state { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .uk-state.center { align-items: center; }
@@ -211,29 +206,45 @@ body::before {
   font-weight: 600; margin-bottom: 12px;
 }
 .uk-spec table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.uk-spec td { padding: 5px 0; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.uk-spec td { padding: 5px 0; vertical-align: top; border-bottom: 1px solid rgba(0,0,0,0.06); }
 .uk-spec tr:last-child td { border-bottom: none; }
 .uk-spec td:first-child { color: var(--fg-faint); width: 42%; }
 .uk-spec td:last-child { color: var(--fg); font-family: var(--font-mono); font-size: 11.5px; }
-.uk-sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid rgba(255,255,255,0.14); }
+.uk-sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid rgba(0,0,0,0.18); }
 
 /* color/gradient swatches (foundations, built from the manifest) */
 .uk-swatch { display: flex; flex-direction: column; gap: 8px; width: 128px; }
-.uk-swatch .chip { width: 100%; height: 54px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.10); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); }
+.uk-swatch .chip { width: 100%; height: 54px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.03); }
 .uk-swatch .nm { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg); }
 .uk-swatch .hex { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-dim); word-break: break-all; }
 
-.uk-code { padding: 18px 20px; position: relative; }
+.uk-code { padding: 18px 20px; position: relative; background: var(--panel-2); }
 .uk-code pre { margin: 0; overflow-x: auto; }
-.uk-code code { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.65; color: #C6CBD2; white-space: pre; }
-.uk-code .tok-tag { color: #A37FFF; } .uk-code .tok-attr { color: #7FB8FF; } .uk-code .tok-str { color: #8FD98F; } .uk-code .tok-txt { color: #E7E9EC; }
+.uk-code code { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.65; color: #454A52; white-space: pre; }
+.uk-code .tok-tag { color: #7A22F0; } .uk-code .tok-attr { color: #1D6FE0; } .uk-code .tok-str { color: #0F8A4C; } .uk-code .tok-txt { color: #0B0C0E; }
 .uk-copy {
   position: absolute; top: 14px; right: 14px; font-family: var(--font-mono); font-size: 10.5px;
-  color: var(--fg-dim); background: rgba(255,255,255,0.04); border: 1px solid var(--hairline-2);
+  color: var(--fg-dim); background: #FFFFFF; border: 1px solid var(--hairline-2);
   border-radius: 6px; padding: 4px 9px; cursor: pointer; transition: all .14s;
 }
-.uk-copy:hover { color: #fff; border-color: var(--accent); }
-.uk-copy.done { color: #1FB96B; border-color: rgba(31,185,107,0.4); }
+.uk-copy:hover { color: var(--accent); border-color: var(--accent); }
+.uk-copy.done { color: #1B9E57; border-color: rgba(27,158,87,0.4); }
+
+/* progressive disclosure — specs & code collapsed by default (human-first) */
+.uk-more { border-top: 1px solid var(--hairline); }
+.uk-more > summary {
+  cursor: pointer; list-style: none; padding: 13px 22px; display: flex; align-items: center; gap: 9px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-faint);
+  transition: color .14s; user-select: none;
+}
+.uk-more > summary::-webkit-details-marker { display: none; }
+.uk-more > summary::before {
+  content: "›"; font-size: 16px; line-height: 0; color: var(--fg-faint);
+  transition: transform .16s; display: inline-block;
+}
+.uk-more[open] > summary::before { transform: rotate(90deg); }
+.uk-more > summary:hover { color: var(--fg); }
+.uk-more > .uk-details { border-top: 1px solid var(--hairline); margin-top: 0; }
 
 /* ============================================================
    THE FUSION COMPONENTS  (faithful to Figma — do not restyle)
@@ -291,10 +302,10 @@ body::before {
 .uk-icon { width: 20px; height: 20px; color: #C9CED6; display: block; }
 .uk-icon-card {
   display: flex; flex-direction: column; align-items: center; gap: 12px;
-  padding: 20px 26px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--uk-icons-surface);
+  padding: 20px 26px; border: 1px solid var(--stage-line); border-radius: 12px; background: var(--uk-icons-surface);
 }
-.uk-icon-card .nm { font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); text-align: center; }
-.uk-icon-card .nm b { color: var(--fg); display: block; font-weight: 500; }
+.uk-icon-card .nm { font-family: var(--font-mono); font-size: 11px; color: var(--stage-faint); text-align: center; }
+.uk-icon-card .nm b { color: #E7E9EC; display: block; font-weight: 500; }
 
 /* Deposit area (Typing area) — Figma 574:63 */
 .uk-c-deposit {
@@ -377,9 +388,9 @@ body::before {
   </nav>
 
   <div class="uk-side-foot">
-    <a href="#fusion-ui-kit" onclick="ukJumpManifest(event)">
+    <a href="/ui-kit/manifest.json" target="_blank" rel="noopener">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
-      JSON manifest for agents
+      manifest.json
     </a>
   </div>
 </aside>
@@ -389,7 +400,7 @@ body::before {
 
   <header class="uk-hero">
     <h1>Fusion UI Kit</h1>
-    <p class="tagline">The canonical, machine-readable reference for IPOR Fusion UI elements. Every element is shown in <b style="color:var(--fg)">every state</b>, annotated with design tokens, and mirrored in a JSON manifest so both humans and design AI agents can source exact specs in one pass.</p>
+    <p class="tagline">The reference for IPOR Fusion UI elements. Every element is shown in <b style="color:var(--fg)">every state</b>, with exact design tokens pulled from the source design. Specs &amp; code sit one click away under each component.</p>
     <div class="uk-meta-row">
       <span class="uk-chip"><span class="g"></span> Source of truth</span>
       <span class="uk-chip">Figma file <b class="mono">uLFQVtx9kmqAyYWCk6KdzC</b> · page <b>IPOR</b></span>
@@ -398,37 +409,11 @@ body::before {
     </div>
   </header>
 
-  <!-- ---------- guidance for crawling agents ---------- -->
-  <details class="uk-agent" open>
-    <summary>
-      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></svg>
-      How to read this page (humans &amp; design agents)
-      <span class="hint">click to collapse</span>
-    </summary>
-    <div class="body">
-      <div class="uk-consume">
-        <b>How to consume this kit:</b> it is a <b>design spec you reimplement</b> in your own stack — <b>not</b> a runtime component library. There is no loader script, custom element (<code>&lt;fusion-deposit&gt;</code>), <code>init()</code>, or embed endpoint, and nothing to add to your CSP. Don't load assets from this domain at runtime; build from the spec, or vendor in the standalone files:
-        <span class="files"><a href="/ui-kit/manifest.json">/ui-kit/manifest.json</a><span>·</span><a href="/ui-kit/fusion-ui.css">/ui-kit/fusion-ui.css</a><span>·</span><a href="/llms.txt">/llms.txt</a></span>
-      </div>
-      <p>This page is engineered to be crawled. Read whichever surface suits you:</p>
-      <ul>
-        <li><b>Fast path — parse the JSON.</b> The complete spec (tokens + every component, variant &amp; state) is embedded as <code>&lt;script type="application/json" id="fusion-ui-kit"&gt;</code> at the bottom of the document. One fetch → full data relay.</li>
-        <li><b>DOM path — read the attributes.</b> Every element is live in the DOM and self-describing via <code>data-*</code> attributes. No screenshots required; the rendered node <em>is</em> the spec.</li>
-        <li><b>Human path — look &amp; copy.</b> Each element is rendered in every state, with a spec table and a copy-paste HTML snippet.</li>
-      </ul>
-      <p style="margin-top:16px">DOM attribute schema:</p>
-      <table class="uk-attr-table">
-        <thead><tr><th>Attribute</th><th>Applied to</th><th>Meaning</th></tr></thead>
-        <tbody>
-          <tr><td>data-component</td><td>&lt;article&gt;</td><td>Component family, e.g. <code>button</code>, <code>deposit-area</code>, <code>icon</code>.</td></tr>
-          <tr><td>data-variant</td><td>&lt;article&gt;</td><td>Variant within the family, e.g. <code>primary</code>, <code>tertiary</code>, <code>primary-arrow</code>.</td></tr>
-          <tr><td>data-figma</td><td>&lt;article&gt;</td><td>Source Figma node id (traceability back to the design file).</td></tr>
-          <tr><td>data-state</td><td>rendered element</td><td>The exact state this instance shows: <code>default</code>, <code>hover</code>, <code>clicked</code>, <code>typing</code>, <code>typed</code>, <code>disabled</code>.</td></tr>
-          <tr><td>data-token</td><td>swatch / value</td><td>The design-token name a value maps to, e.g. <code>color.purple</code>, <code>radius.btn</code>.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </details>
+  <!-- ---------- human reference note (agents consume the files, not this page) ---------- -->
+  <div class="uk-note">
+    <span><b>Human reference.</b> Building against this kit? Consume it as data, not by scraping the page:</span>
+    <span class="lnks"><a href="/llms.txt">llms.txt</a><span class="sep">·</span><a href="/ui-kit/manifest.json">manifest.json</a><span class="sep">·</span><a href="/ui-kit/fusion-ui.css">fusion-ui.css</a></span>
+  </div>
 
   <!-- =================================================================
        FOUNDATIONS  (shown only in "All")
@@ -451,7 +436,7 @@ body::before {
         <div class="row"><h3>Typography &amp; radii</h3><span class="uk-tag el">tokens</span></div>
         <p class="uk-desc">Fusion uses <b style="color:var(--fg)">Poppins</b> for UI text and <b style="color:var(--fg)">Source Sans Pro</b> for numerics.</p>
       </div>
-      <div class="uk-details" style="border-top:none">
+      <div class="uk-details">
         <div class="uk-spec">
           <h4>Type ramp</h4>
           <table>
@@ -988,6 +973,21 @@ body::before {
               '<div class="nm">' + k + '</div><div class="hex">gradient</div></div>';
   });
   host.innerHTML = frag;
+})();
+
+/* ---- progressive disclosure: collapse each component's specs & code ----
+   Human-first: the live states show by default; the tables + snippets sit
+   behind a per-component toggle (native <details>, collapsed). */
+(function () {
+  document.querySelectorAll('.uk-component > .uk-details').forEach(function (d) {
+    var det = document.createElement('details');
+    det.className = 'uk-more';
+    var sum = document.createElement('summary');
+    sum.textContent = d.querySelector('.uk-code') ? 'Specs & code' : 'Specs';
+    d.parentNode.insertBefore(det, d);
+    det.appendChild(sum);
+    det.appendChild(d);
+  });
 })();
 
 /* ---- side-menu filtering (All / Button / Deposit Area) ---- */
