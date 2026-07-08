@@ -128,3 +128,119 @@
   padding: 3px 9px; font-family: var(--uk-font); font-weight: 400; font-size: 12px; color: var(--uk-text-muted);
   background: transparent; cursor: pointer;
 }
+
+/* =====================================================================
+   MANAGE VAULTS  ·  Figma "IPOR" nodes 580:* (vault-management surface)
+   States driven by [data-state]. The default (no data-state) instance is
+   also live-interactive via :not([data-state]):hover.
+   ===================================================================== */
+
+/* Menu icons — Figma 580:1971 (18×18, currentColor) */
+.uk-menuicon { width: 18px; height: 18px; color: var(--uk-text-muted); display: block; }
+
+/* Menu item, hover & selection — Figma 580:2111 (250×38, radius 10) */
+.uk-c-menu-item {
+  display: inline-flex; align-items: center; gap: 10px;
+  width: 250px; height: 38px; padding: 7px 9px; border-radius: 10px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: var(--uk-font); font-weight: 400; font-size: 15px; color: var(--uk-text-muted);
+  transition: background .16s, color .16s;
+}
+.uk-c-menu-item svg { width: 18px; height: 18px; flex: none; }
+.uk-c-menu-item[data-state="hover"], .uk-c-menu-item[data-state="default"]:hover, .uk-c-menu-item:not([data-state]):hover { background: var(--uk-hover-fill); color: #fff; }
+.uk-c-menu-item[data-state="selected"] { background: rgba(34,39,44,0.5); color: #fff; font-weight: 500; }
+.uk-c-menu-item[data-state="disabled"], .uk-c-menu-item:disabled { color: var(--uk-text-muted); opacity: .4; cursor: not-allowed; }
+
+/* Select vault to manage — Figma 580:2000 (250×41, radius 10) */
+.uk-c-vault-select {
+  display: inline-flex; align-items: center; gap: 9px;
+  width: 250px; height: 41px; padding: 0 9px; border-radius: 10px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: var(--uk-font); font-weight: 400; font-size: 15px; color: var(--uk-text-muted);
+  transition: background .16s, color .16s;
+}
+.uk-c-vault-select[data-state="hover"], .uk-c-vault-select[data-state="selected-hover"], .uk-c-vault-select[data-state="default"]:hover, .uk-c-vault-select:not([data-state]):hover { background: var(--uk-hover-fill); }
+.uk-c-vault-select[data-state="clicked"], .uk-c-vault-select[data-state="selected-clicked"] { background: rgba(34,39,44,0.5); }
+.uk-c-vault-select[data-state="hover"], .uk-c-vault-select[data-state="clicked"] { color: #fff; }
+.uk-c-vault-select[data-state="clicked"] { font-weight: 500; }
+.uk-c-vault-select[data-state^="selected"] { color: #fff; font-weight: 500; }
+.uk-vs-ph { width: 25px; height: 25px; flex: none; border-radius: 6px; border: 1px solid var(--uk-border); display: inline-flex; align-items: center; justify-content: center; color: var(--uk-text-muted); }
+.uk-vs-ph svg { width: 13px; height: 13px; }
+.uk-vs-img { width: 28px; height: 28px; flex: none; border-radius: 6px; overflow: hidden; }
+.uk-vs-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uk-vs-replace { width: 15px; height: 15px; flex: none; color: var(--uk-text-muted); }
+
+/* Vault selection (Manage) button — Figma 580:2034 (110×43, radius 21.5) */
+.uk-c-manage-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  width: 110px; height: 43px; border-radius: var(--uk-r-btn);
+  border: 1px solid var(--uk-purple); background: var(--uk-grad);
+  color: #fff; font-family: var(--uk-font); font-weight: 600; font-size: 15px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-manage-btn svg { width: 10px; height: 10px; flex: none; }
+.uk-c-manage-btn[data-state="hover"], .uk-c-manage-btn[data-state="edit-hover"], .uk-c-manage-btn[data-state="default"]:hover, .uk-c-manage-btn:not([data-state]):hover { background: var(--uk-grad-hover); }
+.uk-c-manage-btn[data-state="disabled"], .uk-c-manage-btn[data-state="edit-disabled"], .uk-c-manage-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Vault images (token branding) — Figma 580:2084 (33×33, radius 6) */
+.uk-vault-img { width: 33px; height: 33px; border-radius: 6px; flex: none; display: block; overflow: hidden; }
+
+/* Search field — Figma 580:2059 (521×45, radius 10) */
+.uk-c-search {
+  display: inline-flex; align-items: center; gap: 11px;
+  width: 521px; max-width: 100%; height: 45px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--uk-border); background: var(--uk-field-bg);
+  transition: background .16s, border-color .16s;
+}
+.uk-c-search .uk-search-ic { width: 14px; height: 14px; flex: none; color: var(--uk-purple); }
+.uk-c-search .uk-search-text { flex: 1; font-family: var(--uk-font); font-weight: 400; font-size: 15px; color: #fff; display: inline-flex; align-items: center; }
+.uk-c-search .uk-search-text.ph { color: #808080; }
+.uk-c-search[data-state="hover"] { background: var(--uk-field-bg-hover); }
+.uk-c-search[data-state="clicked"], .uk-c-search[data-state="typing"] { border-color: var(--uk-purple); }
+.uk-c-search .uk-search-clear { width: 14px; height: 14px; flex: none; color: var(--uk-text-muted); background: none; border: none; cursor: pointer; padding: 0; display: none; }
+.uk-c-search[data-state="typed"] .uk-search-clear { display: inline-flex; }
+.uk-caret.sm { height: 18px; }
+
+/* Role badge — Figma 580:2093 (h26, radius 21.5) */
+.uk-c-role {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 26px; padding: 0 10px; border-radius: var(--uk-r-btn);
+  border: 1px solid var(--uk-border); background: transparent;
+  font-family: var(--uk-font); font-weight: 400; font-size: 13px; color: #fff;
+  cursor: default; transition: background .16s, border-color .16s;
+}
+.uk-c-role svg { width: 10px; height: 10px; flex: none; }
+.uk-c-role[data-state="hover"], .uk-c-role[data-state="default"]:hover, .uk-c-role:not([data-state]):hover { background: rgba(69,72,77,0.6); }
+.uk-c-role[data-state="selected-default"] { border-color: rgba(132,41,255,0.6); background: transparent; }
+.uk-c-role[data-state="selected-hover"] { border-color: rgba(132,41,255,0.6); background: rgba(132,41,255,0.3); }
+
+/* Submit button — Figma 580:2128 (80×33, radius 6) */
+.uk-c-submit {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 80px; height: 33px; border-radius: 6px;
+  border: 1px solid var(--uk-purple); background: var(--uk-grad);
+  color: #fff; font-family: var(--uk-font); font-weight: 600; font-size: 15px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-submit[data-state="hover"], .uk-c-submit[data-state="default"]:hover, .uk-c-submit:not([data-state]):hover { background: var(--uk-grad-hover); }
+.uk-c-submit[data-state="disabled"], .uk-c-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Close (x) button — Figma 580:2141 (39×39, circular) */
+.uk-c-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 39px; height: 39px; border-radius: 50%;
+  border: 1px solid var(--uk-border); background: transparent; color: var(--uk-icon-ink);
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-close svg { width: 15px; height: 15px; }
+.uk-c-close[data-state="hover"], .uk-c-close[data-state="default"]:hover, .uk-c-close:not([data-state]):hover { background: var(--uk-hover-fill); }
+
+/* External link icon — Figma 580:2106 (15×15) */
+.uk-c-extlink { display: inline-flex; width: 15px; height: 15px; padding: 0; border: none; background: none; color: var(--uk-text-muted); cursor: pointer; transition: color .16s; }
+.uk-c-extlink svg { width: 15px; height: 15px; }
+.uk-c-extlink[data-state="hover"], .uk-c-extlink[data-state="default"]:hover, .uk-c-extlink:not([data-state]):hover { color: var(--uk-purple); }
+
+/* Vaults table row — Figma 580:2148 (row 84px; hover overlay) */
+.uk-c-vault-row { height: 84px; border-top: 1px solid #1C2026; transition: background .16s; }
+.uk-c-vault-row[data-state="hover"], .uk-c-vault-row[data-state="default"]:hover, .uk-c-vault-row:not([data-state]):hover { background: rgba(69,72,77,0.15); }
+.uk-c-vault-row td { padding: 0 18px; vertical-align: middle; }

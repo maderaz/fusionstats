@@ -175,6 +175,160 @@
         "typed":    { "background": "#000000", "border": "1px solid #45484D", "amount": "0.545", "amountColor": "#FFFFFF", "caret": false },
         "disabled": { "background": "#000000", "border": "1px solid #45484D", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "opacity": 0.4 }
       }
+    },
+    {
+      "id": "menu-icons", "name": "Menu icons", "family": "menu-icon", "variant": "set",
+      "figmaNodeId": "584:2229", "glyphSet": "580:1971", "element": "svg", "cssClass": "uk-menuicon", "section": "manage-vaults",
+      "description": "The vault-management left-menu icons, laid out as the Fusion Terminal sidebar (Figma blueprint 584:2229): grouped Build on Fusion / Manage Vaults / Resources. 18x18, drawn with currentColor. Recreated inline (Figma ships the glyphs as raster assets). In the design, Custom Vault / Vault Wrapper / Price Feed currently share the Create (+) glyph.",
+      "size": { "width": 18, "height": 18 },
+      "html": "<svg class=\"uk-menuicon\" viewBox=\"0 0 18 18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6.19995 9H11.8M9 6.20001V11.8M16 9C16 12.866 12.866 16 9 16C5.13401 16 2 12.866 2 9C2 5.13401 5.13401 2 9 2C12.866 2 16 5.13401 16 9Z\"/></svg>",
+      "items": [
+        { "name": "Vault Wizard",     "group": "Build on Fusion", "figmaNodeId": "584:2255" },
+        { "name": "Custom Vault",     "group": "Build on Fusion", "figmaNodeId": "584:2254", "note": "shares Create glyph" },
+        { "name": "Vault Wrapper",    "group": "Build on Fusion", "figmaNodeId": "584:2253", "note": "shares Create glyph" },
+        { "name": "Price Feed",       "group": "Build on Fusion", "figmaNodeId": "584:2252", "note": "shares Create glyph" },
+        { "name": "My Fusion Vaults", "group": "Build on Fusion", "figmaNodeId": "584:2251" },
+        { "name": "General Settings", "group": "Manage Vaults",   "figmaNodeId": "584:2247" },
+        { "name": "Access Manager",   "group": "Manage Vaults",   "figmaNodeId": "584:2245" },
+        { "name": "Integrations",     "group": "Manage Vaults",   "figmaNodeId": "584:2243" },
+        { "name": "Scheduled Ops",    "group": "Manage Vaults",   "figmaNodeId": "584:2241" },
+        { "name": "Withdrawals",      "group": "Manage Vaults",   "figmaNodeId": "584:2239" },
+        { "name": "Fees",             "group": "Manage Vaults",   "figmaNodeId": "584:2237" },
+        { "name": "Price Oracle",     "group": "Manage Vaults",   "figmaNodeId": "584:2235" },
+        { "name": "Prehooks",         "group": "Manage Vaults",   "figmaNodeId": "584:2233" },
+        { "name": "Fusion Docs",      "group": "Resources",       "figmaNodeId": "584:2231" }
+      ]
+    },
+    {
+      "id": "menu-item", "name": "Menu item", "family": "menu-item", "variant": "default",
+      "figmaNodeId": "580:2111", "element": "button", "cssClass": "uk-c-menu-item", "figmaName": "Menu hover and selection", "section": "manage-vaults",
+      "description": "A row in the vault-management left menu; 250x38, radius 10, leading 18px icon + label.",
+      "size": { "width": 250, "height": 38 }, "radius": 10, "padding": { "y": 7, "x": 9 },
+      "html": "<button class=\"uk-c-menu-item\" data-state=\"selected\"><svg class=\"uk-menuicon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"><circle cx=\"12\" cy=\"12\" r=\"9\"/></svg>Menu text</button>",
+      "states": {
+        "default":  { "background": "transparent", "color": "#9BA3AF" },
+        "hover":    { "background": "#22272C", "color": "#FFFFFF" },
+        "selected": { "background": "rgba(34,39,44,0.5)", "color": "#FFFFFF", "weight": 500 },
+        "disabled": { "background": "transparent", "color": "#9BA3AF", "opacity": 0.4 }
+      }
+    },
+    {
+      "id": "vault-select", "name": "Select vault to manage", "family": "vault-select", "variant": "default",
+      "figmaNodeId": "580:2000", "element": "button", "cssClass": "uk-c-vault-select", "section": "manage-vaults",
+      "description": "Vault picker, 250x41, radius 10. Empty states show a placeholder + 'Select Vault'; 'Vault Selected' states show the vault image, name and a trailing replace control.",
+      "size": { "width": 250, "height": 41 }, "radius": 10,
+      "html": "<button class=\"uk-c-vault-select\" data-state=\"selected-default\"><img class=\"uk-vs-img\" src=\"/tokens/usdc.svg\" alt=\"\"><span class=\"uk-vs-label\">IPOR USDC Prime</span><svg class=\"uk-vs-replace\" viewBox=\"0 0 24 24\"></svg></button>",
+      "states": {
+        "default":          { "background": "transparent", "color": "#9BA3AF", "content": "placeholder + 'Select Vault'" },
+        "hover":            { "background": "#22272C", "color": "#FFFFFF" },
+        "clicked":          { "background": "rgba(34,39,44,0.5)", "color": "#FFFFFF", "weight": 500 },
+        "selected-default": { "background": "transparent", "color": "#FFFFFF", "content": "vault image + name + replace icon" },
+        "selected-hover":   { "background": "#22272C" },
+        "selected-clicked": { "background": "rgba(34,39,44,0.5)" }
+      }
+    },
+    {
+      "id": "vault-action-button", "name": "Vault selection button", "family": "vault-action-button", "variant": "manage",
+      "figmaNodeId": "580:2034", "element": "button", "cssClass": "uk-c-manage-btn", "section": "manage-vaults",
+      "description": "Per-vault primary action, 110x43, radius 21.5. Label modes: Manage / No Access (locked) and Edit (with a 10px pencil).",
+      "size": { "width": 110, "height": 43 }, "radius": 21.5,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-manage-btn\">Manage</button>",
+      "states": {
+        "default":       { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF", "label": "Manage" },
+        "hover":         { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF", "label": "Manage" },
+        "disabled":      { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5, "label": "No Access" },
+        "edit-default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF", "label": "Edit", "icon": "pencil 10px" },
+        "edit-hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "label": "Edit" },
+        "edit-disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5, "label": "Edit" }
+      }
+    },
+    {
+      "id": "vault-images", "name": "Vault images", "family": "vault-image", "variant": "set",
+      "figmaNodeId": "580:2084", "element": "img", "cssClass": "uk-vault-img", "section": "manage-vaults",
+      "description": "Vault branding marks, 33x33, radius 6, used in the picker, table and headers. The Figma node (580:2084) ships EMPTY branding placeholders (no token art in the file); the page uses faithful inline reproductions of each token's real brand logo. Supply your own production token art if you have it.",
+      "size": { "width": 33, "height": 33 }, "radius": 6,
+      "html": "<img class=\"uk-vault-img\" src=\"/tokens/usdc.svg\" alt=\"USDC\">",
+      "items": [
+        { "name": "USDT",   "figmaNodeId": "580:2085" },
+        { "name": "wstETH", "figmaNodeId": "580:2087" },
+        { "name": "stETH",  "figmaNodeId": "580:2089" },
+        { "name": "USDC",   "figmaNodeId": "580:2091" }
+      ]
+    },
+    {
+      "id": "search-field", "name": "Search field", "family": "search-field", "variant": "default",
+      "figmaNodeId": "580:2059", "element": "input-group", "cssClass": "uk-c-search", "section": "manage-vaults",
+      "description": "Vault search input, 521x45, radius 10, with a purple leading magnifier. Five states; focus turns the stroke purple; Typed exposes a clear (x) control.",
+      "size": { "width": 521, "height": 45 }, "radius": 10,
+      "html": "<div class=\"uk-c-search\" data-state=\"typed\"><svg class=\"uk-search-ic\" viewBox=\"0 0 24 24\"></svg><span class=\"uk-search-text\">IPOR USDC</span><button class=\"uk-search-clear\" aria-label=\"Clear\"></button></div>",
+      "states": {
+        "default": { "background": "#000000", "border": "1px solid #45484D", "placeholder": "#808080", "text": "Search vaults" },
+        "hover":   { "background": "#090E14", "border": "1px solid #45484D" },
+        "clicked": { "background": "#000000", "border": "1px solid #8429FF", "caret": "leading" },
+        "typing":  { "background": "#000000", "border": "1px solid #8429FF", "text": "IPOR USDC", "textColor": "#FFFFFF", "caret": "trailing" },
+        "typed":   { "background": "#000000", "border": "1px solid #45484D", "text": "IPOR USDC", "textColor": "#FFFFFF", "clear": true }
+      }
+    },
+    {
+      "id": "role-badge", "name": "Role", "family": "role-badge", "variant": "default",
+      "figmaNodeId": "580:2093", "element": "span", "cssClass": "uk-c-role", "section": "manage-vaults",
+      "description": "Permission/role tag, h26, radius 21.5, with a 10px info icon and label (e.g. Owner). The 'For selected vault' variant uses the brand purple.",
+      "size": { "height": 26 }, "radius": 21.5, "padding": { "y": 8, "x": 10 },
+      "html": "<span class=\"uk-c-role\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"16\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"8\" x2=\"12.01\" y2=\"8\"/></svg>Owner</span>",
+      "states": {
+        "default":          { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":            { "background": "rgba(69,72,77,0.6)", "border": "1px solid #45484D" },
+        "selected-default": { "background": "transparent", "border": "1px solid rgba(132,41,255,0.6)" },
+        "selected-hover":   { "background": "rgba(132,41,255,0.3)", "border": "1px solid rgba(132,41,255,0.6)" }
+      }
+    },
+    {
+      "id": "submit-button", "name": "Submit button", "family": "submit-button", "variant": "default",
+      "figmaNodeId": "580:2128", "element": "button", "cssClass": "uk-c-submit", "section": "manage-vaults",
+      "description": "Compact gradient submit for inline forms and modals, 80x33, radius 6.",
+      "size": { "width": 80, "height": 33 }, "radius": 6,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-submit\">Submit</button>",
+      "states": {
+        "default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF" },
+        "hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF" },
+        "disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5 }
+      }
+    },
+    {
+      "id": "close-button", "name": "Close (x)", "family": "close-button", "variant": "default",
+      "figmaNodeId": "580:2141", "element": "button", "cssClass": "uk-c-close", "section": "manage-vaults",
+      "description": "Dialog/panel dismiss control, 39px circular, hosting a 15px x mark. Fills on hover.",
+      "size": { "width": 39, "height": 39 }, "radius": 50,
+      "slot": { "icon": { "size": 15, "color": "#C9CED6" } },
+      "html": "<button class=\"uk-c-close\" aria-label=\"Close\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg></button>",
+      "states": {
+        "default": { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":   { "background": "#22272C", "border": "1px solid #45484D" }
+      }
+    },
+    {
+      "id": "external-link", "name": "External link icon", "family": "external-link", "variant": "default",
+      "figmaNodeId": "580:2106", "element": "a", "cssClass": "uk-c-extlink", "section": "manage-vaults",
+      "description": "15px open-in-new-tab affordance appended to addresses, docs and explorer links. Muted by default, purple on hover.",
+      "size": { "width": 15, "height": 15 },
+      "html": "<a class=\"uk-c-extlink\" href=\"#\" target=\"_blank\" rel=\"noopener\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/><polyline points=\"15 3 21 3 21 9\"/><line x1=\"10\" y1=\"14\" x2=\"21\" y2=\"3\"/></svg></a>",
+      "states": {
+        "default": { "color": "#9BA3AF" },
+        "hover":   { "color": "#8429FF" }
+      }
+    },
+    {
+      "id": "vault-row", "name": "Vaults table row", "family": "vault-row", "variant": "default",
+      "figmaNodeId": "580:2148", "element": "tr", "cssClass": "uk-c-vault-row", "figmaName": "Table hover", "section": "manage-vaults",
+      "description": "A row in the vaults table, 84px tall (reference width 1130). The defining spec is the hover overlay rgba(69,72,77,0.15) across the full row; cell content is representative.",
+      "size": { "width": 1130, "height": 84 },
+      "html": "<tr class=\"uk-c-vault-row\"><td>Vault</td><td>TVL</td><td>APY</td><td>Role</td><td>Action</td></tr>",
+      "states": {
+        "default": { "background": "transparent", "borderTop": "1px solid #1C2026" },
+        "hover":   { "background": "rgba(69,72,77,0.15)" }
+      }
     }
   ]
 }
