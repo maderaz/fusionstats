@@ -90,7 +90,7 @@ body::before {
   position: fixed; left: 0; top: 0; bottom: 0; width: 244px; z-index: 20;
   background: #FCFCFD;
   border-right: 1px solid var(--hairline);
-  display: flex; flex-direction: column; padding: 22px 16px;
+  display: flex; flex-direction: column; padding: 14px 9px; overflow: hidden;
 }
 .uk-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 2px; }
 .uk-brand svg { width: 26px; height: 26px; flex: none; }
@@ -100,22 +100,41 @@ body::before {
   font-family: var(--font-mono); font-size: 10px; color: var(--fg-faint);
   border: 1px solid var(--hairline-2); border-radius: 5px; padding: 1px 5px; margin-left: auto;
 }
-.uk-side-sub { color: var(--fg-faint); font-size: 11px; line-height: 1.45; padding: 10px 8px 16px; }
-.uk-side-label {
-  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--fg-faint); padding: 6px 8px;
+.uk-side-sub { color: var(--fg-faint); font-size: 10.5px; line-height: 1.4; padding: 4px 8px 10px; }
+
+/* dense, dev-friendly component tree (Storybook-style) */
+.uk-search { display: flex; align-items: center; gap: 7px; margin: 2px 4px 8px; padding: 6px 9px;
+  border: 1px solid var(--hairline-2); border-radius: 8px; background: var(--panel-2); }
+.uk-search .ico { width: 13px; height: 13px; color: var(--fg-faint); flex: none; }
+.uk-search input { border: 0; outline: 0; background: none; width: 100%; font-size: 12px; color: var(--fg); font-family: inherit; }
+.uk-search input::placeholder { color: var(--fg-faint); }
+
+.uk-tree { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.uk-tree::-webkit-scrollbar { width: 8px; }
+.uk-tree::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 8px; border: 2px solid var(--bg); }
+.uk-tree-group { display: flex; flex-direction: column; }
+.uk-tree-parent {
+  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+  padding: 5px 8px 5px 6px; border: 0; background: none; cursor: pointer; font-family: inherit;
+  font-size: 12px; font-weight: 600; color: var(--fg); border-radius: 6px; transition: background .12s;
 }
-.uk-menu { display: flex; flex-direction: column; gap: 2px; }
-.uk-menu a {
-  display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px;
-  color: var(--fg-dim); font-size: 13.5px; font-weight: 500;
-  transition: background .14s, color .14s;
+.uk-tree-parent:hover { background: rgba(10,12,20,0.04); }
+.uk-tree-parent .chev { width: 12px; height: 12px; color: var(--fg-faint); flex: none; transition: transform .15s; }
+.uk-tree-parent[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.uk-tree-parent .ico { width: 13px; height: 13px; color: var(--fg-faint); flex: none; }
+.uk-tree-parent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uk-tree-children { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 4px; position: relative; }
+.uk-tree-children::before { content: ""; position: absolute; left: 14px; top: 1px; bottom: 3px; width: 1px; background: var(--hairline); }
+.uk-tree-parent[aria-expanded="false"] + .uk-tree-children { display: none; }
+.uk-tree-leaf {
+  display: flex; align-items: center; gap: 7px; padding: 4px 8px 4px 26px; position: relative;
+  font-size: 12px; color: var(--fg-dim); border-radius: 6px; cursor: pointer; transition: background .12s, color .12s;
 }
-.uk-menu a:hover { color: var(--fg); background: rgba(10,12,20,0.04); }
-.uk-menu a.active { color: var(--accent); background: rgba(132,41,255,0.09); box-shadow: inset 0 0 0 1px rgba(132,41,255,0.22); }
-.uk-menu a .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; }
-.uk-menu a.active .dot { background: var(--accent); opacity: 1; }
-.uk-menu a .ct { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-faint); }
+.uk-tree-leaf span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uk-tree-leaf .ico { width: 11px; height: 11px; flex: none; opacity: .55; }
+.uk-tree-leaf:hover { background: rgba(10,12,20,0.04); color: var(--fg); }
+.uk-tree-leaf.active { background: rgba(132,41,255,0.10); color: var(--accent); font-weight: 600; }
+.uk-tree-leaf.active .ico { opacity: 1; }
 .uk-side-foot { margin-top: auto; padding: 14px 8px 2px; border-top: 1px solid var(--hairline); }
 .uk-side-foot a { color: var(--fg-dim); font-size: 11.5px; display: inline-flex; gap: 6px; align-items: center; }
 .uk-side-foot a:hover { color: var(--accent); }
@@ -395,12 +414,11 @@ body::before {
   </div>
   <div class="uk-side-sub">Canonical source of truth for Fusion UI elements — homepage, app &amp; prototypes.</div>
 
-  <div class="uk-side-label">Library</div>
-  <nav class="uk-menu" id="uk-menu">
-    <a href="#all"          data-filter="all"          class="active"><span class="dot"></span> All <span class="ct" id="ct-all"></span></a>
-    <a href="#button"       data-filter="button"><span class="dot"></span> Button <span class="ct" id="ct-button"></span></a>
-    <a href="#deposit-area" data-filter="deposit-area"><span class="dot"></span> Deposit Area <span class="ct" id="ct-deposit"></span></a>
-  </nav>
+  <div class="uk-search">
+    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input id="uk-filter" type="text" placeholder="Find a component…" autocomplete="off" spellcheck="false" aria-label="Find a component">
+  </div>
+  <nav class="uk-tree" id="uk-tree" aria-label="Component library"></nav>
 
   <button class="uk-aibox" onclick="ukCopyAgent(this)" aria-label="Copy AI agent instructions">
     <span class="ic">📋</span>
@@ -1013,46 +1031,95 @@ body::before {
   });
 })();
 
-/* ---- side-menu filtering (All / Button / Deposit Area) ---- */
+/* ---- dev-friendly component tree (Storybook-style) ----
+   Built from the DOM: every .uk-section becomes a collapsible group, every
+   .uk-component a leaf. New sections/components (e.g. Manage Vaults) show up
+   automatically — no sidebar edits needed. Click a leaf to scroll to it;
+   scroll-spy highlights whatever is in view; the search box filters leaves. */
 (function () {
-  var menu = document.getElementById('uk-menu');
-  var links = Array.prototype.slice.call(menu.querySelectorAll('a'));
-  var sections = Array.prototype.slice.call(document.querySelectorAll('.uk-section'));
+  var tree = document.getElementById('uk-tree');
+  if (!tree) return;
+  var sidebar = document.getElementById('uk-sidebar');
+  var scrim = document.getElementById('uk-scrim');
+  var slug = function (s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); };
+  var CH  = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  var GRP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/></svg>';
+  var CMP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 2.5l8.5 4.9v9.2L12 21.5 3.5 16.6V7.4z"/></svg>';
+  var leaves = [];
 
-  function apply(filter) {
-    sections.forEach(function (s) {
-      var sec = s.getAttribute('data-section');
-      // "foundations" is contextual — only in the "All" view.
-      var show = (filter === 'all') ? true : (sec === filter);
-      s.style.display = show ? '' : 'none';
+  function setActive(leaf) { leaves.forEach(function (o) { o.leaf.classList.toggle('active', o.leaf === leaf); }); }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.uk-section'), function (sec) {
+    var comps = sec.querySelectorAll('.uk-component');
+    if (!comps.length) return;
+    var h2 = sec.querySelector('h2');
+    var title = h2 ? h2.textContent.split('·')[0].trim() : (sec.getAttribute('data-section') || 'Section');
+
+    var group = document.createElement('div'); group.className = 'uk-tree-group';
+    var parent = document.createElement('button');
+    parent.className = 'uk-tree-parent'; parent.type = 'button'; parent.setAttribute('aria-expanded', 'true');
+    parent.innerHTML = CH + GRP + '<span>' + title + '</span>';
+    parent.addEventListener('click', function () {
+      parent.setAttribute('aria-expanded', parent.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
     });
-    links.forEach(function (a) { a.classList.toggle('active', a.getAttribute('data-filter') === filter); });
-  }
+    var kids = document.createElement('div'); kids.className = 'uk-tree-children';
 
-  function fromHash() {
-    var h = (location.hash || '#all').replace('#', '');
-    var valid = links.some(function (a) { return a.getAttribute('data-filter') === h; });
-    apply(valid ? h : 'all');
-  }
-
-  links.forEach(function (a) {
-    a.addEventListener('click', function () {
-      // let the hash change; also close the mobile drawer
-      document.getElementById('uk-sidebar').classList.remove('open');
-      document.getElementById('uk-scrim').classList.remove('open');
+    Array.prototype.forEach.call(comps, function (comp) {
+      var h3 = comp.querySelector('h3');
+      var name = h3 ? h3.textContent.trim() : (comp.id || 'Component');
+      if (!comp.id) comp.id = slug(name);
+      var leaf = document.createElement('a');
+      leaf.className = 'uk-tree-leaf'; leaf.href = '#' + comp.id; leaf.setAttribute('data-target', comp.id);
+      leaf.innerHTML = CMP + '<span>' + name + '</span>';
+      leaf.addEventListener('click', function (e) {
+        e.preventDefault();
+        comp.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (history.replaceState) history.replaceState(null, '', '#' + comp.id);
+        setActive(leaf);
+        if (sidebar) sidebar.classList.remove('open');
+        if (scrim) scrim.classList.remove('open');
+      });
+      kids.appendChild(leaf);
+      leaves.push({ leaf: leaf, comp: comp });
     });
+
+    group.appendChild(parent); group.appendChild(kids); tree.appendChild(group);
   });
-  window.addEventListener('hashchange', fromHash);
-  fromHash();
 
-  // component counts in the menu
-  var counts = { button: 0, deposit: 0 };
-  document.querySelectorAll('[data-component="button"], [data-component="icon"]').forEach(function () { counts.button++; });
-  document.querySelectorAll('[data-component="deposit-area"]').forEach(function () { counts.deposit++; });
-  var all = document.querySelectorAll('.uk-component[data-component]').length;
-  document.getElementById('ct-all').textContent = all;
-  document.getElementById('ct-button').textContent = counts.button;
-  document.getElementById('ct-deposit').textContent = counts.deposit;
+  // scroll-spy: highlight the component currently in view
+  if (window.IntersectionObserver && leaves.length) {
+    var byId = {}; leaves.forEach(function (o) { byId[o.comp.id] = o.leaf; });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { var l = byId[en.target.id]; if (l) setActive(l); } });
+    }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 });
+    leaves.forEach(function (o) { io.observe(o.comp); });
+  }
+
+  // search filter
+  var search = document.getElementById('uk-filter');
+  if (search) {
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      Array.prototype.forEach.call(document.querySelectorAll('.uk-tree-group'), function (g) {
+        var any = false;
+        Array.prototype.forEach.call(g.querySelectorAll('.uk-tree-leaf'), function (l) {
+          var hit = !q || l.textContent.toLowerCase().indexOf(q) !== -1;
+          l.style.display = hit ? '' : 'none'; if (hit) any = true;
+        });
+        g.style.display = any ? '' : 'none';
+        if (q) g.querySelector('.uk-tree-parent').setAttribute('aria-expanded', 'true');
+      });
+    });
+  }
+
+  // keep the hero "N components" chip accurate
+  var cc = document.getElementById('chip-count'); if (cc) cc.textContent = leaves.length;
+
+  // honor an incoming #hash on load
+  if (location.hash.length > 1) {
+    var t = document.getElementById(location.hash.slice(1));
+    if (t) setTimeout(function () { t.scrollIntoView({ block: 'start' }); }, 80);
+  }
 })();
 
 /* ---- copy-to-clipboard for usage snippets ---- */
