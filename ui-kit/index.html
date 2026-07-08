@@ -948,7 +948,7 @@ body::before {
             <div class="uk-menuicon-card" data-icon="custom-vault" data-figma="584:2254"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nm">Custom Vault</span></div>
             <div class="uk-menuicon-card" data-icon="vault-wrapper" data-figma="584:2253"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nm">Vault Wrapper</span></div>
             <div class="uk-menuicon-card" data-icon="price-feed" data-figma="584:2252"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nm">Price Feed</span></div>
-            <div class="uk-menuicon-card" data-icon="my-fusion-vaults" data-figma="584:2251"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="nm">My Fusion Vaults</span></div>
+            <div class="uk-menuicon-card" data-icon="my-fusion-vaults" data-figma="584:2251"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="3" height="3" rx="0.6" fill="currentColor" stroke="none"/><rect x="3" y="10.5" width="3" height="3" rx="0.6" fill="currentColor" stroke="none"/><rect x="3" y="16.5" width="3" height="3" rx="0.6" fill="currentColor" stroke="none"/><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/></svg><span class="nm">My Fusion Vaults</span></div>
           </div>
         </div>
         <div class="uk-menuicons-group">
@@ -1113,7 +1113,7 @@ body::before {
     <article class="uk-component" data-component="vault-image" data-variant="set" data-figma="580:2084" id="vault-images">
       <div class="uk-component__head">
         <div class="row"><h3>Vault images</h3><span class="uk-tag fig">580:2084</span><span class="uk-tag el">&lt;img&gt;</span></div>
-        <p class="uk-desc">Vault branding marks — 33 × 33, radius 6 — used in the picker, table and headers. Figma ships them as raster brand assets; these are representative inline coin marks (USDT · wstETH · stETH · USDC). Swap in your real token art in production.</p>
+        <p class="uk-desc">Vault branding marks — 33 × 33, radius 6 — used in the picker, table and headers. The Figma "Vault images" node (580:2084) ships <b style="color:var(--fg)">empty</b> branding placeholders, so these are faithful inline reproductions of each token's real brand logo (USDT · wstETH · stETH · USDC). Swap in your production token art if you have it.</p>
       </div>
       <div class="uk-stage">
         <div class="uk-vault-imgset">
@@ -1617,7 +1617,7 @@ body::before {
     {
       "id": "vault-images", "name": "Vault images", "family": "vault-image", "variant": "set",
       "figmaNodeId": "580:2084", "element": "img", "cssClass": "uk-vault-img", "section": "manage-vaults",
-      "description": "Vault branding marks, 33x33, radius 6, used in the picker, table and headers. Figma ships raster brand art; supply your own token icon. The page uses representative inline coin tiles.",
+      "description": "Vault branding marks, 33x33, radius 6, used in the picker, table and headers. The Figma node (580:2084) ships EMPTY branding placeholders (no token art in the file); the page uses faithful inline reproductions of each token's real brand logo. Supply your own production token art if you have it.",
       "size": { "width": 33, "height": 33 }, "radius": 6,
       "html": "<img class=\"uk-vault-img\" src=\"/tokens/usdc.svg\" alt=\"USDC\">",
       "items": [
@@ -1722,20 +1722,34 @@ body::before {
 })();
 
 /* Vault branding marks — injected into [data-token-icon="usdc|usdt|steth|wsteth"]
-   (Manage Vaults · Figma 580:2084). Figma ships the real brand art as raster
-   assets (nodes 580:2085/2087/2089/2091); these are representative, fully
-   inline coin tiles (rounded 6) so the kit needs no external fetch. */
+   (Manage Vaults). The Figma "Vault images" node (580:2084) ships EMPTY branding
+   placeholders — there is no token art in the file — so these are faithful,
+   fully inline reproductions of each token's real brand mark (rounded-6 tiles),
+   keeping the kit self-contained. Swap in your production token art if you have it. */
 (function () {
-  var tile = function (bg, sym, size) {
+  var wrap = function (fill, inner) {
     return '<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true">' +
-      '<rect width="32" height="32" rx="6" fill="' + bg + '"/>' +
-      '<text x="16" y="21.5" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="' + (size || 15) + '" fill="#fff">' + sym + '</text></svg>';
+      '<rect width="32" height="32" rx="6" fill="' + fill + '"/>' + inner + '</svg>';
   };
+  // Ethereum diamond (faceted) — shared by the Lido stETH / wstETH marks
+  var ETH =
+    '<path d="M16 5 22.4 16 16 19.9Z" fill="#fff" fill-opacity="0.95"/>' +
+    '<path d="M16 5 9.6 16 16 19.9Z" fill="#fff" fill-opacity="0.6"/>' +
+    '<path d="M16 21.1 22.4 17.2 16 27Z" fill="#fff" fill-opacity="0.95"/>' +
+    '<path d="M16 21.1 9.6 17.2 16 27Z" fill="#fff" fill-opacity="0.6"/>';
   var TOK = {
-    usdc:   tile('#2775CA', '$'),
-    usdt:   tile('#26A17B', 'T'),
-    steth:  tile('#00A3FF', 'Ξ'),
-    wsteth: tile('#3C5CB0', 'Ξ')
+    // USDC — Circle blue disc, white ring + $
+    usdc: wrap('#2775CA',
+      '<circle cx="16" cy="16" r="9.3" fill="none" stroke="#fff" stroke-width="1.5"/>' +
+      '<text x="16" y="20.4" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="12.5" fill="#fff">$</text>'),
+    // USDT — Tether green disc, white ₮ (top bar + stem + belly)
+    usdt: wrap('#26A17B',
+      '<path d="M8.5 9.2H23.5V12.2H17.5V21.7H14.5V12.2H8.5Z" fill="#fff"/>' +
+      '<ellipse cx="16" cy="13.3" rx="6.3" ry="2.3" fill="none" stroke="#fff" stroke-width="1.5"/>'),
+    // stETH — Lido blue disc, white ETH diamond
+    steth: wrap('#00A3FF', ETH),
+    // wstETH — wrapped: indigo disc, ETH diamond + wrap ring
+    wsteth: wrap('#1E51C9', '<circle cx="16" cy="16" r="12.4" fill="none" stroke="#fff" stroke-width="1" stroke-opacity="0.5"/>' + ETH)
   };
   Object.keys(TOK).forEach(function (k) {
     document.querySelectorAll('[data-token-icon="' + k + '"]').forEach(function (el) { el.innerHTML = TOK[k]; });
