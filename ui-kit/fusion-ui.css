@@ -1,0 +1,130 @@
+/* =====================================================================
+   fusion-ui.css — Fusion UI Kit, distributable component styles
+   ---------------------------------------------------------------------
+   The canonical stylesheet for IPOR Fusion UI elements. Copy this file
+   into your project (or @import / <link> it) and use the .uk-c-* classes
+   with a data-state attribute. This is a DESIGN artifact you reimplement
+   or vendor in — NOT a runtime library. There is no JS, no loader, no
+   custom element, no wallet/vault behavior. See ui-kit/manifest.json for
+   the machine-readable spec and per-component markup.
+
+   Fonts: components expect Poppins (UI) and Source Sans Pro / Source Sans 3
+   (numerics). Load them yourself, e.g.:
+     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+
+   States are driven by [data-state]: default | hover | disabled, plus
+   clicked | typing | typed for the deposit area. The default instance is
+   also live-interactive (real :hover), so in production you can omit
+   data-state and let the pseudo-classes drive it.
+
+   Source of truth: https://fusionecosystem.xyz/ui-kit  (Figma page "IPOR",
+   file uLFQVtx9kmqAyYWCk6KdzC).
+   ===================================================================== */
+
+:root {
+  /* brand */
+  --uk-purple:         #8429FF;
+  --uk-purple-deep:    #6C00FF;
+  --uk-grad:           linear-gradient(90deg, #8429FF 0%, #6C00FF 100%);
+  --uk-grad-hover:     linear-gradient(90deg, rgba(132,41,255,0.7) 0%, rgba(108,0,255,0.7) 100%);
+  /* neutrals */
+  --uk-border:         #45484D;   /* default control stroke */
+  --uk-hover-fill:     #22272C;   /* secondary / tertiary / icon hover bg */
+  --uk-field-bg:       #000000;   /* deposit field, default/focus */
+  --uk-field-bg-hover: #090E14;   /* deposit field, hover */
+  --uk-text-muted:     #9BA3AF;
+  --uk-text-muted-70:  rgba(155,163,175,0.7);
+  --uk-white-50:       rgba(255,255,255,0.5);
+  --uk-icons-surface:  #161A20;
+  --uk-icon-ink:       #C9CED6;
+  /* radii */
+  --uk-r-btn: 21.5px; --uk-r-arrow: 50px; --uk-r-field: 12px; --uk-r-max: 6px; --uk-r-icon: 50px;
+  /* type */
+  --uk-font:     'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --uk-font-num: 'Source Sans 3', 'Source Sans Pro', sans-serif;
+}
+
+/* Primary button — Figma 574:147 */
+.uk-c-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 310px; height: 43px; padding: 9px 20px 11px; border-radius: var(--uk-r-btn);
+  border: 1px solid var(--uk-purple); background: var(--uk-grad);
+  color: #fff; font-family: var(--uk-font); font-weight: 600; font-size: 15px;
+  cursor: pointer; overflow: hidden; transition: background .16s, opacity .16s;
+}
+.uk-c-primary[data-state="hover"], .uk-c-primary[data-state="default"]:hover, .uk-c-primary:not([data-state]):hover { background: var(--uk-grad-hover); }
+.uk-c-primary[data-state="disabled"], .uk-c-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Primary button w/ arrow — Figma 574:154 (radius 50) */
+.uk-c-primary-arrow { border-radius: var(--uk-r-arrow); gap: 8px; }
+.uk-c-primary-arrow svg { width: 11px; height: 11px; }
+
+/* Secondary button — Figma 574:133 */
+.uk-c-secondary {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 310px; height: 43px; padding: 9px 20px 11px; border-radius: var(--uk-r-btn);
+  border: 1px solid var(--uk-border); background: transparent;
+  color: #fff; font-family: var(--uk-font); font-weight: 400; font-size: 15px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-secondary[data-state="hover"], .uk-c-secondary[data-state="default"]:hover, .uk-c-secondary:not([data-state]):hover { background: var(--uk-hover-fill); }
+.uk-c-secondary[data-state="disabled"], .uk-c-secondary:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Tertiary button — Figma 574:140 */
+.uk-c-tertiary {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 129px; height: 34px; padding: 9px 16px 11px; border-radius: var(--uk-r-btn);
+  border: 1px solid var(--uk-border); background: transparent;
+  color: #fff; font-family: var(--uk-font); font-weight: 400; font-size: 13px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-tertiary[data-state="hover"], .uk-c-tertiary[data-state="default"]:hover, .uk-c-tertiary:not([data-state]):hover { background: var(--uk-hover-fill); }
+.uk-c-tertiary[data-state="disabled"], .uk-c-tertiary:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Icon button — Figma 574:167 */
+.uk-c-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 33px; height: 33px; border-radius: var(--uk-r-icon);
+  border: 1px solid var(--uk-border); background: transparent; color: var(--uk-icon-ink);
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-iconbtn svg { width: 20px; height: 20px; }
+.uk-c-iconbtn[data-state="hover"], .uk-c-iconbtn[data-state="default"]:hover, .uk-c-iconbtn:not([data-state]):hover { background: var(--uk-hover-fill); }
+.uk-c-iconbtn[data-state="disabled"], .uk-c-iconbtn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Raw icons — Figma 574:126 (draw with currentColor) */
+.uk-icon { width: 20px; height: 20px; color: var(--uk-icon-ink); display: block; }
+
+/* Deposit area (Typing area) — Figma 574:63 */
+.uk-c-deposit {
+  width: 310px; height: 128px; border-radius: var(--uk-r-field);
+  border: 1px solid var(--uk-border); background: var(--uk-field-bg);
+  padding: 12px 15px; display: flex; flex-direction: column; justify-content: space-between;
+  transition: background .16s, border-color .16s, opacity .16s;
+}
+.uk-c-deposit[data-state="hover"] { background: var(--uk-field-bg-hover); }
+.uk-c-deposit[data-state="clicked"], .uk-c-deposit[data-state="typing"] { border-color: var(--uk-purple); }
+.uk-c-deposit[data-state="disabled"] { opacity: .4; }
+.uk-dep-row { display: flex; align-items: center; justify-content: space-between; }
+.uk-dep-label { font-family: var(--uk-font); font-weight: 500; font-size: 13px; color: var(--uk-text-muted); }
+.uk-dep-balance { font-family: var(--uk-font); font-weight: 400; font-size: 12px; color: var(--uk-text-muted); }
+.uk-dep-balance b { font-family: var(--uk-font-num); font-weight: 400; font-size: 14px; color: var(--uk-text-muted); }
+.uk-dep-mid { display: flex; align-items: center; justify-content: space-between; }
+.uk-dep-value {
+  font-family: var(--uk-font-num); font-weight: 600; font-size: 30px; line-height: 1;
+  color: var(--uk-white-50); display: inline-flex; align-items: center;
+}
+.uk-c-deposit[data-state="typing"] .uk-dep-value, .uk-c-deposit[data-state="typed"] .uk-dep-value { color: #fff; }
+.uk-caret {
+  width: 2px; height: 30px; background: var(--uk-purple); border-radius: 1px; margin: 0 1px;
+  animation: uk-blink 1.05s steps(1) infinite;
+}
+@keyframes uk-blink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }
+.uk-dep-token { width: 26px; height: 26px; flex: none; }  /* host any 26px token icon */
+.uk-dep-fiat { font-family: var(--uk-font-num); font-weight: 400; font-size: 15px; color: var(--uk-text-muted-70); }
+.uk-dep-max {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--uk-border); border-radius: var(--uk-r-max);
+  padding: 3px 9px; font-family: var(--uk-font); font-weight: 400; font-size: 12px; color: var(--uk-text-muted);
+  background: transparent; cursor: pointer;
+}

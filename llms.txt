@@ -1,0 +1,43 @@
+# Fusion — IPOR
+
+> Fusion is IPOR's onchain vault dashboard (fusionecosystem.xyz) and the home of the Fusion UI Kit, the team's design system. This file tells AI agents how to consume our resources correctly and without guessing.
+
+## Fusion UI Kit (design system)
+
+- Human reference page: https://fusionecosystem.xyz/ui-kit
+- Machine-readable spec (canonical): https://fusionecosystem.xyz/ui-kit/manifest.json
+- Stylesheet: https://fusionecosystem.xyz/ui-kit/fusion-ui.css
+
+### How to consume it — read this before building anything
+
+The UI Kit is a **design specification you reimplement** in your target stack
+(HTML/CSS, React, Astro, …). It is **not a runtime component library**.
+
+- There is **no** loader `<script>`, **no** custom element (e.g. `<fusion-deposit>`),
+  **no** `init()` / mount API, and **no** embed endpoint. Do not look for one.
+- **Nothing** here goes into your site's CSP, and you should **not** load assets
+  from `fusionecosystem.xyz` at runtime.
+- The deposit area is **presentational only** — it has no input handling,
+  wallet-connect, or vault/chain config. Wire real behavior yourself.
+
+To build a component: read `manifest.json` for the design tokens and each
+component's states + copy-paste `html`, and `<link>`/copy `fusion-ui.css` for
+the styles. Classes are prefixed `.uk-c-*` and driven by a `data-state`
+attribute (`default | hover | disabled`, plus `clicked | typing | typed` for
+the deposit area).
+
+### If fusionecosystem.xyz is blocked by your network policy
+
+The proxy denial you may hit (`connect_rejected … fusionecosystem.xyz:443`) is a
+network-allowlist policy, not bot protection — spoofing a User-Agent will not
+help. Fetch the identical files from GitHub raw (the host this project already
+uses for its live data), or read them from the repo:
+
+- https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/ui-kit/manifest.json
+- https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/ui-kit/fusion-ui.css
+
+## Components
+
+Primary / Secondary / Tertiary buttons, Primary-with-arrow, Icon button, Icons
+(X, Discord, Wallet), and the Deposit Area. Full per-state specs and markup are
+in `manifest.json`.

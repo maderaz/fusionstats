@@ -147,6 +147,12 @@ body::before {
 .uk-attr-table th { color: var(--fg-faint); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
 .uk-attr-table td:first-child { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; }
 .uk-attr-table td { color: var(--fg-dim); }
+.uk-consume { margin: 4px 0 2px; padding: 13px 15px; border: 1px solid rgba(132,41,255,0.35); background: rgba(132,41,255,0.07); border-radius: 11px; font-size: 13px; color: var(--fg-dim); line-height: 1.55; }
+.uk-consume b { color: var(--fg); font-weight: 600; }
+.uk-consume .files { display: block; margin-top: 9px; }
+.uk-consume .files a { color: var(--accent); font-family: var(--font-mono); font-size: 12px; }
+.uk-consume .files a:hover { text-decoration: underline; }
+.uk-consume .files span { color: var(--fg-faint); margin: 0 6px; }
 
 /* section + component scaffolding */
 .uk-section { margin-bottom: 14px; }
@@ -400,6 +406,10 @@ body::before {
       <span class="hint">click to collapse</span>
     </summary>
     <div class="body">
+      <div class="uk-consume">
+        <b>How to consume this kit:</b> it is a <b>design spec you reimplement</b> in your own stack — <b>not</b> a runtime component library. There is no loader script, custom element (<code>&lt;fusion-deposit&gt;</code>), <code>init()</code>, or embed endpoint, and nothing to add to your CSP. Don't load assets from this domain at runtime; build from the spec, or vendor in the standalone files:
+        <span class="files"><a href="/ui-kit/manifest.json">/ui-kit/manifest.json</a><span>·</span><a href="/ui-kit/fusion-ui.css">/ui-kit/fusion-ui.css</a><span>·</span><a href="/llms.txt">/llms.txt</a></span>
+      </div>
       <p>This page is engineered to be crawled. Read whichever surface suits you:</p>
       <ul>
         <li><b>Fast path — parse the JSON.</b> The complete spec (tokens + every component, variant &amp; state) is embedded as <code>&lt;script type="application/json" id="fusion-ui-kit"&gt;</code> at the bottom of the document. One fetch → full data relay.</li>
@@ -786,6 +796,23 @@ body::before {
   "purpose": "Canonical source of truth for IPOR Fusion UI elements across homepage, app and prototypes.",
   "updated": "2026-07-08",
   "source": { "tool": "Figma", "fileKey": "uLFQVtx9kmqAyYWCk6KdzC", "page": "IPOR" },
+  "consumption": {
+    "model": "reimplement",
+    "runtimeLibrary": false,
+    "summary": "This is a DESIGN SPECIFICATION to reimplement (or vendor in) in your target stack — HTML/CSS, React, Astro, etc. It is NOT a runtime component library.",
+    "doNot": [
+      "Do NOT expect a loader script tag, a custom element (e.g. fusion-deposit), an init() function, or any embed/mount API — none exist.",
+      "Do NOT add fusionecosystem.xyz to your site's CSP or load assets from it at runtime.",
+      "Do NOT treat the deposit area as a functional widget — it is presentational only (no input handling, wallet-connect, or vault/chain config)."
+    ]
+  },
+  "distribution": {
+    "page":     "https://fusionecosystem.xyz/ui-kit",
+    "manifest": "https://fusionecosystem.xyz/ui-kit/manifest.json",
+    "css":      "https://fusionecosystem.xyz/ui-kit/fusion-ui.css",
+    "llms":     "https://fusionecosystem.xyz/llms.txt",
+    "canonicalFile": "ui-kit/manifest.json"
+  },
   "domSchema": {
     "article[data-component]": "component family",
     "article[data-variant]": "variant within the family",
