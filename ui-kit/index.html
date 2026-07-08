@@ -335,6 +335,143 @@ body::before {
 .uk-anatomy .a { font-size: 11.5px; color: var(--fg-dim); display: inline-flex; gap: 7px; align-items: baseline; }
 .uk-anatomy .a i { font-style: normal; font-family: var(--font-mono); font-size: 10px; color: #fff; background: rgba(132,41,255,0.4); border: 1px solid rgba(132,41,255,0.5); border-radius: 4px; padding: 0 5px; }
 
+/* ============================================================
+   MANAGE VAULTS  ·  Figma "IPOR" nodes 580:* (faithful to Figma)
+   The vault-management surface: nav menu icons + items, the vault
+   picker, search, role badges, a vaults table row, and the small
+   action controls (Manage/Submit/Close/External-link).
+   New literal tokens seen only here:
+     #808080  search placeholder ink
+     rgba(34,39,44,0.5)   menu/select "clicked/selected" fill (= #22272C @50%)
+     rgba(69,72,77,0.6)   role hover fill (= #45484D @60%)
+     rgba(69,72,77,0.15)  table-row hover fill
+     rgba(132,41,255,0.6) role "selected" stroke · rgba(132,41,255,0.3) fill
+   ============================================================ */
+
+/* Menu icons — Figma 580:1971 (18×18, currentColor) */
+.uk-menuicon { width: 18px; height: 18px; color: var(--uk-text-muted); display: block; }
+.uk-menuicons-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; width: 100%; }
+.uk-menuicon-card { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--hairline); border-radius: 10px; background: #0B0F14; }
+.uk-menuicon-card .nm { font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-dim); }
+
+/* Menu item, hover & selection — Figma 580:2111 (250×38, radius 10) */
+.uk-c-menu-item {
+  display: inline-flex; align-items: center; gap: 10px;
+  width: 250px; height: 38px; padding: 7px 9px; border-radius: 10px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: var(--font); font-weight: 400; font-size: 15px; color: var(--uk-text-muted);
+  transition: background .16s, color .16s;
+}
+.uk-c-menu-item svg { width: 18px; height: 18px; flex: none; }
+.uk-c-menu-item[data-state="hover"], .uk-c-menu-item[data-state="default"]:hover { background: var(--uk-hover-fill); color: #fff; }
+.uk-c-menu-item[data-state="selected"] { background: rgba(34,39,44,0.5); color: #fff; font-weight: 500; }
+.uk-c-menu-item[data-state="disabled"] { color: var(--uk-text-muted); opacity: .4; cursor: not-allowed; }
+
+/* Select vault to manage — Figma 580:2000 (250×41, radius 10) */
+.uk-c-vault-select {
+  display: inline-flex; align-items: center; gap: 9px;
+  width: 250px; height: 41px; padding: 0 9px; border-radius: 10px;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: var(--font); font-weight: 400; font-size: 15px; color: var(--uk-text-muted);
+  transition: background .16s, color .16s;
+}
+.uk-c-vault-select[data-state="hover"], .uk-c-vault-select[data-state="selected-hover"], .uk-c-vault-select[data-state="default"]:hover { background: var(--uk-hover-fill); }
+.uk-c-vault-select[data-state="clicked"], .uk-c-vault-select[data-state="selected-clicked"] { background: rgba(34,39,44,0.5); }
+.uk-c-vault-select[data-state="hover"], .uk-c-vault-select[data-state="clicked"] { color: #fff; }
+.uk-c-vault-select[data-state="clicked"] { font-weight: 500; }
+.uk-c-vault-select[data-state^="selected"] { color: #fff; font-weight: 500; }
+.uk-vs-ph { width: 25px; height: 25px; flex: none; border-radius: 6px; border: 1px solid var(--uk-border); display: inline-flex; align-items: center; justify-content: center; color: var(--uk-text-muted); }
+.uk-vs-ph svg { width: 13px; height: 13px; }
+.uk-vs-img { width: 28px; height: 28px; flex: none; border-radius: 6px; }
+.uk-vs-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uk-vs-replace { width: 15px; height: 15px; flex: none; color: var(--uk-text-muted); }
+
+/* Vault selection (Manage) button — Figma 580:2034 (110×43, radius 21.5) */
+.uk-c-manage-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  width: 110px; height: 43px; border-radius: 21.5px;
+  border: 1px solid var(--uk-purple); background: var(--uk-grad);
+  color: #fff; font-family: var(--font); font-weight: 600; font-size: 15px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-manage-btn svg { width: 10px; height: 10px; flex: none; }
+.uk-c-manage-btn[data-state="hover"], .uk-c-manage-btn[data-state="edit-hover"], .uk-c-manage-btn[data-state="default"]:hover { background: var(--uk-grad-hover); }
+.uk-c-manage-btn[data-state="disabled"], .uk-c-manage-btn[data-state="edit-disabled"], .uk-c-manage-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Vault images (token branding) — Figma 580:2084 (33×33, radius 6) */
+.uk-vault-imgset { display: flex; gap: 13px; align-items: center; flex-wrap: wrap; }
+.uk-vault-img { width: 33px; height: 33px; border-radius: 6px; flex: none; display: block; }
+.uk-vault-img-card { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.uk-vault-img-card .nm { font-family: var(--font-mono); font-size: 10px; color: var(--fg-dim); }
+
+/* Search field — Figma 580:2059 (521×45, radius 10) */
+.uk-c-search {
+  display: inline-flex; align-items: center; gap: 11px;
+  width: 521px; max-width: 100%; height: 45px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--uk-border); background: #000;
+  transition: background .16s, border-color .16s;
+}
+.uk-c-search .uk-search-ic { width: 14px; height: 14px; flex: none; color: var(--uk-purple); }
+.uk-c-search .uk-search-text { flex: 1; font-family: var(--font); font-weight: 400; font-size: 15px; color: #fff; display: inline-flex; align-items: center; }
+.uk-c-search .uk-search-text.ph { color: #808080; }
+.uk-c-search[data-state="hover"] { background: var(--uk-field-bg-hover); }
+.uk-c-search[data-state="clicked"], .uk-c-search[data-state="typing"] { border-color: var(--uk-purple); }
+.uk-c-search .uk-search-clear { width: 14px; height: 14px; flex: none; color: var(--uk-text-muted); background: none; border: none; cursor: pointer; padding: 0; display: none; }
+.uk-c-search[data-state="typed"] .uk-search-clear { display: inline-flex; }
+.uk-caret.sm { height: 18px; }
+
+/* Role badge — Figma 580:2093 (h26, radius 21.5) */
+.uk-c-role {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 26px; padding: 0 10px; border-radius: 21.5px;
+  border: 1px solid var(--uk-border); background: transparent;
+  font-family: var(--font); font-weight: 400; font-size: 13px; color: #fff;
+  cursor: default; transition: background .16s, border-color .16s;
+}
+.uk-c-role svg { width: 10px; height: 10px; flex: none; }
+.uk-c-role[data-state="hover"], .uk-c-role[data-state="default"]:hover { background: rgba(69,72,77,0.6); }
+.uk-c-role[data-state="selected-default"] { border-color: rgba(132,41,255,0.6); background: transparent; }
+.uk-c-role[data-state="selected-hover"] { border-color: rgba(132,41,255,0.6); background: rgba(132,41,255,0.3); }
+
+/* Submit button — Figma 580:2128 (80×33, radius 6) */
+.uk-c-submit {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 80px; height: 33px; border-radius: 6px;
+  border: 1px solid var(--uk-purple); background: var(--uk-grad);
+  color: #fff; font-family: var(--font); font-weight: 600; font-size: 15px;
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-submit[data-state="hover"], .uk-c-submit[data-state="default"]:hover { background: var(--uk-grad-hover); }
+.uk-c-submit[data-state="disabled"], .uk-c-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Close (x) button — Figma 580:2141 (39×39, circular) */
+.uk-c-close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 39px; height: 39px; border-radius: 50%;
+  border: 1px solid var(--uk-border); background: transparent; color: var(--uk-icon-ink);
+  cursor: pointer; transition: background .16s, opacity .16s;
+}
+.uk-c-close svg { width: 15px; height: 15px; }
+.uk-c-close[data-state="hover"], .uk-c-close[data-state="default"]:hover { background: var(--uk-hover-fill); }
+
+/* External link icon — Figma 580:2106 (15×15) */
+.uk-c-extlink { display: inline-flex; width: 15px; height: 15px; padding: 0; border: none; background: none; color: var(--uk-text-muted); cursor: pointer; transition: color .16s; }
+.uk-c-extlink svg { width: 15px; height: 15px; }
+.uk-c-extlink[data-state="hover"], .uk-c-extlink[data-state="default"]:hover { color: var(--uk-purple); }
+
+/* Vaults table row — Figma 580:2148 (row 84px; hover overlay) */
+.uk-vault-table { width: 100%; border-collapse: collapse; font-family: var(--font); }
+.uk-vault-table thead th { text-align: left; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-faint); font-weight: 600; padding: 0 18px 12px; }
+.uk-vault-table thead th:last-child { text-align: right; }
+.uk-c-vault-row { height: 84px; border-top: 1px solid var(--hairline); transition: background .16s; }
+.uk-c-vault-row[data-state="hover"], .uk-c-vault-row[data-state="default"]:hover { background: rgba(69,72,77,0.15); }
+.uk-c-vault-row td { padding: 0 18px; vertical-align: middle; color: var(--fg); font-size: 13.5px; }
+.uk-c-vault-row td:last-child { text-align: right; }
+.uk-vault-cell { display: flex; align-items: center; gap: 11px; }
+.uk-vault-cell .nm { font-weight: 500; }
+.uk-vault-cell .sub { font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); }
+.uk-num { font-family: var(--font-num); font-size: 15px; color: var(--fg); }
+
 /* ===================== responsive ===================== */
 .uk-hamb { display: none; }
 @media (max-width: 880px) {
@@ -374,6 +511,7 @@ body::before {
     <a href="#all"          data-filter="all"          class="active"><span class="dot"></span> All <span class="ct" id="ct-all"></span></a>
     <a href="#button"       data-filter="button"><span class="dot"></span> Button <span class="ct" id="ct-button"></span></a>
     <a href="#deposit-area" data-filter="deposit-area"><span class="dot"></span> Deposit Area <span class="ct" id="ct-deposit"></span></a>
+    <a href="#manage-vaults" data-filter="manage-vaults"><span class="dot"></span> Manage Vaults <span class="ct" id="ct-manage"></span></a>
   </nav>
 
   <div class="uk-side-foot">
@@ -393,7 +531,7 @@ body::before {
     <div class="uk-meta-row">
       <span class="uk-chip"><span class="g"></span> Source of truth</span>
       <span class="uk-chip">Figma file <b class="mono">uLFQVtx9kmqAyYWCk6KdzC</b> · page <b>IPOR</b></span>
-      <span class="uk-chip"><b id="chip-count">7</b>&nbsp;components</span>
+      <span class="uk-chip"><b id="chip-count">18</b>&nbsp;components</span>
       <span class="uk-chip">Updated <b>2026-07-08</b></span>
     </div>
   </header>
@@ -779,6 +917,448 @@ body::before {
     </article>
   </section>
 
+  <!-- =================================================================
+       MANAGE VAULTS
+       ================================================================= -->
+  <section class="uk-section" data-section="manage-vaults">
+    <h2>Manage Vaults</h2>
+
+    <!-- Menu icons -->
+    <article class="uk-component" data-component="menu-icon" data-variant="set" data-figma="580:1971" id="menu-icons">
+      <div class="uk-component__head">
+        <div class="row"><h3>Menu icons</h3><span class="uk-tag fig">580:1971</span><span class="uk-tag el">&lt;svg&gt;</span></div>
+        <p class="uk-desc">The 18-icon set for the vault-management left menu. Each is 18 × 18 and drawn with <code style="font-family:var(--font-mono);color:var(--accent)">currentColor</code> so it inherits the menu item's text color. Recreated inline (Figma ships them as raster assets); glyphs match each item's meaning.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-menuicons-grid">
+          <div class="uk-menuicon-card" data-icon="general-settings" data-figma="580:1985"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 10 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nm">General Settings</span></div>
+          <div class="uk-menuicon-card" data-icon="access-manager" data-figma="580:1984"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nm">Access Manager</span></div>
+          <div class="uk-menuicon-card" data-icon="fees" data-figma="580:1983"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg><span class="nm">Fees</span></div>
+          <div class="uk-menuicon-card" data-icon="emergency" data-figma="580:1982"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="nm">Emergency</span></div>
+          <div class="uk-menuicon-card" data-icon="vault-wizard" data-figma="580:1981"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M18.5 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span class="nm">Vault Wizard</span></div>
+          <div class="uk-menuicon-card" data-icon="create" data-figma="580:1978"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="nm">Create</span></div>
+          <div class="uk-menuicon-card" data-icon="docs" data-figma="580:1979"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="nm">Docs</span></div>
+          <div class="uk-menuicon-card" data-icon="video" data-figma="580:1980"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" stroke="none"/></svg><span class="nm">Video</span></div>
+          <div class="uk-menuicon-card" data-icon="branding" data-figma="580:1972"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6 2 11.5S6 21 11 21c1 0 1.6-.8 1.6-1.6 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H15c3.3 0 6-2.5 6-5.9C21 5.4 17 2 12 2z"/><circle cx="7.5" cy="11.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11.5" r="1.2" fill="currentColor" stroke="none"/></svg><span class="nm">Branding</span></div>
+          <div class="uk-menuicon-card" data-icon="alpha" data-figma="580:1974"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 10.3-2"/><circle cx="18" cy="16.5" r="2.4"/><path d="M18 12.9v1.2M18 18.9v1.2M21.1 16.5h-1.2M16.1 16.5h-1.2"/></svg><span class="nm">Alpha</span></div>
+          <div class="uk-menuicon-card" data-icon="allocation" data-figma="580:1976"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.2 15.9A10 10 0 1 1 8 2.8"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg><span class="nm">Allocation</span></div>
+          <div class="uk-menuicon-card" data-icon="my-fusion-vaults" data-figma="580:1986"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="nm">My Fusion Vaults</span></div>
+          <div class="uk-menuicon-card" data-icon="integrations" data-figma="580:1988"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/><path d="M13 7h4a3 3 0 0 1 3 3v1M11 17H7a3 3 0 0 1-3-3v-1"/></svg><span class="nm">Integrations</span></div>
+          <div class="uk-menuicon-card" data-icon="scheduled-ops" data-figma="580:1990"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><path d="M12 12.5v3l2 1"/></svg><span class="nm">Scheduled Ops</span></div>
+          <div class="uk-menuicon-card" data-icon="withdrawals" data-figma="580:1992"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="nm">Withdrawals</span></div>
+          <div class="uk-menuicon-card" data-icon="price-oracle" data-figma="580:1994"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg><span class="nm">Price Oracle</span></div>
+          <div class="uk-menuicon-card" data-icon="prehooks" data-figma="580:1996"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><line x1="12" y1="7" x2="12" y2="20"/><path d="M5 12a7 7 0 0 0 14 0"/><line x1="3" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="21" y2="12"/></svg><span class="nm">Prehooks</span></div>
+          <div class="uk-menuicon-card" data-icon="context-manager" data-figma="580:1998"><svg class="uk-menuicon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="2.5"/></svg><span class="nm">Context Manager</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Count</td><td>18 icons</td></tr>
+            <tr><td>Size</td><td>18 × 18</td></tr>
+            <tr><td>Color</td><td>currentColor · <span class="uk-sw" style="background:#9BA3AF"></span>#9BA3AF</td></tr>
+            <tr><td>Stroke</td><td>1.8 · round</td></tr>
+            <tr><td>Provenance</td><td>580:1972 … 580:1998</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;svg</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-menuicon"</span> <span class="tok-attr">viewBox</span>=<span class="tok-str">"0 0 24 24"</span> <span class="tok-attr">stroke</span>=<span class="tok-str">"currentColor"</span><span class="tok-tag">&gt;</span> <span class="tok-attr">…</span> <span class="tok-tag">&lt;/svg&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- Menu item -->
+    <article class="uk-component" data-component="menu-item" data-variant="default" data-figma="580:2111" id="menu-item">
+      <div class="uk-component__head">
+        <div class="row"><h3>Menu item</h3><span class="uk-tag fig">580:2111</span><span class="uk-tag el">&lt;button&gt;</span></div>
+        <p class="uk-desc">A row in the vault-management left menu (Figma "Menu hover and selection"). 250 × 38, radius 10, a 18px leading icon + label. Four states: default, hover, selected (persistent), disabled.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state" data-state="default"><button class="uk-c-menu-item" data-state="default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 10 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Menu text</button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state" data-state="hover"><button class="uk-c-menu-item" data-state="hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 10 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Menu text</button><span class="uk-state__label">Hover</span></div>
+          <div class="uk-state" data-state="selected"><button class="uk-c-menu-item" data-state="selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 10 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Menu text</button><span class="uk-state__label">Selected</span></div>
+          <div class="uk-state" data-state="disabled"><button class="uk-c-menu-item" data-state="disabled" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09A1.65 1.65 0 0 0 10 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Menu text</button><span class="uk-state__label">Disabled</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>State matrix</h4>
+          <table>
+            <tr><td>default</td><td>transparent · text <span class="uk-sw" style="background:#9BA3AF"></span>#9BA3AF</td></tr>
+            <tr><td>hover</td><td><span class="uk-sw" style="background:#22272C"></span>#22272C · text #FFF</td></tr>
+            <tr><td>selected</td><td>#22272C @ 50% · #FFF · Medium</td></tr>
+            <tr><td>disabled</td><td>text #9BA3AF · opacity 0.4</td></tr>
+          </table>
+        </div>
+        <div class="uk-spec">
+          <h4>Frame</h4>
+          <table>
+            <tr><td>Size</td><td>250 × 38</td></tr>
+            <tr><td>Radius</td><td>10px</td></tr>
+            <tr><td>Padding</td><td>7 × 9</td></tr>
+            <tr><td>Gap</td><td>10px</td></tr>
+            <tr><td>Icon</td><td>18 × 18</td></tr>
+            <tr><td>Text</td><td>Poppins 400/500 · 15</td></tr>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <!-- Select vault to manage -->
+    <article class="uk-component" data-component="vault-select" data-variant="default" data-figma="580:2000" id="vault-select">
+      <div class="uk-component__head">
+        <div class="row"><h3>Select vault to manage</h3><span class="uk-tag fig">580:2000</span><span class="uk-tag el">&lt;button&gt;</span></div>
+        <p class="uk-desc">The vault picker (250 × 41, radius 10). Empty states show a placeholder icon + "Select Vault"; the "Vault Selected" states show the chosen vault's branding image, its name, and a trailing replace/swap control. Six states in total.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states" style="gap:16px 34px">
+          <div class="uk-state" data-state="default"><button class="uk-c-vault-select" data-state="default"><span class="uk-vs-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="uk-vs-label">Select Vault</span></button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state" data-state="hover"><button class="uk-c-vault-select" data-state="hover"><span class="uk-vs-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="uk-vs-label">Select Vault</span></button><span class="uk-state__label">Hover</span></div>
+          <div class="uk-state" data-state="clicked"><button class="uk-c-vault-select" data-state="clicked"><span class="uk-vs-ph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="uk-vs-label">Select Vault</span></button><span class="uk-state__label">Clicked</span></div>
+          <div class="uk-state" data-state="selected-default"><button class="uk-c-vault-select" data-state="selected-default"><span class="uk-vs-img" data-token-icon="usdc"></span><span class="uk-vs-label">IPOR USDC Prime</span><svg class="uk-vs-replace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button><span class="uk-state__label">Vault selected · default</span></div>
+          <div class="uk-state" data-state="selected-hover"><button class="uk-c-vault-select" data-state="selected-hover"><span class="uk-vs-img" data-token-icon="usdc"></span><span class="uk-vs-label">IPOR USDC Prime</span><svg class="uk-vs-replace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button><span class="uk-state__label">Vault selected · hover</span></div>
+          <div class="uk-state" data-state="selected-clicked"><button class="uk-c-vault-select" data-state="selected-clicked"><span class="uk-vs-img" data-token-icon="usdc"></span><span class="uk-vs-label">IPOR USDC Prime</span><svg class="uk-vs-replace" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button><span class="uk-state__label">Vault selected · clicked</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>State matrix</h4>
+          <table>
+            <tr><td>default</td><td>transparent · placeholder + "Select Vault" <span class="uk-sw" style="background:#9BA3AF"></span>#9BA3AF</td></tr>
+            <tr><td>hover</td><td><span class="uk-sw" style="background:#22272C"></span>#22272C · text #FFF</td></tr>
+            <tr><td>clicked</td><td>#22272C @ 50% · #FFF Medium</td></tr>
+            <tr><td>selected · default</td><td>transparent · vault image + name #FFF</td></tr>
+            <tr><td>selected · hover</td><td>#22272C</td></tr>
+            <tr><td>selected · clicked</td><td>#22272C @ 50%</td></tr>
+          </table>
+        </div>
+        <div class="uk-spec">
+          <h4>Frame</h4>
+          <table>
+            <tr><td>Size</td><td>250 × 41</td></tr>
+            <tr><td>Radius</td><td>10px</td></tr>
+            <tr><td>Placeholder</td><td>25px · 1px #45484D</td></tr>
+            <tr><td>Vault image</td><td>28px · radius 6</td></tr>
+            <tr><td>Replace icon</td><td>15px · #9BA3AF</td></tr>
+            <tr><td>Text</td><td>Poppins 400/500 · 15</td></tr>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <!-- Vault selection (Manage) button -->
+    <article class="uk-component" data-component="vault-action-button" data-variant="manage" data-figma="580:2034" id="vault-action-button">
+      <div class="uk-component__head">
+        <div class="row"><h3>Vault selection button</h3><span class="uk-tag fig">580:2034</span><span class="uk-tag el">&lt;button&gt;</span></div>
+        <p class="uk-desc">The per-vault primary action (110 × 43, radius 21.5) — a compact gradient button. Two label modes: "Manage" (→ "No Access" when locked) and an "Edit" mode carrying a 10px pencil. Each mode has default / hover / disabled.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state" data-state="default"><button class="uk-c-manage-btn" data-state="default">Manage</button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state" data-state="hover"><button class="uk-c-manage-btn" data-state="hover">Manage</button><span class="uk-state__label">Hover</span></div>
+          <div class="uk-state" data-state="disabled"><button class="uk-c-manage-btn" data-state="disabled" disabled>No Access</button><span class="uk-state__label">Disabled · No Access</span></div>
+          <div class="uk-state" data-state="edit-default"><button class="uk-c-manage-btn" data-state="edit-default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit</button><span class="uk-state__label">Edit · default</span></div>
+          <div class="uk-state" data-state="edit-hover"><button class="uk-c-manage-btn" data-state="edit-hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit</button><span class="uk-state__label">Edit · hover</span></div>
+          <div class="uk-state" data-state="edit-disabled"><button class="uk-c-manage-btn" data-state="edit-disabled" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Edit</button><span class="uk-state__label">Edit · disabled</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Size</td><td>110 × 43</td></tr>
+            <tr><td>Radius</td><td>21.5px</td></tr>
+            <tr><td>Fill · default</td><td><span class="uk-sw" style="background:linear-gradient(90deg,#8429FF,#6C00FF)"></span>#8429FF → #6C00FF</td></tr>
+            <tr><td>Fill · hover</td><td>gradient @ 70% α</td></tr>
+            <tr><td>Border</td><td><span class="uk-sw" style="background:#8429FF"></span>1px #8429FF</td></tr>
+            <tr><td>Disabled</td><td>opacity 0.5</td></tr>
+            <tr><td>Edit icon</td><td>pencil · 10px · gap 6</td></tr>
+            <tr><td>Text</td><td>Poppins 600 · 15 · #FFF</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;button</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-c-manage-btn"</span><span class="tok-tag">&gt;</span><span class="tok-txt">Manage</span><span class="tok-tag">&lt;/button&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- Vault images -->
+    <article class="uk-component" data-component="vault-image" data-variant="set" data-figma="580:2084" id="vault-images">
+      <div class="uk-component__head">
+        <div class="row"><h3>Vault images</h3><span class="uk-tag fig">580:2084</span><span class="uk-tag el">&lt;img&gt;</span></div>
+        <p class="uk-desc">Vault branding marks — 33 × 33, radius 6 — used in the picker, table and headers. Figma ships them as raster brand assets; these are representative inline coin marks (USDT · wstETH · stETH · USDC). Swap in your real token art in production.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-vault-imgset">
+          <div class="uk-vault-img-card"><span class="uk-vault-img" data-token-icon="usdt"></span><span class="nm">USDT</span></div>
+          <div class="uk-vault-img-card"><span class="uk-vault-img" data-token-icon="wsteth"></span><span class="nm">wstETH</span></div>
+          <div class="uk-vault-img-card"><span class="uk-vault-img" data-token-icon="steth"></span><span class="nm">stETH</span></div>
+          <div class="uk-vault-img-card"><span class="uk-vault-img" data-token-icon="usdc"></span><span class="nm">USDC</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Size</td><td>33 × 33</td></tr>
+            <tr><td>Radius</td><td>6px</td></tr>
+            <tr><td>Assets</td><td>USDT · wstETH · stETH · USDC</td></tr>
+            <tr><td>Nodes</td><td>580:2085 · 2087 · 2089 · 2091</td></tr>
+            <tr><td>Note</td><td>consumer-provided art</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;img</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-vault-img"</span> <span class="tok-attr">src</span>=<span class="tok-str">"/tokens/usdc.svg"</span> <span class="tok-attr">alt</span>=<span class="tok-str">"USDC"</span><span class="tok-tag">&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- Search field -->
+    <article class="uk-component" data-component="search-field" data-variant="default" data-figma="580:2059" id="search-field">
+      <div class="uk-component__head">
+        <div class="row"><h3>Search field</h3><span class="uk-tag fig">580:2059</span><span class="uk-tag el">input group</span></div>
+        <p class="uk-desc">Vault search input (521 × 45, radius 10) with a purple leading magnifier. Five states across the entry lifecycle: resting, hover, focus (Clicked), Typing, and a committed value (Typed) that exposes a clear (×) control. Focus turns the stroke purple.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states" style="gap:16px 30px">
+          <div class="uk-state" data-state="default">
+            <div class="uk-c-search" data-state="default"><svg class="uk-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="uk-search-text ph">Search vaults</span></div>
+            <span class="uk-state__label">Default</span>
+          </div>
+          <div class="uk-state" data-state="hover">
+            <div class="uk-c-search" data-state="hover"><svg class="uk-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="uk-search-text ph">Search vaults</span></div>
+            <span class="uk-state__label">Hover</span>
+          </div>
+          <div class="uk-state" data-state="clicked">
+            <div class="uk-c-search" data-state="clicked"><svg class="uk-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="uk-search-text ph"><span class="uk-caret sm"></span>Search vaults</span></div>
+            <span class="uk-state__label">Clicked · focused</span>
+          </div>
+          <div class="uk-state" data-state="typing">
+            <div class="uk-c-search" data-state="typing"><svg class="uk-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="uk-search-text">IPOR USDC<span class="uk-caret sm"></span></span></div>
+            <span class="uk-state__label">Typing</span>
+          </div>
+          <div class="uk-state" data-state="typed">
+            <div class="uk-c-search" data-state="typed"><svg class="uk-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span class="uk-search-text">IPOR USDC</span><button class="uk-search-clear" aria-label="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+            <span class="uk-state__label">Typed · committed</span>
+          </div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>State matrix</h4>
+          <table>
+            <tr><td>default</td><td><span class="uk-sw" style="background:#000"></span>#000 · <span class="uk-sw" style="background:#45484D"></span>#45484D · ph <span class="uk-sw" style="background:#808080"></span>#808080</td></tr>
+            <tr><td>hover</td><td><span class="uk-sw" style="background:#090E14"></span>#090E14 · #45484D</td></tr>
+            <tr><td>clicked</td><td>#000 · <span class="uk-sw" style="background:#8429FF"></span>#8429FF · caret</td></tr>
+            <tr><td>typing</td><td>#000 · #8429FF · value #FFF · caret</td></tr>
+            <tr><td>typed</td><td>#000 · #45484D · value #FFF · clear ×</td></tr>
+          </table>
+        </div>
+        <div class="uk-spec">
+          <h4>Frame</h4>
+          <table>
+            <tr><td>Size</td><td>521 × 45</td></tr>
+            <tr><td>Radius</td><td>10px</td></tr>
+            <tr><td>Padding</td><td>0 × 14</td></tr>
+            <tr><td>Search icon</td><td>14px · <span class="uk-sw" style="background:#8429FF"></span>#8429FF</td></tr>
+            <tr><td>Text</td><td>Poppins 400 · 15</td></tr>
+            <tr><td>Caret</td><td>2px #8429FF (focus)</td></tr>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <!-- Role badge -->
+    <article class="uk-component" data-component="role-badge" data-variant="default" data-figma="580:2093" id="role-badge">
+      <div class="uk-component__head">
+        <div class="row"><h3>Role</h3><span class="uk-tag fig">580:2093</span><span class="uk-tag el">&lt;span&gt;</span></div>
+        <p class="uk-desc">A permission/role tag (h26, radius 21.5) with a 10px info icon and label (e.g. "Owner"). Neutral by default; the "For selected vault" variant uses the brand purple to mark the role that applies to the active vault. Two lifecycle states each.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state" data-state="default"><span class="uk-c-role" data-state="default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Owner</span><span class="uk-state__label">Default</span></div>
+          <div class="uk-state" data-state="hover"><span class="uk-c-role" data-state="hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Owner</span><span class="uk-state__label">Hover</span></div>
+          <div class="uk-state" data-state="selected-default"><span class="uk-c-role" data-state="selected-default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Owner</span><span class="uk-state__label">For selected vault · default</span></div>
+          <div class="uk-state" data-state="selected-hover"><span class="uk-c-role" data-state="selected-hover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Owner</span><span class="uk-state__label">For selected vault · hover</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>State matrix</h4>
+          <table>
+            <tr><td>default</td><td>transparent · <span class="uk-sw" style="background:#45484D"></span>1px #45484D</td></tr>
+            <tr><td>hover</td><td><span class="uk-sw" style="background:rgba(69,72,77,0.6)"></span>#45484D @ 60% fill</td></tr>
+            <tr><td>selected · default</td><td>transparent · <span class="uk-sw" style="background:#8429FF"></span>#8429FF @ 60% stroke</td></tr>
+            <tr><td>selected · hover</td><td><span class="uk-sw" style="background:rgba(132,41,255,0.3)"></span>#8429FF @ 30% fill</td></tr>
+          </table>
+        </div>
+        <div class="uk-spec">
+          <h4>Frame</h4>
+          <table>
+            <tr><td>Height</td><td>26px</td></tr>
+            <tr><td>Radius</td><td>21.5px</td></tr>
+            <tr><td>Padding</td><td>8/9 × 10</td></tr>
+            <tr><td>Gap</td><td>6px</td></tr>
+            <tr><td>Info icon</td><td>10px</td></tr>
+            <tr><td>Text</td><td>Poppins 400 · 13 · #FFF</td></tr>
+          </table>
+        </div>
+      </div>
+    </article>
+
+    <!-- Submit button -->
+    <article class="uk-component" data-component="submit-button" data-variant="default" data-figma="580:2128" id="submit-button">
+      <div class="uk-component__head">
+        <div class="row"><h3>Submit button</h3><span class="uk-tag fig">580:2128</span><span class="uk-tag el">&lt;button&gt;</span></div>
+        <p class="uk-desc">A compact gradient submit for inline forms and modals (80 × 33, radius 6). Same gradient treatment as the primary button at a small square radius. Default / hover / disabled.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state" data-state="default"><button class="uk-c-submit" data-state="default">Submit</button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state" data-state="hover"><button class="uk-c-submit" data-state="hover">Submit</button><span class="uk-state__label">Hover</span></div>
+          <div class="uk-state" data-state="disabled"><button class="uk-c-submit" data-state="disabled" disabled>Submit</button><span class="uk-state__label">Disabled</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Size</td><td>80 × 33</td></tr>
+            <tr><td>Radius</td><td>6px</td></tr>
+            <tr><td>Fill · default</td><td><span class="uk-sw" style="background:linear-gradient(90deg,#8429FF,#6C00FF)"></span>#8429FF → #6C00FF</td></tr>
+            <tr><td>Fill · hover</td><td>gradient @ 70% α</td></tr>
+            <tr><td>Border</td><td><span class="uk-sw" style="background:#8429FF"></span>1px #8429FF</td></tr>
+            <tr><td>Disabled</td><td>opacity 0.5</td></tr>
+            <tr><td>Text</td><td>Poppins 600 · 15 · #FFF</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;button</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-c-submit"</span><span class="tok-tag">&gt;</span><span class="tok-txt">Submit</span><span class="tok-tag">&lt;/button&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- Close (x) button -->
+    <article class="uk-component" data-component="close-button" data-variant="default" data-figma="580:2141" id="close-button">
+      <div class="uk-component__head">
+        <div class="row"><h3>Close (x)</h3><span class="uk-tag fig">580:2141</span><span class="uk-tag el">&lt;button&gt;</span></div>
+        <p class="uk-desc">The dialog/panel dismiss control — a 39px circular button hosting a 15px × mark. Fills on hover, matching the icon-button treatment at a larger size.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state center" data-state="default"><button class="uk-c-close" data-state="default" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state center" data-state="hover"><button class="uk-c-close" data-state="hover" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><span class="uk-state__label">Hover</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Size</td><td>39 × 39</td></tr>
+            <tr><td>Radius</td><td>50% (circular)</td></tr>
+            <tr><td>Icon</td><td>15px × · <span class="uk-sw" style="background:#C9CED6"></span>#C9CED6</td></tr>
+            <tr><td>Fill · hover</td><td><span class="uk-sw" style="background:#22272C"></span>#22272C</td></tr>
+            <tr><td>Border</td><td><span class="uk-sw" style="background:#45484D"></span>1px #45484D</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;button</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-c-close"</span> <span class="tok-attr">aria-label</span>=<span class="tok-str">"Close"</span><span class="tok-tag">&gt;</span> <span class="tok-attr">…×…</span> <span class="tok-tag">&lt;/button&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- External link icon -->
+    <article class="uk-component" data-component="external-link" data-variant="default" data-figma="580:2106" id="external-link">
+      <div class="uk-component__head">
+        <div class="row"><h3>External link icon</h3><span class="uk-tag fig">580:2106</span><span class="uk-tag el">&lt;a&gt;</span></div>
+        <p class="uk-desc">A 15px "open in new tab" affordance appended to addresses, docs and explorer links. Muted by default, purple on hover.</p>
+      </div>
+      <div class="uk-stage">
+        <div class="uk-states">
+          <div class="uk-state center" data-state="default"><button class="uk-c-extlink" data-state="default" aria-label="Open external link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button><span class="uk-state__label">Default</span></div>
+          <div class="uk-state center" data-state="hover"><button class="uk-c-extlink" data-state="hover" aria-label="Open external link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></button><span class="uk-state__label">Hover</span></div>
+        </div>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>Specification</h4>
+          <table>
+            <tr><td>Size</td><td>15 × 15</td></tr>
+            <tr><td>Color · default</td><td><span class="uk-sw" style="background:#9BA3AF"></span>#9BA3AF</td></tr>
+            <tr><td>Color · hover</td><td><span class="uk-sw" style="background:#8429FF"></span>#8429FF</td></tr>
+            <tr><td>Stroke</td><td>2 · round</td></tr>
+          </table>
+        </div>
+        <div class="uk-code">
+          <h4>Usage</h4>
+          <button class="uk-copy" onclick="ukCopy(this)">Copy</button>
+          <pre><code><span class="tok-tag">&lt;a</span> <span class="tok-attr">class</span>=<span class="tok-str">"uk-c-extlink"</span> <span class="tok-attr">href</span>=<span class="tok-str">"…"</span> <span class="tok-attr">target</span>=<span class="tok-str">"_blank"</span><span class="tok-tag">&gt;</span> <span class="tok-attr">…</span> <span class="tok-tag">&lt;/a&gt;</span></code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- Vaults table row -->
+    <article class="uk-component" data-component="vault-row" data-variant="default" data-figma="580:2148" id="vault-row">
+      <div class="uk-component__head">
+        <div class="row"><h3>Vaults table row</h3><span class="uk-tag fig">580:2148</span><span class="uk-tag el">&lt;tr&gt;</span></div>
+        <p class="uk-desc">A row in the vaults table (84px tall). The defining spec is the hover treatment: a <b style="color:var(--fg)">rgba(69,72,77,0.15)</b> overlay across the full row. Cell content below is representative — it composes the vault image, role badge and Manage button from this section.</p>
+      </div>
+      <div class="uk-stage" style="padding:16px">
+        <table class="uk-vault-table">
+          <thead>
+            <tr><th>Vault</th><th>TVL</th><th>APY</th><th>Role</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr class="uk-c-vault-row" data-state="default">
+              <td><div class="uk-vault-cell"><span class="uk-vault-img" data-token-icon="usdc"></span><div><div class="nm">IPOR USDC Prime</div><div class="sub">0x0b45…aaf3</div></div></div></td>
+              <td><span class="uk-num">$12.4M</span></td>
+              <td><span class="uk-num">8.21%</span></td>
+              <td><span class="uk-c-role" data-state="selected-default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Owner</span></td>
+              <td><button class="uk-c-manage-btn" data-state="default">Manage</button></td>
+            </tr>
+            <tr class="uk-c-vault-row" data-state="hover">
+              <td><div class="uk-vault-cell"><span class="uk-vault-img" data-token-icon="steth"></span><div><div class="nm">IPOR stETH</div><div class="sub">0x7872…aa97</div></div></div></td>
+              <td><span class="uk-num">$6.9M</span></td>
+              <td><span class="uk-num">3.74%</span></td>
+              <td><span class="uk-c-role" data-state="default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Guardian</span></td>
+              <td><button class="uk-c-manage-btn" data-state="default">Manage</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="uk-details">
+        <div class="uk-spec">
+          <h4>State matrix</h4>
+          <table>
+            <tr><td>default</td><td>transparent · 1px top <span class="uk-sw" style="background:#1C2026"></span>hairline</td></tr>
+            <tr><td>hover</td><td><span class="uk-sw" style="background:rgba(69,72,77,0.15)"></span>rgba(69,72,77,0.15) overlay</td></tr>
+          </table>
+        </div>
+        <div class="uk-spec">
+          <h4>Frame</h4>
+          <table>
+            <tr><td>Row height</td><td>84px</td></tr>
+            <tr><td>Reference width</td><td>1130px</td></tr>
+            <tr><td>Cell padding</td><td>0 × 18</td></tr>
+            <tr><td>Content</td><td>representative</td></tr>
+          </table>
+        </div>
+      </div>
+    </article>
+  </section>
+
   <p style="color:var(--fg-faint);font-size:11.5px;margin-top:40px;text-align:center">
     Fusion UI Kit · faithful build of Figma page “IPOR” · icons drawn inline as standard brand marks (source vectors: Figma 574:126) · not linked in the main navigation.
   </p>
@@ -945,6 +1525,164 @@ body::before {
         "typed":    { "background": "#000000", "border": "1px solid #45484D", "amount": "0.545", "amountColor": "#FFFFFF", "caret": false },
         "disabled": { "background": "#000000", "border": "1px solid #45484D", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "opacity": 0.4 }
       }
+    },
+    {
+      "id": "menu-icons", "name": "Menu icons", "family": "menu-icon", "variant": "set",
+      "figmaNodeId": "580:1971", "element": "svg", "cssClass": "uk-menuicon", "section": "manage-vaults",
+      "description": "18-icon set for the vault-management left menu, 18x18, drawn with currentColor. Recreated inline as standard line icons (Figma ships them as raster assets).",
+      "size": { "width": 18, "height": 18 },
+      "html": "<svg class=\"uk-menuicon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"16\"/><line x1=\"8\" y1=\"12\" x2=\"16\" y2=\"12\"/></svg>",
+      "items": [
+        { "name": "General Settings", "figmaNodeId": "580:1985" },
+        { "name": "Access Manager",   "figmaNodeId": "580:1984" },
+        { "name": "Fees",             "figmaNodeId": "580:1983" },
+        { "name": "Emergency",        "figmaNodeId": "580:1982" },
+        { "name": "Vault Wizard",     "figmaNodeId": "580:1981" },
+        { "name": "Create",           "figmaNodeId": "580:1978" },
+        { "name": "Docs",             "figmaNodeId": "580:1979" },
+        { "name": "Video",            "figmaNodeId": "580:1980" },
+        { "name": "Branding",         "figmaNodeId": "580:1972" },
+        { "name": "Alpha",            "figmaNodeId": "580:1974" },
+        { "name": "Allocation",       "figmaNodeId": "580:1976" },
+        { "name": "My Fusion Vaults", "figmaNodeId": "580:1986" },
+        { "name": "Integrations",     "figmaNodeId": "580:1988" },
+        { "name": "Scheduled Ops",    "figmaNodeId": "580:1990" },
+        { "name": "Withdrawals",      "figmaNodeId": "580:1992" },
+        { "name": "Price Oracle",     "figmaNodeId": "580:1994" },
+        { "name": "Prehooks",         "figmaNodeId": "580:1996" },
+        { "name": "Context Manager",  "figmaNodeId": "580:1998" }
+      ]
+    },
+    {
+      "id": "menu-item", "name": "Menu item", "family": "menu-item", "variant": "default",
+      "figmaNodeId": "580:2111", "element": "button", "cssClass": "uk-c-menu-item", "figmaName": "Menu hover and selection", "section": "manage-vaults",
+      "description": "A row in the vault-management left menu; 250x38, radius 10, leading 18px icon + label.",
+      "size": { "width": 250, "height": 38 }, "radius": 10, "padding": { "y": 7, "x": 9 },
+      "html": "<button class=\"uk-c-menu-item\" data-state=\"selected\"><svg class=\"uk-menuicon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"><circle cx=\"12\" cy=\"12\" r=\"9\"/></svg>Menu text</button>",
+      "states": {
+        "default":  { "background": "transparent", "color": "#9BA3AF" },
+        "hover":    { "background": "#22272C", "color": "#FFFFFF" },
+        "selected": { "background": "rgba(34,39,44,0.5)", "color": "#FFFFFF", "weight": 500 },
+        "disabled": { "background": "transparent", "color": "#9BA3AF", "opacity": 0.4 }
+      }
+    },
+    {
+      "id": "vault-select", "name": "Select vault to manage", "family": "vault-select", "variant": "default",
+      "figmaNodeId": "580:2000", "element": "button", "cssClass": "uk-c-vault-select", "section": "manage-vaults",
+      "description": "Vault picker, 250x41, radius 10. Empty states show a placeholder + 'Select Vault'; 'Vault Selected' states show the vault image, name and a trailing replace control.",
+      "size": { "width": 250, "height": 41 }, "radius": 10,
+      "html": "<button class=\"uk-c-vault-select\" data-state=\"selected-default\"><img class=\"uk-vs-img\" src=\"/tokens/usdc.svg\" alt=\"\"><span class=\"uk-vs-label\">IPOR USDC Prime</span><svg class=\"uk-vs-replace\" viewBox=\"0 0 24 24\"></svg></button>",
+      "states": {
+        "default":          { "background": "transparent", "color": "#9BA3AF", "content": "placeholder + 'Select Vault'" },
+        "hover":            { "background": "#22272C", "color": "#FFFFFF" },
+        "clicked":          { "background": "rgba(34,39,44,0.5)", "color": "#FFFFFF", "weight": 500 },
+        "selected-default": { "background": "transparent", "color": "#FFFFFF", "content": "vault image + name + replace icon" },
+        "selected-hover":   { "background": "#22272C" },
+        "selected-clicked": { "background": "rgba(34,39,44,0.5)" }
+      }
+    },
+    {
+      "id": "vault-action-button", "name": "Vault selection button", "family": "vault-action-button", "variant": "manage",
+      "figmaNodeId": "580:2034", "element": "button", "cssClass": "uk-c-manage-btn", "section": "manage-vaults",
+      "description": "Per-vault primary action, 110x43, radius 21.5. Label modes: Manage / No Access (locked) and Edit (with a 10px pencil).",
+      "size": { "width": 110, "height": 43 }, "radius": 21.5,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-manage-btn\">Manage</button>",
+      "states": {
+        "default":       { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF", "label": "Manage" },
+        "hover":         { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF", "label": "Manage" },
+        "disabled":      { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5, "label": "No Access" },
+        "edit-default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF", "label": "Edit", "icon": "pencil 10px" },
+        "edit-hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "label": "Edit" },
+        "edit-disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5, "label": "Edit" }
+      }
+    },
+    {
+      "id": "vault-images", "name": "Vault images", "family": "vault-image", "variant": "set",
+      "figmaNodeId": "580:2084", "element": "img", "cssClass": "uk-vault-img", "section": "manage-vaults",
+      "description": "Vault branding marks, 33x33, radius 6, used in the picker, table and headers. Figma ships raster brand art; supply your own token icon. The page uses representative inline coin tiles.",
+      "size": { "width": 33, "height": 33 }, "radius": 6,
+      "html": "<img class=\"uk-vault-img\" src=\"/tokens/usdc.svg\" alt=\"USDC\">",
+      "items": [
+        { "name": "USDT",   "figmaNodeId": "580:2085" },
+        { "name": "wstETH", "figmaNodeId": "580:2087" },
+        { "name": "stETH",  "figmaNodeId": "580:2089" },
+        { "name": "USDC",   "figmaNodeId": "580:2091" }
+      ]
+    },
+    {
+      "id": "search-field", "name": "Search field", "family": "search-field", "variant": "default",
+      "figmaNodeId": "580:2059", "element": "input-group", "cssClass": "uk-c-search", "section": "manage-vaults",
+      "description": "Vault search input, 521x45, radius 10, with a purple leading magnifier. Five states; focus turns the stroke purple; Typed exposes a clear (x) control.",
+      "size": { "width": 521, "height": 45 }, "radius": 10,
+      "html": "<div class=\"uk-c-search\" data-state=\"typed\"><svg class=\"uk-search-ic\" viewBox=\"0 0 24 24\"></svg><span class=\"uk-search-text\">IPOR USDC</span><button class=\"uk-search-clear\" aria-label=\"Clear\"></button></div>",
+      "states": {
+        "default": { "background": "#000000", "border": "1px solid #45484D", "placeholder": "#808080", "text": "Search vaults" },
+        "hover":   { "background": "#090E14", "border": "1px solid #45484D" },
+        "clicked": { "background": "#000000", "border": "1px solid #8429FF", "caret": "leading" },
+        "typing":  { "background": "#000000", "border": "1px solid #8429FF", "text": "IPOR USDC", "textColor": "#FFFFFF", "caret": "trailing" },
+        "typed":   { "background": "#000000", "border": "1px solid #45484D", "text": "IPOR USDC", "textColor": "#FFFFFF", "clear": true }
+      }
+    },
+    {
+      "id": "role-badge", "name": "Role", "family": "role-badge", "variant": "default",
+      "figmaNodeId": "580:2093", "element": "span", "cssClass": "uk-c-role", "section": "manage-vaults",
+      "description": "Permission/role tag, h26, radius 21.5, with a 10px info icon and label (e.g. Owner). The 'For selected vault' variant uses the brand purple.",
+      "size": { "height": 26 }, "radius": 21.5, "padding": { "y": 8, "x": 10 },
+      "html": "<span class=\"uk-c-role\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><line x1=\"12\" y1=\"16\" x2=\"12\" y2=\"12\"/><line x1=\"12\" y1=\"8\" x2=\"12.01\" y2=\"8\"/></svg>Owner</span>",
+      "states": {
+        "default":          { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":            { "background": "rgba(69,72,77,0.6)", "border": "1px solid #45484D" },
+        "selected-default": { "background": "transparent", "border": "1px solid rgba(132,41,255,0.6)" },
+        "selected-hover":   { "background": "rgba(132,41,255,0.3)", "border": "1px solid rgba(132,41,255,0.6)" }
+      }
+    },
+    {
+      "id": "submit-button", "name": "Submit button", "family": "submit-button", "variant": "default",
+      "figmaNodeId": "580:2128", "element": "button", "cssClass": "uk-c-submit", "section": "manage-vaults",
+      "description": "Compact gradient submit for inline forms and modals, 80x33, radius 6.",
+      "size": { "width": 80, "height": 33 }, "radius": 6,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-submit\">Submit</button>",
+      "states": {
+        "default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF" },
+        "hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF" },
+        "disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5 }
+      }
+    },
+    {
+      "id": "close-button", "name": "Close (x)", "family": "close-button", "variant": "default",
+      "figmaNodeId": "580:2141", "element": "button", "cssClass": "uk-c-close", "section": "manage-vaults",
+      "description": "Dialog/panel dismiss control, 39px circular, hosting a 15px x mark. Fills on hover.",
+      "size": { "width": 39, "height": 39 }, "radius": 50,
+      "slot": { "icon": { "size": 15, "color": "#C9CED6" } },
+      "html": "<button class=\"uk-c-close\" aria-label=\"Close\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"/><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"/></svg></button>",
+      "states": {
+        "default": { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":   { "background": "#22272C", "border": "1px solid #45484D" }
+      }
+    },
+    {
+      "id": "external-link", "name": "External link icon", "family": "external-link", "variant": "default",
+      "figmaNodeId": "580:2106", "element": "a", "cssClass": "uk-c-extlink", "section": "manage-vaults",
+      "description": "15px open-in-new-tab affordance appended to addresses, docs and explorer links. Muted by default, purple on hover.",
+      "size": { "width": 15, "height": 15 },
+      "html": "<a class=\"uk-c-extlink\" href=\"#\" target=\"_blank\" rel=\"noopener\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\"/><polyline points=\"15 3 21 3 21 9\"/><line x1=\"10\" y1=\"14\" x2=\"21\" y2=\"3\"/></svg></a>",
+      "states": {
+        "default": { "color": "#9BA3AF" },
+        "hover":   { "color": "#8429FF" }
+      }
+    },
+    {
+      "id": "vault-row", "name": "Vaults table row", "family": "vault-row", "variant": "default",
+      "figmaNodeId": "580:2148", "element": "tr", "cssClass": "uk-c-vault-row", "figmaName": "Table hover", "section": "manage-vaults",
+      "description": "A row in the vaults table, 84px tall (reference width 1130). The defining spec is the hover overlay rgba(69,72,77,0.15) across the full row; cell content is representative.",
+      "size": { "width": 1130, "height": 84 },
+      "html": "<tr class=\"uk-c-vault-row\"><td>Vault</td><td>TVL</td><td>APY</td><td>Role</td><td>Action</td></tr>",
+      "states": {
+        "default": { "background": "transparent", "borderTop": "1px solid #1C2026" },
+        "hover":   { "background": "rgba(69,72,77,0.15)" }
+      }
     }
   ]
 }
@@ -964,6 +1702,27 @@ body::before {
     '<path fill="#fff" fill-opacity="0.35" d="M16 20.9 9.2 16.05 16 13.35 22.8 16.05Z"/>' +
     '</svg>';
   document.querySelectorAll('[data-token-icon="cbeth"]').forEach(function (el) { el.innerHTML = CBETH; });
+})();
+
+/* Vault branding marks — injected into [data-token-icon="usdc|usdt|steth|wsteth"]
+   (Manage Vaults · Figma 580:2084). Figma ships the real brand art as raster
+   assets (nodes 580:2085/2087/2089/2091); these are representative, fully
+   inline coin tiles (rounded 6) so the kit needs no external fetch. */
+(function () {
+  var tile = function (bg, sym, size) {
+    return '<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true">' +
+      '<rect width="32" height="32" rx="6" fill="' + bg + '"/>' +
+      '<text x="16" y="21.5" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="' + (size || 15) + '" fill="#fff">' + sym + '</text></svg>';
+  };
+  var TOK = {
+    usdc:   tile('#2775CA', '$'),
+    usdt:   tile('#26A17B', 'T'),
+    steth:  tile('#00A3FF', 'Ξ'),
+    wsteth: tile('#3C5CB0', 'Ξ')
+  };
+  Object.keys(TOK).forEach(function (k) {
+    document.querySelectorAll('[data-token-icon="' + k + '"]').forEach(function (el) { el.innerHTML = TOK[k]; });
+  });
 })();
 
 /* ---- build the Foundations colour swatches from the manifest ----
@@ -1026,10 +1785,13 @@ body::before {
   var counts = { button: 0, deposit: 0 };
   document.querySelectorAll('[data-component="button"], [data-component="icon"]').forEach(function () { counts.button++; });
   document.querySelectorAll('[data-component="deposit-area"]').forEach(function () { counts.deposit++; });
+  var manage = document.querySelectorAll('[data-section="manage-vaults"] .uk-component[data-component]').length;
   var all = document.querySelectorAll('.uk-component[data-component]').length;
   document.getElementById('ct-all').textContent = all;
   document.getElementById('ct-button').textContent = counts.button;
   document.getElementById('ct-deposit').textContent = counts.deposit;
+  var ctm = document.getElementById('ct-manage'); if (ctm) ctm.textContent = manage;
+  var chip = document.getElementById('chip-count'); if (chip) chip.textContent = all;
 })();
 
 /* ---- copy-to-clipboard for usage snippets ---- */
