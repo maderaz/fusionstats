@@ -1,0 +1,180 @@
+{
+  "$schema": "https://fusion.ipor.io/ui-kit/schema/v1",
+  "name": "Fusion UI Kit",
+  "version": "1.0.0",
+  "purpose": "Canonical source of truth for IPOR Fusion UI elements across homepage, app and prototypes.",
+  "updated": "2026-07-08",
+  "source": { "tool": "Figma", "fileKey": "uLFQVtx9kmqAyYWCk6KdzC", "page": "IPOR" },
+
+  "consumption": {
+    "model": "reimplement",
+    "runtimeLibrary": false,
+    "summary": "This is a DESIGN SPECIFICATION to reimplement (or vendor in) in your target stack — HTML/CSS, React, Astro, etc. It is NOT a runtime component library.",
+    "doNot": [
+      "Do NOT expect a loader <script>, a custom element (e.g. <fusion-deposit>), an init() function, or any embed/mount API — none exist.",
+      "Do NOT add fusionecosystem.xyz to your site's CSP or load assets from it at runtime.",
+      "Do NOT treat the deposit area as a functional widget — it is presentational only (no input handling, wallet-connect, or vault/chain config)."
+    ],
+    "howTo": [
+      "Read `tokens` for colors, gradients, radii and typography.",
+      "For each component read `states` for the exact per-state visual spec and `html` for copy-paste markup.",
+      "Copy or <link> fusion-ui.css for the styles (classes are prefixed .uk-c-*, driven by a data-state attribute).",
+      "Provide your own 26px token icon and wire real behavior (input, MAX, wallet) in your app — the kit only defines appearance."
+    ]
+  },
+
+  "distribution": {
+    "page":     "https://fusionecosystem.xyz/ui-kit",
+    "manifest": "https://fusionecosystem.xyz/ui-kit/manifest.json",
+    "css":      "https://fusionecosystem.xyz/ui-kit/fusion-ui.css",
+    "llms":     "https://fusionecosystem.xyz/llms.txt",
+    "rawFallback": {
+      "note": "If fusionecosystem.xyz is blocked by your environment's network allowlist, fetch the identical files from GitHub raw (the host this project already uses for live data).",
+      "manifest": "https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/ui-kit/manifest.json",
+      "css":      "https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/ui-kit/fusion-ui.css"
+    }
+  },
+
+  "domSchema": {
+    "article[data-component]": "component family",
+    "article[data-variant]": "variant within the family",
+    "article[data-figma]": "source Figma node id",
+    "[data-state]": "the state a rendered instance shows",
+    "[data-token]": "design-token name a value maps to"
+  },
+
+  "tokens": {
+    "color": {
+      "purple":        "#8429FF",
+      "purpleDeep":    "#6C00FF",
+      "border":        "#45484D",
+      "hoverFill":     "#22272C",
+      "fieldBg":       "#000000",
+      "fieldBgHover":  "#090E14",
+      "textMuted":     "#9BA3AF",
+      "textMuted70":   "rgba(155,163,175,0.7)",
+      "white50":       "rgba(255,255,255,0.5)",
+      "iconsSurface":  "#161A20",
+      "iconInk":       "#C9CED6"
+    },
+    "gradient": {
+      "primary":       "linear-gradient(90deg, #8429FF 0%, #6C00FF 100%)",
+      "primaryHover":  "linear-gradient(90deg, rgba(132,41,255,0.7) 0%, rgba(108,0,255,0.7) 100%)"
+    },
+    "radius": { "btn": 21.5, "arrow": 50, "field": 12, "max": 6, "icon": 50 },
+    "typography": {
+      "family":  { "ui": "Poppins", "numeric": "Source Sans Pro" },
+      "primaryLabel":   { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "secondaryLabel": { "family": "Poppins", "weight": 400, "size": 15, "color": "#FFFFFF" },
+      "tertiaryLabel":  { "family": "Poppins", "weight": 400, "size": 13, "color": "#FFFFFF" },
+      "fieldLabel":     { "family": "Poppins", "weight": 500, "size": 13, "color": "#9BA3AF" },
+      "amount":         { "family": "Source Sans Pro", "weight": 600, "size": 30 },
+      "fiat":           { "family": "Source Sans Pro", "weight": 400, "size": 15, "color": "rgba(155,163,175,0.7)" },
+      "max":            { "family": "Poppins", "weight": 400, "size": 12, "color": "#9BA3AF" }
+    }
+  },
+
+  "components": [
+    {
+      "id": "button-primary", "name": "Primary Button", "family": "button", "variant": "primary",
+      "figmaNodeId": "574:147", "element": "button", "cssClass": "uk-c-primary",
+      "description": "Primary call-to-action. Gradient fill with matching stroke.",
+      "size": { "width": 310, "height": 43 }, "radius": 21.5,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-primary\">Primary</button>",
+      "states": {
+        "default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF" },
+        "hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF" },
+        "disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5 }
+      }
+    },
+    {
+      "id": "button-primary-arrow", "name": "Primary Button with arrow", "family": "button", "variant": "primary-arrow",
+      "figmaNodeId": "574:154", "element": "button", "cssClass": "uk-c-primary uk-c-primary-arrow",
+      "description": "Primary CTA with a trailing arrow for flow-advancing actions.",
+      "size": { "width": 310, "height": 43 }, "radius": 50,
+      "typography": { "family": "Poppins", "weight": 600, "size": 15, "color": "#FFFFFF" },
+      "icon": { "name": "arrow", "size": 10, "gap": 8 },
+      "html": "<button class=\"uk-c-primary uk-c-primary-arrow\">Primary with arrow <svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "states": {
+        "default":  { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "border": "1px solid #8429FF" },
+        "hover":    { "background": "linear-gradient(90deg,rgba(132,41,255,0.7),rgba(108,0,255,0.7))", "border": "1px solid #8429FF" },
+        "disabled": { "background": "linear-gradient(90deg,#8429FF,#6C00FF)", "opacity": 0.5 }
+      }
+    },
+    {
+      "id": "button-secondary", "name": "Secondary Button", "family": "button", "variant": "secondary",
+      "figmaNodeId": "574:133", "element": "button", "cssClass": "uk-c-secondary",
+      "description": "Lower-emphasis action paired with a primary.",
+      "size": { "width": 310, "height": 43 }, "radius": 21.5,
+      "typography": { "family": "Poppins", "weight": 400, "size": 15, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-secondary\">Secondary</button>",
+      "states": {
+        "default":  { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":    { "background": "#22272C", "border": "1px solid #45484D" },
+        "disabled": { "background": "transparent", "border": "1px solid #45484D", "opacity": 0.4 }
+      }
+    },
+    {
+      "id": "button-tertiary", "name": "Tertiary Button", "family": "button", "variant": "tertiary",
+      "figmaNodeId": "574:140", "element": "button", "cssClass": "uk-c-tertiary",
+      "description": "Compact low-emphasis action for dense contexts.",
+      "size": { "width": 129, "height": 34 }, "radius": 21.5,
+      "typography": { "family": "Poppins", "weight": 400, "size": 13, "color": "#FFFFFF" },
+      "html": "<button class=\"uk-c-tertiary\">Tertiary</button>",
+      "states": {
+        "default":  { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":    { "background": "#22272C", "border": "1px solid #45484D" },
+        "disabled": { "background": "transparent", "border": "1px solid #45484D", "opacity": 0.4 }
+      }
+    },
+    {
+      "id": "button-icon", "name": "Icon Button", "family": "button", "variant": "icon",
+      "figmaNodeId": "574:167", "element": "button", "cssClass": "uk-c-iconbtn",
+      "description": "Circular 33px control hosting any 20px icon.",
+      "size": { "width": 33, "height": 33 }, "radius": 50,
+      "slot": { "icon": { "size": 20, "color": "currentColor" } },
+      "html": "<button class=\"uk-c-iconbtn\" aria-label=\"Close\"><svg class=\"uk-icon\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><!-- 20px icon --></svg></button>",
+      "states": {
+        "default":  { "background": "transparent", "border": "1px solid #45484D" },
+        "hover":    { "background": "#22272C", "border": "1px solid #45484D" },
+        "disabled": { "background": "transparent", "border": "1px solid #45484D", "opacity": 0.4 }
+      }
+    },
+    {
+      "id": "icons", "name": "Icons", "family": "icon", "variant": "set",
+      "figmaNodeId": "574:126", "element": "svg", "cssClass": "uk-icon",
+      "description": "Base 20x20 icon set, drawn with currentColor so it inherits text color.",
+      "surface": "#161A20", "size": { "width": 20, "height": 20 },
+      "items": [
+        { "name": "X",       "figmaNodeId": "574:127" },
+        { "name": "Discord", "figmaNodeId": "574:129" },
+        { "name": "Wallet",  "figmaNodeId": "574:131" }
+      ]
+    },
+    {
+      "id": "deposit-area", "name": "Deposit Area", "family": "deposit-area", "variant": "default",
+      "figmaNodeId": "574:63", "element": "input-group", "figmaName": "Typing area", "cssClass": "uk-c-deposit",
+      "description": "Amount-entry field for deposits; six states across the entry lifecycle. Presentational only — wire real input/MAX/wallet behavior in your app.",
+      "size": { "width": 310, "height": 128 }, "radius": 12, "padding": { "y": 12, "x": 15 },
+      "html": "<div class=\"uk-c-deposit\" data-state=\"typed\">\n  <div class=\"uk-dep-row\"><span class=\"uk-dep-label\">Deposit cbETH</span><span class=\"uk-dep-balance\">Balance:&nbsp;<b>0.00</b></span></div>\n  <div class=\"uk-dep-mid\"><span class=\"uk-dep-value\">0.545</span><span class=\"uk-dep-token\"><!-- 26px token icon --></span></div>\n  <div class=\"uk-dep-row\"><span class=\"uk-dep-fiat\">$0.00</span><button class=\"uk-dep-max\">MAX</button></div>\n</div>",
+      "anatomy": [
+        { "part": "label",   "text": "Deposit cbETH", "type": "Poppins 500 / 13", "color": "#9BA3AF" },
+        { "part": "balance", "text": "Balance: 0.00", "type": "Poppins 400 12 + Source Sans 14", "color": "#9BA3AF" },
+        { "part": "amount",  "type": "Source Sans 600 / 30", "colorResting": "rgba(255,255,255,0.5)", "colorActive": "#FFFFFF" },
+        { "part": "token",   "asset": "cbETH", "size": 26, "note": "consumer-provided icon" },
+        { "part": "fiat",    "text": "$0.00", "type": "Source Sans 400 / 15", "color": "rgba(155,163,175,0.7)" },
+        { "part": "max",     "text": "MAX", "type": "Poppins 400 / 12", "border": "1px solid #45484D", "radius": 6, "color": "#9BA3AF" },
+        { "part": "caret",   "width": 2, "color": "#8429FF", "visibleIn": ["clicked", "typing"] }
+      ],
+      "states": {
+        "default":  { "background": "#000000", "border": "1px solid #45484D", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "caret": false },
+        "hover":    { "background": "#090E14", "border": "1px solid #45484D", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "caret": false },
+        "clicked":  { "background": "#000000", "border": "1px solid #8429FF", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "caret": "leading" },
+        "typing":   { "background": "#000000", "border": "1px solid #8429FF", "amount": "0.545", "amountColor": "#FFFFFF", "caret": "trailing" },
+        "typed":    { "background": "#000000", "border": "1px solid #45484D", "amount": "0.545", "amountColor": "#FFFFFF", "caret": false },
+        "disabled": { "background": "#000000", "border": "1px solid #45484D", "amount": "0.00", "amountColor": "rgba(255,255,255,0.5)", "opacity": 0.4 }
+      }
+    }
+  ]
+}
