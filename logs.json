@@ -1,18 +1,6 @@
 [
   {
     "level": "error",
-    "event": "collect",
-    "errors": [
-      {
-        "step": "fetchTotalLoans",
-        "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?"
-      }
-    ],
-    "warnings": [],
-    "timestamp": "2026-05-28T01:49:03.963Z"
-  },
-  {
-    "level": "error",
     "event": "collect_crash",
     "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?",
     "stack": "Error: Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?\n    at gql (/home/runner/work/fusionstats/fusionstats/collect.js:70:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async fetchTotalLoans (/home/runner/work/fusionstats/fusionstats/collect.js:75:16)\n    at async collect (/home/runner/work/fusionstats/fusionstats/collect.js:140:18)",
@@ -7218,5 +7206,21 @@
     "durationMs": 13022,
     "historyEntries": 187,
     "timestamp": "2026-07-09T21:51:13.656Z"
+  },
+  {
+    "level": "info",
+    "event": "collect",
+    "errors": [],
+    "warnings": [],
+    "totalLoans": 1872926695.1797888,
+    "fusionBorrowed": 17431514.694845986,
+    "fusionCollateral": 20367769.766695708,
+    "sharePercent": 0.9307099279276744,
+    "activeVaults": 24,
+    "totalVaults": 127,
+    "vaultErrors": 0,
+    "durationMs": 7704,
+    "historyEntries": 186,
+    "timestamp": "2026-07-09T22:59:15.642Z"
   }
 ]
