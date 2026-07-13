@@ -9,6 +9,7 @@
   const PAGES = [
     { href: '/',                       label: 'Activity' },
     { href: '/monitor',                label: 'Monitor', badge: 'NEW' },
+    { href: '/switchers',              label: 'Switchers', badge: 'NEW' },
     { href: '/all-vaults',             label: 'All Vaults' },
     { href: '/tvl',                    label: 'TVL' },
     { href: '/dominance',              label: 'Dominance' },
