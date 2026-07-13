@@ -97,27 +97,32 @@
     .src-row .bar > span { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
     .src-row .n { font-size:0.72rem; color:var(--text-secondary); margin-top:5px; }
 
-    /* table */
-    .tscroll { overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; }
-    thead th { text-align:left; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); font-weight:600; padding:11px 14px; border-bottom:1px solid var(--stroke); white-space:nowrap; }
+    /* table — fixed layout so it never scrolls horizontally */
+    .tscroll { overflow:hidden; }
+    table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    thead th { text-align:left; font-size:0.66rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-secondary); font-weight:600; padding:9px 10px; border-bottom:1px solid var(--stroke); white-space:nowrap; }
     thead th.r { text-align:right; }
-    tbody td { padding:12px 14px; border-bottom:1px solid var(--stroke); font-size:0.9rem; vertical-align:middle; white-space:nowrap; }
+    thead th .th-i { display:inline-flex; align-items:center; justify-content:center; width:13px; height:13px; margin-left:4px; border-radius:50%; border:1px solid var(--stroke); color:var(--text-secondary); font-size:8px; font-style:normal; font-weight:700; cursor:help; vertical-align:middle; }
+    thead th .th-i:hover { border-color:var(--accent); color:var(--accent); }
+    tbody td { padding:8px 10px; border-bottom:1px solid var(--stroke); font-size:0.78rem; vertical-align:middle; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     tbody tr:last-child td { border-bottom:none; }
     tbody tr:hover { background:var(--bg-alt); }
-    .addr { font-family:'JetBrains Mono',monospace; font-size:0.84rem; color:var(--text); }
+    .addr { font-family:'JetBrains Mono',monospace; font-size:0.74rem; color:var(--text); }
     .addr:hover { color:var(--accent); }
-    .amt { font-family:'JetBrains Mono',monospace; font-weight:600; }
-    .amt .tok { color:var(--text-secondary); font-weight:400; font-size:0.8rem; }
-    .from { display:inline-flex; align-items:center; gap:8px; }
-    .chip { font-size:0.68rem; padding:2px 7px; border-radius:6px; background:var(--bg-alt); color:var(--text-body); text-transform:capitalize; }
-    .gap { color:var(--text-body); font-size:0.84rem; }
+    .amt { font-family:'JetBrains Mono',monospace; font-weight:600; font-size:0.78rem; }
+    .amt .tok { color:var(--text-secondary); font-weight:400; font-size:0.68rem; }
+    .from { display:flex; align-items:center; gap:6px; min-width:0; }
+    .from .fname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chip { font-size:0.62rem; padding:1px 6px; border-radius:5px; background:var(--bg-alt); color:var(--text-body); text-transform:capitalize; flex:none; }
+    .gap { color:var(--text-body); font-size:0.74rem; }
     .r { text-align:right; }
-    .ratio { font-family:'JetBrains Mono',monospace; font-size:0.82rem; padding:2px 7px; border-radius:6px; }
+    .ratio { font-family:'JetBrains Mono',monospace; font-size:0.72rem; padding:1px 6px; border-radius:5px; }
     .ratio.hi { color:var(--green); background:var(--green-bg); }
     .ratio.mid { color:var(--amber); background:var(--amber-bg); }
-    .tx { color:var(--text-secondary); font-size:0.9rem; }
-    .tx:hover { color:var(--accent); }
+    .txs { white-space:nowrap; }
+    .txlink { font-family:'JetBrains Mono',monospace; font-size:0.66rem; padding:1px 5px; border:1px solid var(--stroke); border-radius:5px; margin-left:4px; text-decoration:none; }
+    .txlink.in { color:var(--green); } .txlink.out { color:var(--red); }
+    .txlink:hover { border-color:currentColor; background:var(--bg-alt); }
     .empty { padding:52px 20px; text-align:center; color:var(--text-secondary); }
     .empty b { color:var(--text-body); font-weight:600; }
 
@@ -158,9 +163,9 @@
         <label>Reallocated within</label>
         <div class="seg" id="segWindow">
           <button data-w="86400">1 day</button>
-          <button data-w="604800" class="on">7 days</button>
+          <button data-w="604800">7 days</button>
           <button data-w="2592000">30 days</button>
-          <button data-w="0">Ever</button>
+          <button data-w="0" class="on">Ever</button>
         </div>
       </div>
       <div class="field">
@@ -185,7 +190,13 @@
         <div class="tscroll">
           <table>
             <thead><tr>
-              <th>When</th><th>Wallet</th><th class="r">Amount in</th><th>From vault</th><th>Gap</th><th class="r">Match</th><th></th>
+              <th style="width:10%">When <i class="th-i" title="When the deposit into this vault happened.">i</i></th>
+              <th style="width:14%">Wallet <i class="th-i" title="The wallet (vault position owner) that reallocated. Links to its block explorer.">i</i></th>
+              <th class="r" style="width:14%">In <i class="th-i" title="USD value deposited into this vault (token amount shown below).">i</i></th>
+              <th style="width:26%">From vault <i class="th-i" title="The other Fusion vault this wallet withdrew from, with its chain.">i</i></th>
+              <th style="width:12%">Gap <i class="th-i" title="Time between the withdrawal (out) and this deposit (in).">i</i></th>
+              <th class="r" style="width:12%">Match <i class="th-i" title="How close the withdrawn USD size is to the deposit. 100% = identical amounts.">i</i></th>
+              <th class="r" style="width:12%">Txs <i class="th-i" title="Verify on-chain: green in = deposit tx (this vault / chain); red out = the source withdrawal tx (other vault / its chain).">i</i></th>
             </tr></thead>
             <tbody id="rows"></tbody>
           </table>
@@ -210,7 +221,7 @@
       avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
       ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
 
-    var state = { events:[], vaults:[], vaultByAddr:{}, all:[], sel:null, windowSec:604800, ratio:0.7, hi:-1, filtered:[] };
+    var state = { events:[], vaults:[], vaultByAddr:{}, all:[], sel:null, windowSec:0, ratio:0.7, hi:-1, filtered:[] };
 
     /* ---- formatting ---- */
     function fUsd(n){ if(n==null||isNaN(n)) return '—';
@@ -220,8 +231,8 @@
     function fTok(n){ if(n==null) return ''; if(n>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0});
       if(n>=1) return n.toFixed(3); return n.toFixed(5); }
     function shortAddr(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
-    function fGap(sec){ if(sec<3600) return Math.max(1,Math.round(sec/60))+'m'; if(sec<86400) return Math.round(sec/3600)+'h';
-      return Math.round(sec/86400)+'d'; }
+    function fGap(sec){ if(sec<60) return sec+'s'; if(sec<3600) return Math.round(sec/60)+' min'; if(sec<86400) return Math.round(sec/3600)+' hr';
+      if(sec<2592000) return Math.round(sec/86400)+' d'; if(sec<31536000) return Math.round(sec/2592000)+' mo'; return (sec/31536000).toFixed(1)+' yr'; }
     function fWhen(ts){ var d=new Date(ts*1000), now=Date.now()/1000, a=now-ts;
       var rel = a<3600?Math.round(a/60)+'m ago':a<86400?Math.round(a/3600)+'h ago':a<2592000?Math.round(a/86400)+'d ago':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
       return { rel:rel, abs:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) }; }
@@ -322,19 +333,20 @@
       var tb=document.getElementById('rows');
       if(!list.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">No switch-ins into <b>'+(state.sel?state.vaultByAddr[state.sel].name:'this vault')+'</b> in this window.<br>Try a longer window or a looser amount match.</div></td></tr>'; return; }
       var rows=list.slice(0,300).map(function(s){
-        var ex=EXPLORER[s.dep.chain]||''; var sv=state.vaultByAddr[s.src.vault];
+        var exIn=EXPLORER[s.dep.chain]||'', exOut=EXPLORER[s.src.chain]||''; var sv=state.vaultByAddr[s.src.vault];
         var when=fWhen(s.dep.timestamp);
         var rcls = s.ratio>=0.85?'ratio hi':'ratio mid';
-        var wl = ex ? '<a class="addr" href="'+ex+'/address/'+s.wallet+'" target="_blank" rel="noopener" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</a>' : '<span class="addr" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</span>';
-        var txl = ex ? '<a class="tx" href="'+ex+'/tx/'+s.dep.tx+'" target="_blank" rel="noopener" title="View deposit tx">↗</a>' : '';
+        var wl = exIn ? '<a class="addr" href="'+exIn+'/address/'+s.wallet+'" target="_blank" rel="noopener" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</a>' : '<span class="addr" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</span>';
+        var inTx = exIn ? '<a class="txlink in" href="'+exIn+'/tx/'+s.dep.tx+'" target="_blank" rel="noopener" title="Deposit (in) tx on '+s.dep.chain+'">in ↗</a>' : '<span class="txlink in" style="opacity:.4" title="no explorer for '+s.dep.chain+'">in</span>';
+        var outTx = exOut ? '<a class="txlink out" href="'+exOut+'/tx/'+s.src.tx+'" target="_blank" rel="noopener" title="Withdrawal (out) tx on '+s.src.chain+'">out ↗</a>' : '<span class="txlink out" style="opacity:.4" title="no explorer for '+s.src.chain+'">out</span>';
         return '<tr>'+
           '<td><span title="'+when.abs+'">'+when.rel+'</span></td>'+
           '<td>'+wl+'</td>'+
-          '<td class="r"><span class="amt">'+fUsdFull(s.dep.usdValue)+'</span><br><span class="amt tok">'+fTok(s.dep.assets)+' '+(s.dep.symbol||'')+'</span></td>'+
-          '<td><span class="from"><span title="'+(sv?sv.name:'')+'">'+(sv?sv.name:shortAddr(s.src.vault))+'</span><span class="chip">'+(s.src.chain||'')+'</span></span></td>'+
+          '<td class="r"><span class="amt">'+fUsd(s.dep.usdValue)+'</span><br><span class="amt tok">'+fTok(s.dep.assets)+' '+(s.dep.symbol||'')+'</span></td>'+
+          '<td><span class="from" title="'+(sv?sv.name:'')+'"><span class="fname">'+(sv?sv.name:shortAddr(s.src.vault))+'</span><span class="chip">'+(s.src.chain||'')+'</span></span></td>'+
           '<td><span class="gap">'+fGap(s.gap)+' before</span></td>'+
           '<td class="r"><span class="'+rcls+'">'+Math.round(s.ratio*100)+'%</span><br><span class="amt tok">'+fUsd(s.src.usdValue)+' out</span></td>'+
-          '<td class="r">'+txl+'</td>'+
+          '<td class="r txs">'+inTx+outTx+'</td>'+
         '</tr>';
       }).join('');
       tb.innerHTML = rows + (list.length>300 ? '<tr><td colspan="7"><div class="empty" style="padding:18px;">Showing first 300 of '+list.length.toLocaleString()+'.</div></td></tr>' : '');
