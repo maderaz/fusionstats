@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switchers — Fusion Stats</title>
+  <meta name="description" content="Switchers — wallets that reallocate capital from one Fusion vault into another, chasing better rates. Pick a vault to see deposits funded by a similar-size withdrawal from a different Fusion vault within 1d / 7d / 30d / ever.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%94%81</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg:#F5F5FA; --bg-alt:#E9E9F3; --surface:#FFFFFF; --stroke:#E5E5E5;
+      --text:#000000; --text-body:#70747A; --text-secondary:#9BA3AF;
+      --accent:#8429FF; --accent-end:#6C00FF; --accent-light:#A37FFF; --accent-bg:rgba(132,41,255,0.10);
+      --green:#16a34a; --green-bg:rgba(22,163,74,0.08); --red:#dc2626; --red-bg:rgba(220,38,38,0.08);
+      --amber:#B7791F; --amber-bg:rgba(183,121,31,0.10);
+    }
+    [data-theme="dark"] {
+      --bg:#0F0F14; --bg-alt:#1A1A24; --surface:#16161E; --stroke:#2A2A3A;
+      --text:#E8E8F0; --text-body:#9A9AB0; --text-secondary:#6A6A80;
+      --accent-bg:rgba(132,41,255,0.18); --green-bg:rgba(22,163,74,0.15); --red-bg:rgba(220,38,38,0.15);
+      --amber:#E0A94A; --amber-bg:rgba(224,169,74,0.14);
+    }
+    body { font-family:'Source Sans 3',system-ui,-apple-system,sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; line-height:1.5; }
+    .num { font-family:'JetBrains Mono',ui-monospace,monospace; font-feature-settings:'tnum' 1; }
+    h1,h2,h3 { font-family:'Poppins',sans-serif; font-weight:600; letter-spacing:-0.01em; }
+    a { color:inherit; text-decoration:none; }
+
+    .wrap { max-width:1160px; margin:0 auto; padding:34px 30px 90px; }
+
+    /* header */
+    .top { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    .top h1 { font-size:1.9rem; display:flex; align-items:center; gap:11px; }
+    .top h1 .em { font-size:1.6rem; }
+    .top .sub { color:var(--text-body); font-size:0.98rem; margin-top:7px; max-width:640px; }
+    .theme-toggle { width:38px; height:38px; flex:none; border:1px solid var(--stroke); border-radius:10px; background:var(--surface); color:var(--text); font-size:1rem; cursor:pointer; }
+    .theme-toggle:hover { border-color:var(--accent); }
+
+    .datanote { font-size:0.8rem; color:var(--text-secondary); margin-bottom:22px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .datanote b { color:var(--text-body); font-weight:600; }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px var(--green-bg); }
+
+    /* controls */
+    .controls { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:26px; }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field > label { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); font-weight:600; }
+
+    /* combobox */
+    .combo { position:relative; width:340px; max-width:100%; }
+    .combo input { width:100%; height:44px; padding:0 38px 0 14px; border:1px solid var(--stroke); border-radius:11px; background:var(--surface); color:var(--text); font-size:0.95rem; font-family:inherit; outline:none; }
+    .combo input:focus { border-color:var(--accent); }
+    .combo .car { position:absolute; right:13px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none; }
+    .combo .list { position:absolute; z-index:30; top:48px; left:0; right:0; max-height:340px; overflow-y:auto; background:var(--surface); border:1px solid var(--stroke); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.14); display:none; }
+    .combo.open .list { display:block; }
+    .combo .opt { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 13px; cursor:pointer; border-bottom:1px solid var(--stroke); }
+    .combo .opt:last-child { border-bottom:none; }
+    .combo .opt:hover, .combo .opt.hi { background:var(--accent-bg); }
+    .combo .opt .nm { font-size:0.9rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .combo .opt .meta { font-size:0.72rem; color:var(--text-secondary); flex:none; display:flex; gap:7px; align-items:center; }
+    .combo .opt .cnt { font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:500; }
+
+    /* segmented */
+    .seg { display:inline-flex; border:1px solid var(--stroke); border-radius:10px; overflow:hidden; background:var(--surface); }
+    .seg button { border:0; background:none; color:var(--text-body); font-family:inherit; font-size:0.85rem; font-weight:500; padding:0 14px; height:44px; cursor:pointer; border-right:1px solid var(--stroke); }
+    .seg button:last-child { border-right:0; }
+    .seg button:hover { color:var(--text); }
+    .seg button.on { background:var(--accent); color:#fff; }
+    .seg.sm button { height:36px; font-size:0.8rem; padding:0 11px; }
+
+    /* summary */
+    .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+    .card { background:var(--surface); border:1px solid var(--stroke); border-radius:14px; padding:16px 18px; }
+    .card .k { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-secondary); font-weight:600; margin-bottom:9px; }
+    .card .v { font-size:1.6rem; font-weight:700; font-family:'JetBrains Mono',monospace; letter-spacing:-0.02em; line-height:1; }
+    .card .v.accent { color:var(--accent); }
+    .card .sv { font-size:0.82rem; color:var(--text-body); margin-top:6px; }
+
+    /* two-column: sources + table */
+    .grid { display:grid; grid-template-columns:290px 1fr; gap:16px; align-items:start; }
+    .panel { background:var(--surface); border:1px solid var(--stroke); border-radius:14px; overflow:hidden; }
+    .panel > .h { padding:14px 16px; border-bottom:1px solid var(--stroke); font-size:0.8rem; font-weight:600; color:var(--text-body); text-transform:uppercase; letter-spacing:0.06em; display:flex; justify-content:space-between; align-items:center; }
+    .panel > .h .cnt { color:var(--text-secondary); font-family:'JetBrains Mono',monospace; text-transform:none; letter-spacing:0; }
+
+    /* sources */
+    .src { padding:6px 8px; }
+    .src-row { padding:9px 8px; border-radius:9px; }
+    .src-row + .src-row { margin-top:2px; }
+    .src-row:hover { background:var(--bg-alt); }
+    .src-row .top { display:flex; justify-content:space-between; gap:10px; margin:0 0 6px; align-items:baseline; }
+    .src-row .nm { font-size:0.86rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .src-row .usd { font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--text-body); flex:none; }
+    .src-row .bar { height:6px; border-radius:4px; background:var(--bg-alt); overflow:hidden; }
+    .src-row .bar > span { display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-light)); }
+    .src-row .n { font-size:0.72rem; color:var(--text-secondary); margin-top:5px; }
+
+    /* table */
+    .tscroll { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { text-align:left; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-secondary); font-weight:600; padding:11px 14px; border-bottom:1px solid var(--stroke); white-space:nowrap; }
+    thead th.r { text-align:right; }
+    tbody td { padding:12px 14px; border-bottom:1px solid var(--stroke); font-size:0.9rem; vertical-align:middle; white-space:nowrap; }
+    tbody tr:last-child td { border-bottom:none; }
+    tbody tr:hover { background:var(--bg-alt); }
+    .addr { font-family:'JetBrains Mono',monospace; font-size:0.84rem; color:var(--text); }
+    .addr:hover { color:var(--accent); }
+    .amt { font-family:'JetBrains Mono',monospace; font-weight:600; }
+    .amt .tok { color:var(--text-secondary); font-weight:400; font-size:0.8rem; }
+    .from { display:inline-flex; align-items:center; gap:8px; }
+    .chip { font-size:0.68rem; padding:2px 7px; border-radius:6px; background:var(--bg-alt); color:var(--text-body); text-transform:capitalize; }
+    .gap { color:var(--text-body); font-size:0.84rem; }
+    .r { text-align:right; }
+    .ratio { font-family:'JetBrains Mono',monospace; font-size:0.82rem; padding:2px 7px; border-radius:6px; }
+    .ratio.hi { color:var(--green); background:var(--green-bg); }
+    .ratio.mid { color:var(--amber); background:var(--amber-bg); }
+    .tx { color:var(--text-secondary); font-size:0.9rem; }
+    .tx:hover { color:var(--accent); }
+    .empty { padding:52px 20px; text-align:center; color:var(--text-secondary); }
+    .empty b { color:var(--text-body); font-weight:600; }
+
+    @media (max-width:860px) {
+      .cards { grid-template-columns:repeat(2,1fr); }
+      .grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <script src="/nav.js"></script>
+
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1><span class="em">🔁</span> Switchers</h1>
+        <p class="sub">Wallets that reallocate capital <b>from one Fusion vault into another</b> — deposits funded by a similar-size withdrawal from a different Fusion vault, i.e. users chasing a better rate. Pick a destination vault below.</p>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+    </div>
+
+    <div class="datanote">
+      <span class="dot"></span>
+      <span>Across all Fusion vault deposit/withdrawal events · synthetic (wrapper &amp; rebalance) flows excluded · matched by wallet + similar USD size.</span>
+      <span id="updated"></span>
+    </div>
+
+    <div class="controls">
+      <div class="field" style="flex:none;">
+        <label>Destination vault</label>
+        <div class="combo" id="combo">
+          <input type="text" id="vaultInput" placeholder="Search a vault…" autocomplete="off" spellcheck="false">
+          <span class="car">▾</span>
+          <div class="list" id="vaultList"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Reallocated within</label>
+        <div class="seg" id="segWindow">
+          <button data-w="86400">1 day</button>
+          <button data-w="604800" class="on">7 days</button>
+          <button data-w="2592000">30 days</button>
+          <button data-w="0">Ever</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Amount match</label>
+        <div class="seg sm" id="segRatio">
+          <button data-r="0.7" class="on">Similar ±30%</button>
+          <button data-r="0.5">Loose ±50%</button>
+          <button data-r="0">Any</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards" id="cards"></div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="h">Came from <span class="cnt" id="srcCnt"></span></div>
+        <div class="src" id="sources"></div>
+      </div>
+      <div class="panel">
+        <div class="h">Switch-in deposits <span class="cnt" id="rowsCnt"></span></div>
+        <div class="tscroll">
+          <table>
+            <thead><tr>
+              <th>When</th><th>Wallet</th><th class="r">Amount in</th><th>From vault</th><th>Gap</th><th class="r">Match</th><th></th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ---- theme (shared convention: localStorage 'fusionstats_theme') ---- */
+    (function () {
+      var saved = localStorage.getItem('fusionstats_theme');
+      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      document.getElementById('themeToggle').addEventListener('click', function () {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+        localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
+      });
+    })();
+
+    var EXPLORER = { ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io',
+      avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
+      ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
+
+    var state = { events:[], vaults:[], vaultByAddr:{}, all:[], sel:null, windowSec:604800, ratio:0.7, hi:-1, filtered:[] };
+
+    /* ---- formatting ---- */
+    function fUsd(n){ if(n==null||isNaN(n)) return '—';
+      if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
+      if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(0); }
+    function fUsdFull(n){ return '$'+Math.round(n).toLocaleString('en-US'); }
+    function fTok(n){ if(n==null) return ''; if(n>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0});
+      if(n>=1) return n.toFixed(3); return n.toFixed(5); }
+    function shortAddr(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
+    function fGap(sec){ if(sec<3600) return Math.max(1,Math.round(sec/60))+'m'; if(sec<86400) return Math.round(sec/3600)+'h';
+      return Math.round(sec/86400)+'d'; }
+    function fWhen(ts){ var d=new Date(ts*1000), now=Date.now()/1000, a=now-ts;
+      var rel = a<3600?Math.round(a/60)+'m ago':a<86400?Math.round(a/3600)+'h ago':a<2592000?Math.round(a/86400)+'d ago':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      return { rel:rel, abs:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) }; }
+
+    /* ---- core: find all switch-ins (deposit funded by a prior withdrawal from a different vault) ---- */
+    function computeAll(windowSec, minRatio) {
+      var byOwner = {};
+      for (var i=0;i<state.events.length;i++){
+        var e=state.events[i];
+        if (e.synthetic===true) continue;                 // exclude wrapper / rebalance flows
+        if (!e.owner || !(e.usdValue>0) || !e.timestamp) continue;
+        var w=e.owner.toLowerCase();
+        (byOwner[w]||(byOwner[w]=[])).push(e);
+      }
+      var out=[];
+      Object.keys(byOwner).forEach(function(w){
+        var arr=byOwner[w]; if(arr.length<2) return;
+        arr.sort(function(a,b){return a.timestamp-b.timestamp;});
+        var withdraws=[], deposits=[];
+        for (var i=0;i<arr.length;i++){ if(arr[i].type==='withdraw') withdraws.push(arr[i]); else if(arr[i].type==='deposit') deposits.push(arr[i]); }
+        if(!withdraws.length||!deposits.length) return;
+        var used=new Array(withdraws.length).fill(false);
+        for (var d=0; d<deposits.length; d++){
+          var dep=deposits[d], best=-1, bestScore=-1, bestRatio=0;
+          for (var k=0;k<withdraws.length;k++){
+            if(used[k]) continue;
+            var wd=withdraws[k];
+            if(wd.vault===dep.vault) continue;                        // must be a DIFFERENT vault
+            if(wd.timestamp>dep.timestamp) continue;                  // withdrawal precedes deposit
+            if(windowSec>0 && wd.timestamp < dep.timestamp-windowSec) continue;
+            var ratio=Math.min(wd.usdValue,dep.usdValue)/Math.max(wd.usdValue,dep.usdValue);
+            if(ratio<minRatio) continue;
+            var gap=dep.timestamp-wd.timestamp;
+            var score=ratio*1000 - gap/86400;                         // prefer closest size, then smallest gap
+            if(score>bestScore){ bestScore=score; best=k; bestRatio=ratio; }
+          }
+          if(best>=0){ used[best]=true;
+            out.push({ wallet:w, dep:dep, src:withdraws[best], ratio:bestRatio, gap:dep.timestamp-withdraws[best].timestamp });
+          }
+        }
+      });
+      return out;
+    }
+
+    /* ---- vault list (destinations), annotated with switch-in counts ---- */
+    function buildVaults(){
+      var seen={};
+      state.events.forEach(function(e){
+        if(!seen[e.vault]) seen[e.vault]={ addr:e.vault, name:e.vaultName||shortAddr(e.vault), chain:e.chain, count:0 };
+      });
+      state.vaultByAddr=seen;
+    }
+    function annotateCounts(){
+      Object.keys(state.vaultByAddr).forEach(function(a){ state.vaultByAddr[a].count=0; });
+      state.all.forEach(function(s){ var v=state.vaultByAddr[s.dep.vault]; if(v) v.count++; });
+      state.vaults=Object.values(state.vaultByAddr).sort(function(a,b){ return b.count-a.count || (b.name<a.name?1:-1); });
+    }
+
+    /* ---- rendering ---- */
+    function renderCards(list){
+      var vol=0, wallets={}, srcMap={};
+      list.forEach(function(s){ vol+=s.dep.usdValue; wallets[s.wallet]=1;
+        var sv=state.vaultByAddr[s.src.vault]; var nm=sv?sv.name:shortAddr(s.src.vault);
+        srcMap[nm]=(srcMap[nm]||0)+1; });
+      var topSrc=Object.keys(srcMap).sort(function(a,b){return srcMap[b]-srcMap[a];})[0];
+      var cards=[
+        ['Switched in', fUsd(vol), 'total deposit value'],
+        ['Switchers', Object.keys(wallets).length.toLocaleString(), 'unique wallets'],
+        ['Switch-ins', list.length.toLocaleString(), 'matched deposits'],
+        ['Top source', topSrc||'—', topSrc?srcMap[topSrc]+' of them came from here':'no switches yet']
+      ];
+      document.getElementById('cards').innerHTML = cards.map(function(c,i){
+        var cls = i===0?'v accent':'v';
+        var big = i===3 ? '<div class="'+cls+'" style="font-size:1.05rem;font-family:Poppins,sans-serif;font-weight:600;line-height:1.25;">'+c[1]+'</div>'
+                        : '<div class="'+cls+'">'+c[1]+'</div>';
+        return '<div class="card"><div class="k">'+c[0]+'</div>'+big+'<div class="sv">'+c[2]+'</div></div>';
+      }).join('');
+    }
+
+    function renderSources(list){
+      var m={};
+      list.forEach(function(s){ var a=s.src.vault; if(!m[a]) m[a]={ n:0, usd:0 }; m[a].n++; m[a].usd+=s.dep.usdValue; });
+      var rows=Object.keys(m).map(function(a){ var v=state.vaultByAddr[a]; return { name:v?v.name:shortAddr(a), chain:v?v.chain:'', n:m[a].n, usd:m[a].usd }; })
+        .sort(function(a,b){return b.usd-a.usd;});
+      document.getElementById('srcCnt').textContent = rows.length ? rows.length+' vault'+(rows.length>1?'s':'') : '';
+      var max=rows.length?rows[0].usd:1;
+      var host=document.getElementById('sources');
+      if(!rows.length){ host.innerHTML='<div class="empty" style="padding:30px 12px;">No inbound switches.</div>'; return; }
+      host.innerHTML = rows.slice(0,8).map(function(r){
+        return '<div class="src-row"><div class="top"><span class="nm" title="'+r.name+'">'+r.name+'</span><span class="usd">'+fUsd(r.usd)+'</span></div>'+
+          '<div class="bar"><span style="width:'+Math.max(4,r.usd/max*100)+'%"></span></div>'+
+          '<div class="n">'+r.n+' switch-in'+(r.n>1?'s':'')+'</div></div>';
+      }).join('');
+    }
+
+    function renderRows(list){
+      document.getElementById('rowsCnt').textContent = list.length.toLocaleString()+' deposit'+(list.length===1?'':'s');
+      var tb=document.getElementById('rows');
+      if(!list.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">No switch-ins into <b>'+(state.sel?state.vaultByAddr[state.sel].name:'this vault')+'</b> in this window.<br>Try a longer window or a looser amount match.</div></td></tr>'; return; }
+      var rows=list.slice(0,300).map(function(s){
+        var ex=EXPLORER[s.dep.chain]||''; var sv=state.vaultByAddr[s.src.vault];
+        var when=fWhen(s.dep.timestamp);
+        var rcls = s.ratio>=0.85?'ratio hi':'ratio mid';
+        var wl = ex ? '<a class="addr" href="'+ex+'/address/'+s.wallet+'" target="_blank" rel="noopener" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</a>' : '<span class="addr" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</span>';
+        var txl = ex ? '<a class="tx" href="'+ex+'/tx/'+s.dep.tx+'" target="_blank" rel="noopener" title="View deposit tx">↗</a>' : '';
+        return '<tr>'+
+          '<td><span title="'+when.abs+'">'+when.rel+'</span></td>'+
+          '<td>'+wl+'</td>'+
+          '<td class="r"><span class="amt">'+fUsdFull(s.dep.usdValue)+'</span><br><span class="amt tok">'+fTok(s.dep.assets)+' '+(s.dep.symbol||'')+'</span></td>'+
+          '<td><span class="from"><span title="'+(sv?sv.name:'')+'">'+(sv?sv.name:shortAddr(s.src.vault))+'</span><span class="chip">'+(s.src.chain||'')+'</span></span></td>'+
+          '<td><span class="gap">'+fGap(s.gap)+' before</span></td>'+
+          '<td class="r"><span class="'+rcls+'">'+Math.round(s.ratio*100)+'%</span><br><span class="amt tok">'+fUsd(s.src.usdValue)+' out</span></td>'+
+          '<td class="r">'+txl+'</td>'+
+        '</tr>';
+      }).join('');
+      tb.innerHTML = rows + (list.length>300 ? '<tr><td colspan="7"><div class="empty" style="padding:18px;">Showing first 300 of '+list.length.toLocaleString()+'.</div></td></tr>' : '');
+    }
+
+    function render(){
+      var list = state.all.filter(function(s){ return s.dep.vault===state.sel; });
+      list.sort(function(a,b){ return b.dep.timestamp - a.dep.timestamp; });
+      state.filtered=list;
+      renderCards(list); renderSources(list); renderRows(list);
+    }
+
+    function recompute(){
+      state.all = computeAll(state.windowSec, state.ratio);
+      annotateCounts();
+      renderVaultList('');
+      if(!state.sel || !state.vaultByAddr[state.sel]) state.sel = state.vaults.length ? state.vaults[0].addr : null;
+      setInput();
+      render();
+    }
+
+    /* ---- combobox ---- */
+    function setInput(){ var v=state.sel?state.vaultByAddr[state.sel]:null; document.getElementById('vaultInput').value = v?v.name:''; }
+    function renderVaultList(q){
+      q=(q||'').toLowerCase();
+      var items = state.vaults.filter(function(v){ return !q || v.name.toLowerCase().indexOf(q)!==-1; });
+      document.getElementById('vaultList').innerHTML = items.slice(0,60).map(function(v,i){
+        return '<div class="opt" data-a="'+v.addr+'"><span class="nm">'+v.name+'</span>'+
+          '<span class="meta"><span class="chip">'+v.chain+'</span>'+(v.count?'<span class="cnt">'+v.count+'</span>':'')+'</span></div>';
+      }).join('') || '<div class="opt" style="cursor:default;color:var(--text-secondary)">No match</div>';
+    }
+    (function comboWire(){
+      var combo=document.getElementById('combo'), input=document.getElementById('vaultInput'), list=document.getElementById('vaultList');
+      function open(){ combo.classList.add('open'); }
+      function close(){ combo.classList.remove('open'); setInput(); }
+      input.addEventListener('focus', function(){ input.select(); renderVaultList(''); open(); });
+      input.addEventListener('input', function(){ renderVaultList(input.value); open(); });
+      list.addEventListener('mousedown', function(e){ var o=e.target.closest('.opt'); if(!o||!o.dataset.a) return;
+        state.sel=o.dataset.a; close(); render(); });
+      document.addEventListener('click', function(e){ if(!combo.contains(e.target)) close(); });
+    })();
+
+    /* ---- segmented controls ---- */
+    function wireSeg(id, attr, apply){
+      document.getElementById(id).addEventListener('click', function(e){
+        var b=e.target.closest('button'); if(!b) return;
+        [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('on', x===b); });
+        apply(b.getAttribute(attr));
+      });
+    }
+    wireSeg('segWindow','data-w', function(v){ state.windowSec=+v; recompute(); });
+    wireSeg('segRatio','data-r', function(v){ state.ratio=+v; recompute(); });
+
+    /* ---- boot ---- */
+    (function load(){
+      fetch('activity-events.json').then(function(r){ return r.json(); }).then(function(d){
+        state.events = d.events||[];
+        if(d.updatedAt){ var u=new Date(d.updatedAt); document.getElementById('updated').innerHTML='· data updated <b>'+u.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>'; }
+        buildVaults();
+        recompute();
+      }).catch(function(err){
+        document.getElementById('cards').innerHTML='<div class="card" style="grid-column:1/-1;color:var(--red)">Couldn\'t load activity data. '+err+'</div>';
+      });
+    })();
+  </script>
+</body>
+</html>
