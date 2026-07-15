@@ -1,13 +1,3686 @@
 {
   "vault": "0xc4c00d8b323f37527eeda27c87412378be9f68ec",
   "chain": "base",
-  "updatedAt": "2026-07-14T04:53:48.848Z",
+  "updatedAt": "2026-07-15T04:56:49.630Z",
   "blockRange": {
     "from": 37890628,
-    "to": 48607738
+    "to": 48651026
   },
-  "txCount": 6551,
+  "txCount": 6591,
   "rebalances": [
+    {
+      "tx": "0xdacd82bba073d4cb1d6dafc4a93ff98fba711c35cce152acb499c59a75edf95e",
+      "block": 48647233,
+      "timestamp": 1784083813,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.884622,
+          "usdValue": -37270.97
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886787,
+          "usdValue": 37298.27
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773575,
+          "usdValue": 74596.54
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773575,
+          "usdValue": 74596.54
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886787,
+          "usdValue": 37298.27
+        }
+      ]
+    },
+    {
+      "tx": "0x5010645e314778353861835b9007084d2c2b4e25e2059c8bc80f4c51a7f8f689",
+      "block": 48646783,
+      "timestamp": 1784082913,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886683,
+          "usdValue": 37298.07
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773365,
+          "usdValue": 74596.15
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773365,
+          "usdValue": 74596.15
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888836,
+          "usdValue": -37278.87
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886683,
+          "usdValue": 37298.07
+        }
+      ]
+    },
+    {
+      "tx": "0xdc0ae69dd8f794dd14c4c2b04cdb9e3db316a0ba221466eca1421af76a8531b0",
+      "block": 48646333,
+      "timestamp": 1784082013,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 39.771261,
+          "usdValue": -74545.73
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773438,
+          "usdValue": 74596.28
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.546875,
+          "usdValue": 149192.57
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.546875,
+          "usdValue": 149192.57
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773438,
+          "usdValue": 74596.28
+        }
+      ]
+    },
+    {
+      "tx": "0xc9a9a03e50268bd4e0b92d7ac3c2cd3f104261c0d825221662017b60700261fc",
+      "block": 48645883,
+      "timestamp": 1784081113,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 178.980478,
+          "usdValue": 335683.29
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 160.617052,
+          "usdValue": 373426.92
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 357.960956,
+          "usdValue": 671366.59
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 357.960956,
+          "usdValue": 671366.59
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 160.617052,
+          "usdValue": 373426.92
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 160.617053,
+          "usdValue": 373426.92
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 178.984596,
+          "usdValue": -335481.86
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 178.980478,
+          "usdValue": 335683.29
+        }
+      ]
+    },
+    {
+      "tx": "0x3d385a1feeec8eab45d0a56547dd0e14d1c4ddb351e519bba434103516e382bd",
+      "block": 48644983,
+      "timestamp": 1784079313,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.884668,
+          "usdValue": -37271.06
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886738,
+          "usdValue": 37298.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773476,
+          "usdValue": 74596.36
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773476,
+          "usdValue": 74596.36
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886738,
+          "usdValue": 37298.18
+        }
+      ]
+    },
+    {
+      "tx": "0xf7f151e405abb578dfd62bc65e9a0233178e9f031c11950c51695835d2058a23",
+      "block": 48644533,
+      "timestamp": 1784078413,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773301,
+          "usdValue": 74596.03
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.546603,
+          "usdValue": 149192.06
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.546603,
+          "usdValue": 149192.06
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.692679,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.775349,
+          "usdValue": -74553.39
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773301,
+          "usdValue": 74596.03
+        }
+      ]
+    },
+    {
+      "tx": "0x412a89f1e4297d3ed0c131c0a55ea02d784ef7e179aa4960a362859d45eb08cd",
+      "block": 48644083,
+      "timestamp": 1784077513,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 39.771294,
+          "usdValue": -74545.79
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773369,
+          "usdValue": 74596.16
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.546739,
+          "usdValue": 149192.31
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.546739,
+          "usdValue": 149192.31
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773369,
+          "usdValue": 74596.16
+        }
+      ]
+    },
+    {
+      "tx": "0x3c4fed3c502766108d45c9170e7b72c72f23f03a77f77e8452c00f839702f1ab",
+      "block": 48643633,
+      "timestamp": 1784076613,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 59.659318,
+          "usdValue": 111892.85
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 53.539017,
+          "usdValue": 124475.64
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 119.318635,
+          "usdValue": 223785.71
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 119.318635,
+          "usdValue": 223785.71
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 53.539017,
+          "usdValue": 124475.64
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 53.539021,
+          "usdValue": 124475.65
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 59.681673,
+          "usdValue": -111865.04
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 59.659318,
+          "usdValue": 111892.85
+        }
+      ]
+    },
+    {
+      "tx": "0xf1944db0b7207870d17e95a962cede8fcfed0cf3b47395df4b6baf16d6e99858",
+      "block": 48638680,
+      "timestamp": 1784066707,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.8786,
+          "usdValue": -37259.69
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886761,
+          "usdValue": 37298.22
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.846338,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773522,
+          "usdValue": 74596.44
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773522,
+          "usdValue": 74596.44
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886761,
+          "usdValue": 37298.22
+        }
+      ]
+    },
+    {
+      "tx": "0xd29fc452e5b296c0c899a8d9e82dce134604f837187e0afa01ad81eed69caeb2",
+      "block": 48636883,
+      "timestamp": 1784063113,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 39.757022,
+          "usdValue": -74519.04
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.773374,
+          "usdValue": 74596.17
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 35.692676,
+          "usdValue": 82983.75
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692679,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.546749,
+          "usdValue": 149192.33
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.546749,
+          "usdValue": 149192.33
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692679,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.773374,
+          "usdValue": 74596.17
+        }
+      ]
+    },
+    {
+      "tx": "0xec0ba998cf8ae6e59d8ac93afcac10124f310469e4b895a8cbfc11bb934a3928",
+      "block": 48633283,
+      "timestamp": 1784055913,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886328,
+          "usdValue": 37297.41
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772656,
+          "usdValue": 74594.82
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772656,
+          "usdValue": 74594.82
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888355,
+          "usdValue": -37277.97
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886328,
+          "usdValue": 37297.41
+        }
+      ]
+    },
+    {
+      "tx": "0x72f581f6394f9670965b20196e8be8efd006604ebe89bdbbc9bdf409a4d8b34e",
+      "block": 48632833,
+      "timestamp": 1784055013,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772374,
+          "usdValue": 74594.29
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.544749,
+          "usdValue": 149188.58
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.544749,
+          "usdValue": 149188.58
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.69268,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.786378,
+          "usdValue": -74574.06
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772374,
+          "usdValue": 74594.29
+        }
+      ]
+    },
+    {
+      "tx": "0xe584e3c0ca8f426338ab53a062f0cf83b0a370cc10774bed9eaacaa25d9acbf0",
+      "block": 48629683,
+      "timestamp": 1784048713,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886228,
+          "usdValue": 37297.22
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772457,
+          "usdValue": 74594.44
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772457,
+          "usdValue": 74594.44
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888213,
+          "usdValue": -37277.7
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886228,
+          "usdValue": 37297.22
+        }
+      ]
+    },
+    {
+      "tx": "0x9260e6b6536c35e37300333a3e811884ab6b427dcfb9b7edcfc4db00d818bd04",
+      "block": 48629233,
+      "timestamp": 1784047813,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886229,
+          "usdValue": 37297.22
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772458,
+          "usdValue": 74594.45
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772458,
+          "usdValue": 74594.45
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888201,
+          "usdValue": -37277.68
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886229,
+          "usdValue": 37297.22
+        }
+      ]
+    },
+    {
+      "tx": "0xccaf41a22c8b482ade77cd082f9fdf255b6be8937f906ecc05292967df260869",
+      "block": 48628783,
+      "timestamp": 1784046913,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772383,
+          "usdValue": 74594.31
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.544765,
+          "usdValue": 149188.61
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.544765,
+          "usdValue": 149188.61
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.692678,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.692679,
+          "usdValue": 82983.76
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.778225,
+          "usdValue": -74558.78
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772383,
+          "usdValue": 74594.31
+        }
+      ]
+    },
+    {
+      "tx": "0x0833bf7433f08a3f5860371436834050a95611e34bec439d52c3e07bb917f53c",
+      "block": 48627433,
+      "timestamp": 1784044213,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886171,
+          "usdValue": 37297.12
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772343,
+          "usdValue": 74594.23
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772343,
+          "usdValue": 74594.23
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888099,
+          "usdValue": -37277.49
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886171,
+          "usdValue": 37297.12
+        }
+      ]
+    },
+    {
+      "tx": "0xb38f87657c502c41b15baad6b86419734889ed6f295d55069573c51d03f79060",
+      "block": 48626985,
+      "timestamp": 1784043317,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886189,
+          "usdValue": 37297.15
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772377,
+          "usdValue": 74594.3
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772377,
+          "usdValue": 74594.3
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888112,
+          "usdValue": -37277.51
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886189,
+          "usdValue": 37297.15
+        }
+      ]
+    },
+    {
+      "tx": "0x6b8a75d20d89bae4c908f05124e6b382128151c107712c80d1f370465949d20a",
+      "block": 48626535,
+      "timestamp": 1784042417,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886002,
+          "usdValue": 37296.8
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772003,
+          "usdValue": 74593.59
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772003,
+          "usdValue": 74593.59
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.84634,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.891736,
+          "usdValue": -37284.31
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886002,
+          "usdValue": 37296.8
+        }
+      ]
+    },
+    {
+      "tx": "0x5c232733126c89a7df605f5e223ea5cf6ee3aba358ba55fd440c6dc3033462ca",
+      "block": 48625183,
+      "timestamp": 1784039713,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 59.654732,
+          "usdValue": -111814.54
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 59.658624,
+          "usdValue": 111891.55
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 53.539017,
+          "usdValue": 124475.64
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 53.539017,
+          "usdValue": 124475.64
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 119.317248,
+          "usdValue": 223783.1
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 119.317248,
+          "usdValue": 223783.1
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 53.539017,
+          "usdValue": 124475.64
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 59.658624,
+          "usdValue": 111891.55
+        }
+      ]
+    },
+    {
+      "tx": "0x68f287214d3d30b8ad087f1d0f24e59c6addf0f4dbeeeb2a2db0aab458e6d1e8",
+      "block": 48624283,
+      "timestamp": 1784037913,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.88609,
+          "usdValue": 37296.96
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772179,
+          "usdValue": 74593.92
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772179,
+          "usdValue": 74593.92
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888023,
+          "usdValue": -37277.35
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.88609,
+          "usdValue": 37296.96
+        }
+      ]
+    },
+    {
+      "tx": "0x6b99d8fed46b12806bd5eeab3cbc8f3872ab41a0fc1c8a0574e243e5dd8f4b3a",
+      "block": 48623833,
+      "timestamp": 1784037013,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.886081,
+          "usdValue": 37296.95
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.772161,
+          "usdValue": 74593.89
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.772161,
+          "usdValue": 74593.89
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.846339,
+          "usdValue": 41491.88
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888001,
+          "usdValue": -37277.31
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.886081,
+          "usdValue": 37296.95
+        }
+      ]
+    },
+    {
+      "tx": "0xebda1ed7c9e79e0465c4b91e207e11aecc7415ec50b670bc3c0434744ef840f7",
+      "block": 48623383,
+      "timestamp": 1784036113,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.157924,
+          "usdValue": 296.19
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.157924,
+          "usdValue": -296.01
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.713539,
+          "usdValue": 74483.94
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.134528,
+          "usdValue": 252.31
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.141579,
+          "usdValue": 329.5
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.902641,
+          "usdValue": 83471.91
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 80.011981,
+          "usdValue": 150064.89
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 80.011981,
+          "usdValue": 150064.89
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.640187,
+          "usdValue": 82861.72
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.141725,
+          "usdValue": 329.5
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.120729,
+          "usdValue": 280.69
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.902642,
+          "usdValue": 83471.92
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 40.013473,
+          "usdValue": -74999.72
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 40.005991,
+          "usdValue": 75032.44
+        }
+      ]
+    },
+    {
+      "tx": "0xa6bd600884230e8d79ea455ec2b7190f526e84b55344f1e96d2771ca653a3397",
+      "block": 48621605,
+      "timestamp": 1784032557,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.880883,
+          "usdValue": -37263.97
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884741,
+          "usdValue": 37294.43
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.867202,
+          "usdValue": 41540.39
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.292451,
+          "usdValue": 548.5
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.120729,
+          "usdValue": 280.69
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.839655,
+          "usdValue": 41476.34
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.141725,
+          "usdValue": 329.5
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 40.061933,
+          "usdValue": 75137.37
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 40.061933,
+          "usdValue": 75137.37
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.867203,
+          "usdValue": 41540.39
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.235985,
+          "usdValue": 548.65
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.141579,
+          "usdValue": 329.5
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884741,
+          "usdValue": 37294.43
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.134528,
+          "usdValue": 252.31
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.157924,
+          "usdValue": -296.01
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.157924,
+          "usdValue": 296.19
+        }
+      ]
+    },
+    {
+      "tx": "0x2212796cde874f5da03e2fb1205e97f74a974e544b298b3ad87cac28b2812263",
+      "block": 48620690,
+      "timestamp": 1784030727,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884469,
+          "usdValue": 37293.92
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845164,
+          "usdValue": 41489.15
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.768938,
+          "usdValue": 74587.85
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.768938,
+          "usdValue": 74587.85
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845164,
+          "usdValue": 41489.15
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845165,
+          "usdValue": 41489.15
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.888225,
+          "usdValue": -37277.73
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884469,
+          "usdValue": 37293.92
+        }
+      ]
+    },
+    {
+      "tx": "0x9ef67131374ba53c017986c7b786ba25e06ed0b43d8de41172ea5eba1f1e2bcf",
+      "block": 48619793,
+      "timestamp": 1784028933,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.769119,
+          "usdValue": 74588.18
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000078,
+          "usdValue": 0.15
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000078,
+          "usdValue": -0.15
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.00007,
+          "usdValue": 0.16
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.6904,
+          "usdValue": 82978.46
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.538394,
+          "usdValue": 149176.66
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.538394,
+          "usdValue": 149176.66
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.69033,
+          "usdValue": 82978.3
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00007,
+          "usdValue": 0.16
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.6904,
+          "usdValue": 82978.46
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.771036,
+          "usdValue": -74545.31
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.769197,
+          "usdValue": 74588.33
+        }
+      ]
+    },
+    {
+      "tx": "0x15eba5a3cf705675c1ccac7f690b8e5e6a3dc45e4904394e7b55b40b30490273",
+      "block": 48619348,
+      "timestamp": 1784028043,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 59.653689,
+          "usdValue": 111882.3
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.0001,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 53.535561,
+          "usdValue": 124467.6
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 119.307478,
+          "usdValue": 223764.78
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 119.307478,
+          "usdValue": 223764.78
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 53.535471,
+          "usdValue": 124467.4
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 53.535561,
+          "usdValue": 124467.61
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 59.655523,
+          "usdValue": -111816.02
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 59.653789,
+          "usdValue": 111882.48
+        }
+      ]
+    },
+    {
+      "tx": "0x403d53df200b52df9f17df04734685553c4e768c4a5cde0b2d3bc7345bd20e1b",
+      "block": 48618920,
+      "timestamp": 1784027187,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.769061,
+          "usdValue": 74588.08
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.0001,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.690399,
+          "usdValue": 82978.46
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.538223,
+          "usdValue": 149176.34
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.538223,
+          "usdValue": 149176.34
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.690309,
+          "usdValue": 82978.25
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.690399,
+          "usdValue": 82978.46
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.771007,
+          "usdValue": -74545.25
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.769162,
+          "usdValue": 74588.26
+        }
+      ]
+    },
+    {
+      "tx": "0xcc482ad93b0e264989259dbdad981c1a274391f2e141d52201cddae97fc97d03",
+      "block": 48618458,
+      "timestamp": 1784026263,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000045,
+          "usdValue": 0.08
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 139.191653,
+          "usdValue": 261058.15
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.0001,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000022,
+          "usdValue": 0.05
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 124.916203,
+          "usdValue": 290424.16
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 278.383496,
+          "usdValue": 522116.66
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 278.383496,
+          "usdValue": 522116.66
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 124.916096,
+          "usdValue": 290423.91
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00004,
+          "usdValue": 0.09
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000022,
+          "usdValue": 0.05
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 124.916203,
+          "usdValue": 290424.16
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000025,
+          "usdValue": -0.05
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000025,
+          "usdValue": 0.05
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 139.193489,
+          "usdValue": -260898.94
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 139.191773,
+          "usdValue": 261058.38
+        }
+      ]
+    },
+    {
+      "tx": "0x8a992982d409e007ccdb04630ca2363ea7cc475a47fc24d9cf62337c9c3ab976",
+      "block": 48618008,
+      "timestamp": 1784025363,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 39.767247,
+          "usdValue": -74538.2
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.76904,
+          "usdValue": 74588.04
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 35.690226,
+          "usdValue": 82978.06
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000097,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.69036,
+          "usdValue": 82978.37
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.538181,
+          "usdValue": 149176.26
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.538181,
+          "usdValue": 149176.26
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.690227,
+          "usdValue": 82978.06
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000078,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.769138,
+          "usdValue": 74588.22
+        }
+      ]
+    },
+    {
+      "tx": "0xaa0346ff81f515984498f3e434739d7485582161690354b933798c4069e1c703",
+      "block": 48617545,
+      "timestamp": 1784024437,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884402,
+          "usdValue": 37293.8
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000099,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845227,
+          "usdValue": 41489.29
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.768905,
+          "usdValue": 74587.78
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.768905,
+          "usdValue": 74587.78
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845139,
+          "usdValue": 41489.09
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845227,
+          "usdValue": 41489.29
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.886181,
+          "usdValue": -37273.89
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.8845,
+          "usdValue": 37293.98
+        }
+      ]
+    },
+    {
+      "tx": "0x6ecccb2235f181b506f520b15c26781d7f3bf655fa9ad0270a04a2051f4f5b54",
+      "block": 48617108,
+      "timestamp": 1784023563,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000021,
+          "usdValue": 0.04
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000021,
+          "usdValue": -0.04
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884415,
+          "usdValue": 37293.82
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000019,
+          "usdValue": 0.04
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000098,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.00004,
+          "usdValue": 0.09
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845224,
+          "usdValue": 41489.29
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.76897,
+          "usdValue": 74587.91
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.76897,
+          "usdValue": 74587.91
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845157,
+          "usdValue": 41489.13
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000019,
+          "usdValue": 0.04
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000079,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845224,
+          "usdValue": 41489.29
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.886257,
+          "usdValue": -37274.04
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884489,
+          "usdValue": 37293.96
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000045,
+          "usdValue": 0.08
+        }
+      ]
+    },
+    {
+      "tx": "0x0c2f825ab0630790dbb700eb8c5e674e1a83d999d6ac219e17d5c3d4b971729e",
+      "block": 48616645,
+      "timestamp": 1784022637,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.768811,
+          "usdValue": 74587.61
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000098,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.690322,
+          "usdValue": 82978.28
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000067,
+          "usdValue": 0.16
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.53772,
+          "usdValue": 149175.4
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.53772,
+          "usdValue": 149175.4
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.690304,
+          "usdValue": 82978.24
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000079,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.690323,
+          "usdValue": 82978.28
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000067,
+          "usdValue": 0.16
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000075,
+          "usdValue": -0.14
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0.000075,
+          "usdValue": 0.14
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.772198,
+          "usdValue": -74547.48
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.768832,
+          "usdValue": 74587.65
+        }
+      ]
+    },
+    {
+      "tx": "0x883eb96e0c0cde6521e45b3a506d288a0d75a01190627353d13f980cd96712cb",
+      "block": 48615750,
+      "timestamp": 1784020847,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 59.653328,
+          "usdValue": 111881.62
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 53.535483,
+          "usdValue": 124467.42
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 119.306656,
+          "usdValue": 223763.24
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 119.306656,
+          "usdValue": 223763.24
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 53.535483,
+          "usdValue": 124467.42
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 53.535484,
+          "usdValue": 124467.42
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 59.655005,
+          "usdValue": -111815.05
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 59.653328,
+          "usdValue": 111881.62
+        }
+      ]
+    },
+    {
+      "tx": "0x018b35741ccf1f3e24e67b20ff4323c15a48ca2ad5251bb95f262d10b6f7d0a0",
+      "block": 48615293,
+      "timestamp": 1784019933,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000046,
+          "usdValue": 0.09
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.882256,
+          "usdValue": -37266.54
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884487,
+          "usdValue": 37293.96
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000052,
+          "usdValue": 0.1
+        },
+        {
+          "token": "0x3bec25be3c9ec707f385b4a28af90067adfa3d83",
+          "symbol": "eWETH-1-DEBT",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000052,
+          "usdValue": -0.1
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.845099,
+          "usdValue": 41489
+        },
+        {
+          "token": "0x7b181d6509deabfbd1a23af1e65fd46e89572609",
+          "symbol": "ewstETH-1",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000046,
+          "usdValue": 0.11
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845187,
+          "usdValue": 41489.2
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.769169,
+          "usdValue": 74588.28
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.769169,
+          "usdValue": 74588.28
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000041,
+          "usdValue": 0.1
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845099,
+          "usdValue": 41489
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000046,
+          "usdValue": 0.11
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884584,
+          "usdValue": 37294.14
+        }
+      ]
+    },
+    {
+      "tx": "0xc0f8c760ccf88d02cf151a810bc30bf03c5e15f8ebb342112e0a67dba2a2d98e",
+      "block": 48614688,
+      "timestamp": 1784018723,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884126,
+          "usdValue": 37293.28
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000097,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845262,
+          "usdValue": 41489.38
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.768355,
+          "usdValue": 74586.75
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.768355,
+          "usdValue": 74586.75
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845118,
+          "usdValue": 41489.04
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000078,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845263,
+          "usdValue": 41489.38
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.890139,
+          "usdValue": -37281.31
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884224,
+          "usdValue": 37293.46
+        }
+      ]
+    },
+    {
+      "tx": "0x5fecc1fa042e8c3d01c96e58214918c8cfc70ec2af905ecbd4d9f28dac57df4b",
+      "block": 48614166,
+      "timestamp": 1784017679,
+      "flows": [
+        {
+          "token": "0x0dd59ebf03a629218218b36fac6c2ffb999e224c",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 25,
+          "usdValue": null
+        }
+      ]
+    },
+    {
+      "tx": "0x45b8bf314296c92c27b9fed34f234f04c658d4e25420ff38e7ba89f1035bf314",
+      "block": 48613048,
+      "timestamp": 1784015443,
+      "flows": [
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 19.87966,
+          "usdValue": -37261.67
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884545,
+          "usdValue": 37294.07
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 17.845097,
+          "usdValue": 41488.99
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000099,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845186,
+          "usdValue": 41489.2
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.76919,
+          "usdValue": 74588.32
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.76919,
+          "usdValue": 74588.32
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845098,
+          "usdValue": 41488.99
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884643,
+          "usdValue": 37294.25
+        }
+      ]
+    },
+    {
+      "tx": "0x145b86fccffe55461ee801a4599d538397db82da5bd4c80e36352812cf61b2ae",
+      "block": 48611703,
+      "timestamp": 1784012753,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.884255,
+          "usdValue": 37293.52
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.0001,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845221,
+          "usdValue": 41489.28
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.76861,
+          "usdValue": 74587.23
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.76861,
+          "usdValue": 74587.23
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845134,
+          "usdValue": 41489.08
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00008,
+          "usdValue": 0.19
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845222,
+          "usdValue": 41489.28
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.885993,
+          "usdValue": -37273.54
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.884353,
+          "usdValue": 37293.7
+        }
+      ]
+    },
+    {
+      "tx": "0xdab13b2721e9c44a81a568d832f6dd456969153566df924eb729bdda9e04a2b6",
+      "block": 48611248,
+      "timestamp": 1784011843,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 19.883871,
+          "usdValue": 37292.8
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000097,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 17.845257,
+          "usdValue": 41489.36
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.767841,
+          "usdValue": 74585.79
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.767841,
+          "usdValue": 74585.79
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 17.845116,
+          "usdValue": 41489.04
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000078,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 17.845259,
+          "usdValue": 41489.37
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 19.893607,
+          "usdValue": -37287.81
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 19.883969,
+          "usdValue": 37292.98
+        }
+      ]
+    },
+    {
+      "tx": "0x813a52ef940e1c3872fbb08e0f1094f35c30147c24ca1e05f1cf4afd6f336e67",
+      "block": 48608550,
+      "timestamp": 1784006447,
+      "flows": [
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 39.767868,
+          "usdValue": 74585.84
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.000098,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 35.690458,
+          "usdValue": 82978.6
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 79.535843,
+          "usdValue": 149171.88
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 79.535843,
+          "usdValue": 149171.88
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 35.690252,
+          "usdValue": 82978.12
+        },
+        {
+          "token": "0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+          "symbol": "wstETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000079,
+          "usdValue": 0.18
+        },
+        {
+          "token": "0x99cbc45ea5bb7ef3a5bc08fb1b7e56bb2442ef0d",
+          "symbol": "aBaswstETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 35.690461,
+          "usdValue": 82978.61
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 39.782192,
+          "usdValue": -74566.22
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 39.767966,
+          "usdValue": 74586.02
+        }
+      ]
+    },
     {
       "tx": "0xe26d425660e24259d4a424ae7288d5216064aad2d875514c6e7dd15403a451f9",
       "block": 48604493,
