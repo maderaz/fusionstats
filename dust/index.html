@@ -88,6 +88,15 @@
     .shbar { display:inline-block; width:34px; height:6px; border-radius:3px; background:var(--bg-alt); overflow:hidden; vertical-align:middle; margin-left:6px; }
     .shbar > span { display:block; height:100%; background:var(--accent); }
     .empty { padding:48px 20px; text-align:center; color:var(--text-secondary); }
+    .vc { display:inline-flex; align-items:center; gap:8px; cursor:pointer; max-width:calc(100% - 34px); overflow:hidden; vertical-align:middle; }
+    .vck { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; flex:none; margin:0; }
+    .only { margin-left:8px; font-size:0.66rem; font-family:'JetBrains Mono',monospace; color:var(--accent); cursor:pointer; opacity:0; transition:opacity .12s; vertical-align:middle; }
+    tbody tr:hover .only { opacity:1; }
+    .only:hover { text-decoration:underline; }
+    tbody tr.off td { opacity:0.42; }
+    tbody tr.off:hover td { opacity:0.7; }
+    .mini { border:1px solid var(--stroke); background:var(--surface); color:var(--text-body); font-family:inherit; font-size:0.72rem; font-weight:600; padding:4px 11px; border-radius:8px; cursor:pointer; }
+    .mini:hover { border-color:var(--accent); color:var(--accent); }
 
     .uk-tip { position:fixed; z-index:9999; max-width:240px; padding:8px 11px; border-radius:9px; background:var(--surface); color:var(--text-body); border:1px solid var(--stroke); box-shadow:0 10px 30px rgba(0,0,0,0.18); font-family:'Source Sans 3',sans-serif; font-size:11.5px; line-height:1.45; pointer-events:none; opacity:0; transform:translateY(4px); transition:opacity .12s, transform .12s; }
     .uk-tip.show { opacity:1; transform:none; }
@@ -145,15 +154,18 @@
     </div>
 
     <div class="panel">
-      <div class="h"><span>By vault <i class="th-i" title="Vaults receiving these dust deposits. Share = what % of that vault's own deposits fall under the selected size.">i</i></span><span class="muted" id="tblCnt"></span></div>
+      <div class="h">
+        <span>By vault <i class="th-i" title="Vaults receiving these dust deposits. Check/uncheck to include a vault in the chart &amp; stats; 'only' isolates one. Share = what % of that vault's own deposits fall under the selected size.">i</i></span>
+        <span style="display:flex;gap:9px;align-items:center;flex-wrap:wrap"><span class="muted" id="tblCnt"></span><button class="mini" id="selAll">Include all</button><button class="mini" id="selNone">Exclude all</button></span>
+      </div>
       <div class="tscroll">
         <table>
           <thead><tr>
-            <th data-s="name" style="width:34%">Vault</th>
-            <th data-s="chain" style="width:12%">Chain</th>
+            <th data-s="name" style="width:38%">Vault</th>
+            <th data-s="chain" style="width:10%">Chain</th>
             <th class="r" data-s="count" style="width:16%">Dust deposits</th>
             <th class="r" data-s="usd" style="width:14%">Volume</th>
-            <th class="r" data-s="avg" style="width:12%">Avg size</th>
+            <th class="r" data-s="avg" style="width:10%">Avg size</th>
             <th class="r" data-s="share" style="width:12%">% of vault</th>
           </tr></thead>
           <tbody id="rows"></tbody>
@@ -187,7 +199,8 @@
       document.addEventListener('mouseout', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],.th-i,.bar') : null; if(el) hide(); });
     })();
 
-    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1} };
+    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set() };
+    function included(a){ return !state.excluded.has(a); }
 
     function fUsd(n){ if(n==null||isNaN(n)) return '—'; if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(n<10?2:0); }
     function fNum(n){ return n.toLocaleString('en-US'); }
@@ -227,7 +240,8 @@
       var min=Math.min.apply(null,keys), max=Math.max.apply(null,keys), buckets=[];
       for(var k=min;k<=max;k++){ buckets.push({ key:k, label:labFn(k), c:m[k]?m[k].c:0, u:m[k]?m[k].u:0 }); }
       var peak=Math.max.apply(null,buckets.map(function(b){return b.c;})), nm=niceMax(peak);
-      document.getElementById('chartSub').textContent = 'peak '+fNum(peak)+' / '+(state.grain==='week'?'wk':'mo');
+      var nv=Object.keys(dust.reduce(function(o,d){o[d.vault]=1;return o;},{})).length;
+      document.getElementById('chartSub').textContent = nv+' vault'+(nv===1?'':'s')+' · peak '+fNum(peak)+'/'+(state.grain==='week'?'wk':'mo');
       document.getElementById('bars').innerHTML = buckets.map(function(b){
         return '<div class="bar" data-tip="'+b.label+' — '+fNum(b.c)+' deposits · '+fUsd(b.u)+'" style="height:'+(b.c/nm*100)+'%"></div>'; }).join('');
       document.getElementById('grid').innerHTML = [0,.25,.5,.75,1].map(function(f){
@@ -239,15 +253,16 @@
     function renderTable(dust){
       var m={}; dust.forEach(function(d){ var a=d.vault; if(!m[a])m[a]={count:0,usd:0}; m[a].count++; m[a].usd+=d.usdValue; });
       var rows=Object.keys(m).map(function(a){ var meta=state.vaultMeta[a]||{}; var t=state.totalByVault[a]||0;
-        return { name:meta.name||shortAddr(a), chain:meta.chain||'', count:m[a].count, usd:m[a].usd, avg:m[a].usd/m[a].count, share:t?m[a].count/t:0 }; });
+        return { addr:a, name:meta.name||shortAddr(a), chain:meta.chain||'', count:m[a].count, usd:m[a].usd, avg:m[a].usd/m[a].count, share:t?m[a].count/t:0 }; });
       var s=state.sort; rows.sort(function(a,b){ var x=a[s.key], y=b[s.key];
         if(typeof x==='string') return s.dir*x.localeCompare(y); return s.dir*(x-y); });
-      document.getElementById('tblCnt').textContent = rows.length+' vault'+(rows.length===1?'':'s');
+      var inc=rows.filter(function(r){ return included(r.addr); }).length;
+      document.getElementById('tblCnt').textContent = inc+' of '+rows.length+' vault'+(rows.length===1?'':'s')+' shown';
       var tb=document.getElementById('rows');
       if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">No deposits under '+fmtT(state.threshold)+'.</div></td></tr>'; return; }
-      tb.innerHTML = rows.map(function(r){
-        return '<tr>'+
-          '<td><span class="vname" title="'+r.name+'">'+r.name+'</span></td>'+
+      tb.innerHTML = rows.map(function(r){ var off=!included(r.addr);
+        return '<tr'+(off?' class="off"':'')+'>'+
+          '<td><label class="vc"><input type="checkbox" class="vck" data-a="'+r.addr+'"'+(off?'':' checked')+'><span class="vname" title="'+r.name+'">'+r.name+'</span></label><a class="only" data-a="'+r.addr+'">only</a></td>'+
           '<td><span class="chip">'+r.chain+'</span></td>'+
           '<td class="r mono">'+fNum(r.count)+'</td>'+
           '<td class="r mono">'+fUsd(r.usd)+'</td>'+
@@ -261,7 +276,7 @@
       });
     }
 
-    function renderAll(){ var dust=dustList(); renderCards(dust); renderChart(dust); renderTable(dust); }
+    function renderAll(){ var all=dustList(); var inc=all.filter(function(d){ return included(d.vault); }); renderCards(inc); renderChart(inc); renderTable(all); }
 
     function wireSeg(id, attr, cast, apply){
       document.getElementById(id).addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return;
@@ -274,6 +289,15 @@
       var k=th.getAttribute('data-s'); if(!k) return;
       if(state.sort.key===k) state.sort.dir*=-1; else state.sort={key:k, dir:(k==='name'||k==='chain')?1:-1};
       renderTable(dustList()); });
+
+    /* per-vault include / exclude / isolate */
+    var rowsEl = document.getElementById('rows');
+    rowsEl.addEventListener('change', function(e){ var ck=e.target.closest('.vck'); if(!ck) return;
+      var a=ck.getAttribute('data-a'); if(ck.checked) state.excluded.delete(a); else state.excluded.add(a); renderAll(); });
+    rowsEl.addEventListener('click', function(e){ var only=e.target.closest('.only'); if(!only) return; e.preventDefault();
+      var a=only.getAttribute('data-a'); state.excluded.clear(); Object.keys(state.vaultMeta).forEach(function(x){ if(x!==a) state.excluded.add(x); }); renderAll(); });
+    document.getElementById('selAll').addEventListener('click', function(){ state.excluded.clear(); renderAll(); });
+    document.getElementById('selNone').addEventListener('click', function(){ Object.keys(state.vaultMeta).forEach(function(x){ state.excluded.add(x); }); renderAll(); });
 
     (function load(){
       fetch('activity-events.json').then(function(r){ return r.json(); }).then(function(d){
