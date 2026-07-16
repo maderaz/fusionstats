@@ -46,6 +46,9 @@
     .seg button:last-child { border-right:0; }
     .seg button:hover { color:var(--text); }
     .seg button.on { background:var(--accent); color:#fff; }
+    .szval { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--accent); font-weight:600; margin-left:7px; text-transform:none; letter-spacing:0; }
+    .uk-slider { width:100%; margin-top:10px; accent-color:var(--accent); cursor:pointer; height:16px; }
+    .slider-scale { display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--text-secondary); margin-top:1px; }
     .seg.sm button { height:38px; font-size:0.8rem; padding:0 12px; }
 
     .cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
@@ -138,12 +141,16 @@
 
     <div class="controls">
       <div class="field">
-        <label>Deposit size</label>
+        <label>Deposit size <span class="szval" id="szVal">&lt; $1,000</span></label>
         <div class="seg" id="segT">
           <button data-t="100">&lt; $100</button>
           <button data-t="1000" class="on">&lt; $1k</button>
           <button data-t="5000">&lt; $5k</button>
+          <button data-t="10000">&lt; $10k</button>
+          <button data-t="20000">&lt; $20k</button>
         </div>
+        <input type="range" id="szSlider" class="uk-slider" min="0" max="10000" step="100" value="1000" aria-label="Deposit size threshold ($0–$10k)">
+        <div class="slider-scale"><span>$0</span><span>$5k</span><span>$10k</span></div>
       </div>
       <div class="field">
         <label>Bucket by</label>
@@ -384,7 +391,16 @@
         Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('on', x===b); });
         apply(cast(b.getAttribute(attr))); });
     }
-    wireSeg('segT','data-t', Number, function(v){ state.threshold=v; renderAll(); });
+    function setSize(v, fromSlider){
+      state.threshold = v;
+      document.getElementById('szVal').textContent = '< $' + v.toLocaleString();
+      if(!fromSlider){ document.getElementById('szSlider').value = Math.min(v, 10000); }
+      Array.prototype.forEach.call(document.querySelectorAll('#segT button'), function(b){ b.classList.toggle('on', +b.getAttribute('data-t') === v); });
+      renderAll();
+    }
+    document.getElementById('segT').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) setSize(+b.getAttribute('data-t'), false); });
+    document.getElementById('szSlider').addEventListener('input', function(){ setSize(+this.value, true); });
+    document.getElementById('szVal').textContent = '< $' + state.threshold.toLocaleString();
     wireSeg('segG','data-g', String, function(v){ state.grain=v; state.period=null; renderAll(); });
     wireSeg('segZ','data-z', String, function(v){ state.zyfai=v; renderAll(); });
     document.querySelector('#vaultView thead').addEventListener('click', function(e){ var th=e.target.closest('th'); if(!th) return;
