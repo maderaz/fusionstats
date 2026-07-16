@@ -1,18 +1,6 @@
 [
   {
     "level": "error",
-    "event": "collect",
-    "errors": [
-      {
-        "step": "fetchTotalLoans",
-        "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?"
-      }
-    ],
-    "warnings": [],
-    "timestamp": "2026-06-01T06:51:48.362Z"
-  },
-  {
-    "level": "error",
     "event": "collect_crash",
     "message": "Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?",
     "stack": "Error: Field \"whitelisted\" is not defined by type \"MarketFilters\". Did you mean \"listed\"?\n    at gql (/home/runner/work/fusionstats/fusionstats/collect.js:70:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async fetchTotalLoans (/home/runner/work/fusionstats/fusionstats/collect.js:75:16)\n    at async collect (/home/runner/work/fusionstats/fusionstats/collect.js:140:18)",
@@ -7829,5 +7817,21 @@
     "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
     "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4387:19)\n    at successSteps (node:internal/deps/undici/undici:7041:27)\n    at readAllBytes (node:internal/deps/undici/undici:5958:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
     "timestamp": "2026-07-16T08:27:51.498Z"
+  },
+  {
+    "level": "info",
+    "event": "collect",
+    "errors": [],
+    "warnings": [],
+    "totalLoans": 1922563666.0247166,
+    "fusionBorrowed": 18206463.755898822,
+    "fusionCollateral": 20957537.995763954,
+    "sharePercent": 0.9469888606365017,
+    "activeVaults": 24,
+    "totalVaults": 129,
+    "vaultErrors": 0,
+    "durationMs": 18742,
+    "historyEntries": 209,
+    "timestamp": "2026-07-16T10:26:52.901Z"
   }
 ]
