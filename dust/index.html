@@ -161,7 +161,7 @@
         </div>
       </div>
       <div class="field">
-        <label>ZyfAI <span style="color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">(ERC-4337)</span> <i class="th-i" title="Deposits routed through ZyfAI (ERC-4337 / Pimlico), matched by the deposit's sender/owner address. Only = show just ZyfAI; Exclude = hide ZyfAI to see organic deposits.">i</i></label>
+        <label>ZyfAI <span style="color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">(ERC-4337)</span> <i class="th-i" title="Deposits from ZyfAI — matched when the deposit's sender or owner is in ZyfAI's published EOA / smart-wallet list (per chain, kept fresh from their API). Only = show just ZyfAI; Exclude = hide ZyfAI to see organic deposits.">i</i></label>
         <div class="seg sm" id="segZ">
           <button data-z="all" class="on">All</button>
           <button data-z="only">Only</button>
@@ -431,6 +431,10 @@
           if(!state.vaultMeta[e.vault]) state.vaultMeta[e.vault]={ name:e.vaultName||shortAddr(e.vault), chain:e.chain }; });
         if(d.updatedAt){ var u=new Date(d.updatedAt); document.getElementById('updated').innerHTML='· updated <b>'+u.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>'; }
         renderAll();
+        // Widen the ZyfAI match set with their published wallet/EOA list (seed file, kept fresh by collect-zyfai.js).
+        fetch('zyfai-wallets.json').then(function(r){ return r.ok ? r.json() : null; }).then(function(z){
+          if(z && Array.isArray(z.addresses) && z.addresses.length){ z.addresses.forEach(function(a){ ZYFAI.add((a||'').toLowerCase()); }); renderAll(); }
+        }).catch(function(){});
       }).catch(function(err){ document.getElementById('cards').innerHTML='<div class="card" style="grid-column:1/-1;color:var(--red)">Couldn\'t load activity data. '+err+'</div>'; });
     })();
   </script>
