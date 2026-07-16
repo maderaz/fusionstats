@@ -133,7 +133,7 @@
     <div class="datanote">
       <span class="dot"></span>
       <span>All Fusion vault deposits · synthetic (wrapper &amp; rebalance) flows excluded · USD value at deposit time.</span>
-      <span id="updated"></span>
+      <span id="updated"></span><span id="zyfaiNote"></span>
     </div>
 
     <div class="controls">
@@ -151,6 +151,14 @@
           <button data-g="day">Daily</button>
           <button data-g="week">Weekly</button>
           <button data-g="month" class="on">Monthly</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>ZyfAI <span style="color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">(ERC-4337)</span> <i class="th-i" title="Deposits routed through ZyfAI (ERC-4337 / Pimlico), matched by the deposit's sender/owner address. Only = show just ZyfAI; Exclude = hide ZyfAI to see organic deposits.">i</i></label>
+        <div class="seg sm" id="segZ">
+          <button data-z="all" class="on">All</button>
+          <button data-z="only">Only</button>
+          <button data-z="exclude">Exclude</button>
         </div>
       </div>
     </div>
@@ -231,7 +239,11 @@
       document.addEventListener('mouseout', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],.th-i,.bar') : null; if(el) hide(); });
     })();
 
-    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'' };
+    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all' };
+    // ZyfAI (ERC-4337 / Pimlico) — router/executor addresses that call deposit() on behalf of users.
+    var ZYFAI = new Set(['0xaffd3c3cd06cf499deddf78b26868018a93f2c31','0x677251190c0cccc6e7e71c385b3ea660dfd89c00','0xea49d02c248b357b99670d9e9741f54f72df9cb3','0x9af838b8bb05269dac4f30a127f171d3cf76dac3','0x399502b8dc8a38e2cd2d670f4f40cc168c063585','0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db']);
+    function isZyfai(d){ return ZYFAI.has((d.sender||'').toLowerCase()) || ZYFAI.has((d.owner||'').toLowerCase()); }
+    function zyfaiOk(d){ return state.zyfai==='all' ? true : state.zyfai==='only' ? isZyfai(d) : !isZyfai(d); }
     function included(a){ return !state.excluded.has(a); }
 
     function fUsd(n){ if(n==null||isNaN(n)) return '—'; if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(n<10?2:0); }
@@ -253,7 +265,7 @@
     function periodLabel(k){ return state.grain==='day'?dayLabel(k):state.grain==='week'?weekLabel(k):monthLabel(k); }
     function inPeriod(d){ return state.period==null || bucketKey(d.timestamp)===state.period; }
 
-    function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t; }); }
+    function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t && zyfaiOk(d); }); }
 
     function renderCards(dust){
       var vol=dust.reduce(function(s,d){return s+d.usdValue;},0);
@@ -359,6 +371,10 @@
       renderCards(incP);
       renderTx(incP);
       renderTable(base.filter(inPeriod));
+      // ZyfAI share of the current threshold+vault+period scope (independent of the All/Only/Exclude mode)
+      var scope = state.deposits.filter(function(d){ return d.usdValue<state.threshold && included(d.vault) && inPeriod(d); });
+      var zc = scope.filter(isZyfai).length;
+      document.getElementById('zyfaiNote').textContent = scope.length ? ' · ZyfAI ~'+Math.round(100*zc/scope.length)+'% of deposits' : '';
       renderPeriodChip();
       applyView();
     }
@@ -370,6 +386,7 @@
     }
     wireSeg('segT','data-t', Number, function(v){ state.threshold=v; renderAll(); });
     wireSeg('segG','data-g', String, function(v){ state.grain=v; state.period=null; renderAll(); });
+    wireSeg('segZ','data-z', String, function(v){ state.zyfai=v; renderAll(); });
     document.querySelector('#vaultView thead').addEventListener('click', function(e){ var th=e.target.closest('th'); if(!th) return;
       var k=th.getAttribute('data-s'); if(!k) return;
       if(state.sort.key===k) state.sort.dir*=-1; else state.sort={key:k, dir:(k==='name'||k==='chain')?1:-1};
