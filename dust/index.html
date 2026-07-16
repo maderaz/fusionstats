@@ -148,6 +148,7 @@
       <div class="field">
         <label>Bucket by</label>
         <div class="seg sm" id="segG">
+          <button data-g="day">Daily</button>
           <button data-g="week">Weekly</button>
           <button data-g="month" class="on">Monthly</button>
         </div>
@@ -243,11 +244,13 @@
     function monthLabel(k){ return new Date(Math.floor(k/12), k%12, 1).toLocaleDateString('en-US',{month:'short',year:'2-digit'}); }
     function weekKey(ts){ return Math.floor(ts/604800); }
     function weekLabel(k){ return new Date(k*604800*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+    function dayKey(ts){ return Math.floor(ts/86400); }
+    function dayLabel(k){ return new Date(k*86400000).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}); }
     var EXPLORER = { ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io', avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to', ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
     function fTok(n){ if(n==null) return ''; if(n>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0}); if(n>=1) return n.toFixed(3); return n.toFixed(5); }
     function fWhen(ts){ var d=new Date(ts*1000), a=Date.now()/1000-ts; var rel=a<3600?Math.round(a/60)+'m ago':a<86400?Math.round(a/3600)+'h ago':a<2592000?Math.round(a/86400)+'d ago':d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return { rel:rel, abs:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) }; }
-    function bucketKey(ts){ return state.grain==='week'?weekKey(ts):monthKey(ts); }
-    function periodLabel(k){ return state.grain==='week'?weekLabel(k):monthLabel(k); }
+    function bucketKey(ts){ return state.grain==='day'?dayKey(ts):state.grain==='week'?weekKey(ts):monthKey(ts); }
+    function periodLabel(k){ return state.grain==='day'?dayLabel(k):state.grain==='week'?weekLabel(k):monthLabel(k); }
     function inPeriod(d){ return state.period==null || bucketKey(d.timestamp)===state.period; }
 
     function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t; }); }
@@ -269,16 +272,20 @@
     }
 
     function renderChart(dust){
-      var keyFn = state.grain==='week'?weekKey:monthKey, labFn = state.grain==='week'?weekLabel:monthLabel;
+      var keyFn = state.grain==='day'?dayKey:state.grain==='week'?weekKey:monthKey;
+      var labFn = state.grain==='day'?dayLabel:state.grain==='week'?weekLabel:monthLabel;
       var m={}; dust.forEach(function(d){ var k=keyFn(d.timestamp); if(!m[k])m[k]={c:0,u:0}; m[k].c++; m[k].u+=d.usdValue; });
       var keys=Object.keys(m).map(Number);
-      document.getElementById('chartTitle').textContent = 'Deposits under '+fmtT(state.threshold)+' · '+(state.grain==='week'?'weekly':'monthly');
+      document.getElementById('chartTitle').textContent = 'Deposits under '+fmtT(state.threshold)+' · '+(state.grain==='day'?'daily':state.grain==='week'?'weekly':'monthly');
       if(!keys.length){ document.getElementById('bars').innerHTML=''; document.getElementById('grid').innerHTML=''; document.getElementById('xaxis').innerHTML=''; document.getElementById('chartSub').textContent='no deposits'; return; }
-      var min=Math.min.apply(null,keys), max=Math.max.apply(null,keys), buckets=[];
+      var min=Math.min.apply(null,keys), max=Math.max.apply(null,keys);
+      var capped = state.grain==='day' && (max-min)>89; if(capped) min=max-89;
+      var buckets=[];
       for(var k=min;k<=max;k++){ buckets.push({ key:k, label:labFn(k), c:m[k]?m[k].c:0, u:m[k]?m[k].u:0 }); }
       var peak=Math.max.apply(null,buckets.map(function(b){return b.c;})), nm=niceMax(peak);
       var nv=Object.keys(dust.reduce(function(o,d){o[d.vault]=1;return o;},{})).length;
-      document.getElementById('chartSub').textContent = nv+' vault'+(nv===1?'':'s')+' · peak '+fNum(peak)+'/'+(state.grain==='week'?'wk':'mo');
+      var per = state.grain==='day'?'day':state.grain==='week'?'wk':'mo';
+      document.getElementById('chartSub').textContent = nv+' vault'+(nv===1?'':'s')+' · peak '+fNum(peak)+'/'+per+(capped?' · last 90 days':'');
       document.getElementById('bars').innerHTML = buckets.map(function(b){
         return '<div class="bar'+(b.key===state.period?' sel':'')+'" data-bk="'+b.key+'" data-tip="'+b.label+' — '+fNum(b.c)+' deposits · '+fUsd(b.u)+' · click to drill in" style="height:'+(b.c/nm*100)+'%"></div>'; }).join('');
       document.getElementById('grid').innerHTML = [0,.25,.5,.75,1].map(function(f){
