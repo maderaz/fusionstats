@@ -1,13 +1,74 @@
 {
   "vault": "0xe309690039d139ff75ae1154eaa858537137931d",
   "chain": "ethereum",
-  "updatedAt": "2026-07-17T05:18:11.967Z",
+  "updatedAt": "2026-07-18T04:53:00.220Z",
   "blockRange": {
     "from": 25371690,
-    "to": 25550261
+    "to": 25557315
   },
-  "txCount": 4,
+  "txCount": 5,
   "rebalances": [
+    {
+      "tx": "0x92bf891089fb19504b55f9d626c0315f4cf3df0b9f0f66307afb7e8b90c6d171",
+      "block": 25554969,
+      "timestamp": 1784322095,
+      "flows": [
+        {
+          "token": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+          "symbol": "WBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.000482,
+          "usdValue": 30.79
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 18.00419,
+          "usdValue": 18
+        },
+        {
+          "token": "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8",
+          "symbol": "aEthWBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.000491,
+          "usdValue": 31.36
+        },
+        {
+          "token": "0x72e95b8931767c79ba4eee721354d6e99a61d004",
+          "symbol": "variableDebtEthUSDC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 237.548847,
+          "usdValue": -237.52
+        },
+        {
+          "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 18.00419,
+          "usdValue": 18
+        },
+        {
+          "token": "0x888e1d3c509c80e24cab8a4872e164b7e5a6eb10",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 0,
+          "usdValue": null
+        }
+      ]
+    },
     {
       "tx": "0x97a3f960ddee6e38973644a1cc1dedaa04971fe19d13c105fff9250263f87423",
       "block": 25511937,
