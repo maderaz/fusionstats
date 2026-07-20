@@ -1,18 +1,6 @@
 [
   {
     "level": "error",
-    "event": "collect",
-    "errors": [
-      {
-        "step": "fetchTotalLoans",
-        "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
-      }
-    ],
-    "warnings": [],
-    "timestamp": "2026-06-08T12:10:41.825Z"
-  },
-  {
-    "level": "error",
     "event": "collect_crash",
     "message": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON",
     "stack": "SyntaxError: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\n    at JSON.parse (<anonymous>)\n    at parseJSONFromBytes (node:internal/deps/undici/undici:4337:19)\n    at successSteps (node:internal/deps/undici/undici:6985:27)\n    at readAllBytes (node:internal/deps/undici/undici:5908:13)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)",
@@ -7920,5 +7908,21 @@
     "durationMs": 16824,
     "historyEntries": 218,
     "timestamp": "2026-07-20T21:17:28.203Z"
+  },
+  {
+    "level": "info",
+    "event": "collect",
+    "errors": [],
+    "warnings": [],
+    "totalLoans": 1937183547.71425,
+    "fusionBorrowed": 21626456.12025279,
+    "fusionCollateral": 24835461.327584077,
+    "sharePercent": 1.116386526499804,
+    "activeVaults": 24,
+    "totalVaults": 132,
+    "vaultErrors": 0,
+    "durationMs": 14285,
+    "historyEntries": 218,
+    "timestamp": "2026-07-20T22:15:20.915Z"
   }
 ]
