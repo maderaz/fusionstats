@@ -1,13 +1,196 @@
 {
   "vault": "0xe3432699550f08aef04beab363b740e6f8d946b2",
   "chain": "base",
-  "updatedAt": "2026-07-20T05:42:50.546Z",
+  "updatedAt": "2026-07-21T05:23:36.671Z",
   "blockRange": {
     "from": 48480482,
-    "to": 48868410
+    "to": 48911033
   },
-  "txCount": 4,
+  "txCount": 7,
   "rebalances": [
+    {
+      "tx": "0x9ddab2d2d1a8163a9e6a8da1bf143240c395663b38354d696c998ee237b88e9d",
+      "block": 48887416,
+      "timestamp": 1784564179,
+      "flows": [
+        {
+          "token": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "symbol": "cbBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.25,
+          "usdValue": 16372.16
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 4.652741,
+          "usdValue": 8939.28
+        },
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 4.094018,
+          "usdValue": 8935.9
+        },
+        {
+          "token": "0xbdb9300b7cde636d9cd4aff00f6f009ffbbc8ee6",
+          "symbol": "aBascbBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.25,
+          "usdValue": 16372.17
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 4.652832,
+          "usdValue": -8957.3
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 4.652741,
+          "usdValue": 8939.28
+        },
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 4.098116,
+          "usdValue": 8944.84
+        },
+        {
+          "token": "0x3e212f136244465d8e524fb658e6daa1fb0593bf",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 410.980713,
+          "usdValue": null
+        }
+      ]
+    },
+    {
+      "tx": "0xafc87b9e1dc06d072641cb00450c918bcfe4f059bb830c0fa3d34464e495afac",
+      "block": 48884206,
+      "timestamp": 1784557759,
+      "flows": [
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.00573,
+          "usdValue": 12.51
+        },
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.00573,
+          "usdValue": 12.51
+        }
+      ]
+    },
+    {
+      "tx": "0x74b5424fe7321b6ed3c38c12010cb0ecf110268d361a9a6ec2c6e475dcc203cf",
+      "block": 48880726,
+      "timestamp": 1784550799,
+      "flows": [
+        {
+          "token": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "symbol": "cbBTC",
+          "protocol": "BTC",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 0.279427,
+          "usdValue": 18299.29
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 5.200354,
+          "usdValue": 9991.41
+        },
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 4.575805,
+          "usdValue": 9987.48
+        },
+        {
+          "token": "0xbdb9300b7cde636d9cd4aff00f6f009ffbbc8ee6",
+          "symbol": "aBascbBTC",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 0.279427,
+          "usdValue": 18299.31
+        },
+        {
+          "token": "0x24e6e0795b3c7c71d965fcc4f371803d1c1dca1e",
+          "symbol": "variableDebtBasWETH",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "in",
+          "amount": 5.201142,
+          "usdValue": -10012.87
+        },
+        {
+          "token": "0x4200000000000000000000000000000000000006",
+          "symbol": "WETH",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 5.200354,
+          "usdValue": 9991.41
+        },
+        {
+          "token": "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+          "symbol": "cbETH",
+          "protocol": "LST",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 4.580386,
+          "usdValue": 9997.48
+        },
+        {
+          "token": "0x3e212f136244465d8e524fb658e6daa1fb0593bf",
+          "symbol": "?",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 459.345248,
+          "usdValue": null
+        }
+      ]
+    },
     {
       "tx": "0x038ab15d0c394a993c683532208aed5d3eb30796a4579d6ffc2f5393a08771f4",
       "block": 48758199,
