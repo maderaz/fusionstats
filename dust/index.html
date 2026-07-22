@@ -170,6 +170,15 @@
         </div>
       </div>
       <div class="field">
+        <label>Timeframe</label>
+        <div class="seg sm" id="segTF">
+          <button data-tf="1w">1W</button>
+          <button data-tf="1m">1M</button>
+          <button data-tf="mtd">MTD</button>
+          <button data-tf="all" class="on">All</button>
+        </div>
+      </div>
+      <div class="field">
         <label>ZyfAI <span style="color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">(ERC-4337)</span> <i class="th-i" title="Deposits from ZyfAI — matched when the deposit's sender or owner is in ZyfAI's published EOA / smart-wallet list (per chain, kept fresh from their API). Only = show just ZyfAI; Exclude = hide ZyfAI to see organic deposits.">i</i></label>
         <div class="seg sm" id="segZ">
           <button data-z="all" class="on">All</button>
@@ -256,7 +265,7 @@
       document.addEventListener('mouseout', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],.th-i,.bar') : null; if(el) hide(); });
     })();
 
-    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all', showMarker:false };
+    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all', since:0, tf:'all', showMarker:false };
     // ZyfAI (ERC-4337 / Pimlico) — router/executor addresses that call deposit() on behalf of users.
     var ZYFAI = new Set(['0xaffd3c3cd06cf499deddf78b26868018a93f2c31','0x677251190c0cccc6e7e71c385b3ea660dfd89c00','0xea49d02c248b357b99670d9e9741f54f72df9cb3','0x9af838b8bb05269dac4f30a127f171d3cf76dac3','0x399502b8dc8a38e2cd2d670f4f40cc168c063585','0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db']);
     function isZyfai(d){ return ZYFAI.has((d.sender||'').toLowerCase()) || ZYFAI.has((d.owner||'').toLowerCase()); }
@@ -282,7 +291,7 @@
     function periodLabel(k){ return state.grain==='day'?dayLabel(k):state.grain==='week'?weekLabel(k):monthLabel(k); }
     function inPeriod(d){ return state.period==null || bucketKey(d.timestamp)===state.period; }
 
-    function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t && zyfaiOk(d); }); }
+    function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t && d.timestamp >= state.since && zyfaiOk(d); }); }
 
     function renderCards(dust){
       var vol=dust.reduce(function(s,d){return s+d.usdValue;},0);
@@ -401,7 +410,7 @@
       renderTx(incP);
       renderTable(base.filter(inPeriod));
       // ZyfAI share of the current threshold+vault+period scope (independent of the All/Only/Exclude mode)
-      var scope = state.deposits.filter(function(d){ return d.usdValue<state.threshold && included(d.vault) && inPeriod(d); });
+      var scope = state.deposits.filter(function(d){ return d.usdValue<state.threshold && d.timestamp>=state.since && included(d.vault) && inPeriod(d); });
       var zc = scope.filter(isZyfai).length;
       document.getElementById('zyfaiNote').textContent = scope.length ? ' · ZyfAI ~'+Math.round(100*zc/scope.length)+'% of deposits' : '';
       renderPeriodChip();
@@ -424,6 +433,12 @@
     document.getElementById('szSlider').addEventListener('input', function(){ setSize(+this.value, true); });
     document.getElementById('szVal').textContent = '< $' + state.threshold.toLocaleString();
     wireSeg('segG','data-g', String, function(v){ state.grain=v; state.period=null; renderAll(); });
+    function tfSince(tf){ var now=Date.now()/1000;
+      if(tf==='1w') return now-7*86400;
+      if(tf==='1m') return now-30*86400;
+      if(tf==='mtd'){ var n=new Date(); return new Date(n.getFullYear(), n.getMonth(), 1).getTime()/1000; }
+      return 0; }
+    wireSeg('segTF','data-tf', String, function(v){ state.tf=v; state.since=tfSince(v); state.period=null; renderAll(); });
     wireSeg('segZ','data-z', String, function(v){ state.zyfai=v; renderAll(); });
     document.getElementById('mkBtn').addEventListener('click', function(){
       state.showMarker = !state.showMarker;
