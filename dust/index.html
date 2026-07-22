@@ -33,6 +33,12 @@
     .top h1 { font-size:1.9rem; display:flex; align-items:center; gap:11px; }
     .top .sub { color:var(--text-body); font-size:0.98rem; margin-top:7px; max-width:660px; }
     .theme-toggle { width:38px; height:38px; flex:none; border:1px solid var(--stroke); border-radius:10px; background:var(--surface); color:var(--text); font-size:1rem; cursor:pointer; }
+    .mkbtn { border:1px solid var(--stroke); background:var(--surface); color:var(--text-body); font-family:inherit; font-size:0.82rem; font-weight:600; padding:0 14px; height:38px; border-radius:10px; cursor:pointer; white-space:nowrap; }
+    .mkbtn:hover { border-color:#0052FF; color:#0052FF; }
+    .mkbtn.on { background:#0052FF; border-color:#0052FF; color:#fff; }
+    .markers { position:absolute; inset:0 0 0 46px; pointer-events:none; z-index:3; }
+    .marker { position:absolute; top:0; bottom:0; width:2px; background:#0052FF; }
+    .marker .lbl { position:absolute; top:4px; right:5px; background:#0052FF; color:#fff; font-family:'Poppins',sans-serif; font-size:9.5px; font-weight:600; padding:2px 7px; border-radius:5px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,82,255,0.35); }
     .theme-toggle:hover { border-color:var(--accent); }
     .datanote { font-size:0.8rem; color:var(--text-secondary); margin-bottom:22px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .datanote b { color:var(--text-body); font-weight:600; }
@@ -130,7 +136,10 @@
         <h1><span>✨</span> Dust Deposit Tracker</h1>
         <p class="sub">How many <b>small deposits</b> hit Fusion vaults over time. Pick a size threshold — the chart and breakdown update to count every deposit under it.</p>
       </div>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+      <div style="display:flex;gap:10px;align-items:center;flex:none">
+        <button class="mkbtn" id="mkBtn">Show Base App Listing</button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+      </div>
     </div>
 
     <div class="datanote">
@@ -177,6 +186,7 @@
       <div class="plot">
         <div class="grid" id="grid"></div>
         <div class="bars" id="bars"></div>
+        <div class="markers" id="markers"></div>
       </div>
       <div class="xaxis" id="xaxis"></div>
     </div>
@@ -246,7 +256,7 @@
       document.addEventListener('mouseout', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],.th-i,.bar') : null; if(el) hide(); });
     })();
 
-    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all' };
+    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all', showMarker:false };
     // ZyfAI (ERC-4337 / Pimlico) — router/executor addresses that call deposit() on behalf of users.
     var ZYFAI = new Set(['0xaffd3c3cd06cf499deddf78b26868018a93f2c31','0x677251190c0cccc6e7e71c385b3ea660dfd89c00','0xea49d02c248b357b99670d9e9741f54f72df9cb3','0x9af838b8bb05269dac4f30a127f171d3cf76dac3','0x399502b8dc8a38e2cd2d670f4f40cc168c063585','0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db']);
     function isZyfai(d){ return ZYFAI.has((d.sender||'').toLowerCase()) || ZYFAI.has((d.owner||'').toLowerCase()); }
@@ -291,6 +301,7 @@
     }
 
     function renderChart(dust){
+      document.getElementById('markers').innerHTML='';
       var keyFn = state.grain==='day'?dayKey:state.grain==='week'?weekKey:monthKey;
       var labFn = state.grain==='day'?dayLabel:state.grain==='week'?weekLabel:monthLabel;
       var m={}; dust.forEach(function(d){ var k=keyFn(d.timestamp); if(!m[k])m[k]={c:0,u:0}; m[k].c++; m[k].u+=d.usdValue; });
@@ -311,6 +322,17 @@
         return '<div class="gridline" style="bottom:'+(f*100)+'%"><span class="gl">'+fNum(Math.round(nm*f))+'</span></div>'; }).join('');
       var N=Math.ceil(buckets.length/12);
       document.getElementById('xaxis').innerHTML = buckets.map(function(b,i){ return '<div class="xtick">'+((i%N===0)?b.label:'')+'</div>'; }).join('');
+      if(state.showMarker){
+        var _ts=Date.UTC(2026,6,9,12)/1000, _tkey=bucketKey(_ts), _ti=-1;
+        for(var _mi=0;_mi<buckets.length;_mi++){ if(buckets[_mi].key===_tkey){ _ti=_mi; break; } }
+        if(_ti>=0){
+          var _frac=0.5;
+          if(state.grain==='day') _frac=(_ts - _tkey*86400)/86400;
+          else if(state.grain==='week') _frac=(_ts - _tkey*604800)/604800;
+          else { var _yy=Math.floor(_tkey/12), _mm=_tkey%12; _frac=(_ts*1000 - Date.UTC(_yy,_mm,1))/(Date.UTC(_yy,_mm+1,1)-Date.UTC(_yy,_mm,1)); }
+          document.getElementById('markers').innerHTML='<div class="marker" style="left:'+((_ti+_frac)/buckets.length*100)+'%"><span class="lbl">Base App listing · Jul 9</span></div>';
+        }
+      }
     }
 
     function renderTable(dust){
@@ -403,6 +425,12 @@
     document.getElementById('szVal').textContent = '< $' + state.threshold.toLocaleString();
     wireSeg('segG','data-g', String, function(v){ state.grain=v; state.period=null; renderAll(); });
     wireSeg('segZ','data-z', String, function(v){ state.zyfai=v; renderAll(); });
+    document.getElementById('mkBtn').addEventListener('click', function(){
+      state.showMarker = !state.showMarker;
+      this.classList.toggle('on', state.showMarker);
+      this.textContent = state.showMarker ? 'Hide Base App Listing' : 'Show Base App Listing';
+      renderAll();
+    });
     document.querySelector('#vaultView thead').addEventListener('click', function(e){ var th=e.target.closest('th'); if(!th) return;
       var k=th.getAttribute('data-s'); if(!k) return;
       if(state.sort.key===k) state.sort.dir*=-1; else state.sort={key:k, dir:(k==='name'||k==='chain')?1:-1};
