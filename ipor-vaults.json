@@ -1,17 +1,20 @@
 {
-  "updatedAt": "2026-08-17T15:56:46.695Z",
+  "updatedAt": "2026-08-17T16:24:30.917Z",
   "sources": [
-    "https://api.ipor.io/fusion/vaults"
+    "https://api.ipor.io/fusion/vaults",
+    "https://raw.githubusercontent.com/IPOR-Labs/ipor-abi/main/mainnet/addresses.json"
   ],
-  "total": 405,
+  "total": 507,
   "byChain": {
-    "arbitrum": 38,
-    "avalanche": 1,
-    "base": 208,
-    "ethereum": 152,
-    "plasma": 2,
-    "tac": 1,
-    "unichain": 3
+    "arbitrum": 53,
+    "avalanche": 4,
+    "base": 250,
+    "ethereum": 176,
+    "ink": 1,
+    "katana": 3,
+    "plasma": 8,
+    "tac": 3,
+    "unichain": 9
   },
   "vaults": [
     {
@@ -24,7 +27,7 @@
       "tvl": 235985.33920374353,
       "apy": 2.4726115532186417,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -36,7 +39,7 @@
       "tvl": 156257.2118518326,
       "apy": 1.972149605677111,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -48,7 +51,7 @@
       "tvl": 25057.766487763565,
       "apy": 6.018193905145768,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -60,7 +63,7 @@
       "tvl": 23861.915887468815,
       "apy": 1.458639257488983,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -72,7 +75,7 @@
       "tvl": 2248.5252162164556,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -96,7 +99,7 @@
       "tvl": 870.966732546611,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -108,7 +111,7 @@
       "tvl": 427.982778625547,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -144,7 +147,7 @@
       "tvl": 19.42442883383706,
       "apy": 32166.115083602297,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -156,7 +159,7 @@
       "tvl": 14.00392220860908,
       "apy": 3.0045284182956427,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -240,7 +243,7 @@
       "tvl": 2.329607580262872,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -252,7 +255,7 @@
       "tvl": 2.00403459812556,
       "apy": 2.99442532334674,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -264,7 +267,7 @@
       "tvl": 0.582250683427274,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -288,7 +291,7 @@
       "tvl": 0.05093857642302,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -336,7 +339,19 @@
       "tvl": 0.00002399603184,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "Arbitrum Test vault",
+      "token": "ARBTST",
+      "address": "0xeabb2bea1185d0c71f06c0dd6bf270bdf0758562",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -348,7 +363,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -360,7 +375,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -372,7 +387,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "AutoFi USDC LP Strategy by LibFi",
+      "token": "autoFi",
+      "address": "0x7aa2656a84b129a1e8ada9ad89fb98552649f936",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "AutoFi USDC LP Strategy by Libfi.ai",
+      "token": "autoFi",
+      "address": "0x2e27c959f818cc4bbcb78bb6ded89b22216b657a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -384,7 +423,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -408,7 +447,55 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "ETH Bulgaria ",
+      "token": "BG",
+      "address": "0x2d3c7ede4023cfe0710d3f0d1f934bd50f1d96ba",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "ETH Sofia",
+      "token": "BG",
+      "address": "0xcd1b7a4bf9dea06d717053c179e06efb2a94a90a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "IPOR wstETH Arbitrum",
+      "token": "ipwstETHfusion",
+      "address": "0x7c655d660e2b09126b0ad6851f99d70d3715fd9b",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "IPOR wstETH Arbitrum",
+      "token": "ipwstETHfusion",
+      "address": "0x2c6f1e2bbd074822773fc142922cabdbf535696c",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -420,7 +507,67 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "LlamaRisk crvUSD Optimizer PoC",
+      "token": "LLRcrvUSDPoC",
+      "address": "0xffe93fcf25a68dd248806a5bf07d8ac1004d099c",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "Maciek F2 crvUSD",
+      "token": "MF3",
+      "address": "0xdfeb0d984373a7e3b57c193c071df47d2f53f341",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "My Vault",
+      "token": "MYVLT",
+      "address": "0x1d95d62ba0b4e87ba202f6b6ab014f4d0ffbe1fd",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "Reactive Yield Optimizer",
+      "token": "RYO",
+      "address": "0xee29a26179fe20d5d202dae4a279119e08edc60b",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "Stake DAO Smart Save (USDC)",
+      "token": "sdSaveUSDC",
+      "address": "0xa4f39ec96b7a2178b381de9cdc9021fb2490b409",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -432,7 +579,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -444,7 +591,43 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "TiD Capital Arbitrum Yield",
+      "token": "TID_ARB_YIELD",
+      "address": "0xcd5d55320f8469075c084066866a6d399407e05e",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "Tsitsi",
+      "token": "TTS",
+      "address": "0xfd93765e72d7085e2c721fa299e985fe2e49db26",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 42161,
+      "chain": "arbitrum",
+      "name": "USDC-test",
+      "token": "USDCVT",
+      "address": "0x7a59a89ab924a76675c302e92ee243810ce04911",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -456,7 +639,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 42161,
@@ -468,7 +651,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 43114,
@@ -480,7 +663,43 @@
       "tvl": 786.7392,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 43114,
+      "chain": "avalanche",
+      "name": "Maciek Euler intergration test",
+      "token": "MF2",
+      "address": "0xd80493e60b0e38a7503c1b5515c842aa98682f13",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 43114,
+      "chain": "avalanche",
+      "name": "Maciek F1 Ultra USDC Yield machine",
+      "token": "MF2",
+      "address": "0xeff1df23ecd841f78561e51b38911e7470a3a681",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 43114,
+      "chain": "avalanche",
+      "name": "WOO AVAX TEST",
+      "token": "",
+      "address": "0x673441675d77c6517421aa90bd13b861a36cb21e",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -492,7 +711,7 @@
       "tvl": 6775071.123070159,
       "apy": 4.222773067994696,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -504,7 +723,7 @@
       "tvl": 4724271.313895956,
       "apy": 3.1041548156117647,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -516,7 +735,7 @@
       "tvl": 3410922.0454554097,
       "apy": 4.947371798654538,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -528,7 +747,7 @@
       "tvl": 2654444.472416274,
       "apy": 4.07403528725202,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -540,7 +759,7 @@
       "tvl": 2455818.46008035,
       "apy": 1.6379327778104293,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -552,7 +771,7 @@
       "tvl": 1006121.3008458569,
       "apy": 4.569482240235435,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -564,7 +783,7 @@
       "tvl": 948747.148879087,
       "apy": 5.980268811518701,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -576,7 +795,7 @@
       "tvl": 817575.7877388855,
       "apy": 3.9676976642972055,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -588,7 +807,7 @@
       "tvl": 781128.4931462904,
       "apy": 0.30306451633741294,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -600,7 +819,7 @@
       "tvl": 590547.0586758326,
       "apy": 1.1955301186729623,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -612,7 +831,7 @@
       "tvl": 140605.01126361906,
       "apy": 6.4068381548895506,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -624,7 +843,7 @@
       "tvl": 84541.3529686929,
       "apy": 0.45754056704778406,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -636,7 +855,7 @@
       "tvl": 66848.93649380926,
       "apy": 2.9999865234088077,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -648,7 +867,7 @@
       "tvl": 66017.15791192479,
       "apy": 5.053484103656956,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -660,7 +879,7 @@
       "tvl": 64823.54717102625,
       "apy": 4.156914366162124,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -672,7 +891,7 @@
       "tvl": 42447.32463757085,
       "apy": 6.4682028540935885,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -684,7 +903,7 @@
       "tvl": 14903.537259543813,
       "apy": 3.04059763423817,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -696,7 +915,7 @@
       "tvl": 10121.011893811192,
       "apy": 3.3136426948133773,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -708,7 +927,7 @@
       "tvl": 9206.482025428504,
       "apy": 1.46224370263472,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -720,7 +939,7 @@
       "tvl": 3873.8675913519855,
       "apy": 3.89988060372e-7,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -732,7 +951,7 @@
       "tvl": 1303.9898620707909,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -744,7 +963,7 @@
       "tvl": 441.2532377468134,
       "apy": 2.3962015693476575,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -756,7 +975,7 @@
       "tvl": 100.60649266672452,
       "apy": 4.711704053848088,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -768,7 +987,7 @@
       "tvl": 99.28516816849752,
       "apy": 84.59402424987034,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -780,7 +999,7 @@
       "tvl": 33.445753972303955,
       "apy": 1.7545951648845555,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -792,7 +1011,7 @@
       "tvl": 28.94895119864832,
       "apy": 3.1044322519333787,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -804,7 +1023,7 @@
       "tvl": 19.99698759666216,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -816,7 +1035,7 @@
       "tvl": 19.192083546592112,
       "apy": 0.9007673633754505,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -852,7 +1071,7 @@
       "tvl": 10.07318546439192,
       "apy": 3.625337106821289,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -864,7 +1083,7 @@
       "tvl": 9.99848979893796,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -876,7 +1095,7 @@
       "tvl": 9.19933940454859,
       "apy": 2.6096104775424256,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -888,7 +1107,7 @@
       "tvl": 6.406461001919747,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -900,7 +1119,7 @@
       "tvl": 3.05091004568844,
       "apy": 4.10572841370283,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -912,7 +1131,7 @@
       "tvl": 2.568364935500398,
       "apy": 0.765015606993386,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -924,7 +1143,7 @@
       "tvl": 2.32495420442196,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -936,7 +1155,7 @@
       "tvl": 2.04980595624876,
       "apy": 2.667642345224771,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -948,7 +1167,7 @@
       "tvl": 1.97496331309764,
       "apy": 2.700001100712287,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -960,7 +1179,7 @@
       "tvl": 1.0998880996554,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -972,7 +1191,7 @@
       "tvl": 1.01904136758288,
       "apy": 3.5044961750712664,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -984,7 +1203,7 @@
       "tvl": 0.7272996373548,
       "apy": 2.4500008802925763,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -996,7 +1215,7 @@
       "tvl": 0.37996982686488256,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1008,7 +1227,7 @@
       "tvl": 0.30089334153492,
       "apy": 2.3656453043881998,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1020,7 +1239,7 @@
       "tvl": 0.28485777482028,
       "apy": 3.114327853997612,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1032,7 +1251,7 @@
       "tvl": 0.1263258309366,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1044,7 +1263,7 @@
       "tvl": 0.114782582544,
       "apy": 7.963331442162789,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1056,7 +1275,7 @@
       "tvl": 0.10609490083908,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1068,7 +1287,7 @@
       "tvl": 0.10101667142496,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1080,7 +1299,7 @@
       "tvl": 0.1002247915872,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1092,7 +1311,7 @@
       "tvl": 0.099984828,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1104,12 +1323,12 @@
       "tvl": 0.06657889711692,
       "apy": 3.3612612447574715,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
       "chain": "base",
-      "name": "Xerberus V2 WETH Base",
+      "name": "Xerberus V3 WETH Base",
       "token": "WETH",
       "address": "0x6539fd9916bc76c4324b747398ab066a256b8dd1",
       "assetAddress": "0x4200000000000000000000000000000000000006",
@@ -1128,7 +1347,7 @@
       "tvl": 0.04474621007484,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1140,7 +1359,7 @@
       "tvl": 0.03038138983608,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1152,7 +1371,7 @@
       "tvl": 0.02212366291549367,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1164,7 +1383,7 @@
       "tvl": 0.02126777276388,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1176,7 +1395,7 @@
       "tvl": 0.0172810611,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1188,7 +1407,7 @@
       "tvl": 0.0099984828,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1200,7 +1419,7 @@
       "tvl": 0.0099984828,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1212,7 +1431,7 @@
       "tvl": 0.00273158550096,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1224,7 +1443,7 @@
       "tvl": 0.0006551534296217081,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1236,7 +1455,7 @@
       "tvl": 0.00056391442992,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1248,7 +1467,7 @@
       "tvl": 0.0000599908968,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1260,7 +1479,7 @@
       "tvl": 0.00001599757248,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1272,7 +1491,7 @@
       "tvl": 0.00001599757248,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1284,7 +1503,7 @@
       "tvl": 0.00001199817936,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1296,7 +1515,7 @@
       "tvl": 0.00000199969656,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1308,7 +1527,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1320,7 +1539,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "6578654",
+      "token": "SHESH",
+      "address": "0xde02e5c0ff43127653da07b3c7c6c42d85698904",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1344,7 +1575,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1368,7 +1599,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "alpha-zero-btc",
+      "token": "zeroBTC",
+      "address": "0x9ae51f9729713a556a700724ef84238ea579a1b8",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "alphazero-usdc-2",
+      "token": "AzeroUSDC",
+      "address": "0xa3efefbf1ef0f97712582924d7d36d14361c4401",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1380,7 +1635,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1392,7 +1647,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1404,7 +1659,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1416,7 +1671,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1440,7 +1695,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1452,7 +1707,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1464,7 +1719,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1476,7 +1731,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1488,7 +1743,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1500,7 +1755,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1512,7 +1767,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1524,7 +1779,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1536,7 +1791,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "cbBTC/WETH - Base MOM",
+      "token": "hpUSDc",
+      "address": "0xeb56ac89239eecbd61c1ee93bd7d7666977fa489",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Clearstar Synchrotron",
+      "token": "USDC",
+      "address": "0xb02d87eb201f56ba6afa24c0969982bc4c4e8599",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1548,7 +1827,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1560,7 +1839,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1572,7 +1851,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "demo vault",
+      "token": "demo",
+      "address": "0x381dd941605c44a606d3a1c272b1b6b3543b38ff",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1584,7 +1875,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "DummyPTLendingOptimizer",
+      "token": "dummyPTLending",
+      "address": "0xf50b199c23c86b2284731e21bf8d036189e0c45a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1596,7 +1899,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Ethereum Xerberus Prime Index",
+      "token": "WETH",
+      "address": "0xa121d23cecd8050082d13a1fc062598c5449dbe9",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1608,7 +1923,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1620,7 +1935,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1632,7 +1947,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1644,7 +1959,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1656,7 +1971,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1668,7 +1983,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1680,7 +1995,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1692,7 +2007,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1704,7 +2019,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1716,7 +2031,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1728,7 +2043,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1740,7 +2055,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1752,7 +2067,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1764,7 +2079,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1776,7 +2091,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "hodl_test",
+      "token": "hodl_test",
+      "address": "0x36bff77e1089fc25037070bb63f80d50ae2fffe8",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1800,7 +2127,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1812,7 +2139,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1824,7 +2151,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1836,7 +2163,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1848,7 +2175,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1860,7 +2187,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1872,7 +2199,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1884,7 +2211,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1896,7 +2223,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1908,7 +2235,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1920,7 +2247,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1932,7 +2259,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1944,7 +2271,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1956,7 +2283,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1968,7 +2295,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1980,7 +2307,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -1992,7 +2319,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2004,7 +2331,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2016,7 +2343,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2028,7 +2355,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2040,7 +2367,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2052,7 +2379,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2064,7 +2391,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2076,7 +2403,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2100,7 +2427,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Liquity Stability Pool Test",
+      "token": "IPLSPT",
+      "address": "0xccde6aec5718088ffe794d571a4c2ea410e1bdd9",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2112,7 +2451,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2124,7 +2463,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2136,7 +2475,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2148,7 +2487,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Maciek F2 Ultra USDC Yield machine",
+      "token": "MF2",
+      "address": "0x352722980808bd004afab050c15c4147747dd133",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2160,7 +2511,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Maciek Pilot Clone Ultra Farmer",
+      "token": "MPCUF",
+      "address": "0xcd5fa3d49aecc051fee3bd0709e167fb4d064d09",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2172,7 +2535,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2184,7 +2547,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2196,7 +2559,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2208,7 +2571,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2220,7 +2583,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2232,7 +2595,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2244,7 +2607,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2256,7 +2619,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2268,7 +2631,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2280,7 +2643,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2292,7 +2655,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "New test vault",
+      "token": "TST",
+      "address": "0x151838c4c1c854c9fc9b9a653098d96a3917b3ba",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2304,7 +2679,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Onboarding Contribution",
+      "token": "ONCO",
+      "address": "0xa0ee767e49a6fd0e6439f5a7d8492911c2a9dde3",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Owner's vault",
+      "token": "OWN",
+      "address": "0x1b8ec7f906e6d55546d688e83a6fd7277ff7bfee",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2316,7 +2715,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2328,7 +2727,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2340,7 +2739,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2352,7 +2751,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2364,7 +2763,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2376,7 +2775,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2388,7 +2787,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Synchrotron",
+      "token": "CSSYNCH",
+      "address": "0x6d6ca3a393a36ab94f25664ca94b10da117a111d",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2400,7 +2811,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2413,6 +2824,18 @@
       "apy": null,
       "source": "api",
       "isPublic": false
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Tesseract Managed BTC",
+      "token": "cbBTC",
+      "address": "0x60664eb6b193204df730d269f064c1548453beed",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2436,7 +2859,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test",
+      "token": "tst",
+      "address": "0xeaa0dcebeef1b4c88c0ca73dc2513def3587fb87",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test 1",
+      "token": "TST",
+      "address": "0xe7929dfa96e305657cbfb6277f36164fe2d1bebb",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2448,7 +2895,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test cbBTC/WETH - Base MOM",
+      "token": "hpUSDC",
+      "address": "0x912d3cd25291fce8f0a3c0f5b7ed85ef2d8befe6",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TEST CLONE WOO",
+      "token": "TCW",
+      "address": "0x57fae9caf17a2fa90a0fbd6643feac21fe35a01c",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2460,7 +2931,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "test LP",
+      "token": "testLP",
+      "address": "0xd9c330ce387e086ed462dc20bf3ec30ce1133f0a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2472,7 +2955,43 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test vault",
+      "token": "tst",
+      "address": "0x18d7fe241df221db1e240051b69fc5dbafae6c90",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test vault",
+      "token": "TST",
+      "address": "0xbd47f8363dcc07836374d246a077325284bf6224",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test vault",
+      "token": "TST",
+      "address": "0xe326df5357c931c42c58ca3e167727cf107207c6",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2484,7 +3003,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2496,7 +3015,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2508,7 +3027,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2520,7 +3039,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2532,7 +3051,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2544,7 +3063,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Test Vault ",
+      "token": "TST",
+      "address": "0x866b2729fc89e705ff1e107ec8f1712eeda132a7",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2556,7 +3087,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2568,7 +3099,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2580,7 +3111,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2592,7 +3123,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TEST02092025",
+      "token": "TEST02092025",
+      "address": "0xf93cf5ff9e924008d615b80db8561ffa97d94c61",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2616,7 +3159,67 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TID Base ETH SuperStaker",
+      "token": "TIDETHSS",
+      "address": "0x73b471ac0cb6c71bc6d9445a40ca18621b6751cb",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TiD Base USDC",
+      "token": "TID_BASE_USDC",
+      "address": "0x7220bb5cb6497a359a177f864ab62a94d7f563fa",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TiD Capital Base USD Testing Vault",
+      "token": "TiD_BASE_USD_TEST",
+      "address": "0xe033f8f1ee8528691e81b2706cbd57f71a87bfa4",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TiD Capital Base USD Testing Vault",
+      "token": "TiD_BASE_USD_TEST",
+      "address": "0xf69a064522f73717d837f2ccb249e081090b6a3b",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "TiD USD Idle Vault",
+      "token": "TiDUSD_IDLE",
+      "address": "0x793ae1af29e18598e4ebed8050c3b8ba0c91b08f",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2628,7 +3231,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2640,7 +3243,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2652,7 +3255,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2664,7 +3267,67 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "USDO Synchrotron",
+      "token": "USDC",
+      "address": "0x09f77a2552b83e157cd5d49867b5d580b50588ea",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Vauldo",
+      "token": "$Vauldo",
+      "address": "0x57960963ca7ab0a02786b9f61c6eede0e8788f56",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Vauldo",
+      "token": "",
+      "address": "0xd376a60e3bb4d1990cf961c645023eec15feeb56",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Vauldo",
+      "token": "",
+      "address": "0xb0972cb1524a26f8cdacd2139c5398e25c2c34f4",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Vauldo_v2",
+      "token": "$Vauldo2",
+      "address": "0xe8502012da39ee2efd82b50a5e8de1c529c59afc",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2676,7 +3339,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2688,7 +3351,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2700,7 +3363,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2712,7 +3375,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2724,7 +3387,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2736,7 +3399,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2748,7 +3411,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2760,7 +3423,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2772,7 +3435,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2784,7 +3447,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2796,7 +3459,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2808,7 +3471,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2820,7 +3483,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2832,7 +3495,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2856,7 +3519,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2868,7 +3531,43 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Woo TEST Oct2025",
+      "token": "WT102025",
+      "address": "0x3b7460a973827781ac1f8493462847d5cb378942",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Woo USDC",
+      "token": "WOOUSDC",
+      "address": "0x527d88bff0654191f04116b08f7a62657e08e7ee",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Woo USDC 2",
+      "token": "WOOUSDC2",
+      "address": "0x5c3f21e11c882b239146130b2d490316442a6d3e",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2880,7 +3579,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Xerberus BASE 10 - Risk Weighted",
+      "token": "USDC",
+      "address": "0xa51787e262e53220bbeef297613ee28a9c011937",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 8453,
+      "chain": "base",
+      "name": "Xerberus Evergreen",
+      "token": "WETH",
+      "address": "0xe2996fe2d49b41e37b5c01df32cdfc125329e5d0",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2892,7 +3615,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2904,7 +3627,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2916,7 +3639,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2940,7 +3663,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2952,7 +3675,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2964,7 +3687,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 8453,
@@ -2976,7 +3699,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -2985,10 +3708,10 @@
       "token": "stETH",
       "address": "0xb8a451107a9f87fde481d4d686247d6e43ed715e",
       "assetAddress": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-      "tvl": 5016998.48096141,
-      "apy": 3.951547355341119,
+      "tvl": 5039800.404610656,
+      "apy": 3.916355353580429,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -2997,10 +3720,10 @@
       "token": "WETH",
       "address": "0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 2894438.3499184297,
-      "apy": 1.6364547697507001,
+      "tvl": 2907779.430643802,
+      "apy": 1.6388682113315083,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3009,10 +3732,10 @@
       "token": "USDe",
       "address": "0xea1776733cc969df4ff004a9e1a2d87f5b60add4",
       "assetAddress": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-      "tvl": 2121274.858418404,
-      "apy": 12.008268970965704,
+      "tvl": 2121233.6058771876,
+      "apy": 11.82297336987691,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3021,10 +3744,10 @@
       "token": "WBTC",
       "address": "0x460efc3b2f08f7aac064a0bd5f59610f4765fcd3",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 1338148.971527362,
-      "apy": 5.685597753740543,
+      "tvl": 1342942.2680442822,
+      "apy": 5.543432391570626,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3033,10 +3756,10 @@
       "token": "USDC",
       "address": "0xc825779c89120eeef746c51130b362478e181d39",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 1191642.1634068508,
-      "apy": 5.94519853074826,
+      "tvl": 1191649.9480458042,
+      "apy": 6.024854247020209,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3045,10 +3768,10 @@
       "token": "USDC",
       "address": "0xc2a119ea6de75e4b1451330321cb2474eb8d82d4",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 851215.4003942542,
-      "apy": 6.37446330476421,
+      "tvl": 851221.4871258882,
+      "apy": 6.6004294745827945,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3057,10 +3780,10 @@
       "token": "USDC",
       "address": "0xf8f226da66244f89e70c5b5d1a5c5b0d505eb1d8",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 754151.6213288988,
-      "apy": 8.761972531313072,
+      "tvl": 754163.2598912212,
+      "apy": 8.772996940964271,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3069,10 +3792,10 @@
       "token": "rUSD",
       "address": "0xe9385eff3f937fcb0f0085da9a3f53d6c2b4fb5f",
       "assetAddress": "0x09d4214c03d01f49544c0448dbe3a27f768f2b34",
-      "tvl": 747075.1865187912,
-      "apy": 7.712074675712156,
+      "tvl": 747081.5374048045,
+      "apy": 7.765571130085434,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3081,10 +3804,10 @@
       "token": "WBTC",
       "address": "0xa9555b1036a090b69bad3006ac44c45147c8ec56",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 641962.3682063175,
-      "apy": 3.215806571408,
+      "tvl": 644266.7142445254,
+      "apy": 3.257839337836343,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3093,10 +3816,10 @@
       "token": "USDC",
       "address": "0x32f07401eb177f2c0fc4f95f3928050d88dae7ed",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 581258.8755098387,
-      "apy": 9.731190527680198,
+      "tvl": 581266.8119845132,
+      "apy": 9.732913784325048,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3105,10 +3828,10 @@
       "token": "USDC",
       "address": "0x4c5a611694c426cae9335d53e95b885090cf8c31",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 574986.6934860828,
-      "apy": 9.347440726610603,
+      "tvl": 574992.6042980052,
+      "apy": 9.433083592574249,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3117,10 +3840,10 @@
       "token": "USDC",
       "address": "0xb0f56bb0bf13ee05fef8cd2d8df5ffdfcac7a74f",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 477547.6175140513,
-      "apy": 3.7320046367158435,
+      "tvl": 477546.0346375808,
+      "apy": 2.5271809474891707,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3129,10 +3852,10 @@
       "token": "USDC",
       "address": "0x888e1d3c509c80e24cab8a4872e164b7e5a6eb10",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 412034.00606542744,
-      "apy": 5.296102322393043,
+      "tvl": 412033.7830085637,
+      "apy": 5.290729761364675,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3141,10 +3864,10 @@
       "token": "USDC",
       "address": "0x43ee0243ea8cf02f7087d8b16c8d2007cc9c7ca2",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 347137.7169642175,
-      "apy": 3.8306577022081436,
+      "tvl": 347139.2358143476,
+      "apy": 3.8459952692697046,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3153,10 +3876,10 @@
       "token": "WBTC",
       "address": "0x61b1eb620613890daa2763a4f59df38e46832ef4",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 321529.6999632754,
-      "apy": 3.849255203132894,
+      "tvl": 322682.5945807153,
+      "apy": 3.1863942358704542,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3165,10 +3888,10 @@
       "token": "WBTC",
       "address": "0x7659fc26bf3a63e8133bbecb7e16acd48ee8e292",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 287067.01842144504,
-      "apy": 2.6508677563735064,
+      "tvl": 288101.72213613335,
+      "apy": 2.276293867176454,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3177,10 +3900,10 @@
       "token": "USDC",
       "address": "0x43a32d4f6c582f281c52393f8f9e5ace1d4a1e68",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 259056.67117013835,
-      "apy": 7.186830059666438,
+      "tvl": 259064.54078394434,
+      "apy": 7.142911225207476,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3189,10 +3912,10 @@
       "token": "USDT",
       "address": "0x9fec8a63a6c6ef9eadddfbd79daba5918965794e",
       "assetAddress": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-      "tvl": 249316.84039982245,
-      "apy": 8.076180023105932,
+      "tvl": 249319.03218756907,
+      "apy": 8.082955928088772,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3201,10 +3924,10 @@
       "token": "wstETH",
       "address": "0x378d18ecd80430895df2c034327edac16b3f1372",
       "assetAddress": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-      "tvl": 244032.6870916644,
-      "apy": 0.676786965140865,
+      "tvl": 244451.2137828113,
+      "apy": 1.2710512241296728,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3213,10 +3936,10 @@
       "token": "WBTC",
       "address": "0x5c51fa43608a140e4510f676d36188ba1cd1fcae",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 229919.88463667614,
-      "apy": 1.2642919737912193,
+      "tvl": 230738.7791716942,
+      "apy": 0.6522553067653302,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3225,10 +3948,10 @@
       "token": "PYUSD",
       "address": "0xdf8a0d3c90462c4c9b5a8697c119fa67cb84a874",
       "assetAddress": "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
-      "tvl": 198861.11921939603,
-      "apy": 2.658617051220531,
+      "tvl": 198856.43709836778,
+      "apy": 2.6534201359374037,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3237,10 +3960,10 @@
       "token": "USDC",
       "address": "0x0b45a1e71a8a09f5d382fed27202d50ed983aaf3",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 173454.6994046925,
-      "apy": 1.6480543362646924,
+      "tvl": 173451.6487375911,
+      "apy": 1.6479415612865531,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3249,10 +3972,10 @@
       "token": "wstETH",
       "address": "0xc50b2d51fd1e2ac67a9c09eaf63c24ea2465c64b",
       "assetAddress": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-      "tvl": 158454.83713701632,
-      "apy": 0.001519635649295382,
+      "tvl": 158727.30818910597,
+      "apy": 0.001516391633324754,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3261,10 +3984,10 @@
       "token": "WETH",
       "address": "0xf6cd9e8415162c8fb3c52676c7ca68812a34f76e",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 119165.88388894696,
-      "apy": 2.7425656340708398,
+      "tvl": 119706.1430516655,
+      "apy": 2.7531909682937443,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3273,10 +3996,10 @@
       "token": "USDT",
       "address": "0xabab980f0ecb232d52f422c6b68d25c3d0c18e3e",
       "assetAddress": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-      "tvl": 117698.93768567032,
-      "apy": 3.215867937837898,
+      "tvl": 117699.36042481191,
+      "apy": 3.2143409201892115,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3285,10 +4008,10 @@
       "token": "WBTC",
       "address": "0xe47358eae04719f3cf7025e95d0ad202e68bd9b2",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 113877.959334735,
-      "apy": 0.9796449463621733,
+      "tvl": 114284.83071721929,
+      "apy": 0.983519283432899,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3297,10 +4020,10 @@
       "token": "WBTC",
       "address": "0xe309690039d139ff75ae1154eaa858537137931d",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 102767.29246555599,
-      "apy": -10.926056240029856,
+      "tvl": 103136.42907691402,
+      "apy": -11.248223198521396,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3309,10 +4032,10 @@
       "token": "USDe",
       "address": "0x604117f0c94561231060f56cd2ddd16245d434c5",
       "assetAddress": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-      "tvl": 98906.60642506332,
-      "apy": 5.840321019233045,
+      "tvl": 98903.90691576347,
+      "apy": 5.833449392046378,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3321,10 +4044,10 @@
       "token": "WBTC",
       "address": "0xe48cdd5ecec5aa53e630a7b4df12f79067b68dac",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 81180.30576763983,
-      "apy": 0.002951705065591454,
+      "tvl": 81472.54389478886,
+      "apy": 0.002951998769420627,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3333,10 +4056,10 @@
       "token": "USDC",
       "address": "0x4c2a3c1b1c7674efaf4082786f0770f558544ee9",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 72117.81110352352,
-      "apy": -14.953126234063598,
+      "tvl": 72118.8966827879,
+      "apy": -16.02578337111164,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3345,10 +4068,10 @@
       "token": "USDC",
       "address": "0x63103375659d0aa94e9f35df15be01a3dd1ae9c0",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 68184.05244600805,
-      "apy": 4.971121574039189,
+      "tvl": 68184.4298711714,
+      "apy": 5.173732862965295,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3357,10 +4080,10 @@
       "token": "USDe",
       "address": "0x6205942f43976b9ecbaf87942c0f5926196fc6a8",
       "assetAddress": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-      "tvl": 57802.28145603625,
-      "apy": 11.361933843934573,
+      "tvl": 57800.38902506367,
+      "apy": 11.405412555176175,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3369,10 +4092,10 @@
       "token": "USDC",
       "address": "0x2b8252698d5276477f7ef374ada08f817e02caad",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 50228.30615715267,
-      "apy": 11.645486520389998,
+      "tvl": 50227.721340517455,
+      "apy": 11.50919258935188,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3381,10 +4104,10 @@
       "token": "USDC",
       "address": "0xf373a4d4d200d709aa73d4e0be49b822b0cc866d",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 43236.40080248849,
-      "apy": 7.379658404107697,
+      "tvl": 43235.9440065394,
+      "apy": 7.379652669099539,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3393,10 +4116,10 @@
       "token": "USDC",
       "address": "0x6f66b845604dad6e80b2a1472e6cacbbe66a8c40",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 42753.733857604544,
-      "apy": 8.696450447336428,
+      "tvl": 42754.14305247863,
+      "apy": 8.774360156586674,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3405,10 +4128,10 @@
       "token": "USDC",
       "address": "0x95b2ed8f821570f85fd0e3e6e7088c6296587088",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 40638.60054831305,
-      "apy": 9.63360418271436,
+      "tvl": 40639.031016645364,
+      "apy": 9.72363719361449,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3417,10 +4140,10 @@
       "token": "USDT",
       "address": "0x3b3bdaa4462851621818d2cebc835e077587147a",
       "assetAddress": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-      "tvl": 15751.264807255575,
-      "apy": 4.237828186354862,
+      "tvl": 15751.34880624587,
+      "apy": 4.245391796718191,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3429,10 +4152,10 @@
       "token": "USDe",
       "address": "0xd731f94c778f7c1090e2e0d797150a647de5188a",
       "assetAddress": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-      "tvl": 14548.107201852295,
-      "apy": 0.001467170395877457,
+      "tvl": 14548.107213086601,
+      "apy": 0.00146717035011691,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3444,7 +4167,7 @@
       "tvl": 13015.141258257627,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3453,10 +4176,10 @@
       "token": "USDC",
       "address": "0xeef16982403a89bcbf16dff050a5ba5b86a02c8a",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 11503.61696711365,
-      "apy": 7.1520030885434505,
+      "tvl": 11503.714878812556,
+      "apy": 7.163509510917095,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3465,10 +4188,10 @@
       "token": "USDC",
       "address": "0x3151cee0cdb517c0e7db2b55ff5085e7d1809d90",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 11311.066652375293,
-      "apy": 5.351571770947094,
+      "tvl": 11311.136206795338,
+      "apy": 5.828354858645463,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3477,10 +4200,10 @@
       "token": "USDC",
       "address": "0xdcd8cb1e2ba62faef6c4c258508d7d959e5f3408",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 6909.186900270521,
-      "apy": 4.67541888043809,
+      "tvl": 6909.22271330809,
+      "apy": 4.773068021844184,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3489,10 +4212,10 @@
       "token": "DAI",
       "address": "0x20e934c725b6703f0ac696f1689008057db9ac44",
       "assetAddress": "0x6b175474e89094c44da98b954eedeac495271d0f",
-      "tvl": 6335.955000327709,
-      "apy": 4.3957888722383585,
+      "tvl": 6336.738226474647,
+      "apy": 4.3958900596537305,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3501,10 +4224,10 @@
       "token": "POL",
       "address": "0x5f304564bd957a28c4a4472ded30c91ffeb05fb4",
       "assetAddress": "0x455e53cbb86018ac2b8092fdcd39d8444affc3f6",
-      "tvl": 5707.581321423672,
-      "apy": 7.165154255582411,
+      "tvl": 5707.633209784898,
+      "apy": 7.171712608123186,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3516,7 +4239,7 @@
       "tvl": 2818.287009944,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3528,7 +4251,7 @@
       "tvl": 2167.2912736312674,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3537,10 +4260,10 @@
       "token": "USDC",
       "address": "0x23c04a2a2344df5fb1c8624f4e9e0dd3945acc0b",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 858.6402019560187,
-      "apy": 2.2048662218811494,
+      "tvl": 860.8528715737132,
+      "apy": 2.2024771282836126,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3549,10 +4272,10 @@
       "token": "USDC",
       "address": "0xf75552c0e9a1168702c2f7824092ad592c93ec48",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 518.4404300381938,
-      "apy": 3.408397074436053,
+      "tvl": 518.4424077089359,
+      "apy": 3.550276404640983,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3561,10 +4284,10 @@
       "token": "sUSDf",
       "address": "0xb530a1b5259a71187f1d69acf0488f102637a3ed",
       "assetAddress": "0xc8cf6d7991f15525488b2a83df53468d682ba4b0",
-      "tvl": 300.3643809771072,
+      "tvl": 300.36670131577574,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3573,10 +4296,10 @@
       "token": "USDC",
       "address": "0x7d677637218e879e2f38b444c7801fff21203152",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 285.9125440742633,
-      "apy": 2.5484521400209745,
+      "tvl": 285.9133569389313,
+      "apy": 2.551677313030696,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3585,10 +4308,10 @@
       "token": "WBTC",
       "address": "0x9b8707d94800ce0ccf80182fa4f78280362b8eaa",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 149.7034148784823,
-      "apy": 2.8160038718762195,
+      "tvl": 150.2304819650793,
+      "apy": 2.498205073511013,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3597,10 +4320,10 @@
       "token": "BOLD",
       "address": "0x4536d493292e53c5c11defa9e4c6826777502efa",
       "assetAddress": "0x6440f144b7e50d6a8439336510312d2f54beb01d",
-      "tvl": 127.96851854419477,
-      "apy": 3.514746431531669,
+      "tvl": 127.97115566580688,
+      "apy": 3.5147323740624614,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3609,10 +4332,10 @@
       "token": "WBTC",
       "address": "0xb491c827d913bfd25b0ff81797b7a2b64aa22b6a",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 122.22039086309266,
-      "apy": null,
+      "tvl": 122.65743775480748,
+      "apy": -4.36642899799262,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3624,7 +4347,7 @@
       "tvl": 104.900985274813,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3633,10 +4356,10 @@
       "token": "WBTC",
       "address": "0xea717732007dda547a1f5a2ce25c23cfeba62ae5",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 102.81711395216931,
-      "apy": -2.241244516831606,
+      "tvl": 103.18490905599734,
+      "apy": -2.4636775035026304,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3645,10 +4368,10 @@
       "token": "wstETH",
       "address": "0x7b28187556ca7220345b1b772d9c140239c62f06",
       "assetAddress": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-      "tvl": 95.74578453519035,
-      "apy": -4.571547975813401,
+      "tvl": 95.9103100825394,
+      "apy": -4.714850320510284,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3657,10 +4380,10 @@
       "token": "WETH",
       "address": "0x10f2552a4c056fe318685185b7320a3482defde5",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 95.68249814457594,
-      "apy": -1.004072978512445,
+      "tvl": 95.84619695175932,
+      "apy": -0.4535988448254374,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3669,10 +4392,10 @@
       "token": "WBTC",
       "address": "0x306d2b4424071bf412e354d655dcfafa795ff7e9",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 95.43314769514599,
-      "apy": -2.17466843710645,
+      "tvl": 95.77562727534827,
+      "apy": -2.651682390692153,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3681,10 +4404,10 @@
       "token": "WETH",
       "address": "0x4dcd23c87b7edb2e1019f3cc1fd1e4f31c094ff2",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 95.36924471721608,
-      "apy": 0.18546118881005721,
+      "tvl": 95.55765009127758,
+      "apy": 0.35396150365654444,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3705,10 +4428,10 @@
       "token": "USDC",
       "address": "0x928f888e02fde769bb47577c5508d1c08d1d8fad",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 79.2481611548467,
-      "apy": 3.784319066808609,
+      "tvl": 79.2484960990826,
+      "apy": 3.749898406118719,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3717,10 +4440,10 @@
       "token": "WETH",
       "address": "0xc19892e2f9403c2b89c9084ecba0a63eea1b6771",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 70.1502603945609,
-      "apy": 1.3180578400411924,
+      "tvl": 70.45377270483554,
+      "apy": 1.3780015624931525,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3729,10 +4452,10 @@
       "token": "WBTC",
       "address": "0x68893c239f4fda0ddb7e759cceb6f2b8d1b64db8",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 64.21693039085895,
-      "apy": 3.483441593317289,
+      "tvl": 64.44696529015117,
+      "apy": 3.883414364618546,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3744,7 +4467,7 @@
       "tvl": 57.08657378685612,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3756,7 +4479,7 @@
       "tvl": 40.99317613983354,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3765,10 +4488,10 @@
       "token": "USDC",
       "address": "0xee33a05f50d2d27aaaab7534a91da24643993ab4",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 40.68720508025566,
-      "apy": 11.61918266081359,
+      "tvl": 40.68673215899124,
+      "apy": 11.483107768793063,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3777,10 +4500,10 @@
       "token": "WETH",
       "address": "0x87c32e7d4f9f37175f37a235fcd71cac11a11a9a",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 38.21267307000035,
-      "apy": -0.9895093976038251,
+      "tvl": 38.278084828489916,
+      "apy": -0.4532804104971197,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3789,8 +4512,8 @@
       "token": "USDC",
       "address": "0x9dc2819b49c3d39b11a5f4c8c0c17bd7e18126d9",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 35.5071085026908,
-      "apy": 0.9773520346975287,
+      "tvl": 35.50714749619886,
+      "apy": 0.9849320363379322,
       "source": "api",
       "isPublic": false
     },
@@ -3801,10 +4524,10 @@
       "token": "USDC",
       "address": "0xc197ad72936b7c558c96417f22041fe9e3c7043f",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 33.40627426577944,
-      "apy": 1.0622078606108807,
+      "tvl": 33.40631025978688,
+      "apy": 1.06512300128687,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3816,7 +4539,7 @@
       "tvl": 33.34396563940018,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3825,10 +4548,10 @@
       "token": "WBTC",
       "address": "0x455d6b686dec112caa0f7bf1973cc6d84a25442a",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 32.118368412266356,
-      "apy": -2.143616200512331,
+      "tvl": 32.23342153452604,
+      "apy": -2.854726891412463,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3837,10 +4560,10 @@
       "token": "WETH",
       "address": "0x19551b587715c87b2aeb3530ac5b87a061f0a2f6",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 22.79061897384,
+      "tvl": 22.8946464,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3849,10 +4572,10 @@
       "token": "USDC",
       "address": "0x81f775b7634789c428fa89c635a40cfb0fe14479",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 22.40269922582866,
-      "apy": 5.225663818367766,
+      "tvl": 22.40282920418886,
+      "apy": 5.513149949266357,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3861,10 +4584,10 @@
       "token": "USDC",
       "address": "0x301035611b11338fb75260a9957633903f97e7b1",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 21.38835010249494,
-      "apy": 5.349516430777342,
+      "tvl": 21.38847708135452,
+      "apy": 5.478955254345588,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3873,10 +4596,10 @@
       "token": "USDC",
       "address": "0xe1c3a197d16ef96a7c8e7c5f6b83b5e032cd76a9",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 21.35031243529918,
-      "apy": 3.275899655830969,
+      "tvl": 21.35038942248176,
+      "apy": 3.232155023383303,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3885,10 +4608,10 @@
       "token": "USDC",
       "address": "0x71863e0b4d307ab70c9e084c03260aedfb21d5b6",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 20.39308680160628,
-      "apy": 5.254808641888729,
+      "tvl": 20.39320678163108,
+      "apy": 5.435594964524627,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3900,7 +4623,7 @@
       "tvl": 19.9795422,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3909,10 +4632,10 @@
       "token": "USDC",
       "address": "0x4c1b607cb6e1df0541368fda667ab673cd0602fe",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 19.35116526873998,
-      "apy": 5.258696198509307,
+      "tvl": 19.35127824993,
+      "apy": 5.449677503830603,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3921,10 +4644,10 @@
       "token": "WETH",
       "address": "0xa9a972f035efd5a05d74b8462f81dffa9f087c9a",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 19.054342835985906,
-      "apy": 0.5379070402866422,
+      "tvl": 19.141327618719224,
+      "apy": 0.5284884888038055,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3933,10 +4656,10 @@
       "token": "WETH",
       "address": "0xf0c615fa0b5d3289db24b4011d3023f1948f840c",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 18.9921824782,
+      "tvl": 19.078872,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3945,10 +4668,10 @@
       "token": "WETH",
       "address": "0xb57396ee85943a140228df85efa280a7d16a0f7e",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 18.9921824782,
+      "tvl": 19.078872,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3957,10 +4680,10 @@
       "token": "WBTC",
       "address": "0x32046450669782f5198979893b90fde7d45624ee",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 17.317851120240295,
-      "apy": 33.54666240850319,
+      "tvl": 17.382155820842506,
+      "apy": 0.008438678870444185,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3972,7 +4695,7 @@
       "tvl": 17.01604003840042,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3981,10 +4704,10 @@
       "token": "USDe",
       "address": "0x646c19b582a85add5cf334772425292e1d49322a",
       "assetAddress": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
-      "tvl": 15.79498112257126,
-      "apy": 0.19602012895106058,
+      "tvl": 15.794982017565347,
+      "apy": 0.1958727997116759,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -3996,7 +4719,7 @@
       "tvl": 14.9975031,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4008,7 +4731,7 @@
       "tvl": 14.9975031,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4020,7 +4743,7 @@
       "tvl": 14.97257125084656,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4029,10 +4752,10 @@
       "token": "USDC",
       "address": "0x5705b2eb944e6043485390c313210e52bc00e6cb",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 14.0448217097464,
-      "apy": 0.9786511311079389,
+      "tvl": 14.0448367072495,
+      "apy": 0.9786499641659676,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4044,7 +4767,7 @@
       "tvl": 12.99783901950062,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4053,10 +4776,10 @@
       "token": "WBTC",
       "address": "0xae21262339b29958f5c3a24b7b5a614ac45bf1dd",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 12.778344305656,
+      "tvl": 12.824373484464,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4065,10 +4788,10 @@
       "token": "WBTC",
       "address": "0xc047f7efdd0ce4969ea81db020f86d73632071f3",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 12.778344305656,
+      "tvl": 12.824373484464,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4080,7 +4803,7 @@
       "tvl": 12.42076409538528,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4089,10 +4812,10 @@
       "token": "USDC",
       "address": "0x29a897202d8391754821a7f04c480898ccb2df87",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 12.02238542053998,
-      "apy": 2.8001508548997998,
+      "tvl": 12.02212246431896,
+      "apy": 2.793835310315988,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4101,10 +4824,10 @@
       "token": "WBTC",
       "address": "0x43c6ded9993e0d3f5601c35a31418b3c84daea4f",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 10.643721889396165,
+      "tvl": 10.664107771006039,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4116,7 +4839,7 @@
       "tvl": 10.61950098356226,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4125,10 +4848,10 @@
       "token": "USDC",
       "address": "0x75bafab1b0073f942a244dd0f1061e91d7fd196b",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 10.1843094376077,
-      "apy": 3.8920865369505617,
+      "tvl": 10.18435343028346,
+      "apy": 4.169216170024087,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4137,10 +4860,10 @@
       "token": "USDC",
       "address": "0x9b64cc61cf4537df94d181da7d4f615a0795902d",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 10.0368839821347,
-      "apy": 11.660283458329413,
+      "tvl": 10.03676700161052,
+      "apy": 11.517402039753163,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4152,7 +4875,7 @@
       "tvl": 9.9983354,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4164,7 +4887,7 @@
       "tvl": 8.60578024332402,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4176,7 +4899,7 @@
       "tvl": 5.07311338895132,
       "apy": 0.014762214333456767,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4185,10 +4908,10 @@
       "token": "USDC",
       "address": "0xf93e64079526b49fb93337789aaf1870f0356ffa",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 5.06388292571004,
-      "apy": 3.700788247510103,
+      "tvl": 5.06390392221438,
+      "apy": 3.6993427654943183,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4197,10 +4920,10 @@
       "token": "USDC",
       "address": "0xe002ea659d522f37dee615466e2869d51883428b",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 4.38128956911726,
-      "apy": 9.672802996602753,
+      "tvl": 4.38202844610332,
+      "apy": 9.670688305268003,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4209,7 +4932,7 @@
       "token": "sUSDf",
       "address": "0x29d322dd088e9b9d1416f43188954f08748fafbb",
       "assetAddress": "0xc8cf6d7991f15525488b2a83df53468d682ba4b0",
-      "tvl": 4.293053753187932,
+      "tvl": 4.293086917344486,
       "apy": null,
       "source": "api",
       "isPublic": false
@@ -4221,10 +4944,10 @@
       "token": "USDC",
       "address": "0x588480b918e13ab6f72bada02b231d89cc94154c",
       "assetAddress": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "tvl": 1.82913147208344,
-      "apy": 3.4469156389716997,
+      "tvl": 1.8291354714176,
+      "apy": 2.4319928995579447,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4236,7 +4959,7 @@
       "tvl": 1.0704230341991672,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4248,7 +4971,7 @@
       "tvl": 0.8266299785803038,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4260,7 +4983,7 @@
       "tvl": 0.30843264975336,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4269,10 +4992,10 @@
       "token": "crvUSD",
       "address": "0xe31aa86e21e420d03e52aaa06c349bdc525a664f",
       "assetAddress": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
-      "tvl": 0.22647168570808324,
+      "tvl": 0.22647169738204004,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4284,7 +5007,7 @@
       "tvl": 0.14030264133404,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4296,7 +5019,7 @@
       "tvl": 0.1194651105269,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4305,10 +5028,10 @@
       "token": "WETH",
       "address": "0x9824dcdac89f208bf8b5cb5c4dc41f04a0878607",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 0.06424283038683969,
-      "apy": 0.001618947600191811,
+      "tvl": 0.06453603582436153,
+      "apy": 0.001616627268707228,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4317,10 +5040,10 @@
       "token": "WBTC",
       "address": "0xfa77f96348f5ea8025d1a1dae9d535a4bac7947d",
       "assetAddress": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "tvl": 0.0517522944379068,
+      "tvl": 0.0519387126120792,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4329,10 +5052,10 @@
       "token": "WETH",
       "address": "0xd9a8d3e4d86e238a847043a8c3be26f39d08f1f8",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 0.018825741106778076,
+      "tvl": 0.018911670909524572,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4341,10 +5064,10 @@
       "token": "WETH",
       "address": "0xc9e44e93edc2c28f9ac7e629507aa9a6a0efb1f9",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 0.0188170741045955,
+      "tvl": 0.01890296434694521,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4356,7 +5079,7 @@
       "tvl": 0.01041926532034,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4365,10 +5088,10 @@
       "token": "WETH",
       "address": "0x032b07eb81b418b71ef9a0b114ecb9aa0798f736",
       "assetAddress": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-      "tvl": 0.0025379154268992533,
+      "tvl": 0.0025494997024283705,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4380,7 +5103,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4392,7 +5115,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4404,7 +5127,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "AlphaPK",
+      "token": "alphaPK",
+      "address": "0xb55794f8aa23be1e8ba90a817ee285cff347017d",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4416,7 +5151,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "BC_vault_one",
+      "token": "WETH",
+      "address": "0x64d47d8516034857c6fc040ecd405e03643a464f",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4428,7 +5175,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4440,7 +5187,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4452,7 +5199,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4464,7 +5211,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "BTC Valos",
+      "token": "WBTC",
+      "address": "0xffb090cb1829c5977fbd070cebff7425c76b0472",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4476,7 +5235,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4488,7 +5247,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4500,7 +5259,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4512,7 +5271,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4524,7 +5283,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4536,7 +5295,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4548,7 +5307,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "F1 Champion Principle Protected Note",
+      "token": "USDC",
+      "address": "0xc1926c01ed88e93f5c266f3b43af57c1f6e63b5d",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4560,7 +5331,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4572,7 +5343,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4584,7 +5355,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4596,7 +5367,91 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Fusion weETH looping Ethereum",
+      "token": "fusnweETH",
+      "address": "0x087b40429637f5366175b1c9379613b01d00a860",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Fusion weETH looping Ethereum",
+      "token": "fusnweETH",
+      "address": "0x6c8a9e6e925f9553af591ef2b5baee0c3b693e0a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Gami csUSDL Looping",
+      "token": "GamicsUSDL-loop",
+      "address": "0x24308f0aad1b6e9f99ada39eb3e0f8477075b8ea",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Gami slvlUSD Looping",
+      "token": "gamislvlUSD-loop",
+      "address": "0x813182901410f819f9bbf82b4cb7b4f796281b6b",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Gami sUSDf Looping",
+      "token": "gamisUSDf-loop",
+      "address": "0xa3a6d234171f8bdce93ee35b58463942d29226c5",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Gami USDC",
+      "token": "gamiUSDC",
+      "address": "0x06e424fe6018ceccfc6071e656fccc5e8369245a",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Gami USDC",
+      "token": "gamiUSDC",
+      "address": "0x6f274f5098ad4cebf3b68c81f260de8ec66737c8",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4608,7 +5463,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4620,7 +5475,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4632,7 +5487,103 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "IPOR stETH Ethereum",
+      "token": "stETH",
+      "address": "0x0552e28123a19ff2853d1ed3be75ef1329bb6ca8",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "IPOR stETH Ethereum",
+      "token": "ipstETHfusion",
+      "address": "0xf4565375ecc96b665ef28830317c2b47688cfd85",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "IPOR Testflight",
+      "token": "IPORTF",
+      "address": "0xd190c2235a1e0353d30f5189ac927249ad50b8c4",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "IPOR weETH Ethereum",
+      "token": "weETH",
+      "address": "0x981a6c7ca4496acc3ff7bcdcc3b834fe0c4db5bc",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "K3 ALPHA EUR",
+      "token": "k3EU",
+      "address": "0x7f0409e03c83f3b42d8ba4b83485fff72cc9d7ab",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "King Gold Yield (PAXG)",
+      "token": "kpGOLD",
+      "address": "0x467501644687a320a244816a338b5de0fb0b4d90",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Leveraged Falcon USDC Core",
+      "token": "USDC",
+      "address": "0xb4790cfdf1df71c2e4ac2f5c43dbcb975ad447ae",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Leveraged syrupUSDC",
+      "token": "msyrupL",
+      "address": "0xe50d58c2533502e95b1bde14f25f852cc9c8c62c",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4644,7 +5595,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4656,7 +5607,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4668,7 +5619,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4680,7 +5631,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "TAU InfiniFi ETH Carry",
+      "token": "$TAUSIUSDETH",
+      "address": "0xf6425415259c370d19d2ac8d1a04a87739e2dc26",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4692,7 +5655,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4704,7 +5667,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4716,7 +5679,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Tesseract Managed BTC",
+      "token": "WBTC",
+      "address": "0x1fdf5dc3f915cb40e0ad5690de51e3cb464d1bad",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4728,7 +5703,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4740,7 +5715,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "test",
+      "token": "TESTK",
+      "address": "0xd7a32271d7829a6c297a1e443f033b97b6c832a7",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Test Vault",
+      "token": "TVL",
+      "address": "0x2353e52162582726106a9dee12bdfcbb1750cf24",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4752,7 +5751,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4764,7 +5763,19 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 1,
+      "chain": "ethereum",
+      "name": "Vault TAU Core",
+      "token": "USDC",
+      "address": "0x707d816272ed15174c72f92eccc4149d1dcb7a80",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4776,7 +5787,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4788,7 +5799,7 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 1,
@@ -4800,7 +5811,55 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 57073,
+      "chain": "ink",
+      "name": "Maciek F1 Ultra USDC Yield machine",
+      "token": "MF3",
+      "address": "0xa481dc03d0b17087e450748d144e6f53707c4608",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 747474,
+      "chain": "katana",
+      "name": "Maciek Katana",
+      "token": "MK",
+      "address": "0x4de1a7b0355434f0f6435f8dc96e8af0959abe44",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 747474,
+      "chain": "katana",
+      "name": "polYIELD avKAT",
+      "token": "pol-avKAT",
+      "address": "0x91536acedc9113d60c393de7ee02efc992a38081",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 747474,
+      "chain": "katana",
+      "name": "TEST KATANA 1",
+      "token": "TK1",
+      "address": "0x3e2e0ae37b2d570b9998d33c3e4f197234656d8f",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 9745,
@@ -4809,10 +5868,10 @@
       "token": "USDe",
       "address": "0x0a71624ab3e8101f78d95dfc81e0f1f31128ed7a",
       "assetAddress": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
-      "tvl": 2935.035374817307,
-      "apy": 0.000910329733119522,
+      "tvl": 2935.035375628279,
+      "apy": 0.00091032973031934,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 9745,
@@ -4824,7 +5883,79 @@
       "tvl": 79.05748433,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Maciek Euler Integrations test",
+      "token": "MF2",
+      "address": "0xf28b18e5022458e485c7ceb77e138c28b2a3f4b1",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Maciek F1 Ultra USDC Yield machine",
+      "token": "MF2",
+      "address": "0x0866b3f9490392c04c59605a05361258405b5b81",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Plasma Test",
+      "token": "PTWOO",
+      "address": "0xe2473cedcad382bd2a500d2fef24c4e21046561d",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Reservoir Looping Plasma",
+      "token": "ipsrXPL",
+      "address": "0x31ce649988168d2a2ce237f6501ec9cf1809e6a9",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Test Aave Looping Sentinel",
+      "token": "testALS",
+      "address": "0x48b3a64af0ca691b4a89d1f3e9355811fc886a28",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 9745,
+      "chain": "plasma",
+      "name": "Yuzu IPOR Vault [Test] ",
+      "token": "testyzUSD",
+      "address": "0x922afbe72e1a193b5991982aa4eab85e14c8a62b",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 239,
@@ -4836,7 +5967,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 239,
+      "chain": "tac",
+      "name": "Test",
+      "token": "TST",
+      "address": "0x8529be372ffe4762c5ee687f2ff3ff32dc024187",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 239,
+      "chain": "tac",
+      "name": "Test TAC Vault",
+      "token": "TSC",
+      "address": "0x101539f9331a3c8c9e0a55fdc00710986c9fc04c",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 130,
@@ -4848,7 +6003,7 @@
       "tvl": 2495.1348458679304,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
     },
     {
       "chainId": 130,
@@ -4860,7 +6015,55 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "TEST VAULT 4-8-2025",
+      "token": "TV04082025",
+      "address": "0xd0e066202cbb2fc940fbe78281e95c96cded85ea",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "TEST05082025",
+      "token": "T05082025",
+      "address": "0x0d9d8ba2257ee75b9e5765b10a01bb65d4a0fc72",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "TEST1234",
+      "token": "TEST1234",
+      "address": "0x6e31fdd21e0c8def9e97876dc2961171586af416",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "This sample vault",
+      "token": "TSV",
+      "address": "0xa8efd13ffb9d8616a6133c910df591202f67d2e0",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     },
     {
       "chainId": 130,
@@ -4872,7 +6075,31 @@
       "tvl": 0,
       "apy": null,
       "source": "api",
-      "isPublic": false
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "Woo USDC",
+      "token": "WOOUSDC",
+      "address": "0x05506347febe0d15ce283f26ea8b70813b4f74ac",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
+    },
+    {
+      "chainId": 130,
+      "chain": "unichain",
+      "name": "Yo Vault",
+      "token": "YVV",
+      "address": "0x6fbb0f62b79da4ed1e8ec42b7534da9b3f5ad11f",
+      "assetAddress": null,
+      "tvl": 0,
+      "apy": null,
+      "source": "github",
+      "isPublic": true
     }
   ]
 }
