@@ -4,38 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1960683812.8451993,
-    "fusionBorrowed": 20473295.45369332,
-    "fusionCollateral": 23419454.14158323,
-    "sharePercent": 1.0441915886470234,
-    "activeVaults": 25,
-    "totalVaults": 135,
-    "vaultErrors": 0,
-    "durationMs": 25298,
-    "historyEntries": 220,
-    "timestamp": "2026-07-27T08:18:23.760Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
-    "totalLoans": 1959285397.8591938,
-    "fusionBorrowed": 20007786.620580103,
-    "fusionCollateral": 22915500.288981557,
-    "sharePercent": 1.0211777540138633,
-    "activeVaults": 25,
-    "totalVaults": 135,
-    "vaultErrors": 0,
-    "durationMs": 21432,
-    "historyEntries": 221,
-    "timestamp": "2026-07-27T11:45:04.985Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1958140870.5622246,
     "fusionBorrowed": 18977929.057868432,
     "fusionCollateral": 21736120.37289653,
@@ -8009,5 +7977,24 @@
     "durationMs": 19031,
     "historyEntries": 291,
     "timestamp": "2026-08-17T22:46:27.649Z"
+  },
+  {
+    "level": "error",
+    "event": "collect",
+    "errors": [
+      {
+        "step": "fetchTotalLoans",
+        "message": "fetch failed"
+      }
+    ],
+    "warnings": [],
+    "timestamp": "2026-08-17T23:02:11.326Z"
+  },
+  {
+    "level": "error",
+    "event": "collect_crash",
+    "message": "fetch failed",
+    "stack": "TypeError: fetch failed",
+    "timestamp": "2026-08-17T23:02:11.327Z"
   }
 ]
