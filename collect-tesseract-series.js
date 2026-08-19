@@ -130,23 +130,36 @@ async function feeData(chain, vault, block) {
   return out;
 }
 
-async function scanLogs(chain, address, topics, from, to, deadline) {
+// Adaptive log scan. Public RPCs cap eth_getLogs differently (and mostly by
+// result size, not range), so we start wide and shrink the *learned* chunk for
+// the chain on rejection rather than bisecting every call. A single factory
+// address with few events answers fine over millions of blocks.
+const chunkPref = {};
+async function scanLogs(chain, address, topics, fromBlock, toBlock, deadline) {
+  const name = typeof chain === 'string' ? chain : chain.name;
   const out = [];
-  async function scan(a, b) {
+  let chunk = chunkPref[name] || 5000000;
+  let from = fromBlock;
+  while (from <= toBlock) {
     if (Date.now() > deadline) throw new Error('deadline');
+    const to = Math.min(from + chunk - 1, toBlock);
     try {
-      out.push(...await rpcCall(chain, 'eth_getLogs', [{
-        address, topics, fromBlock: hexBlock(a), toBlock: hexBlock(b),
-      }]));
+      const logs = await rpcCall(chain, 'eth_getLogs', [{
+        ...(address ? { address } : {}),
+        topics,
+        fromBlock: '0x' + from.toString(16),
+        toBlock: '0x' + to.toString(16),
+      }]);
+      out.push(...logs);
+      from = to + 1;
+      chunkPref[name] = chunk;
     } catch (e) {
       if (String(e.message) === 'deadline') throw e;
-      if (b - a < 2000) return;
-      const m = a + Math.floor((b - a) / 2);
-      await scan(a, m); await scan(m + 1, b);
+      if (chunk <= 5000) { from = to + 1; continue; } // unscannable sliver: skip, don't stall
+      chunk = Math.max(5000, Math.floor(chunk / 4));
+      chunkPref[name] = chunk;
     }
   }
-  const CHUNK = 40000;
-  for (let s = from; s <= to; s += CHUNK) await scan(s, Math.min(s + CHUNK - 1, to));
   return out;
 }
 

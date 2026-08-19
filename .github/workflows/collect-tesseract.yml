@@ -30,6 +30,14 @@ jobs:
       - name: Discover Tesseract vaults
         run: node collect-tesseract-discover.js
 
+      - name: Collect daily series
+        # Checkpointed: each run extends the history and resumes where the
+        # previous one stopped, so the first backfill converges over several runs.
+        if: always()
+        env:
+          SERIES_BUDGET_MS: '1500000'
+        run: node collect-tesseract-series.js
+
       - name: Commit & push
         if: always()
         run: |

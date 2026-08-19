@@ -92,11 +92,19 @@ async function rpcCall(chain, method, params, { timeoutMs = 20000, tries = 3 } =
 const ethCall = (chain, to, data, block = 'latest') =>
   rpcCall(chain, 'eth_call', [{ to, data }, block]);
 
-// Scan logs with adaptive bisection — public RPCs cap ranges inconsistently.
+// Adaptive log scan. Public RPCs cap eth_getLogs differently (and mostly by
+// result size, not range), so we start wide and shrink the *learned* chunk for
+// the chain on rejection rather than bisecting every call. A single factory
+// address with few events answers fine over millions of blocks.
+const chunkPref = {};
 async function scanLogs(chain, address, topics, fromBlock, toBlock, deadline) {
+  const name = typeof chain === 'string' ? chain : chain.name;
   const out = [];
-  async function scan(from, to) {
+  let chunk = chunkPref[name] || 5000000;
+  let from = fromBlock;
+  while (from <= toBlock) {
     if (Date.now() > deadline) throw new Error('deadline');
+    const to = Math.min(from + chunk - 1, toBlock);
     try {
       const logs = await rpcCall(chain, 'eth_getLogs', [{
         ...(address ? { address } : {}),
@@ -105,17 +113,14 @@ async function scanLogs(chain, address, topics, fromBlock, toBlock, deadline) {
         toBlock: '0x' + to.toString(16),
       }]);
       out.push(...logs);
+      from = to + 1;
+      chunkPref[name] = chunk;
     } catch (e) {
       if (String(e.message) === 'deadline') throw e;
-      if (to - from < 2000) return; // give up on this sliver rather than stall
-      const mid = from + Math.floor((to - from) / 2);
-      await scan(from, mid);
-      await scan(mid + 1, to);
+      if (chunk <= 5000) { from = to + 1; continue; } // unscannable sliver: skip, don't stall
+      chunk = Math.max(5000, Math.floor(chunk / 4));
+      chunkPref[name] = chunk;
     }
-  }
-  const CHUNK = 40000;
-  for (let s = fromBlock; s <= toBlock; s += CHUNK) {
-    await scan(s, Math.min(s + CHUNK - 1, toBlock));
   }
   return out;
 }
