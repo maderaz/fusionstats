@@ -63,6 +63,8 @@
     <b>chain + address</b>, so identically-named vaults stay distinct.
   </p>
 
+  <div id="banner"></div>
+
   <div class="card">
     <div class="row">
       <div>
@@ -490,6 +492,17 @@ function loadJson(name){
 (function load(){
   Promise.all([ loadJson('tesseract-series.json'), loadJson('tesseract-vaults.json') ]).then(function(res){
     state.series=res[0]; state.disc=res[1];
+    // A partial discovery must never read as authoritative.
+    var d=state.disc;
+    if(d && d.complete===false){
+      document.getElementById('banner').innerHTML='<div class="alert"><b>⚠ Incomplete discovery — treat these numbers as provisional.</b><br>'
+        +'The last collector run did not finish scanning every chain, so vaults are almost certainly missing.'
+        +(d.problems&&d.problems.length? '<ul>'+d.problems.map(function(x){return '<li>'+x+'</li>';}).join('')+'</ul>':'')
+        +'<div class="muted" style="margin-top:7px">Seeds known: '+(d.seedsKnown!=null?d.seedsKnown:'—')
+        +' · seen per chain: '+JSON.stringify(d.seedsSeenByChain||{})+' · found: '+(d.total!=null?d.total:'—')+'</div></div>';
+    } else if(d && d.complete===true){
+      document.getElementById('banner').innerHTML='';
+    }
     if(!state.series || !state.series.vaults || !Object.keys(state.series.vaults).length){
       document.getElementById('stats').innerHTML='<div class="stat"><div class="k">Status</div><div class="v" style="font-size:.9rem">'
         +(state.disc? (state.disc.total+' vaults discovered · series collector has not run yet') : 'Collectors have not run yet')+'</div></div>';
