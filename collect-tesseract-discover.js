@@ -241,30 +241,59 @@ async function factoryFor(chain) {
   [...operators].forEach((o) => console.log('  ', o));
 
   // ---- Select vaults by operator ----
+  // The owner filter is free (initialOwner rides in the factory event). For
+  // ownership handed over after deployment we do NOT probe hasRole per vault
+  // per operator — that is thousands of eth_calls. Instead one RoleGranted
+  // scan per chain, filtered on the indexed account topic, finds every
+  // AccessManager that ever granted OWNER/ATOMIST to a Tesseract operator;
+  // we then intersect that against each vault's own AccessManager.
+  const opTopics = [...operators].map((o) => '0x' + o.replace(/^0x/, '').toLowerCase().padStart(64, '0'));
   const selected = [];
+
+  for (const { chain, vaults } of Object.values(allByChain)) {
+    const byOwner = vaults.filter((v) => operators.has(v.owner));
+    byOwner.forEach((v) => selected.push({ chainId: chain.id, chain: chain.name, matchedBy: 'owner', ...v }));
+
+    const rest = vaults.filter((v) => !operators.has(v.owner));
+    if (!rest.length || !opTopics.length) continue;
+
+    let grantedManagers = new Set();
+    try {
+      const head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16);
+      const logs = await scanLogs(
+        chain, null,
+        [ROLE_GRANTED, ['0x' + pad32(OWNER_ROLE), '0x' + pad32(ATOMIST_ROLE)], opTopics],
+        chain.fromBlock, head, Date.now() + 120000
+      );
+      logs.forEach((l) => grantedManagers.add(l.address.toLowerCase()));
+      console.log(`  [${chain.name}] ${logs.length} operator role grants across ${grantedManagers.size} access managers`);
+    } catch (e) {
+      console.log(`  [${chain.name}] role-grant scan skipped: ${e.message}`);
+      continue;
+    }
+    if (!grantedManagers.size) continue;
+
+    const selDeadline = Date.now() + 120000;
+    for (const v of rest) {
+      if (Date.now() > selDeadline) { console.log(`  [${chain.name}] selection budget reached, ${rest.length} candidates not all probed`); break; }
+      try {
+        const am = await ethCall(chain, v.address, SEL_ACCESS_MANAGER);
+        if (!am || am === '0x') continue;
+        const mgr = ('0x' + am.slice(-40)).toLowerCase();
+        if (grantedManagers.has(mgr)) {
+          selected.push({ chainId: chain.id, chain: chain.name, matchedBy: 'role-grant', ...v });
+        }
+      } catch { /* unreadable vault: skip */ }
+    }
+  }
+
+  // Seeds must never be silently dropped, even if their operator moved.
+  const have = new Set(selected.map((v) => v.chainId + ':' + v.address));
   for (const { chain, vaults } of Object.values(allByChain)) {
     for (const v of vaults) {
-      let match = operators.has(v.owner) ? 'owner' : null;
-      if (!match && seedNames.has(v.address)) match = 'seed';
-      if (!match && operators.size) {
-        try {
-          const am = await ethCall(chain, v.address, SEL_ACCESS_MANAGER);
-          if (am && am !== '0x') {
-            const mgr = '0x' + am.slice(-40);
-            for (const op of operators) {
-              for (const role of [OWNER_ROLE, ATOMIST_ROLE]) {
-                const r = await ethCall(chain, mgr, encHasRole(role, op));
-                if (r && r !== '0x' && BigInt('0x' + r.slice(2, 66)) === 1n) {
-                  match = role === OWNER_ROLE ? 'owner-role' : 'atomist-role';
-                  break;
-                }
-              }
-              if (match) break;
-            }
-          }
-        } catch {}
+      if (seedNames.has(v.address) && !have.has(chain.id + ':' + v.address)) {
+        selected.push({ chainId: chain.id, chain: chain.name, matchedBy: 'seed-name', ...v });
       }
-      if (match) selected.push({ chainId: chain.id, chain: chain.name, matchedBy: match, ...v });
     }
   }
 
