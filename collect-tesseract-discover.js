@@ -51,6 +51,12 @@ const CHAINS = [
   { id: 239,    name: 'tac',       slug: 'tac',       fromBlock: 1, rpcs: ['https://rpc.tac.build'] },
 ];
 
+const BLOCKS_PER_DAY = {
+  ethereum: 7200, base: 43200, arbitrum: 345600, avalanche: 43200,
+  unichain: 21600, plasma: 43200, optimism: 43200, sonic: 86400,
+  ink: 43200, katana: 43200, tac: 28800, _default: 7200,
+};
+
 // Known factories (fallback when ipor-abi lookup fails).
 const FACTORY_FALLBACK = {
   ethereum: '0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852',
@@ -251,21 +257,34 @@ async function factoryFor(chain) {
     try { head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16); }
     catch (e) { chainStatus[chain.name] = 'rpc-unreachable'; console.log(`[${chain.name}] RPC unreachable: ${e.message}`); return; }
 
+    // The current proxy's deploy block is only a hint; earlier factories are
+    // older, so back off well before it rather than starting at it.
     let startBlock = chain.fromBlock;
     try {
       const dep = await deployBlockOf(chain, factory, chain.fromBlock, head);
-      if (dep && dep > startBlock) startBlock = dep;
+      if (dep) {
+        const bpd = BLOCKS_PER_DAY[chain.name] || BLOCKS_PER_DAY._default;
+        const backoff = Math.max(0, dep - bpd * 400);   // ~400 days earlier
+        startBlock = Math.max(chain.fromBlock, backoff);
+      }
     } catch {}
 
     let logs = [], complete = true;
     try {
-      logs = await scanLogs(chain, factory, [FUSION_INSTANCE_CREATED], startBlock, head, deadline);
+      // Scan by TOPIC, not by a single factory address. IPOR has deployed more
+      // than one factory version per chain, and filtering on the current
+      // IporFusionFactoryProxy makes every vault from an earlier factory
+      // invisible — which is why ethereum (41 known Tesseract vaults) returned
+      // nothing. log.address records which factory actually emitted each event.
+      logs = await scanLogs(chain, null, [FUSION_INSTANCE_CREATED], startBlock, head, deadline);
     } catch (e) {
       complete = false;
       console.log(`[${chain.name}] scan INCOMPLETE (${e.message}) — results for this chain are partial`);
     }
     const vaults = [];
-    for (const l of logs) { try { vaults.push(parseInstance(l)); } catch {} }
+    for (const l of logs) {
+      try { vaults.push({ ...parseInstance(l), factory: (l.address || '').toLowerCase() }); } catch {}
+    }
     chainStart[chain.name] = startBlock;
     chainStatus[chain.name] = complete ? 'ok' : 'incomplete';
     allByChain[chain.name] = { chain, vaults, complete };
@@ -374,6 +393,11 @@ async function factoryFor(chain) {
   // A partial scan that exits 0 is worse than a failure: it commits a
   // confident-looking file. Any chain that did not finish, or that holds
   // name-matched seeds yet yielded nothing, makes the whole result suspect.
+  const seedsByChain = {};
+  Object.values(allByChain).forEach(({ chain, vaults }) => {
+    seedsByChain[chain.name] = vaults.filter((v) => seedNames.has(v.address)).length;
+  });
+
   const problems = [];
   for (const [name, status] of Object.entries(chainStatus)) {
     if (status !== 'ok') problems.push(`${name}: ${status}`);
@@ -381,12 +405,18 @@ async function factoryFor(chain) {
   for (const c of CHAINS) {
     if (!(c.name in chainStatus)) problems.push(`${c.name}: never ran`);
   }
-  const seedsByChain = {};
-  Object.values(allByChain).forEach(({ chain, vaults }) => {
-    seedsByChain[chain.name] = vaults.filter((v) => seedNames.has(v.address)).length;
-  });
   if (seedNames.size && !operators.size) {
     problems.push(`${seedNames.size} seed vaults known but no operators resolved`);
+  }
+  // Coverage check. The public vault list is not the source of truth — it only
+  // tells us a floor. If discovery cannot even see the vaults we already know
+  // exist, the scan is broken and the result must not be published as good.
+  const seedsSeen = Object.values(seedsByChain).reduce((a, b) => a + b, 0);
+  if (seedNames.size && seedsSeen < seedNames.size * 0.9) {
+    problems.push(`coverage: only ${seedsSeen} of ${seedNames.size} known Tesseract-named vaults were seen by the factory scan`);
+  }
+  if (seedNames.size && selected.length < seedsSeen) {
+    problems.push(`selection dropped vaults: saw ${seedsSeen} seeds but selected ${selected.length}`);
   }
 
   const complete = problems.length === 0;
