@@ -56,6 +56,10 @@
   .addr{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--accent);text-decoration:none}
   .addr:hover{text-decoration:underline}
   .scroll{overflow-x:auto}
+  .exports{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
+  .exports button{border:1px solid var(--stroke);background:var(--surface);color:var(--text-body);
+    font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:4px 9px;border-radius:7px;cursor:pointer}
+  .exports button:hover{border-color:var(--accent);color:var(--accent)}
   .empty-state{color:var(--text-secondary);font-size:.82rem;padding:16px 0}
   .note{background:var(--accent-bg);border:1px solid rgba(132,41,255,.22);border-radius:10px;padding:10px 13px;font-size:.78rem;color:var(--text-body);margin-top:12px}
 </style>
@@ -89,7 +93,12 @@
   </div>
 
   <div class="card">
-    <h2>TVL <span class="muted" id="tvlUnit"></span></h2>
+    <h2>TVL <span class="muted" id="tvlUnit"></span>
+      <span class="exports" id="exports">
+        <span class="muted">PNG:</span>
+        <button data-r="16:9">16:9</button><button data-r="1:1">1:1</button><button data-r="4:3">4:3</button><button data-r="4:5">4:5</button><button data-r="9:16">9:16</button>
+      </span>
+    </h2>
     <div class="plot"><div class="tip" id="tip"></div><div class="bars" id="tvlBars"></div></div>
     <div class="row muted" id="tvlRange"></div>
   </div>
@@ -195,6 +204,14 @@ function seriesFor(){
     });
     if(row.ts>=c) out.push(row);
   });
+  // A few blank days before the first bar so the series does not start flush
+  // against the axis. These render as empty slots and are skipped by the
+  // tooltip and the range label.
+  if(out.length){
+    var PAD=4, first=out[0].day, lead=[];
+    for(var i=PAD;i>0;i--) lead.push({day:first-i, ts:(first-i)*86400, tvlUsd:null, parts:[], pad:true});
+    out=lead.concat(out);
+  }
   return out;
 }
 
@@ -250,8 +267,9 @@ function renderCharts(){
   var ok=drawBars('tvlBars', pts, function(p){ return p.tvlUsd||null; }, fUsd);
   document.getElementById('tvlUnit').textContent = state.vault==='__all__'
     ? '· USD, all Tesseract Base vaults combined' : '· USD';
-  document.getElementById('tvlRange').textContent = ok
-    ? pts.length+' days · '+dstr(pts[0].ts)+' → '+dstr(pts[pts.length-1].ts)+' · latest '+fUsd(pts[pts.length-1].tvlUsd)
+  var real=pts.filter(function(p){ return !p.pad; });
+  document.getElementById('tvlRange').textContent = ok && real.length
+    ? real.length+' days · '+dstr(real[0].ts)+' → '+dstr(real[real.length-1].ts)+' · latest '+fUsd(real[real.length-1].tvlUsd)
     : 'no snapshots in this timeframe';
 
   // Share price is per vault. Averaging it across vaults with different
@@ -261,7 +279,7 @@ function renderCharts(){
   var chartWrap=document.getElementById('spChart'), tableWrap=document.getElementById('spTable');
   if(one){
     chartWrap.style.display=''; tableWrap.innerHTML='';
-    var sp=pts.filter(function(p){ return p.parts.length && p.parts[0].sp!=null; });
+    var sp=pts.filter(function(p){ return !p.pad && p.parts.length && p.parts[0].sp!=null; });
     var ok2=drawBars('spBars', sp, function(p){ return p.parts[0].sp; }, function(v){ return fNum(v,6); });
     document.getElementById('spUnit').textContent='· '+one.symbol+' per share · '+one.name;
     if(ok2){
@@ -353,6 +371,89 @@ function renderFlows(){
   }).join('') : '<tr><td colspan="6" class="empty-state">No flows in this timeframe.</td></tr>';
 }
 
+// ---- PNG export -------------------------------------------------------
+// The chart is plain DOM, so the figure is redrawn onto a canvas rather than
+// screenshotted. Keeps the export crisp at any aspect ratio.
+var RATIOS = { '16:9':[1600,900], '1:1':[1200,1200], '4:3':[1600,1200], '4:5':[1200,1500], '9:16':[900,1600] };
+
+function exportChart(label){
+  var dim=RATIOS[label]; if(!dim) return;
+  var W=dim[0], H=dim[1];
+  var pts=seriesFor(); var real=pts.filter(function(p){return !p.pad;});
+  if(!real.length) return;
+
+  var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  var g=cv.getContext('2d');
+  var scale=Math.min(W,H)/1200;
+  var pad={l:Math.round(150*scale), r:Math.round(52*scale), t:Math.round(150*scale), b:Math.round(120*scale)};
+
+  g.fillStyle='#FFFFFF'; g.fillRect(0,0,W,H);
+
+  var vs=selVaults();
+  var title = state.vault==='__all__' ? 'Tesseract on Base — TVL' : vs[0].name;
+  var tfLabel = state.days? ('Last '+state.days+' days') : 'All time';
+  g.fillStyle='#000'; g.font='600 '+Math.round(46*scale)+'px Poppins, sans-serif';
+  g.fillText(title, pad.l, Math.round(64*scale));
+  g.fillStyle='#70747A'; g.font='400 '+Math.round(28*scale)+'px Poppins, sans-serif';
+  g.fillText(tfLabel+'  ·  '+dstr(real[0].ts)+' → '+dstr(real[real.length-1].ts), pad.l, Math.round(108*scale));
+
+  var plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
+  var vals=real.map(function(p){return p.tvlUsd||0;});
+  var max=Math.max.apply(null,vals)||1;
+  var niceMax=Math.pow(10,Math.floor(Math.log10(max)));
+  niceMax=Math.ceil(max/niceMax*2)/2*niceMax;
+
+  // gridlines + y labels
+  g.strokeStyle='#E5E5E5'; g.lineWidth=Math.max(1,scale);
+  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(24*scale)+'px JetBrains Mono, monospace';
+  g.textAlign='right';
+  for(var i=0;i<=4;i++){
+    var frac=i/4, y=pad.t+plotH-frac*plotH;
+    g.beginPath(); g.setLineDash([Math.round(6*scale),Math.round(6*scale)]);
+    g.moveTo(pad.l,y); g.lineTo(pad.l+plotW,y); g.stroke(); g.setLineDash([]);
+    g.fillText(fUsd(niceMax*frac), pad.l-Math.round(16*scale), y+Math.round(9*scale));
+  }
+  g.textAlign='left';
+
+  // bars (padding slots included so spacing matches the page)
+  var n=pts.length, slot=plotW/n, bw=Math.max(1,slot*0.78);
+  pts.forEach(function(p,i){
+    if(p.tvlUsd==null) return;
+    var h=Math.max(2,(p.tvlUsd/niceMax)*plotH);
+    var x=pad.l+i*slot+(slot-bw)/2, y=pad.t+plotH-h;
+    g.fillStyle='#8429FF';
+    var r=Math.min(bw/2,Math.round(6*scale));
+    g.beginPath();
+    if(g.roundRect) g.roundRect(x,y,bw,h,[r,r,0,0]); else g.rect(x,y,bw,h);
+    g.fill();
+  });
+
+  // axis line + x labels
+  g.strokeStyle='#E5E5E5'; g.beginPath();
+  g.moveTo(pad.l,pad.t+plotH); g.lineTo(pad.l+plotW,pad.t+plotH); g.stroke();
+  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(24*scale)+'px Poppins, sans-serif';
+  var firstReal=pts.findIndex(function(p){return !p.pad;});
+  [[firstReal,'left'],[Math.floor((firstReal+n-1)/2),'center'],[n-1,'right']].forEach(function(t){
+    var p=pts[t[0]]; if(!p) return;
+    g.textAlign=t[1];
+    var x=pad.l+t[0]*slot+slot/2;
+    g.fillText(dstr(p.ts), x, pad.t+plotH+Math.round(46*scale));
+  });
+  g.textAlign='left';
+
+  // footer
+  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(22*scale)+'px Poppins, sans-serif';
+  g.fillText('fusionecosystem.xyz/tesseract  ·  latest '+fUsd(real[real.length-1].tvlUsd), pad.l, H-Math.round(38*scale));
+
+  cv.toBlob(function(blob){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='tesseract-base-tvl-'+label.replace(':','x')+'-'+dstr(real[real.length-1].ts)+'.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+  },'image/png');
+}
+
 function renderAll(){ renderStats(); renderCharts(); attachTip('tvlBars'); attachTip('spBars'); renderVaults(); renderWallets(); renderFlows(); }
 
 document.getElementById('segTF').addEventListener('click', function(e){
@@ -361,6 +462,9 @@ document.getElementById('segTF').addEventListener('click', function(e){
   b.classList.add('on'); state.days=+b.getAttribute('data-d'); renderAll();
 });
 document.getElementById('vaultSel').addEventListener('change', function(){ state.vault=this.value; renderAll(); });
+document.getElementById('exports').addEventListener('click', function(e){
+  var b=e.target.closest('button'); if(b) exportChart(b.getAttribute('data-r'));
+});
 
 (function load(){
   function get(n){ return fetch('../'+n).then(function(r){ return r.ok?r.json():null; }).catch(function(){return null;}); }
