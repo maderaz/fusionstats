@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tesseract Vault Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --surface:#FFFFFF; --stroke:#E5E5E5; --stroke-light:#F0F0F0;
+    --text:#000000; --text-body:#70747A; --text-secondary:#9BA3AF;
+    --accent:#8429FF; --accent-bg:rgba(132,41,255,0.10);
+    --green:#16A34A; --red:#DC2626; --amber:#D97706; --bg:#FAFAFB;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:28px 20px 60px;line-height:1.5}
+  .wrap{max-width:1240px;margin:0 auto}
+  h1{font-size:1.5rem;font-weight:700;display:flex;align-items:center;gap:9px}
+  .sub{color:var(--text-body);font-size:0.86rem;margin-top:6px;max-width:860px}
+  .card{background:var(--surface);border:1px solid var(--stroke);border-radius:14px;padding:18px 20px;margin-top:16px}
+  .card h2{font-size:0.95rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .muted{color:var(--text-secondary);font-weight:400;font-size:0.78rem}
+  .note{background:var(--accent-bg);border:1px solid rgba(132,41,255,.25);border-radius:10px;padding:10px 13px;font-size:0.78rem;color:var(--text-body);margin-top:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .seg{display:inline-flex;border:1px solid var(--stroke);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:var(--surface);font-family:inherit;font-size:0.78rem;font-weight:500;color:var(--text-body);padding:0 13px;height:34px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  select{font-family:inherit;font-size:0.8rem;padding:7px 10px;border:1px solid var(--stroke);border-radius:9px;background:var(--surface);color:var(--text);max-width:100%}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:14px}
+  .stat{border:1px solid var(--stroke);border-radius:11px;padding:12px 14px}
+  .stat .k{font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);font-weight:600}
+  .stat .v{font-family:'JetBrains Mono',monospace;font-size:1.15rem;font-weight:500;margin-top:5px}
+  .plot{position:relative;height:230px;margin-top:16px;border-left:1px solid var(--stroke);border-bottom:1px solid var(--stroke);padding-left:2px}
+  .bars{position:absolute;inset:0 0 0 0;display:flex;align-items:flex-end;gap:1px}
+  .bar{flex:1;background:var(--accent);opacity:.8;min-height:1px;border-radius:2px 2px 0 0}
+  .bar.neg{background:var(--red)}
+  .line{position:absolute;inset:0;pointer-events:none}
+  .baseline{position:absolute;left:0;right:0;border-top:1px dashed var(--text-secondary);opacity:.65}
+  .baseline span{position:absolute;right:2px;top:-16px;font-size:0.62rem;color:var(--text-secondary);background:var(--surface);padding:0 4px}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:0.8rem}
+  th{text-align:left;font-size:0.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--stroke)}
+  td{padding:9px;border-bottom:1px solid var(--stroke-light)}
+  td.num,th.num{text-align:right;font-family:'JetBrains Mono',monospace}
+  .tag{display:inline-block;font-size:0.64rem;font-weight:600;padding:2px 7px;border-radius:5px}
+  .tag.dep{background:rgba(22,163,74,.12);color:var(--green)}
+  .tag.wd{background:rgba(220,38,38,.10);color:var(--red)}
+  .tag.empty{background:rgba(217,119,6,.12);color:var(--amber)}
+  .tag.chain{background:var(--accent-bg);color:var(--accent)}
+  .addr{font-family:'JetBrains Mono',monospace;font-size:0.74rem;color:var(--accent)}
+  .scroll{overflow-x:auto}
+  .warn{color:var(--amber);font-weight:600}
+  .empty-state{color:var(--text-secondary);font-size:0.82rem;padding:18px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span>◳</span> Tesseract Vault Analytics</h1>
+  <p class="sub">
+    Full onchain history of every <b>Tesseract-operated</b> Fusion vault, from each vault's
+    deployment block to now. Vaults are discovered from <b>FusionInstanceCreated</b> factory
+    events filtered by Tesseract's owner/atomist addresses — never by name — and keyed on
+    <b>chain + address</b>, so identically-named vaults stay distinct.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="muted" style="margin-bottom:4px">Vault</div>
+        <select id="vaultSel"><option>loading…</option></select>
+      </div>
+      <div>
+        <div class="muted" style="margin-bottom:4px">Denomination</div>
+        <div class="seg" id="segDenom">
+          <button data-d="native" class="on">Underlying</button>
+          <button data-d="usd">USD</button>
+        </div>
+      </div>
+    </div>
+    <div class="note" id="denomNote">
+      Charted in the vault's underlying asset first. USD is derived from the
+      <b>price oracle reading at each block</b>, never today's price applied backwards —
+      mixing the two hides whether capital moved or the price did.
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="card">
+    <h2>TVL <span class="muted" id="tvlUnit"></span></h2>
+    <div class="plot"><div class="bars" id="tvlBars"></div></div>
+    <div class="row muted" id="tvlRange"></div>
+  </div>
+
+  <div class="card">
+    <h2>Share price <span class="muted">· indexed to 100 at deployment</span></h2>
+    <div class="plot">
+      <div class="baseline" id="spBase" style="bottom:0"><span>100 · deployment</span></div>
+      <div class="bars" id="spBars"></div>
+    </div>
+    <div class="row muted" id="spRange"></div>
+    <div class="note" id="spNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Lending health <span class="muted">· LTV and health factor over time</span></h2>
+    <div id="health"></div>
+  </div>
+
+  <div class="card">
+    <h2>Deposits &amp; withdrawals <span class="muted">· every flow, with the resulting share price</span></h2>
+    <div class="scroll"><table id="flowTable">
+      <thead><tr>
+        <th>Date</th><th>Type</th><th class="num">Amount</th><th class="num">Shares</th>
+        <th>Address</th><th class="num">Share price after</th>
+      </tr></thead><tbody id="flowBody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h2>All Tesseract vaults <span class="muted" id="vaultCount"></span></h2>
+    <div class="scroll"><table>
+      <thead><tr>
+        <th>Vault</th><th>Chain</th><th>Address</th><th class="num">TVL (native)</th>
+        <th class="num">TVL (USD)</th><th class="num">Share price</th><th>Status</th><th>Matched by</th>
+      </tr></thead><tbody id="vaultBody"></tbody>
+    </table></div>
+    <div class="note">
+      Zero-TVL vaults are kept and flagged <b>deployed&nbsp;· empty</b> rather than filtered out —
+      an empty vault may be a failed deployment worth knowing about.
+    </div>
+  </div>
+</div>
+
+<script>
+var RAW = 'https://raw.githubusercontent.com/maderaz/fusionstats/claude/add-admin-panel-UJ9ZH/';
+var state = { denom:'native', key:'__all__', series:null, disc:null };
+
+function fNum(n,d){ if(n==null||isNaN(n)) return '—';
+  return n.toLocaleString('en-US',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d}); }
+function fUsd(n){ if(n==null||isNaN(n)) return '—';
+  var a=Math.abs(n); if(a>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(a>=1e3) return '$'+(n/1e3).toFixed(1)+'K';
+  return '$'+n.toFixed(2); }
+function shortAddr(a){ return a? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+function dstr(ts){ return ts? new Date(ts*1000).toISOString().slice(0,10) : '—'; }
+
+function vaults(){ return state.series ? Object.values(state.series.vaults) : []; }
+function current(){ return state.key==='__all__' ? null : (state.series.vaults[state.key]||null); }
+
+// Aggregate daily points across vaults, in USD (the only safely additive unit).
+function aggregatePoints(){
+  var byDay={};
+  vaults().forEach(function(v){
+    v.points.forEach(function(p){
+      if(p.day==null) return;
+      var b=byDay[p.day]||(byDay[p.day]={day:p.day,timestamp:p.timestamp,tvlUsd:0,native:{}});
+      if(p.tvlUsd!=null) b.tvlUsd+=p.tvlUsd;
+      b.native[v.symbol]=(b.native[v.symbol]||0)+(p.assets||0);
+    });
+  });
+  return Object.values(byDay).sort(function(a,b){return a.day-b.day;});
+}
+
+function renderStats(){
+  var el=document.getElementById('stats'), v=current(), out=[];
+  if(v){
+    var last=v.points[v.points.length-1]||{}, first=v.points[0]||{};
+    var days = (last.timestamp&&first.timestamp)? Math.round((last.timestamp-first.timestamp)/86400) : null;
+    var spChange = (first.sharePrice&&last.sharePrice)? (last.sharePrice/first.sharePrice-1)*100 : null;
+    out=[
+      ['TVL ('+v.symbol+')', fNum(last.assets,4)],
+      ['TVL (USD)', fUsd(last.tvlUsd)],
+      ['Share price', last.sharePrice!=null? fNum(last.sharePrice,6):'—'],
+      ['Since deployment', spChange!=null? (spChange>=0?'+':'')+spChange.toFixed(2)+'%'+(days!=null?' over '+days+'d':'') : '—'],
+      ['Deployed', dstr(first.timestamp)],
+      ['Daily points', v.points.length],
+    ];
+  } else {
+    var agg=aggregatePoints(), last=agg[agg.length-1]||{native:{}};
+    var natives=Object.keys(last.native||{}).sort(function(a,b){return last.native[b]-last.native[a];});
+    out=[['Total TVL (USD)', fUsd(last.tvlUsd)], ['Vaults', vaults().length]];
+    natives.slice(0,4).forEach(function(s){ out.push(['TVL ('+s+')', fNum(last.native[s],4)]); });
+  }
+  el.innerHTML=out.map(function(p){ return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>'; }).join('');
+}
+
+function drawBars(elId, vals, opts){
+  opts=opts||{};
+  var el=document.getElementById(elId);
+  if(!vals.length){ el.innerHTML=''; return; }
+  var max=Math.max.apply(null,vals.map(function(v){return Math.abs(v.v||0);}))||1;
+  var base=opts.base||0;
+  el.innerHTML=vals.map(function(p){
+    var h=Math.max(1,Math.abs((p.v-base))/ (max-base||max) *100);
+    if(opts.absolute) h=Math.max(1,(p.v/max)*100);
+    return '<div class="bar'+(p.v<base?' neg':'')+'" style="height:'+Math.min(100,h)+'%" title="'+(p.t||'')+'"></div>';
+  }).join('');
+}
+
+function renderTvl(){
+  var v=current(), pts, unit;
+  if(v){
+    pts=v.points.map(function(p){ return {v: state.denom==='usd'? (p.tvlUsd||0) : (p.assets||0), t: dstr(p.timestamp)+' · '+(state.denom==='usd'? fUsd(p.tvlUsd) : fNum(p.assets,4)+' '+v.symbol)}; });
+    unit = state.denom==='usd' ? '· USD (oracle at block)' : '· '+v.symbol;
+  } else {
+    var agg=aggregatePoints();
+    pts=agg.map(function(p){ return {v:p.tvlUsd||0, t: dstr(p.timestamp)+' · '+fUsd(p.tvlUsd)}; });
+    unit='· USD across all vaults (mixed underlyings — only USD is additive)';
+  }
+  document.getElementById('tvlUnit').textContent=unit;
+  drawBars('tvlBars', pts, {absolute:true});
+  var f=pts[0], l=pts[pts.length-1];
+  document.getElementById('tvlRange').textContent = pts.length? (pts.length+' daily points · '+(f.t||'').split(' · ')[0]+' → '+(l.t||'').split(' · ')[0]) : 'no data yet';
+}
+
+function renderSharePrice(){
+  var v=current(), el=document.getElementById('spNote');
+  if(!v){
+    // Indexed to 100 at each vault's own deployment so different ages compare.
+    var lines=vaults().map(function(vv){
+      var p=vv.points.filter(function(p){return p.sharePrice!=null;});
+      if(p.length<2) return null;
+      var b=p[0].sharePrice, last=p[p.length-1];
+      var days=Math.round((last.timestamp-p[0].timestamp)/86400);
+      return {name:vv.name, chain:vv.chain, idx:(last.sharePrice/b)*100, days:days};
+    }).filter(Boolean).sort(function(a,b){return b.idx-a.idx;});
+    drawBars('spBars', lines.map(function(l){return {v:l.idx,t:l.name+' · '+l.idx.toFixed(2)};}), {base:100});
+    document.getElementById('spRange').textContent = lines.length+' vaults with ≥2 points, each indexed to 100 at its own deployment';
+    el.innerHTML = lines.length
+      ? 'Latest index per vault: '+lines.slice(0,6).map(function(l){ return '<b>'+l.name+'</b> '+l.idx.toFixed(2)+' <span class="muted">over '+l.days+'d</span>'; }).join(' · ')
+        +'<br>Every figure is stated with its period — a share-price move is meaningless without the window it covers, and none of these are annualised.'
+      : 'Not enough points yet.';
+    return;
+  }
+  var p=v.points.filter(function(x){return x.sharePrice!=null;});
+  if(p.length<1){ document.getElementById('spBars').innerHTML=''; el.textContent='No share price yet.'; return; }
+  var b=p[0].sharePrice;
+  drawBars('spBars', p.map(function(x){ return {v:(x.sharePrice/b)*100, t:dstr(x.timestamp)+' · '+((x.sharePrice/b)*100).toFixed(3)}; }), {base:100});
+  var last=p[p.length-1], days=Math.round((last.timestamp-p[0].timestamp)/86400);
+  document.getElementById('spRange').textContent=p.length+' points · '+dstr(p[0].timestamp)+' → '+dstr(last.timestamp);
+  el.innerHTML='Share price <b>'+fNum(last.sharePrice,6)+'</b> vs <b>'+fNum(b,6)+'</b> at deployment = index <b>'
+    +((last.sharePrice/b)*100).toFixed(3)+'</b>, a <b>'+(((last.sharePrice/b)-1)*100).toFixed(2)+'%</b> move <b>over '+days+' days</b>.'
+    +' Stated for that period only — not annualised.';
+}
+
+function renderHealth(){
+  var el=document.getElementById('health'), v=current();
+  var pool = v? [v] : vaults();
+  var rows=[];
+  pool.forEach(function(vv){
+    (vv.points||[]).forEach(function(p){
+      if(p.markets && p.markets.length) p.markets.forEach(function(m){
+        rows.push({vault:vv.name,ts:p.timestamp,market:m.market,ltv:m.ltv,maxLtv:m.maxLtv,hf:m.healthFactor,coll:m.collateralUsd,debt:m.debtUsd});
+      });
+    });
+  });
+  if(!rows.length){
+    el.innerHTML='<div class="empty-state">No per-market health points collected yet — the series collector records '
+      +'collateral, debt, LTV and health factor per lending market, and this panel renders as soon as those points land. '
+      +'Several of these vaults run above 90% LTV usage, so this is the panel to watch.</div>';
+    return;
+  }
+  rows=rows.slice(-400).reverse();
+  el.innerHTML='<div class="scroll"><table><thead><tr><th>Date</th><th>Vault</th><th>Market</th>'
+    +'<th class="num">Collateral</th><th class="num">Debt</th><th class="num">LTV</th><th class="num">Max LTV</th><th class="num">Health factor</th></tr></thead><tbody>'
+    +rows.map(function(r){
+      var pct=r.maxLtv? (r.ltv/r.maxLtv*100):null;
+      var cls=pct!=null&&pct>=90?' class="warn"':'';
+      return '<tr><td>'+dstr(r.ts)+'</td><td>'+r.vault+'</td><td>'+(r.market||'—')+'</td>'
+        +'<td class="num">'+fUsd(r.coll)+'</td><td class="num">'+fUsd(r.debt)+'</td>'
+        +'<td class="num"'+cls+'>'+(r.ltv!=null?(r.ltv*100).toFixed(2)+'%':'—')+'</td>'
+        +'<td class="num">'+(r.maxLtv!=null?(r.maxLtv*100).toFixed(2)+'%':'—')+'</td>'
+        +'<td class="num"'+cls+'>'+(r.hf!=null?r.hf.toFixed(3):'—')+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+function renderFlows(){
+  var v=current();
+  var rows=[];
+  (v? [v] : vaults()).forEach(function(vv){
+    (vv.flows||[]).forEach(function(f){ rows.push(Object.assign({vault:vv.name,symbol:vv.symbol},f)); });
+  });
+  rows.sort(function(a,b){ return b.block-a.block; });
+  var body=document.getElementById('flowBody');
+  if(!rows.length){ body.innerHTML='<tr><td colspan="6" class="empty-state">No flows recorded yet.</td></tr>'; return; }
+  body.innerHTML=rows.slice(0,400).map(function(f){
+    return '<tr><td>'+(f.timestamp?dstr(f.timestamp):('block '+f.block))+'</td>'
+      +'<td><span class="tag '+(f.type==='deposit'?'dep">DEPOSIT':'wd">WITHDRAW')+'</span></td>'
+      +'<td class="num">'+fNum(f.assets,4)+' '+(f.symbol||'')+'</td>'
+      +'<td class="num">'+fNum(f.shares,4)+'</td>'
+      +'<td class="addr">'+shortAddr(f.owner||f.sender)+'</td>'
+      +'<td class="num">'+(f.sharePrice!=null?fNum(f.sharePrice,6):'—')+'</td></tr>';
+  }).join('');
+}
+
+function renderVaultTable(){
+  var vs=vaults().slice().sort(function(a,b){
+    var at=(a.points[a.points.length-1]||{}).tvlUsd||0, bt=(b.points[b.points.length-1]||{}).tvlUsd||0;
+    return bt-at;
+  });
+  document.getElementById('vaultCount').textContent='· '+vs.length+' discovered';
+  document.getElementById('vaultBody').innerHTML=vs.map(function(v){
+    var last=v.points[v.points.length-1]||{};
+    var empty=(last.assets||0)===0;
+    return '<tr><td>'+v.name+'</td><td><span class="tag chain">'+v.chain+'</span></td>'
+      +'<td class="addr">'+shortAddr(v.address)+'</td>'
+      +'<td class="num">'+fNum(last.assets,4)+' '+v.symbol+'</td>'
+      +'<td class="num">'+fUsd(last.tvlUsd)+'</td>'
+      +'<td class="num">'+(last.sharePrice!=null?fNum(last.sharePrice,6):'—')+'</td>'
+      +'<td>'+(empty?'<span class="tag empty">deployed · empty</span>':'active')+'</td>'
+      +'<td class="muted">'+(v.matchedBy||'—')+'</td></tr>';
+  }).join('');
+}
+
+function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderHealth(); renderFlows(); renderVaultTable(); }
+
+function populateSelect(){
+  var sel=document.getElementById('vaultSel');
+  var vs=vaults().slice().sort(function(a,b){ return a.chain.localeCompare(b.chain)||a.name.localeCompare(b.name); });
+  sel.innerHTML='<option value="__all__">All Tesseract vaults (aggregate)</option>'
+    + vs.map(function(v){
+        // Address is part of the label: two vaults share a name.
+        return '<option value="'+v.chainId+':'+v.address+'">'+v.name+' — '+v.chain+' · '+shortAddr(v.address)+'</option>';
+      }).join('');
+  sel.addEventListener('change', function(){ state.key=this.value; renderAll(); });
+}
+
+document.getElementById('segDenom').addEventListener('click', function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){ x.classList.remove('on'); });
+  b.classList.add('on'); state.denom=b.getAttribute('data-d'); renderTvl();
+});
+
+(function load(){
+  Promise.all([
+    fetch(RAW+'tesseract-series.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; }),
+    fetch(RAW+'tesseract-vaults.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; }),
+  ]).then(function(res){
+    state.series=res[0]; state.disc=res[1];
+    if(!state.series || !state.series.vaults || !Object.keys(state.series.vaults).length){
+      document.getElementById('stats').innerHTML='<div class="stat"><div class="k">Status</div><div class="v" style="font-size:.9rem">'
+        +(state.disc? (state.disc.total+' vaults discovered · series collector has not run yet') : 'Collectors have not run yet')+'</div></div>';
+      if(state.disc) document.getElementById('vaultCount').textContent='· '+state.disc.total+' discovered';
+      return;
+    }
+    populateSelect(); renderAll();
+  });
+})();
+</script>
+</body>
+</html>
