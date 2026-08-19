@@ -11,6 +11,12 @@ on:
       - 'lib/keccak.js'
       - '.github/workflows/collect-tesseract.yml'
 
+# A newer push supersedes an in-flight run — otherwise a slow run keeps
+# grinding on superseded code while the fixed one queues behind it.
+concurrency:
+  group: tesseract-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

@@ -163,6 +163,28 @@ async function getJson(url, timeoutMs = 25000) {
   return res.json();
 }
 
+// Binary-search the block a contract first has code at. ~30 eth_getCode calls
+// replaces scanning tens of millions of empty blocks before the factory existed
+// — on Arbitrum that is the difference between ~30k eth_getLogs and a few dozen.
+async function deployBlockOf(chain, address, lo, hi) {
+  const hasCode = async (b) => {
+    try {
+      const c = await rpcCall(chain, 'eth_getCode', [address, '0x' + b.toString(16)]);
+      return !!c && c !== '0x' && c !== '0x0';
+    } catch { return null; }
+  };
+  if ((await hasCode(lo)) === true) return lo;
+  if ((await hasCode(hi)) !== true) return null; // no code even at head
+  let a = lo, b = hi;
+  while (b - a > 1) {
+    const mid = a + Math.floor((b - a) / 2);
+    const r = await hasCode(mid);
+    if (r === null) return a; // RPC lacks archive depth — fall back to lower bound
+    if (r) b = mid; else a = mid;
+  }
+  return b;
+}
+
 async function factoryFor(chain) {
   try {
     const j = await getJson(ABI_URL(chain.slug));
@@ -192,6 +214,7 @@ async function factoryFor(chain) {
   }
 
   const allByChain = {};
+  const chainStart = {};
   for (const chain of CHAINS) {
     const factory = await factoryFor(chain);
     if (!factory) { console.log(`\n[${chain.name}] no factory address — skipped`); continue; }
@@ -200,10 +223,16 @@ async function factoryFor(chain) {
     try { head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16); }
     catch (e) { console.log(`\n[${chain.name}] RPC unreachable: ${e.message}`); continue; }
 
-    console.log(`\n[${chain.name}] factory=${factory} head=${head}`);
+    let startBlock = chain.fromBlock;
+    try {
+      const dep = await deployBlockOf(chain, factory, chain.fromBlock, head);
+      if (dep && dep > startBlock) startBlock = dep;
+    } catch {}
+    console.log(`\n[${chain.name}] factory=${factory} head=${head} scanFrom=${startBlock}`
+      + ` (${((head - startBlock) / 1e6).toFixed(1)}M blocks)`);
     let logs = [];
     try {
-      logs = await scanLogs(chain, factory, [FUSION_INSTANCE_CREATED], chain.fromBlock, head, deadline);
+      logs = await scanLogs(chain, factory, [FUSION_INSTANCE_CREATED], startBlock, head, deadline);
     } catch (e) {
       console.log(`  scan stopped early (${e.message}) — partial results kept`);
     }
@@ -212,6 +241,7 @@ async function factoryFor(chain) {
       try { vaults.push(parseInstance(l)); }
       catch (e) { console.log('  undecodable log:', e.message); }
     }
+    chainStart[chain.name] = startBlock;
     allByChain[chain.name] = { chain, vaults };
     console.log(`  ${vaults.length} Fusion vaults deployed`);
   }
@@ -263,7 +293,7 @@ async function factoryFor(chain) {
       const logs = await scanLogs(
         chain, null,
         [ROLE_GRANTED, ['0x' + pad32(OWNER_ROLE), '0x' + pad32(ATOMIST_ROLE)], opTopics],
-        chain.fromBlock, head, Date.now() + 120000
+        chainStart[chain.name] || chain.fromBlock, head, Date.now() + 120000
       );
       logs.forEach((l) => grantedManagers.add(l.address.toLowerCase()));
       console.log(`  [${chain.name}] ${logs.length} operator role grants across ${grantedManagers.size} access managers`);
