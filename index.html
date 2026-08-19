@@ -294,14 +294,17 @@
 
     tr:last-child td { border-bottom: none; }
 
+    /* Matches the badge on /tesseract: smaller, tighter, 5px radius. */
     .badge-deposit, .badge-withdraw {
       display: inline-block;
-      font-size: 0.8rem;
+      font-size: 0.64rem;
       font-weight: 600;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
+      letter-spacing: 0.02em;
+      padding: 2px 7px;
+      border-radius: 5px;
       text-decoration: none;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .badge-deposit {
