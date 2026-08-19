@@ -117,6 +117,23 @@
   </div>
 
   <div class="card">
+    <h2>Net flow <span class="muted" id="flowUnit">· per day and cumulative</span></h2>
+    <div class="plot"><div class="baseline" id="nfBase" style="bottom:50%"><span>0</span></div><div class="bars" id="nfBars"></div></div>
+    <div class="row muted" id="nfRange"></div>
+    <div class="plot" style="height:150px"><div class="bars" id="nfCum"></div></div>
+    <div class="row muted">Cumulative net flow since deployment (deposits minus withdrawals, in vault units).</div>
+  </div>
+
+  <div class="card">
+    <h2>TVL by underlying asset <span class="muted">· capital, not price</span></h2>
+    <div id="byAsset"></div>
+    <div class="note">
+      Each underlying is totalled in its own unit first — a cbETH vault is cbETH before it is dollars.
+      USD is shown beside it, priced at each vault's latest collected block.
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Fees charged <span class="muted">· onboarding / offboarding / performance / management, each its own series</span></h2>
     <div id="fees"></div>
     <div class="note">
@@ -324,6 +341,65 @@ function renderDivergence(){
     }).join('')+'</tbody></table></div>';
 }
 
+function renderNetFlow(){
+  var v=current();
+  var pool=v?[v]:vaults();
+  var byDay={};
+  pool.forEach(function(vv){
+    (vv.flows||[]).forEach(function(f){
+      var day=f.timestamp? Math.floor(f.timestamp/86400) : null;
+      if(day==null){
+        // fall back to the nearest collected point for this block
+        var p=(vv.points||[]).find(function(x){ return x.block>=f.block; });
+        day = p && p.day!=null ? p.day : null;
+      }
+      if(day==null) return;
+      byDay[day]=(byDay[day]||0)+(f.type==='deposit'? f.assets : -f.assets);
+    });
+  });
+  var days=Object.keys(byDay).map(Number).sort(function(a,b){return a-b;});
+  document.getElementById('flowUnit').textContent = v? ('· per day and cumulative, in '+v.symbol)
+    : '· per day and cumulative (mixed underlyings — select a vault for a single unit)';
+  if(!days.length){ document.getElementById('nfBars').innerHTML=''; document.getElementById('nfCum').innerHTML='';
+    document.getElementById('nfRange').textContent='no flows yet'; return; }
+  var vals=days.map(function(d){ return {v:byDay[d], t:new Date(d*86400000).toISOString().slice(0,10)+' · '+fNum(byDay[d],4)}; });
+  var max=Math.max.apply(null,vals.map(function(x){return Math.abs(x.v);}))||1;
+  document.getElementById('nfBars').innerHTML=vals.map(function(x){
+    var h=Math.abs(x.v)/max*50;
+    return '<div class="bar'+(x.v<0?' neg':'')+'" style="height:'+Math.max(1,h)+'%;align-self:'+(x.v<0?'flex-start':'flex-end')+'" title="'+x.t+'"></div>';
+  }).join('');
+  var run=0, cum=days.map(function(d){ run+=byDay[d]; return run; });
+  var cmax=Math.max.apply(null,cum.map(Math.abs))||1;
+  document.getElementById('nfCum').innerHTML=cum.map(function(c,i){
+    return '<div class="bar'+(c<0?' neg':'')+'" style="height:'+Math.max(1,Math.abs(c)/cmax*100)+'%" title="'+vals[i].t.split(' · ')[0]+' · cum '+fNum(c,4)+'"></div>';
+  }).join('');
+  document.getElementById('nfRange').textContent=days.length+' days · net '+fNum(run,4)+(v?(' '+v.symbol):'')
+    +' cumulative since deployment';
+}
+
+function renderByAsset(){
+  var el=document.getElementById('byAsset');
+  var agg={};
+  vaults().forEach(function(v){
+    var last=v.points[v.points.length-1]; if(!last) return;
+    var a=agg[v.symbol]||(agg[v.symbol]={native:0,usd:0,vaults:0});
+    a.native+=last.assets||0; a.usd+=last.tvlUsd||0; a.vaults++;
+  });
+  var rows=Object.entries(agg).sort(function(a,b){ return b[1].usd-a[1].usd; });
+  if(!rows.length){ el.innerHTML='<div class="empty-state">No collected points yet.</div>'; return; }
+  var totUsd=rows.reduce(function(s,r){return s+r[1].usd;},0);
+  el.innerHTML='<div class="scroll"><table><thead><tr><th>Asset</th><th class="num">TVL (native)</th>'
+    +'<th class="num">TVL (USD)</th><th class="num">Vaults</th><th class="num">Share</th></tr></thead><tbody>'
+    +rows.map(function(r){
+      return '<tr><td><b>'+r[0]+'</b></td><td class="num">'+fNum(r[1].native,4)+' '+r[0]+'</td>'
+        +'<td class="num">'+fUsd(r[1].usd)+'</td><td class="num">'+r[1].vaults+'</td>'
+        +'<td class="num">'+(totUsd? (r[1].usd/totUsd*100).toFixed(1)+'%':'—')+'</td></tr>';
+    }).join('')
+    +'<tr><td><b>Total</b></td><td class="num muted">mixed units</td><td class="num"><b>'+fUsd(totUsd)+'</b></td>'
+    +'<td class="num">'+vaults().length+'</td><td class="num">100%</td></tr>'
+    +'</tbody></table></div>';
+}
+
 function renderFees(){
   var el=document.getElementById('fees'), v=current();
   var pool = v? [v] : vaults();
@@ -384,7 +460,7 @@ function renderVaultTable(){
   }).join('');
 }
 
-function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderFees(); renderDivergence(); renderHealth(); renderFlows(); renderVaultTable(); }
+function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderNetFlow(); renderByAsset(); renderFees(); renderDivergence(); renderHealth(); renderFlows(); renderVaultTable(); }
 
 function populateSelect(){
   var sel=document.getElementById('vaultSel');
