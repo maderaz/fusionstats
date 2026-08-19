@@ -40,6 +40,7 @@ const SEL = {
   perfFee: selector('getPerformanceFeeData()'),
   mgmtFee: selector('getManagementFeeData()'),
   assetPrice: selector('getAssetPrice(address)'),
+  convertToAssets: selector('convertToAssets(uint256)'),
 };
 const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
 const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
@@ -224,8 +225,8 @@ async function getJson(url, ms = 25000) {
         readBig(v.chain, v.address, SEL.totalSupply, block),
       ]);
       if (ta == null || ts == null) continue; // pre-deploy / reverted
-      const assets = Number(ta) / scale;
       const shareDec = v.assetDecimals || v.decimals || 18;
+      const assets = Number(ta) / scale;
       const supply = Number(ts) / 10 ** shareDec;
       // share price computed, never read from a display field
       const sharePrice = supply > 0 ? assets / supply : null;
@@ -235,15 +236,25 @@ async function getJson(url, ms = 25000) {
         const blk = await rpcCall(v.chain, 'eth_getBlockByNumber', [hexBlock(block), false]);
         if (blk) timestamp = parseInt(blk.timestamp, 16);
       } catch {}
+      // Cross-check: totalAssets is cached and event-driven, so compare the
+      // ratio share price against the vault's own conversion path. The two are
+      // computed independently, so a gap means the cached total is stale or a
+      // fee/rounding step diverges — worth flagging, not smoothing over.
+      const oneShare = 10n ** BigInt(shareDec);
+      const conv = await readBig(v.chain, v.address, SEL.convertToAssets + oneShare.toString(16).padStart(64, '0'), block);
+      const sharePriceConvert = conv != null ? Number(conv) / scale : null;
+      const divergence = (sharePrice != null && sharePriceConvert != null)
+        ? sharePrice - sharePriceConvert : null;
+
       points.push({
         block, timestamp,
         day: timestamp ? Math.floor(timestamp / 86400) : null,
         assets, supply, sharePrice,
+        sharePriceConvert,
+        divergence,
+        divergencePct: (divergence != null && sharePrice) ? (divergence / sharePrice) * 100 : null,
         priceUsd,                                   // oracle AT THIS BLOCK
         tvlUsd: priceUsd != null ? assets * priceUsd : null,
-        // totalAssets is cached/event-driven; record when supply*sharePrice
-        // disagrees with the reported total so the page can flag it.
-        divergence: sharePrice != null ? (assets - supply * sharePrice) : null,
       });
       added++;
     }

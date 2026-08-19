@@ -102,6 +102,16 @@
   </div>
 
   <div class="card">
+    <h2>Cached-total cross-check <span class="muted">· totalAssets is event-driven, not recomputed per block</span></h2>
+    <div id="divergence"></div>
+    <div class="note">
+      Share price is computed two independent ways at each block — <b>totalAssets / totalSupply</b>
+      and the vault's own <b>convertToAssets(1 share)</b>. A gap means the cached total and the
+      conversion path disagree at that block. Rows are listed rather than smoothed away.
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Lending health <span class="muted">· LTV and health factor over time</span></h2>
     <div id="health"></div>
   </div>
@@ -173,6 +183,12 @@ function renderStats(){
       ['Since deployment', spChange!=null? (spChange>=0?'+':'')+spChange.toFixed(2)+'%'+(days!=null?' over '+days+'d':'') : '—'],
       ['Deployed', dstr(first.timestamp)],
       ['Daily points', v.points.length],
+      ['Max share-price divergence', (function(){
+        var d=v.points.map(function(p){return Math.abs(p.divergencePct||0);});
+        if(!d.length) return '—';
+        var m=Math.max.apply(null,d);
+        return m.toFixed(4)+'%';
+      })()],
     ];
   } else {
     var agg=aggregatePoints(), last=agg[agg.length-1]||{native:{}};
@@ -273,6 +289,26 @@ function renderHealth(){
     }).join('')+'</tbody></table></div>';
 }
 
+function renderDivergence(){
+  var el=document.getElementById('divergence'), v=current();
+  var rows=[];
+  (v? [v] : vaults()).forEach(function(vv){
+    (vv.points||[]).forEach(function(p){
+      if(p.divergencePct!=null && Math.abs(p.divergencePct)>1e-9)
+        rows.push({vault:vv.name,ts:p.timestamp,block:p.block,sp:p.sharePrice,spc:p.sharePriceConvert,pct:p.divergencePct});
+    });
+  });
+  if(!rows.length){ el.innerHTML='<div class="empty-state">No divergence recorded — the cached total and the conversion path agree at every block collected so far.</div>'; return; }
+  rows.sort(function(a,b){ return Math.abs(b.pct)-Math.abs(a.pct); });
+  el.innerHTML='<div class="scroll"><table><thead><tr><th>Date</th><th>Vault</th><th class="num">Block</th>'
+    +'<th class="num">totalAssets/supply</th><th class="num">convertToAssets</th><th class="num">Divergence</th></tr></thead><tbody>'
+    +rows.slice(0,80).map(function(r){
+      return '<tr><td>'+dstr(r.ts)+'</td><td>'+r.vault+'</td><td class="num">'+r.block+'</td>'
+        +'<td class="num">'+fNum(r.sp,8)+'</td><td class="num">'+fNum(r.spc,8)+'</td>'
+        +'<td class="num warn">'+r.pct.toFixed(6)+'%</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
 function renderFlows(){
   var v=current();
   var rows=[];
@@ -311,7 +347,7 @@ function renderVaultTable(){
   }).join('');
 }
 
-function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderHealth(); renderFlows(); renderVaultTable(); }
+function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderDivergence(); renderHealth(); renderFlows(); renderVaultTable(); }
 
 function populateSelect(){
   var sel=document.getElementById('vaultSel');
