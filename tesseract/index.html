@@ -31,6 +31,20 @@
   .bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px}
   .bar{flex:1;background:var(--accent);opacity:.82;min-height:1px;border-radius:2px 2px 0 0}
   .bar.neg{background:var(--red)}
+  .bar{transition:opacity .1s}
+  .bar.blank{opacity:.12;height:2%}
+  .bars:hover .bar{opacity:.42}
+  .bars .bar.hot{opacity:1;background:var(--accent)}
+  .plot{overflow:visible}
+  .tip{position:absolute;bottom:calc(100% + 8px);display:none;z-index:5;pointer-events:none;
+    background:#111;color:#fff;border-radius:9px;padding:9px 11px;font-size:.74rem;min-width:150px;
+    box-shadow:0 6px 22px rgba(0,0,0,.22)}
+  .tip .tip-d{color:#9BA3AF;font-size:.68rem}
+  .tip .tip-v{font-family:'JetBrains Mono',monospace;font-size:.98rem;font-weight:500;margin-top:2px}
+  .tip .tip-rows{margin-top:7px;border-top:1px solid rgba(255,255,255,.16);padding-top:6px}
+  .tip .tip-rows div{display:flex;justify-content:space-between;gap:14px;line-height:1.7}
+  .tip .tip-rows span{color:#9BA3AF}
+  .tip .tip-rows i{color:#9BA3AF;font-style:normal;font-size:.66rem}
   table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.8rem}
   th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--stroke)}
   td{padding:9px;border-bottom:1px solid var(--stroke-light)}
@@ -76,14 +90,15 @@
 
   <div class="card">
     <h2>TVL <span class="muted" id="tvlUnit"></span></h2>
-    <div class="plot"><div class="bars" id="tvlBars"></div></div>
+    <div class="plot"><div class="tip" id="tip"></div><div class="bars" id="tvlBars"></div></div>
     <div class="row muted" id="tvlRange"></div>
   </div>
 
   <div class="card">
     <h2>Share price <span class="muted" id="spUnit"></span></h2>
-    <div class="plot"><div class="bars" id="spBars"></div></div>
+    <div id="spChart"><div class="plot"><div class="tip" id="tip2"></div><div class="bars" id="spBars"></div></div></div>
     <div class="row muted" id="spRange"></div>
+    <div id="spTable"></div>
   </div>
 
   <div class="card">
@@ -150,52 +165,135 @@ function renderStats(){
 }
 
 function seriesFor(){
-  // Merge daily snapshots across the selected vaults.
-  var c=cutoff(), byDay={};
-  selVaults().forEach(function(v){
-    (state.snaps[v.address]||[]).forEach(function(s){
-      if(!s.timestamp || s.timestamp<c) return;
-      var d=Math.floor(s.timestamp/86400);
-      var b=byDay[d]||(byDay[d]={day:d,ts:s.timestamp,tvlUsd:0,sp:null,spN:0});
-      b.tvlUsd+=s.tvlUsd||0;
-      if(s.sharePrice!=null){ b.sp=(b.sp||0)+s.sharePrice; b.spN++; }
+  // The snapshot collector runs about twice a day, so a day can hold more than
+  // one point per vault. Take the LAST snapshot per vault per day (summing them
+  // double-counted TVL), then forward-fill any vault missing that day so the
+  // total is always a complete set rather than dipping.
+  var perVault={}, allDays={}, vs=selVaults();
+  vs.forEach(function(v){
+    var byDay={};
+    (state.snaps[v.address]||[]).forEach(function(sn){
+      if(!sn.timestamp) return;
+      var d=Math.floor(sn.timestamp/86400);
+      if(!byDay[d] || sn.timestamp>byDay[d].timestamp) byDay[d]=sn;
     });
+    perVault[v.address]=byDay;
+    Object.keys(byDay).forEach(function(d){ allDays[d]=1; });
   });
-  return Object.values(byDay).sort(function(a,b){return a.day-b.day;});
+  var days=Object.keys(allDays).map(Number).sort(function(a,b){return a-b;});
+  var c=cutoff(), carry={}, out=[];
+  days.forEach(function(d){
+    var row={day:d, ts:d*86400, tvlUsd:0, parts:[]};
+    vs.forEach(function(v){
+      var sn=perVault[v.address] && perVault[v.address][d];
+      if(sn) carry[v.address]=sn;
+      var use=sn||carry[v.address];
+      if(!use) return;
+      row.tvlUsd+=use.tvlUsd||0;
+      row.parts.push({name:v.name, usd:use.tvlUsd||0, assets:use.assets,
+                      sym:v.symbol, sp:use.sharePrice, carried:!sn});
+    });
+    if(row.ts>=c) out.push(row);
+  });
+  return out;
 }
 
-function drawBars(id, pts, pick){
+function drawBars(id, pts, pick, fmt){
   var el=document.getElementById(id);
   var vals=pts.map(pick).filter(function(v){return v!=null;});
   if(!vals.length){ el.innerHTML=''; return false; }
   var max=Math.max.apply(null,vals), min=Math.min.apply(null,vals);
-  var span=(max-min)||max||1;
-  el.innerHTML=pts.map(function(p){
-    var v=pick(p); if(v==null) return '<div class="bar" style="height:1%;opacity:.15"></div>';
-    var h=((v-min)/span)*92+8;
-    return '<div class="bar" style="height:'+h+'%" title="'+dstr(p.ts)+' · '+fNum(v,4)+'"></div>';
+  // Zero-based unless the series barely moves, in which case zoom the band.
+  var base=(min>0 && (max-min)/max < 0.25) ? min-(max-min)*0.6 : 0;
+  var span=(max-base)||1;
+  el.innerHTML=pts.map(function(p,i){
+    var v=pick(p);
+    if(v==null) return '<div class="bar blank" data-i="'+i+'"></div>';
+    return '<div class="bar" data-i="'+i+'" style="height:'+Math.max(1.5,((v-base)/span)*100)+'%"></div>';
   }).join('');
+  el._pts=pts; el._pick=pick; el._fmt=fmt||fUsd;
   return true;
+}
+
+function attachTip(id){
+  var el=document.getElementById(id);
+  var tip=document.getElementById(id==='spBars'?'tip2':'tip');
+  el.addEventListener('mousemove', function(e){
+    var b=e.target.closest('.bar'); if(!b || !el._pts) { tip.style.display='none'; return; }
+    Array.prototype.forEach.call(el.querySelectorAll('.bar.hot'),function(x){x.classList.remove('hot');});
+    b.classList.add('hot');
+    var p=el._pts[+b.getAttribute('data-i')]; if(!p){ tip.style.display='none'; return; }
+    var v=el._pick(p);
+    var html='<div class="tip-d">'+dstr(p.ts)+'</div><div class="tip-v">'+(v!=null?el._fmt(v):'no data')+'</div>';
+    if(p.parts && p.parts.length>1){
+      html+='<div class="tip-rows">'+p.parts.map(function(x){
+        return '<div><span>'+x.name.replace('TESS ','').replace('Tesseract ','').slice(0,26)+'</span><b>'+fUsd(x.usd)
+          +(x.carried?' <i>carried</i>':'')+'</b></div>';
+      }).join('')+'</div>';
+    } else if(p.parts && p.parts.length===1 && p.parts[0].assets!=null){
+      html+='<div class="tip-rows"><div><span>'+fNum(p.parts[0].assets,4)+' '+(p.parts[0].sym||'')+'</span></div></div>';
+    }
+    tip.innerHTML=html;
+    tip.style.display='block';
+    var r=el.getBoundingClientRect(), br=b.getBoundingClientRect();
+    var left=br.left-r.left+br.width/2;
+    tip.style.left=Math.max(4,Math.min(left, r.width-tip.offsetWidth-4))+'px';
+  });
+  el.addEventListener('mouseleave', function(){
+    tip.style.display='none';
+    Array.prototype.forEach.call(el.querySelectorAll('.bar.hot'),function(x){x.classList.remove('hot');});
+  });
 }
 
 function renderCharts(){
   var pts=seriesFor(), vs=selVaults();
-  var ok=drawBars('tvlBars', pts, function(p){ return p.tvlUsd||null; });
-  document.getElementById('tvlUnit').textContent = state.vault==='__all__'? '· USD, all Tesseract Base vaults' : '· USD';
+  var ok=drawBars('tvlBars', pts, function(p){ return p.tvlUsd||null; }, fUsd);
+  document.getElementById('tvlUnit').textContent = state.vault==='__all__'
+    ? '· USD, all Tesseract Base vaults combined' : '· USD';
   document.getElementById('tvlRange').textContent = ok
     ? pts.length+' days · '+dstr(pts[0].ts)+' → '+dstr(pts[pts.length-1].ts)+' · latest '+fUsd(pts[pts.length-1].tvlUsd)
     : 'no snapshots in this timeframe';
 
-  var ok2=drawBars('spBars', pts, function(p){ return p.spN? p.sp/p.spN : null; });
-  var one = vs.length===1? vs[0]:null;
-  document.getElementById('spUnit').textContent = one? ('· '+one.symbol+' per share') : '· average across selected vaults';
-  if(ok2){
-    var f=pts.find(function(p){return p.spN;}), l=[].concat(pts).reverse().find(function(p){return p.spN;});
-    var a=f.sp/f.spN, b=l.sp/l.spN;
-    var days=Math.round((l.ts-f.ts)/86400);
-    document.getElementById('spRange').textContent='from '+fNum(a,6)+' to '+fNum(b,6)+' — '
-      +((b/a-1)*100).toFixed(2)+'% over '+days+' days (not annualised)';
-  } else document.getElementById('spRange').textContent='no share price in this timeframe';
+  // Share price is per vault. Averaging it across vaults with different
+  // underlyings and start dates produces a number that means nothing, so a
+  // single vault gets a chart and the combined view gets a comparison table.
+  var one = vs.length===1 ? vs[0] : null;
+  var chartWrap=document.getElementById('spChart'), tableWrap=document.getElementById('spTable');
+  if(one){
+    chartWrap.style.display=''; tableWrap.innerHTML='';
+    var sp=pts.filter(function(p){ return p.parts.length && p.parts[0].sp!=null; });
+    var ok2=drawBars('spBars', sp, function(p){ return p.parts[0].sp; }, function(v){ return fNum(v,6); });
+    document.getElementById('spUnit').textContent='· '+one.symbol+' per share · '+one.name;
+    if(ok2){
+      var a=sp[0].parts[0].sp, b=sp[sp.length-1].parts[0].sp;
+      var days=Math.round((sp[sp.length-1].ts-sp[0].ts)/86400);
+      document.getElementById('spRange').textContent=fNum(a,6)+' → '+fNum(b,6)+' = '
+        +((b/a-1)*100).toFixed(2)+'% over '+days+' days (not annualised)';
+    } else document.getElementById('spRange').textContent='no share price in this timeframe';
+  } else {
+    chartWrap.style.display='none';
+    document.getElementById('spUnit').textContent='· per vault — share prices are not averaged';
+    document.getElementById('spRange').textContent='';
+    var rows=vs.map(function(v){
+      var snaps=(state.snaps[v.address]||[]).filter(function(x){ return x.sharePrice!=null && x.timestamp>=cutoff(); });
+      if(snaps.length<2) return null;
+      var f=snaps[0], l=snaps[snaps.length-1];
+      return { name:v.name, sym:v.symbol, first:f.sharePrice, last:l.sharePrice,
+               days:Math.round((l.timestamp-f.timestamp)/86400) };
+    }).filter(Boolean);
+    tableWrap.innerHTML = rows.length
+      ? '<div class="scroll"><table><thead><tr><th>Vault</th><th class="num">Start</th><th class="num">Latest</th>'
+        +'<th class="num">Change</th><th class="num">Period</th></tr></thead><tbody>'
+        + rows.map(function(r){
+            var ch=(r.last/r.first-1)*100;
+            return '<tr><td>'+r.name+'</td><td class="num">'+fNum(r.first,6)+'</td>'
+              +'<td class="num">'+fNum(r.last,6)+'</td>'
+              +'<td class="num" style="color:'+(ch>=0?'var(--green)':'var(--red)')+'">'+(ch>=0?'+':'')+ch.toFixed(2)+'%</td>'
+              +'<td class="num">'+r.days+'d</td></tr>';
+          }).join('')
+        +'</tbody></table></div><div class="muted" style="margin-top:9px">Each figure covers that vault\'s own period. Not annualised.</div>'
+      : '<div class="empty-state">No share price history in this timeframe.</div>';
+  }
 }
 
 function renderVaults(){
@@ -255,7 +353,7 @@ function renderFlows(){
   }).join('') : '<tr><td colspan="6" class="empty-state">No flows in this timeframe.</td></tr>';
 }
 
-function renderAll(){ renderStats(); renderCharts(); renderVaults(); renderWallets(); renderFlows(); }
+function renderAll(){ renderStats(); renderCharts(); attachTip('tvlBars'); attachTip('spBars'); renderVaults(); renderWallets(); renderFlows(); }
 
 document.getElementById('segTF').addEventListener('click', function(e){
   var b=e.target.closest('button'); if(!b) return;
