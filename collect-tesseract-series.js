@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const { selector } = require('./lib/keccak');
+const LH = require('./lib/lending-health');
 
 const IN = path.join(__dirname, 'tesseract-vaults.json');
 const OUT = path.join(__dirname, 'tesseract-series.json');
@@ -198,6 +199,10 @@ async function getJson(url, ms = 25000) {
     catch (e) { console.log(`  [${c}] head unavailable: ${e.message}`); }
   }
 
+  const COLLECT_HEALTH = process.env.COLLECT_HEALTH !== '0';
+  const marketIdCache = {};
+  console.log(`  lending health: ${COLLECT_HEALTH ? 'on' : 'off'}`);
+
   let done = 0, skipped = 0;
   for (const v of disc.vaults) {
     if (Date.now() > deadline) { console.log('\nBudget reached — checkpointing, resume next run.'); break; }
@@ -246,8 +251,34 @@ async function getJson(url, ms = 25000) {
       const divergence = (sharePrice != null && sharePriceConvert != null)
         ? sharePrice - sharePriceConvert : null;
 
+      // Per-market lending health. Market ids are cached per vault (they
+      // change rarely) and health is only read for vaults holding assets —
+      // an empty vault has no position to price.
+      let markets = null;
+      if (COLLECT_HEALTH && assets > 0) {
+        if (!marketIdCache[key]) {
+          marketIdCache[key] = await LH.marketIdsFor(
+            (to, data, blk) => callAt(v.chain, to, data, blk), v.address, block);
+        }
+        const ids = marketIdCache[key];
+        if (ids && ids.length) {
+          markets = [];
+          for (const id of ids.slice(0, 6)) {
+            const h = await LH.healthForMarket(
+              (to, data, blk) => callAt(v.chain, to, data, blk), v.address, id, block);
+            // Scale raw token amounts to human units where we can.
+            if (h.collateral != null) h.collateral /= scale;
+            if (h.debt != null) h.debt /= scale;
+            if (h.collateralValue != null) h.collateralValue /= scale;
+            h.leverage = LH.leverage(h.collateralValue, assets);
+            markets.push(h);
+          }
+        }
+      }
+
       points.push({
         block, timestamp,
+        markets,
         day: timestamp ? Math.floor(timestamp / 86400) : null,
         assets, supply, sharePrice,
         sharePriceConvert,

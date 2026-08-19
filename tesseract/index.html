@@ -265,7 +265,8 @@ function renderHealth(){
   pool.forEach(function(vv){
     (vv.points||[]).forEach(function(p){
       if(p.markets && p.markets.length) p.markets.forEach(function(m){
-        rows.push({vault:vv.name,ts:p.timestamp,market:m.market,ltv:m.ltv,maxLtv:m.maxLtv,hf:m.healthFactor,coll:m.collateralUsd,debt:m.debtUsd});
+        rows.push({vault:vv.name,sym:vv.symbol,ts:p.timestamp,market:m.market,ltv:m.ltv,maxLtv:m.maxLtv,
+                   hf:m.healthFactor,coll:m.collateralValue!=null?m.collateralValue:m.collateral,debt:m.debt,lev:m.leverage});
       });
     });
   });
@@ -277,15 +278,18 @@ function renderHealth(){
   }
   rows=rows.slice(-400).reverse();
   el.innerHTML='<div class="scroll"><table><thead><tr><th>Date</th><th>Vault</th><th>Market</th>'
-    +'<th class="num">Collateral</th><th class="num">Debt</th><th class="num">LTV</th><th class="num">Max LTV</th><th class="num">Health factor</th></tr></thead><tbody>'
+    +'<th class="num">Collateral</th><th class="num">Debt</th><th class="num">LTV</th><th class="num">Max LTV</th>'
+    +'<th class="num">LTV usage</th><th class="num">Health factor</th><th class="num">Leverage</th></tr></thead><tbody>'
     +rows.map(function(r){
       var pct=r.maxLtv? (r.ltv/r.maxLtv*100):null;
       var cls=pct!=null&&pct>=90?' class="warn"':'';
       return '<tr><td>'+dstr(r.ts)+'</td><td>'+r.vault+'</td><td>'+(r.market||'—')+'</td>'
-        +'<td class="num">'+fUsd(r.coll)+'</td><td class="num">'+fUsd(r.debt)+'</td>'
+        +'<td class="num">'+fNum(r.coll,4)+'</td><td class="num">'+fNum(r.debt,4)+'</td>'
         +'<td class="num"'+cls+'>'+(r.ltv!=null?(r.ltv*100).toFixed(2)+'%':'—')+'</td>'
         +'<td class="num">'+(r.maxLtv!=null?(r.maxLtv*100).toFixed(2)+'%':'—')+'</td>'
-        +'<td class="num"'+cls+'>'+(r.hf!=null?r.hf.toFixed(3):'—')+'</td></tr>';
+        +'<td class="num"'+cls+'>'+(pct!=null?pct.toFixed(1)+'%':'—')+'</td>'
+        +'<td class="num"'+cls+'>'+(r.hf!=null?r.hf.toFixed(3):'—')+'</td>'
+        +'<td class="num">'+(r.lev!=null?r.lev.toFixed(3)+'x':'—')+'</td></tr>';
     }).join('')+'</tbody></table></div>';
 }
 
