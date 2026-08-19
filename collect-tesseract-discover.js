@@ -97,12 +97,36 @@ const ethCall = (chain, to, data, block = 'latest') =>
 // the chain on rejection rather than bisecting every call. A single factory
 // address with few events answers fine over millions of blocks.
 const chunkPref = {};
+const SCAN_CONCURRENCY = 4;
 async function scanLogs(chain, address, topics, fromBlock, toBlock, deadline) {
   const name = typeof chain === 'string' ? chain : chain.name;
   const out = [];
   let chunk = chunkPref[name] || 5000000;
   let from = fromBlock;
+  // Once the chunk size has settled, fire several windows at once — a wide
+  // range at a 5-10k RPC cap is hundreds of sequential round-trips otherwise.
   while (from <= toBlock) {
+    if (chunkPref[name] && chunk === chunkPref[name] && toBlock - from > chunk * SCAN_CONCURRENCY) {
+      const windows = [];
+      for (let k = 0; k < SCAN_CONCURRENCY && from <= toBlock; k++) {
+        const a = from, b = Math.min(from + chunk - 1, toBlock);
+        windows.push([a, b]); from = b + 1;
+      }
+      if (Date.now() > deadline) throw new Error('deadline');
+      try {
+        const batches = await Promise.all(windows.map(([a, b]) => rpcCall(chain, 'eth_getLogs', [{
+          ...(address ? { address } : {}), topics,
+          fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16),
+        }])));
+        batches.forEach((lg) => out.push(...lg));
+        continue;
+      } catch {
+        from = windows[0][0];              // rewind and fall through to serial
+        chunk = Math.max(5000, Math.floor(chunk / 4));
+        chunkPref[name] = chunk;
+        continue;
+      }
+    }
     if (Date.now() > deadline) throw new Error('deadline');
     const to = Math.min(from + chunk - 1, toBlock);
     try {
@@ -215,58 +239,74 @@ async function factoryFor(chain) {
 
   const allByChain = {};
   const chainStart = {};
-  for (const chain of CHAINS) {
+  const chainStatus = {};
+
+  // Chains run concurrently. Sequentially, 11 chains x a 4-minute budget is
+  // 44 minutes before anything else happens — longer than the job allows.
+  await Promise.all(CHAINS.map(async (chain) => {
     const factory = await factoryFor(chain);
-    if (!factory) { console.log(`\n[${chain.name}] no factory address — skipped`); continue; }
+    if (!factory) { chainStatus[chain.name] = 'no-factory'; return; }
     const deadline = Date.now() + CHAIN_BUDGET_MS;
     let head;
     try { head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16); }
-    catch (e) { console.log(`\n[${chain.name}] RPC unreachable: ${e.message}`); continue; }
+    catch (e) { chainStatus[chain.name] = 'rpc-unreachable'; console.log(`[${chain.name}] RPC unreachable: ${e.message}`); return; }
 
     let startBlock = chain.fromBlock;
     try {
       const dep = await deployBlockOf(chain, factory, chain.fromBlock, head);
       if (dep && dep > startBlock) startBlock = dep;
     } catch {}
-    console.log(`\n[${chain.name}] factory=${factory} head=${head} scanFrom=${startBlock}`
-      + ` (${((head - startBlock) / 1e6).toFixed(1)}M blocks)`);
-    let logs = [];
+
+    let logs = [], complete = true;
     try {
       logs = await scanLogs(chain, factory, [FUSION_INSTANCE_CREATED], startBlock, head, deadline);
     } catch (e) {
-      console.log(`  scan stopped early (${e.message}) — partial results kept`);
+      complete = false;
+      console.log(`[${chain.name}] scan INCOMPLETE (${e.message}) — results for this chain are partial`);
     }
     const vaults = [];
-    for (const l of logs) {
-      try { vaults.push(parseInstance(l)); }
-      catch (e) { console.log('  undecodable log:', e.message); }
-    }
+    for (const l of logs) { try { vaults.push(parseInstance(l)); } catch {} }
     chainStart[chain.name] = startBlock;
-    allByChain[chain.name] = { chain, vaults };
-    console.log(`  ${vaults.length} Fusion vaults deployed`);
-  }
+    chainStatus[chain.name] = complete ? 'ok' : 'incomplete';
+    allByChain[chain.name] = { chain, vaults, complete };
+    console.log(`[${chain.name}] factory=${factory} scanFrom=${startBlock} `
+      + `(${((head - startBlock) / 1e6).toFixed(1)}M blocks) -> ${vaults.length} vaults ${complete ? '' : '(INCOMPLETE)'}`);
+  }));
 
   // ---- Build the Tesseract operator set from the seeds ----
+  // initialOwner rides in the factory event, so the owner half of the operator
+  // set costs nothing. For atomists we resolve each seed's AccessManager (one
+  // cheap eth_call each) and then issue ONE RoleGranted scan per chain with all
+  // those managers in the address filter — previously this was a separate
+  // full-range log scan per seed vault, which alone could exceed the job budget.
   const operators = new Set();
-  for (const { chain, vaults } of Object.values(allByChain)) {
-    for (const v of vaults) {
-      if (!seedNames.has(v.address)) continue;
-      operators.add(v.owner);                       // owner straight from the event
-      try {                                          // atomists granted on the AccessManager
+  await Promise.all(Object.values(allByChain).map(async ({ chain, vaults }) => {
+    const seeds = vaults.filter((v) => seedNames.has(v.address));
+    if (!seeds.length) return;
+    seeds.forEach((v) => operators.add(v.owner));
+
+    const managers = [];
+    await Promise.all(seeds.map(async (v) => {
+      try {
         const am = await ethCall(chain, v.address, SEL_ACCESS_MANAGER);
-        if (am && am !== '0x') {
-          const mgr = '0x' + am.slice(-40);
-          const head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16);
-          const grants = await scanLogs(
-            chain, mgr,
-            [ROLE_GRANTED, ['0x' + pad32(OWNER_ROLE), '0x' + pad32(ATOMIST_ROLE)]],
-            v.block, head, Date.now() + 60000
-          );
-          grants.forEach((g) => { if (g.topics[2]) operators.add('0x' + g.topics[2].slice(-40).toLowerCase()); });
-        }
-      } catch (e) { console.log(`  atomist scan failed for ${v.address}: ${e.message}`); }
+        if (am && am !== '0x') managers.push(('0x' + am.slice(-40)).toLowerCase());
+      } catch {}
+    }));
+    if (!managers.length) return;
+
+    try {
+      const head = parseInt(await rpcCall(chain, 'eth_blockNumber', []), 16);
+      const grants = await scanLogs(
+        chain, [...new Set(managers)],
+        [ROLE_GRANTED, ['0x' + pad32(OWNER_ROLE), '0x' + pad32(ATOMIST_ROLE)]],
+        chainStart[chain.name] || chain.fromBlock, head, Date.now() + 90000
+      );
+      grants.forEach((g) => { if (g.topics[2]) operators.add('0x' + g.topics[2].slice(-40).toLowerCase()); });
+      console.log(`[${chain.name}] ${seeds.length} seeds -> ${managers.length} managers -> ${grants.length} role grants`);
+    } catch (e) {
+      console.log(`[${chain.name}] atomist scan incomplete: ${e.message}`);
     }
-  }
+  }));
   console.log(`\nTesseract operator addresses discovered: ${operators.size}`);
   [...operators].forEach((o) => console.log('  ', o));
 
@@ -330,20 +370,65 @@ async function factoryFor(chain) {
   const byChain = {};
   selected.forEach((v) => { byChain[v.chain] = (byChain[v.chain] || 0) + 1; });
 
-  fs.writeFileSync(OUT, JSON.stringify({
+  // ---- Completeness gate ----
+  // A partial scan that exits 0 is worse than a failure: it commits a
+  // confident-looking file. Any chain that did not finish, or that holds
+  // name-matched seeds yet yielded nothing, makes the whole result suspect.
+  const problems = [];
+  for (const [name, status] of Object.entries(chainStatus)) {
+    if (status !== 'ok') problems.push(`${name}: ${status}`);
+  }
+  for (const c of CHAINS) {
+    if (!(c.name in chainStatus)) problems.push(`${c.name}: never ran`);
+  }
+  const seedsByChain = {};
+  Object.values(allByChain).forEach(({ chain, vaults }) => {
+    seedsByChain[chain.name] = vaults.filter((v) => seedNames.has(v.address)).length;
+  });
+  if (seedNames.size && !operators.size) {
+    problems.push(`${seedNames.size} seed vaults known but no operators resolved`);
+  }
+
+  const complete = problems.length === 0;
+
+  const payload = {
     updatedAt: new Date().toISOString(),
     method: 'FusionInstanceCreated factory events filtered by Tesseract owner/atomist; keyed on chainId+address, never name',
+    complete,
+    problems,
+    chainStatus,
+    seedsSeenByChain: seedsByChain,
+    seedsKnown: seedNames.size,
     operators: [...operators],
     total: selected.length,
     byChain,
     vaults: selected.sort((a, b) => a.chain.localeCompare(b.chain) || a.block - b.block),
-  }, null, 2) + '\n');
+  };
+
+  // Never replace a good, larger result with a degraded one.
+  let prior = null;
+  try { prior = JSON.parse(fs.readFileSync(OUT, 'utf8')); } catch {}
+  if (prior && prior.complete && !complete && (prior.total || 0) > selected.length) {
+    console.error(`\nREFUSING TO WRITE: previous result was complete with ${prior.total} vaults; `
+      + `this run is incomplete with ${selected.length}. Keeping the good file.`);
+    console.error('Problems: ' + problems.join('; '));
+    process.exit(1);
+  }
+
+  fs.writeFileSync(OUT, JSON.stringify(payload, null, 2) + '\n');
 
   console.log(`\n=== ${selected.length} Tesseract vaults ===`);
   console.log(JSON.stringify(byChain));
+  console.log('seeds known: ' + seedNames.size + ' · seeds seen per chain: ' + JSON.stringify(seedsByChain));
   const dupNames = {};
   selected.forEach((v) => { dupNames[v.name] = (dupNames[v.name] || 0) + 1; });
   Object.entries(dupNames).filter(([, n]) => n > 1)
     .forEach(([n, c]) => console.log(`  NOTE duplicate name x${c}: "${n}" — keyed on address, both kept`));
   console.log(`Wrote ${OUT}`);
+
+  if (!complete) {
+    console.error('\nINCOMPLETE RESULT — failing the job so this is not mistaken for a good run:');
+    problems.forEach((p) => console.error('  - ' + p));
+    process.exit(1);
+  }
 })().catch((e) => { console.error('Fatal:', e); process.exit(1); });
