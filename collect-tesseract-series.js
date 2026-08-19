@@ -43,6 +43,8 @@ const SEL = {
   assetPrice: selector('getAssetPrice(address)'),
   convertToAssets: selector('convertToAssets(uint256)'),
 };
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+const ZERO_TOPIC = '0x' + '0'.repeat(64);
 const DEPOSIT_TOPIC = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
 const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
 
@@ -121,15 +123,50 @@ async function oraclePrice(chain, oracle, token, block) {
 }
 
 // feeInPercentage is bps with 2 decimals: 10000 = 100%
+// getPerformanceFeeData/getManagementFeeData -> (address feeAccount, uint256 feeInPercentage)
+// feeInPercentage is bps with 2 decimals: 10000 = 100%.
 async function feeData(chain, vault, block) {
-  const out = { performance: null, management: null };
+  const out = { performance: null, management: null, performanceAccount: null, managementAccount: null };
   for (const [k, sel] of [['performance', SEL.perfFee], ['management', SEL.mgmtFee]]) {
     try {
       const r = await callAt(chain, vault, sel, block);
-      if (r && r.length >= 130) out[k] = Number(BigInt('0x' + r.slice(66, 130))) / 10000;
+      if (r && r.length >= 130) {
+        out[k + 'Account'] = ('0x' + r.slice(2 + 24, 2 + 64)).toLowerCase();
+        out[k] = Number(BigInt('0x' + r.slice(66, 130))) / 10000;
+      }
     } catch {}
   }
   return out;
+}
+
+// Fees CHARGED, not just the rates. IPOR takes fees by minting shares to the
+// fee recipient, so each mint (Transfer from the zero address to a fee account)
+// is a fee event. Classification comes from what else happened in the same tx:
+// a mint alongside a Deposit is the onboarding contribution, alongside a
+// Withdraw it is the exit fee, and standalone mints are the performance and
+// management accrual — split by which account received them.
+async function feeEvents(chain, vault, accounts, fromBlock, toBlock, deadline, ctx) {
+  const events = [];
+  for (const [kind, account] of Object.entries(accounts)) {
+    if (!account || /^0x0+$/.test(account)) continue;
+    const to = '0x' + account.replace(/^0x/, '').padStart(64, '0');
+    let logs = [];
+    try {
+      logs = await scanLogs(chain, vault, [TRANSFER_TOPIC, ZERO_TOPIC, to], fromBlock, toBlock, deadline);
+    } catch (e) { continue; }
+    logs.forEach((l) => {
+      const shares = Number(BigInt(l.data.slice(0, 66))) / ctx.shareScale;
+      const tx = l.transactionHash;
+      const cls = ctx.depositTxs.has(tx) ? 'onboarding'
+        : ctx.withdrawTxs.has(tx) ? 'offboarding'
+        : kind; // 'performance' | 'management'
+      events.push({
+        type: cls, recipientKind: kind, block: parseInt(l.blockNumber, 16),
+        tx, logIndex: parseInt(l.logIndex, 16), shares,
+      });
+    });
+  }
+  return events.sort((a, b) => a.block - b.block || a.logIndex - b.logIndex);
 }
 
 // Adaptive log scan. Public RPCs cap eth_getLogs differently (and mostly by
@@ -327,11 +364,34 @@ async function getJson(url, ms = 25000) {
 
     const fees = await feeData(v.chain, v.address, head);
 
+    // Fee events need the flow tx sets to classify onboarding vs offboarding.
+    let charged = prev.feeEvents || [];
+    if (Date.now() < deadline) {
+      const lastFeeBlock = charged.length ? Math.max(...charged.map((f) => f.block)) : v.block;
+      const ctx = {
+        shareScale: 10 ** (v.assetDecimals || v.decimals || 18),
+        depositTxs: new Set(flows.filter((f) => f.type === 'deposit').map((f) => f.tx)),
+        withdrawTxs: new Set(flows.filter((f) => f.type === 'withdraw').map((f) => f.tx)),
+      };
+      try {
+        const fresh = await feeEvents(
+          v.chain, v.address,
+          { performance: fees.performanceAccount, management: fees.managementAccount },
+          lastFeeBlock, head, deadline, ctx
+        );
+        const seen = new Set(charged.map((f) => f.tx + ':' + f.logIndex));
+        fresh.forEach((f) => { if (!seen.has(f.tx + ':' + f.logIndex)) charged.push(f); });
+        charged.sort((a, b) => a.block - b.block || a.logIndex - b.logIndex);
+      } catch (e) { console.log(`  [${v.name}] fee scan stopped: ${e.message}`); }
+    }
+    const feeTotals = charged.reduce((acc, f) => { acc[f.type] = (acc[f.type] || 0) + f.shares; return acc; },
+      { onboarding: 0, offboarding: 0, performance: 0, management: 0 });
+
     state.vaults[key] = {
       chainId: v.chainId, chain: v.chain, address: v.address, name: v.name,
       symbol: v.symbol, decimals: v.decimals, underlyingToken: v.underlyingToken,
       deploymentBlock: v.block, matchedBy: v.matchedBy,
-      fees,
+      fees, feeEvents: charged, feeTotals,
       // Deployed-but-empty is a state, not a reason to drop the vault.
       status: points.length && points[points.length - 1].assets === 0 ? 'deployed-empty' : 'active',
       points, flows,
@@ -339,6 +399,7 @@ async function getJson(url, ms = 25000) {
     done++;
     const last = points[points.length - 1];
     console.log(`  [${v.chain}] ${v.name} ${v.address.slice(0, 10)} — +${added} pts (${points.length} total), ${flows.length} flows`
+      + `, fees[on/off/perf/mgmt]=${feeTotals.onboarding.toFixed(4)}/${feeTotals.offboarding.toFixed(4)}/${feeTotals.performance.toFixed(4)}/${feeTotals.management.toFixed(4)}`
       + (last ? `, last assets=${last.assets.toFixed(4)} ${v.symbol} sp=${last.sharePrice != null ? last.sharePrice.toFixed(6) : 'n/a'}` : ''));
   }
 

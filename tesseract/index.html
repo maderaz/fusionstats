@@ -117,6 +117,17 @@
   </div>
 
   <div class="card">
+    <h2>Fees charged <span class="muted">· onboarding / offboarding / performance / management, each its own series</span></h2>
+    <div id="fees"></div>
+    <div class="note">
+      Fees are taken by minting shares to the fee recipient, so each mint is a fee event.
+      A mint in the same transaction as a deposit is the <b>onboarding</b> contribution, one alongside a
+      withdrawal is the <b>exit</b> fee, and standalone mints are <b>performance</b> and <b>management</b>
+      accrual split by recipient. Amounts are in vault shares.
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Deposits &amp; withdrawals <span class="muted">· every flow, with the resulting share price</span></h2>
     <div class="scroll"><table id="flowTable">
       <thead><tr>
@@ -313,6 +324,28 @@ function renderDivergence(){
     }).join('')+'</tbody></table></div>';
 }
 
+function renderFees(){
+  var el=document.getElementById('fees'), v=current();
+  var pool = v? [v] : vaults();
+  var tot={onboarding:0,offboarding:0,performance:0,management:0}, n=0;
+  pool.forEach(function(vv){
+    if(vv.feeTotals){ Object.keys(tot).forEach(function(k){ tot[k]+=vv.feeTotals[k]||0; }); }
+    n+=(vv.feeEvents||[]).length;
+  });
+  var rate = v && v.fees ? v.fees : null;
+  el.innerHTML='<div class="stats">'
+    +[['Onboarding',tot.onboarding],['Offboarding (exit)',tot.offboarding],
+      ['Performance',tot.performance],['Management',tot.management]].map(function(p){
+      return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+fNum(p[1],4)+'</div></div>';
+    }).join('')
+    +'<div class="stat"><div class="k">Fee events</div><div class="v">'+n+'</div></div>'
+    +(rate? '<div class="stat"><div class="k">Current rates</div><div class="v" style="font-size:.85rem">perf '
+       +(rate.performance!=null?(rate.performance*100).toFixed(2)+'%':'—')+' · mgmt '
+       +(rate.management!=null?(rate.management*100).toFixed(2)+'%':'—')+'</div></div>' : '')
+    +'</div>';
+  if(!n) el.innerHTML+='<div class="empty-state">No fee mints recorded in the range collected so far.</div>';
+}
+
 function renderFlows(){
   var v=current();
   var rows=[];
@@ -351,7 +384,7 @@ function renderVaultTable(){
   }).join('');
 }
 
-function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderDivergence(); renderHealth(); renderFlows(); renderVaultTable(); }
+function renderAll(){ renderStats(); renderTvl(); renderSharePrice(); renderFees(); renderDivergence(); renderHealth(); renderFlows(); renderVaultTable(); }
 
 function populateSelect(){
   var sel=document.getElementById('vaultSel');
