@@ -66,6 +66,9 @@
 
     .container { max-width: 960px; margin: 0 auto; }
 
+    .col-num { text-align: right; white-space: nowrap; }
+    .usd-cell .usd-value { display: inline; white-space: nowrap; }
+    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
     .top-nav {
       display: flex;
       gap: 0.25rem;
@@ -546,7 +549,10 @@
       header p { font-size: 0.8rem; }
 
       /* Top nav: links scroll horizontally, theme toggle stays pinned right */
-      .top-nav { gap: 0.5rem; }
+      .col-num { text-align: right; white-space: nowrap; }
+    .usd-cell .usd-value { display: inline; white-space: nowrap; }
+    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .top-nav { gap: 0.5rem; }
       .top-nav-links {
         overflow-x: auto;
         flex-wrap: nowrap;
@@ -1091,7 +1097,8 @@
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
           <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>${synthBadge}</td>
-          <td class="num-bold">${formatAmount(e.assets)} ${sym}${usd ? '<br>' + usd : ''}</td>
+          <td class="num-bold col-num">${formatAmount(e.assets)} ${sym}</td>
+          <td class="col-num usd-cell">${usd || '—'}</td>
           <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link">${name}</a></td>
           <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.6rem;font-weight:700;text-decoration:none;line-height:1">B</a></td>
@@ -1120,7 +1127,8 @@
           <thead><tr>
             <th>When</th>
             <th>Type</th>
-            <th>Amount</th>
+            <th class="col-num">Amount</th>
+            <th class="col-num">USD</th>
             <th>Product</th>
             <th>User</th>
             <th>Profile</th>
