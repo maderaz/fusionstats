@@ -4,22 +4,6 @@
     "event": "collect",
     "errors": [],
     "warnings": [],
-    "totalLoans": 1925983457.971827,
-    "fusionBorrowed": 17330791.76211335,
-    "fusionCollateral": 19974518.546702206,
-    "sharePercent": 0.8998411533795667,
-    "activeVaults": 26,
-    "totalVaults": 145,
-    "vaultErrors": 0,
-    "durationMs": 15475,
-    "historyEntries": 225,
-    "timestamp": "2026-08-05T03:29:19.296Z"
-  },
-  {
-    "level": "info",
-    "event": "collect",
-    "errors": [],
-    "warnings": [],
     "totalLoans": 1926152658.857919,
     "fusionBorrowed": 17330026.69240966,
     "fusionCollateral": 19984102.95941819,
@@ -7983,5 +7967,27 @@
     "durationMs": 9909,
     "historyEntries": 300,
     "timestamp": "2026-08-20T17:51:31.266Z"
+  },
+  {
+    "level": "info",
+    "event": "collect_skipped",
+    "errors": [],
+    "warnings": [
+      {
+        "step": "fetchVaultPositions",
+        "vault": "0xd731f94c778f7c1090e2e0d797150a647de5188a",
+        "message": "fetch failed"
+      }
+    ],
+    "totalLoans": 2026114865.290976,
+    "fusionBorrowed": 13444275.652002808,
+    "fusionCollateral": 15483795.26159225,
+    "sharePercent": 0.6635495293141753,
+    "activeVaults": 24,
+    "totalVaults": 145,
+    "vaultErrors": 1,
+    "durationMs": 14135,
+    "reason": "dedup",
+    "timestamp": "2026-08-20T18:16:48.208Z"
   }
 ]
