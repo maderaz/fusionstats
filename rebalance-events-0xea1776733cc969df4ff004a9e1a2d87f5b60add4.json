@@ -1,13 +1,81 @@
 {
   "vault": "0xea1776733cc969df4ff004a9e1a2d87f5b60add4",
   "chain": "ethereum",
-  "updatedAt": "2026-08-20T03:00:52.599Z",
+  "updatedAt": "2026-08-21T03:06:37.075Z",
   "blockRange": {
     "from": 25557646,
-    "to": 25793502
+    "to": 25800708
   },
-  "txCount": 101,
+  "txCount": 103,
   "rebalances": [
+    {
+      "tx": "0x375a92521915bcff593b4650537be3f737e04929c9449e481c1ec77483fc9879",
+      "block": 25795596,
+      "timestamp": 1787220035,
+      "flows": [
+        {
+          "token": "0x4579a27af00a62c0eb156349f31b345c08386419",
+          "symbol": "aEthsUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 1527056.337636,
+          "usdValue": 1899725.12
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1527056.337636,
+          "usdValue": 1899725.12
+        },
+        {
+          "token": "0x9d39a5de30e57443bff2a8307a4256c8797a3497",
+          "symbol": "sUSDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1527056.337636,
+          "usdValue": 1899725.12
+        }
+      ]
+    },
+    {
+      "tx": "0x91d6f92180435c72154cab14f93b7266c5d9a606aea485b8011e640259b41280",
+      "block": 25795557,
+      "timestamp": 1787219567,
+      "flows": [
+        {
+          "token": "0x015396e1f286289ae23a762088e863b3ec465145",
+          "symbol": "variableDebtEthUSDe",
+          "protocol": "Aave",
+          "kind": "lending",
+          "direction": "out",
+          "amount": 285.39683,
+          "usdValue": -285.33
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 1000.000033,
+          "usdValue": 999.74
+        },
+        {
+          "token": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "symbol": "USDe",
+          "protocol": "Ethena",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 1000.000033,
+          "usdValue": 999.74
+        }
+      ]
+    },
     {
       "tx": "0x66a1e9e1b9fc3a8b225051ea4995a36c39c9e6799fec9d1a499dd2cccf1a36ca",
       "block": 25789597,
