@@ -18,7 +18,13 @@ const TVL_SNAPSHOTS_FILE = path.join(__dirname, 'tvl-snapshots.json');
 const DECIMALS_CACHE_FILE = path.join(__dirname, 'vault-decimals.json');
 
 // Minimum TVL ($) for a vault to be actively scanned.
-const MIN_TVL_USD = 1000;
+// Minimum TVL for a vault to be tracked. Kept low enough to pick up newly
+// seeded vaults — a themed set launched with ~$100 each (Apple/Nvidia/Meta/
+// Google Carry Trade) was invisible here while showing on /all-vaults, which
+// applies no floor. Overridable so the threshold can be tuned without a code
+// change. Vaults entering the set later still backfill from their deployment
+// block, so a raised floor delays history rather than losing it.
+const MIN_TVL_USD = Number(process.env.MIN_TVL_USD || 50);
 
 // Initial backfill window for newly-discovered vaults (~48 hours per chain block time)
 const NEW_VAULT_BACKFILL = {
@@ -833,7 +839,7 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
   data.updatedAt = new Date().toISOString();
   data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
 
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
 }
 
@@ -1183,7 +1189,7 @@ async function main() {
     console.log(`Repairing ${before} null-priced events…`);
     const fixed = await repairActivityPrices(data.events || [], loadVaults(), {});
     data.updatedAt = new Date().toISOString();
-    fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+      fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
     console.log(`Done: filled ${fixed}, ${before - fixed} still unpriced (no DeFi Llama coverage).`);
     return;
   }
@@ -1517,7 +1523,7 @@ async function main() {
 
     // Persist after each chain so partial progress is saved even if later chains hang
     try {
-      fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+      fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
     } catch (e) {
       console.log(`  (warning: intermediate save failed: ${e.message})`);
     }
@@ -1552,7 +1558,7 @@ async function main() {
   data.updatedAt = new Date().toISOString();
   data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
 
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
   console.log(`New events this run: ${newEventsTotal}`);
 }

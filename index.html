@@ -686,6 +686,16 @@
             <option value="">All chains</option>
           </select>
         </label>
+        <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
+          <span class="filter-label">Stocks
+            <span class="info-tip" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
+          </span>
+          <select id="filterStocks">
+            <option value="" selected>All vaults</option>
+            <option value="only">Stocks only</option>
+            <option value="exclude">Exclude stocks</option>
+          </select>
+        </label>
         <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
           <span class="filter-label">Synthetic
             <span class="info-tip" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
@@ -740,6 +750,7 @@
     let lastUpdatedAt = null;
     const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
+    const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
     const FILTER_SYNTHETIC_KEY = 'fusionstats_filter_synthetic';
 
     // Per-symbol USD price taken from the MOST RECENT priced event of that
@@ -798,17 +809,30 @@
       });
     }
 
+    // Tokenised-equity vaults. Keyed on the underlying token's 0xb2 vanity
+    // prefix rather than the vault name: matching /carry trade/i would also
+    // catch the cbXRP, USDC (Test) and WETH carry vaults, which are not
+    // stocks. Any future stock vault is picked up with no code change.
+    const STOCK_ASSET_RE = /^0xb20{20}/;
+    function isStockEvent(e) {
+      return STOCK_ASSET_RE.test((e.underlyingToken || '').toLowerCase());
+    }
+
     function applyFilters() {
       const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
       const product = document.getElementById('filterProduct').value;
       const type = document.getElementById('filterType').value;
       const chain = document.getElementById('filterChain').value;
       const syntheticMode = document.getElementById('filterSynthetic').value || 'hide';
+      const stocksMode = document.getElementById('filterStocks').value || '';
+      localStorage.setItem(FILTER_STOCKS_KEY, stocksMode);
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
       localStorage.setItem(FILTER_SYNTHETIC_KEY, syntheticMode);
 
       const filtered = allEvents.filter(e => {
+        if (stocksMode === 'only' && !isStockEvent(e)) return false;
+        if (stocksMode === 'exclude' && isStockEvent(e)) return false;
         if (syntheticMode === 'hide' && e.synthetic) return false;
         if (syntheticMode === 'only' && !e.synthetic) return false;
         if (type && e.type !== type) return false;
@@ -934,7 +958,9 @@
         const vaultCountEl = document.getElementById('vaultCount');
         const vaultCount = (data.vaults || []).length;
         if (vaultCount > 0) {
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults with &gt;$1K TVL across all supported networks">&#9432;</span>`;
+          const floor = data.minTvlUsd != null ? data.minTvlUsd : 50;
+          const floorLabel = floor >= 1000 ? `$${floor / 1000}K` : `$${floor}`;
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
           vaultCountEl.style.display = 'inline-block';
         }
 
@@ -953,6 +979,17 @@
         }
 
         // Restore synthetic-mode preference
+        // /stocks lands here as ?stocks=only. An explicit URL beats whatever
+        // was last stored, so a shared link always shows what it promises.
+        const urlStocks = new URLSearchParams(location.search).get('stocks');
+        const storedStocks = urlStocks || localStorage.getItem(FILTER_STOCKS_KEY);
+        if (storedStocks) {
+          const stockSel = document.getElementById('filterStocks');
+          if ([...stockSel.options].some(o => o.value === storedStocks)) {
+            stockSel.value = storedStocks;
+          }
+        }
+
         const storedSynthetic = localStorage.getItem(FILTER_SYNTHETIC_KEY);
         if (storedSynthetic) {
           const synthSel = document.getElementById('filterSynthetic');
@@ -1238,6 +1275,7 @@
     document.getElementById('filterChain').addEventListener('change', applyFilters);
     document.getElementById('filterProduct').addEventListener('change', applyFilters);
     document.getElementById('filterSynthetic').addEventListener('change', applyFilters);
+    document.getElementById('filterStocks').addEventListener('change', applyFilters);
 
     loadActivity();
 
