@@ -934,7 +934,9 @@
         const vaultCountEl = document.getElementById('vaultCount');
         const vaultCount = (data.vaults || []).length;
         if (vaultCount > 0) {
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults with &gt;$1K TVL across all supported networks">&#9432;</span>`;
+          const floor = data.minTvlUsd != null ? data.minTvlUsd : 50;
+          const floorLabel = floor >= 1000 ? `$${floor / 1000}K` : `$${floor}`;
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
           vaultCountEl.style.display = 'inline-block';
         }
 
