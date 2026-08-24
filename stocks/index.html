@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Vaults · Fusion Stats</title>
+<meta name="description" content="Deposits and withdrawals for Fusion vaults backed by tokenised equities.">
+<!-- Entry point for the Activity page with the Stocks filter pre-applied.
+     The filter itself lives on the Activity page so there is one table to
+     maintain; this just carries the intent through in the URL. -->
+<link rel="canonical" href="https://fusionecosystem.xyz/?stocks=only">
+<meta http-equiv="refresh" content="0; url=/?stocks=only">
+<style>
+  body{font-family:'Poppins',system-ui,sans-serif;background:#FAFAFB;color:#70747A;
+    display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:.9rem}
+  a{color:#8429FF}
+</style>
+</head>
+<body>
+  <p>Opening stock vault activity… <a href="/?stocks=only">continue</a></p>
+  <script>location.replace('/?stocks=only');</script>
+</body>
+</html>
