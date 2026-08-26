@@ -466,6 +466,10 @@
           <button data-total-range="365">1y</button>
           <button data-total-range="all" class="active">All</button>
         </div>
+        <label class="action-btn" style="display:inline-flex;align-items:center;gap:0.35rem;cursor:pointer"
+               title="Draw the dotted background into exported PNGs">
+          <input type="checkbox" id="exportDotsToggle" checked style="margin:0;cursor:pointer">Dots in PNG
+        </label>
         <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
         <button id="downloadTotalPng43" class="action-btn" type="button">Download 4:3</button>
         <button id="downloadTotalPngSquare" class="action-btn" type="button">Download 1:1</button>
@@ -767,7 +771,7 @@
     function makeLayout(scale, type, stack) {
       return {
         autosize: true,
-        margin: { l: 78, r: 24, t: 8, b: 60 },
+        margin: { l: 96, r: 40, t: 26, b: 78 },   // room between axes and data
         // Transparent so the container's CSS dot grid is the scale cue.
         // An opaque canvas painted straight over it, and Plotly's own dashed
         // major+minor gridlines on top made the old crosshair look.
@@ -787,6 +791,7 @@
           tickfont: { size: 11 },
           type: 'date',
           fixedrange: false,
+          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
           minor: {
             showgrid: false,
             gridcolor: '#E0E0E0',
@@ -802,6 +807,7 @@
           gridwidth: 1,
           linecolor: '#E5E5E5',
           tickfont: { size: 11 },
+          ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
           tickformat: '$,.2s',
           type: scale === 'log' ? 'log' : 'linear',
           rangemode: scale === 'log' ? 'normal' : 'tozero',
@@ -876,44 +882,72 @@
       `).join('');
     }
 
-    // The dot grid lives in CSS, so it is not in the exported pixels. Turn
-    // faint gridlines back on for the duration of a download so the image
-    // keeps a scale cue, then restore the on-screen look.
-    const EXPORT_GRID_ON = {
-      'xaxis.showgrid': true, 'xaxis.gridcolor': '#D8D8D8', 'xaxis.griddash': 'dot',
-      'yaxis.showgrid': true, 'yaxis.gridcolor': '#D8D8D8', 'yaxis.griddash': 'dot',
-    };
-    const EXPORT_GRID_OFF = { 'xaxis.showgrid': false, 'yaxis.showgrid': false };
+    // A CSS dot grid is not in the exported pixels, and the previous fix put
+    // dashed gridlines back for downloads — which is the ruled look again, and
+    // over a transparent PNG it picked up whatever colour sat behind it. So the
+    // export is composed instead: solid card background, the dot grid redrawn
+    // by hand, then the transparent Plotly render on top.
+    let exportDots = true;   // toggled from the toolbar
+
+    function composeExport(pngUrl, w, h, filename) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const c = cv.getContext('2d');
+          c.fillStyle = '#FFFFFF';
+          c.fillRect(0, 0, w, h);
+          if (exportDots) {
+            // Pitch scales with the export so the dots read as texture rather
+            // than noise at 2x, matching the 14px on-screen grid.
+            const pitch = Math.max(14, Math.round(w / 96));
+            c.fillStyle = '#191717';
+            c.globalAlpha = 0.13;
+            for (let y = h - pitch / 2; y > 0; y -= pitch) {
+              for (let x = pitch / 2; x < w; x += pitch) {
+                c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
+              }
+            }
+            c.globalAlpha = 1;
+          }
+          c.drawImage(img, 0, 0, w, h);
+          cv.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+            resolve();
+          }, 'image/png');
+        };
+        img.onerror = () => resolve();
+        img.src = pngUrl;
+      });
+    }
 
     // Snapshot the chart as transparent-background PNG (axes + gridlines kept).
     // Temporarily swaps paper/plot bg to transparent so the exported pixels in
     // those regions are alpha=0; restores them after the download.
     async function downloadChartPng() {
       const gd = document.getElementById('tvlChart');
-      const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
-      const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
+      const origPaper = (gd.layout && gd.layout.paper_bgcolor) || 'rgba(0,0,0,0)';
+      const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || 'rgba(0,0,0,0)';
       try {
-        await Plotly.relayout(gd, Object.assign({
+        // Render the chart itself with no background at all, so the composed
+        // canvas underneath supplies the card colour and the dot grid.
+        await Plotly.relayout(gd, {
           paper_bgcolor: 'rgba(0,0,0,0)',
           plot_bgcolor:  'rgba(0,0,0,0)',
-        }, EXPORT_GRID_ON));
-        const stamp = new Date().toISOString().slice(0, 10);
-        // Pass display size + scale:2 (NOT width*2 + scale:1) — otherwise Plotly
-        // renders at the bigger canvas but keeps the layout's font sizes (e.g.
-        // tickfont:11px), so axis labels end up half the relative size of the
-        // preview. scale:2 multiplies the whole render, fonts included.
-        await Plotly.downloadImage(gd, {
-          format: 'png',
-          filename: `fusion-tvl-${stamp}`,
-          width:  gd.clientWidth,
-          height: gd.clientHeight,
-          scale: 2,
         });
+        const stamp = new Date().toISOString().slice(0, 10);
+        const w = gd.clientWidth, h = gd.clientHeight, scale = 2;
+        // Pass display size + scale:2 (NOT width*2 + scale:1), or Plotly renders
+        // bigger while keeping the layout's font sizes.
+        const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
+        await composeExport(url, w * scale, h * scale, `fusion-tvl-${stamp}.png`);
       } finally {
-        await Plotly.relayout(gd, Object.assign({
-          paper_bgcolor: origPaper,
-          plot_bgcolor:  origPlot,
-        }, EXPORT_GRID_OFF));
+        await Plotly.relayout(gd, { paper_bgcolor: origPaper, plot_bgcolor: origPlot });
       }
     }
 
@@ -951,7 +985,7 @@
       };
       const layout = {
         autosize: true,
-        margin: { l: 78, r: 24, t: 8, b: 60 },
+        margin: { l: 96, r: 40, t: 26, b: 78 },   // room between axes and data
         // Transparent so the container's CSS dot grid is the scale cue.
         // An opaque canvas painted straight over it, and Plotly's own dashed
         // major+minor gridlines on top made the old crosshair look.
@@ -961,12 +995,14 @@
         xaxis: {
           showgrid: false, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
           linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date', tickformat: '%b %d',
+          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
           minor: { showgrid: false, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
         },
         yaxis: {
           showgrid: false, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
           linecolor: '#E5E5E5', tickfont: { size: 11 }, tickformat: '$,.2s',
-          rangemode: 'tozero',
+          rangemode: 'tozero', ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)',
+          automargin: true,
           minor: { showgrid: false, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
         },
         bargap: 0.18,
@@ -1008,7 +1044,7 @@
       const xMin = pts.length ? pts[0].day * DAY_MS - pad : undefined;
       const xMax = pts.length ? pts[pts.length - 1].day * DAY_MS + pad : undefined;
       const layout = {
-        margin: { l: 132, r: 28, t: 24, b: 96 },
+        margin: { l: 150, r: 46, t: 42, b: 112 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
         font: { family: 'Poppins, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
@@ -1057,10 +1093,7 @@
         try {
           await Plotly.react(gd, [trace], layout, CONFIG);
           const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `fusion-total-tvl-${ratioSlug}-${stamp}.png`;
-          document.body.appendChild(a); a.click(); a.remove();
+          await composeExport(url, dims.w * 2, dims.h * 2, `fusion-total-tvl-${ratioSlug}-${stamp}.png`);
         } finally {
           await Plotly.react(gd, savedData, savedLayout, CONFIG);
         }
@@ -1078,21 +1111,19 @@
           'xaxis.minor.showgrid': false,
           'yaxis.minor.showgrid': false,
         });
-        await Plotly.downloadImage(gd, {
-          format: 'png',
-          filename: `fusion-total-tvl-${stamp}`,
-          width:  gd.clientWidth,
-          height: gd.clientHeight,
-          scale: 2,
-        });
+        const _w = gd.clientWidth, _h = gd.clientHeight;
+        const _url = await Plotly.toImage(gd, { format: 'png', width: _w, height: _h, scale: 2 });
+        await composeExport(_url, _w * 2, _h * 2, `fusion-total-tvl-${stamp}.png`);
       } finally {
+        // Restore the on-screen look: dots, not gridlines. Putting showgrid
+        // back to true here would undo the dot grid after the first export.
         await Plotly.relayout(gd, {
           paper_bgcolor: origPaper,
           plot_bgcolor:  origPlot,
-          'xaxis.showgrid': true,
-          'yaxis.showgrid': true,
-          'xaxis.minor.showgrid': true,
-          'yaxis.minor.showgrid': true,
+          'xaxis.showgrid': false,
+          'yaxis.showgrid': false,
+          'xaxis.minor.showgrid': false,
+          'yaxis.minor.showgrid': false,
         });
       }
     }
@@ -1339,6 +1370,11 @@
           redrawTotal();
         });
       });
+      const dotsToggle = document.getElementById('exportDotsToggle');
+      if (dotsToggle) {
+        exportDots = dotsToggle.checked;
+        dotsToggle.addEventListener('change', () => { exportDots = dotsToggle.checked; });
+      }
       document.getElementById('downloadTotalPng').addEventListener('click', () => downloadTotalPng('wide'));
       document.getElementById('downloadTotalPng43').addEventListener('click', () => downloadTotalPng('43'));
       document.getElementById('downloadTotalPngSquare').addEventListener('click', () => downloadTotalPng('square'));
