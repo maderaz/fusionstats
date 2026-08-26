@@ -896,14 +896,18 @@
           const cv = document.createElement('canvas');
           cv.width = w; cv.height = h;
           const c = cv.getContext('2d');
-          c.fillStyle = '#FFFFFF';
-          c.fillRect(0, 0, w, h);
+          // No background fill. The export is transparent: dots, axes and the
+          // series only, so it drops onto any deck or doc without a white slab
+          // behind it. A solid card was the wrong call last round.
           if (exportDots) {
             // Pitch scales with the export so the dots read as texture rather
             // than noise at 2x, matching the 14px on-screen grid.
             const pitch = Math.max(14, Math.round(w / 96));
             c.fillStyle = '#191717';
-            c.globalAlpha = 0.13;
+            // A touch stronger than the 0.13 used on screen: there the dots sit
+            // on an opaque card, here they have to read against whatever the
+            // image is dropped onto.
+            c.globalAlpha = 0.18;
             for (let y = h - pitch / 2; y > 0; y -= pitch) {
               for (let x = pitch / 2; x < w; x += pitch) {
                 c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
