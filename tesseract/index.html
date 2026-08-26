@@ -367,6 +367,7 @@ function renderMainChart(){
 
   var spVisible = spAvailable && !state.hidden.sharePrice;
   var tickFont={ family:'Poppins, sans-serif', size:11 };
+  state.lastConfig={ labels:labels, datasets:datasets, unit:unit, one:one, spVisible:spVisible, tvlVals:tvlVals };
   state.mainChart=new Chart(document.getElementById('main-chart').getContext('2d'),{
     data:{ labels:labels, datasets:datasets },
     options:{
@@ -379,8 +380,14 @@ function renderMainChart(){
             ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:8, autoSkip:true } },
         // beginAtZero must be explicit: Chart.js defaults it true for bars and
         // false for lines, so the same data would tell two different stories.
+        // beginAtZero stays explicit so bar and line modes agree. But TVL is a
+        // balance and cannot go negative: grace pushed the min just below zero
+        // and Chart.js then snapped it down to a whole -$2M tick, so half the
+        // plot was empty negative space. Floor the axis at 0 whenever the data
+        // is non-negative, and only let it float when a series genuinely is.
         y:{ grid:{display:false,drawBorder:false}, border:{display:false},
             beginAtZero:false, grace:'5%',
+            min: tvlVals.some(function(v){ return v<0; }) ? undefined : 0,
             ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:6,
               callback:function(v){ return unit==='NATIVE'? fNum(v,2) : fUsd(v); } } },
         y1:{ position:'right', display:spVisible, grid:{display:false,drawBorder:false}, border:{display:false},
@@ -436,13 +443,14 @@ function exportCsv(){
 
 // PNG exports exactly what is on screen, composed at a fixed 1600x1200.
 function snapshotChartTo43Png(){
-  var chart=state.mainChart; if(!chart||!chart.canvas) return;
+  var chart=state.mainChart, cfg=state.lastConfig;
+  if(!chart||!chart.canvas||!cfg) return;
   var W=1600,H=1200, theme=getChartTheme();
   var out=document.createElement('canvas'); out.width=W; out.height=H;
   var c=out.getContext('2d');
   c.fillStyle=theme.card; c.fillRect(0,0,W,H);
 
-  var one=selVaults().length===1?selVaults()[0]:null;
+  var one=cfg.one;
   var title = one? one.name : 'Tesseract on Base — TVL';
   var sub = (state.period? ('Last '+state.period+' days') : 'All time');
   var stamp = new Date().toISOString().slice(0,10);
@@ -462,11 +470,34 @@ function snapshotChartTo43Png(){
   }
   c.globalAlpha=1;
 
-  // Centre-fit, never stretch: source ratio depends on the active preset.
-  var src=chart.canvas, srcRatio=src.width/src.height, dstRatio=plotW/plotH, dw,dh;
-  if(srcRatio>dstRatio){ dw=plotW; dh=plotW/srcRatio; } else { dh=plotH; dw=plotH*srcRatio; }
-  c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
-  c.drawImage(src, padX+(plotW-dw)/2, padTop+(plotH-dh)/2, dw, dh);
+  // Render a throwaway chart AT the export size rather than centre-fitting the
+  // wide on-screen canvas into the 4:3 box. Centre-fit obeys "never stretch"
+  // but letterboxes a 3.3:1 canvas into deep empty bands; drawing at the target
+  // ratio neither stretches nor letterboxes.
+  var off=document.createElement('canvas');
+  off.width=plotW; off.height=plotH;
+  var tmp=new Chart(off.getContext('2d'), {
+    data:{ labels:cfg.labels, datasets:cfg.datasets },
+    options:{
+      responsive:false, maintainAspectRatio:false, animation:false, devicePixelRatio:1,
+      scales:{
+        x:{ grid:{display:false,drawBorder:false}, border:{display:false},
+            ticks:{ color:theme.ink3, font:{family:'Poppins, sans-serif',size:15}, maxTicksLimit:8, autoSkip:true } },
+        y:{ grid:{display:false,drawBorder:false}, border:{display:false},
+            beginAtZero:false, grace:'5%',
+            min: cfg.tvlVals.some(function(v){ return v<0; }) ? undefined : 0,
+            ticks:{ color:theme.ink3, font:{family:'Poppins, sans-serif',size:15}, maxTicksLimit:6,
+              callback:function(v){ return cfg.unit==='NATIVE'? fNum(v,2) : fUsd(v); } } },
+        y1:{ position:'right', display:cfg.spVisible, grid:{display:false,drawBorder:false}, border:{display:false},
+            beginAtZero:false, suggestedMin:0.9, suggestedMax:1.1,
+            ticks:{ color:theme.ink3, font:{family:'Poppins, sans-serif',size:15}, maxTicksLimit:8,
+              callback:function(v){ return fNum(v,4); } } },
+      },
+      plugins:{ legend:{display:false}, tooltip:{enabled:false} }
+    }
+  });
+  c.drawImage(off, padX, padTop, plotW, plotH);
+  tmp.destroy();
 
   c.fillStyle=theme.ink3; c.font='400 17px Poppins, system-ui, sans-serif';
   c.fillText('fusionecosystem.xyz/tesseract',56,H-46);

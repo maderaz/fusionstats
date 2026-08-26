@@ -13,6 +13,7 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
+      --tint-strong: rgba(25,23,23,.13);
       --bg: #FFFFFF;
       --surface: #FFFFFF;
       --stroke: #E5E5E5;
@@ -296,16 +297,38 @@
       gap: 0.4rem;
     }
 
-    #tvlChart {
+    /* Plot surfaces are a fixed height, not viewport-relative. These were
+       210vh / 1350px, so on a 1440px-tall screen the main chart rendered
+       3024px tall and got taller the bigger the display — unusable. Height
+       now comes from the aspect preset below, never from the viewport. */
+    #tvlChart, #totalTvlChart {
       width: 100%;
-      height: 210vh;
-      min-height: 1500px;
+      height: 340px;
+      background-image: radial-gradient(circle, var(--tint-strong) 1px, transparent 1.4px);
+      background-size: 14px 14px;
+      background-position: 0 100%;   /* anchored bottom so dots don't slide on switch */
     }
 
-    #totalTvlChart {
-      width: 100%;
-      height: 1350px;
-    }
+    /* Aspect presets — page level, so every chart keeps the same shape. */
+    .container[data-layout="compact"]    .chart-card,
+    .container[data-layout="fourthree"]  .chart-card,
+    .container[data-layout="widescreen"] .chart-card { margin-left: auto; margin-right: auto; }
+    .container[data-layout="compact"]    .chart-card { max-width: 480px; }
+    .container[data-layout="fourthree"]  .chart-card { max-width: 680px; }
+    .container[data-layout="widescreen"] .chart-card { max-width: 960px; }
+    /* height:auto must be reset alongside aspect-ratio or the base height wins */
+    .container[data-layout="compact"]    #tvlChart,
+    .container[data-layout="compact"]    #totalTvlChart,
+    .container[data-layout="fourthree"]  #tvlChart,
+    .container[data-layout="fourthree"]  #totalTvlChart,
+    .container[data-layout="widescreen"] #tvlChart,
+    .container[data-layout="widescreen"] #totalTvlChart { height: auto; }
+    .container[data-layout="compact"]    #tvlChart,
+    .container[data-layout="compact"]    #totalTvlChart { aspect-ratio: 1 / 1; }
+    .container[data-layout="fourthree"]  #tvlChart,
+    .container[data-layout="fourthree"]  #totalTvlChart { aspect-ratio: 4 / 3; }
+    .container[data-layout="widescreen"] #tvlChart,
+    .container[data-layout="widescreen"] #totalTvlChart { aspect-ratio: 16 / 9; }
 
     .caveat {
       font-size: 0.72rem;
@@ -399,7 +422,7 @@
 
     @media (max-width: 640px) {
       body { padding: 0.75rem; }
-      #tvlChart { height: 180vh; min-height: 1140px; }
+      #tvlChart, #totalTvlChart { height: 240px; }
       .top-nav a { padding: 0.4rem 0.8rem; }
       .chart-hint { display: none; }
     }
@@ -483,6 +506,16 @@
         </div>
         <span class="chart-hint">Drag a chart region to zoom · double-click resets</span>
         <button id="downloadChartPng" class="action-btn" type="button">Download PNG</button>
+        <div class="group">
+          <span class="group-label">View</span>
+          <select id="layoutSel" class="action-btn" title="Aspect preset for both charts"
+                  style="padding:0.35rem 0.5rem;cursor:pointer">
+            <option value="wide">Wide</option>
+            <option value="widescreen">16:9</option>
+            <option value="fourthree">4:3</option>
+            <option value="compact">1:1</option>
+          </select>
+        </div>
       </div>
       <div class="network-panel" id="networkPanel" style="display:none">
         <div class="network-panel-header">
@@ -1069,6 +1102,36 @@
 
     // Days-since-epoch floor for a believable data point (2021-01-01).
     const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
+    // Aspect preset. Validated on read so a stale or hand-edited value cannot
+    // put the page into an undefined layout.
+    const LAYOUT_KEY = 'fusionstats_tvl_layout';
+    const VALID_LAYOUTS = ['wide', 'widescreen', 'fourthree', 'compact'];
+    function applyChartLayout(v) {
+      const layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'wide';
+      document.querySelector('.container').setAttribute('data-layout', layout);
+      try { localStorage.setItem(LAYOUT_KEY, layout); } catch (e) {}
+      // Plotly gets there on its own via ResizeObserver, but a frame late,
+      // which reads as lag on click.
+      requestAnimationFrame(() => {
+        ['tvlChart', 'totalTvlChart'].forEach((id) => {
+          const gd = document.getElementById(id);
+          if (gd && gd.data) { try { Plotly.Plots.resize(gd); } catch (e) {} }
+        });
+      });
+    }
+    (function initLayout() {
+      let saved = 'wide';
+      try { saved = localStorage.getItem(LAYOUT_KEY) || 'wide'; } catch (e) {}
+      if (VALID_LAYOUTS.indexOf(saved) < 0) saved = 'wide';
+      document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('layoutSel');
+        if (sel) {
+          sel.value = saved;
+          sel.addEventListener('change', function () { applyChartLayout(this.value); });
+        }
+        applyChartLayout(saved);
+      });
+    })();
 
     let state = null;
     let curRange = '180';
