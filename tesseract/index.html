@@ -6,66 +6,117 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Tesseract on Base</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" onerror="window.__chartLoadFailed=true"></script>
 <style>
-  :root{--surface:#fff;--stroke:#E5E5E5;--stroke-light:#F0F0F0;--text:#000;--text-body:#70747A;
-    --text-secondary:#9BA3AF;--accent:#8429FF;--accent-bg:rgba(132,41,255,.10);
-    --green:#16A34A;--red:#DC2626;--amber:#D97706;--bg:#FAFAFB}
+  :root{
+    /* chart-layer tokens — nothing below carries a raw hex */
+    --accent:#8429FF; --accent-2:#0EA5E9;
+    --ink:#191717; --ink-2:#32312b; --ink-3:#6e6c66;
+    --line:#E5E5E5; --line-2:#F0F0F0;
+    --bg:#FAFAFB; --card:#FFFFFF; --card-2:#FFFFFF;
+    --tint-strong:rgba(25,23,23,.13); --tint-thin:rgba(25,23,23,.05);
+    --radius-pill:999px;
+    --sans:'Poppins',system-ui,sans-serif; --display:'Poppins',system-ui,sans-serif;
+    --mono:'JetBrains Mono',monospace;
+    --green:#16A34A; --red:#DC2626; --amber:#D97706;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Poppins',system-ui,sans-serif;background:var(--bg);color:var(--text);padding:28px 20px 60px;line-height:1.5}
-  .wrap{max-width:1180px;margin:0 auto}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);padding:28px 20px 60px;line-height:1.5}
+  .app-shell{max-width:1180px;margin:0 auto}
   h1{font-size:1.5rem;font-weight:700;display:flex;align-items:center;gap:9px}
-  .sub{color:var(--text-body);font-size:.86rem;margin-top:6px;max-width:820px}
-  .card{background:var(--surface);border:1px solid var(--stroke);border-radius:14px;padding:18px 20px;margin-top:16px}
+  .sub{color:var(--ink-3);font-size:.86rem;margin-top:6px;max-width:820px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:16px}
   .card h2{font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .muted{color:var(--text-secondary);font-weight:400;font-size:.78rem}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-  .seg{display:inline-flex;border:1px solid var(--stroke);border-radius:9px;overflow:hidden}
-  .seg button{border:0;background:var(--surface);font-family:inherit;font-size:.78rem;font-weight:500;color:var(--text-body);padding:0 13px;height:34px;cursor:pointer}
-  .seg button.on{background:var(--accent);color:#fff}
-  select{font-family:inherit;font-size:.8rem;padding:7px 10px;border:1px solid var(--stroke);border-radius:9px;background:var(--surface);color:var(--text);max-width:100%}
+  .muted{color:var(--ink-3);font-weight:400;font-size:.78rem}
+  select{font-family:inherit;font-size:.8rem;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);max-width:100%}
+
+  /* ---- section head: controls that shape the DATA ---- */
+  .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:22px}
+  .section-title{font-size:1.05rem;font-weight:600}
+  .chart-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .pill-toggle{display:inline-flex;border:1px solid var(--line);border-radius:var(--radius-pill);overflow:hidden;background:var(--card)}
+  .pill-btn{border:0;background:transparent;font-family:inherit;font-size:.75rem;font-weight:500;
+    color:var(--ink-3);padding:0 13px;height:32px;cursor:pointer}
+  .pill-btn.is-active{background:var(--accent);color:#fff}
+  .pill-btn:disabled{opacity:.38;cursor:not-allowed}
+
+  /* ---- chart card: controls that shape the CHART ---- */
+  .chart-card{padding:18px 20px;background:var(--card-2);border:1px solid var(--line);border-radius:20px;margin-top:12px}
+  .chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .chart-legend{display:flex;gap:14px;flex-wrap:wrap}
+  .legend-item{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;cursor:pointer;
+    font-family:inherit;font-size:.78rem;font-weight:500;color:var(--ink-2);padding:0}
+  .legend-item:disabled{opacity:.3;cursor:not-allowed}
+  .legend-item[aria-pressed="false"]{opacity:.42;text-decoration:line-through;
+    text-decoration-color:var(--ink-3);text-decoration-thickness:1.5px}
+  .legend-item[aria-pressed="false"] .legend-swatch{opacity:.55}
+  .legend-swatch.is-bar{width:12px;height:12px;border-radius:3px}
+  .legend-swatch.is-line-dashed{width:22px;height:0;border-top:2px dashed var(--ink-3)}
+  .chart-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .chart-action{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink-2);font-family:inherit;font-size:.72rem;font-weight:500;padding:5px 10px;
+    border-radius:var(--radius-pill);cursor:pointer}
+  .chart-action:hover{border-color:var(--accent);color:var(--accent)}
+
+  /* ---- the plot surface: dot grid, no border, no gridlines ---- */
+  .chart-container{
+    position:relative;height:340px;width:100%;
+    background-image:radial-gradient(circle,var(--tint-strong) 1px,transparent 1.4px);
+    background-size:14px 14px;
+    background-position:0 100%;
+  }
+  @media (max-width:768px){
+    .chart-card{padding:14px 14px}
+    .chart-container{height:240px}
+  }
+
+  /* ---- aspect presets (page level) ---- */
+  .app-shell[data-layout="compact"] .chart-card,
+  .app-shell[data-layout="fourthree"] .chart-card,
+  .app-shell[data-layout="widescreen"] .chart-card{margin-left:auto;margin-right:auto}
+  .app-shell[data-layout="compact"] .chart-card{max-width:480px}
+  .app-shell[data-layout="fourthree"] .chart-card{max-width:680px}
+  .app-shell[data-layout="widescreen"] .chart-card{max-width:960px}
+  .app-shell[data-layout="compact"] .chart-container,
+  .app-shell[data-layout="fourthree"] .chart-container,
+  .app-shell[data-layout="widescreen"] .chart-container{height:auto}
+  .app-shell[data-layout="compact"] .chart-container{aspect-ratio:1/1}
+  .app-shell[data-layout="fourthree"] .chart-container{aspect-ratio:4/3}
+  .app-shell[data-layout="widescreen"] .chart-container{aspect-ratio:16/9}
+
+  /* ---- loading ---- */
+  .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:48px 20px}
+  .loading-state.is-overlay{position:absolute;inset:0;background:var(--card-2);z-index:2;padding:0}
+  .loading-state[hidden]{display:none}
+  .loading-spinner{width:26px;height:26px;color:var(--accent);animation:dash-spin .85s linear infinite}
+  @keyframes dash-spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:.78rem;color:var(--ink-3)}
+
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-top:14px}
-  .stat{border:1px solid var(--stroke);border-radius:11px;padding:12px 14px}
-  .stat .k{font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);font-weight:600}
-  .stat .v{font-family:'JetBrains Mono',monospace;font-size:1.12rem;font-weight:500;margin-top:5px}
-  .plot{position:relative;height:200px;margin-top:16px;border-left:1px solid var(--stroke);border-bottom:1px solid var(--stroke)}
-  .bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:1px}
-  .bar{flex:1;background:var(--accent);opacity:.82;min-height:1px;border-radius:2px 2px 0 0}
-  .bar.neg{background:var(--red)}
-  .bar{transition:opacity .1s}
-  .bar.blank{opacity:.12;height:2%}
-  .bars:hover .bar{opacity:.42}
-  .bars .bar.hot{opacity:1;background:var(--accent)}
-  .plot{overflow:visible}
-  .tip{position:absolute;bottom:calc(100% + 8px);display:none;z-index:5;pointer-events:none;
-    background:#111;color:#fff;border-radius:9px;padding:9px 11px;font-size:.74rem;min-width:150px;
-    box-shadow:0 6px 22px rgba(0,0,0,.22)}
-  .tip .tip-d{color:#9BA3AF;font-size:.68rem}
-  .tip .tip-v{font-family:'JetBrains Mono',monospace;font-size:.98rem;font-weight:500;margin-top:2px}
-  .tip .tip-rows{margin-top:7px;border-top:1px solid rgba(255,255,255,.16);padding-top:6px}
-  .tip .tip-rows div{display:flex;justify-content:space-between;gap:14px;line-height:1.7}
-  .tip .tip-rows span{color:#9BA3AF}
-  .tip .tip-rows i{color:#9BA3AF;font-style:normal;font-size:.66rem}
+  .stat{border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .stat .k{font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
+  .stat .v{font-family:var(--mono);font-size:1.12rem;font-weight:500;margin-top:5px}
   table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.8rem}
-  th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--stroke)}
-  td{padding:9px;border-bottom:1px solid var(--stroke-light)}
-  td.num,th.num{text-align:right;font-family:'JetBrains Mono',monospace}
+  th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--line)}
+  td{padding:9px;border-bottom:1px solid var(--line-2)}
+  td.num,th.num{text-align:right;font-family:var(--mono)}
   .tag{display:inline-block;font-size:.64rem;font-weight:600;padding:2px 7px;border-radius:5px}
   .tag.dep{background:rgba(22,163,74,.12);color:var(--green)}
   .tag.wd{background:rgba(220,38,38,.10);color:var(--red)}
   .tag.empty{background:rgba(217,119,6,.12);color:var(--amber)}
-  .addr{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--accent);text-decoration:none}
+  .addr{font-family:var(--mono);font-size:.74rem;color:var(--accent);text-decoration:none}
   .addr:hover{text-decoration:underline}
   .scroll{overflow-x:auto}
-  .exports{margin-left:auto;display:inline-flex;align-items:center;gap:5px}
-  .exports button{border:1px solid var(--stroke);background:var(--surface);color:var(--text-body);
-    font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:4px 9px;border-radius:7px;cursor:pointer}
-  .exports button:hover{border-color:var(--accent);color:var(--accent)}
-  .empty-state{color:var(--text-secondary);font-size:.82rem;padding:16px 0}
-  .note{background:var(--accent-bg);border:1px solid rgba(132,41,255,.22);border-radius:10px;padding:10px 13px;font-size:.78rem;color:var(--text-body);margin-top:12px}
+  .empty-state{color:var(--ink-3);font-size:.82rem;padding:16px 0}
+  .note{background:rgba(132,41,255,.08);border:1px solid rgba(132,41,255,.22);border-radius:10px;padding:10px 13px;font-size:.78rem;color:var(--ink-3);margin-top:12px}
+  .more{margin-top:12px;text-align:center}
+  .more button{border:1px solid var(--line);background:var(--card);color:var(--ink-2);font-family:inherit;
+    font-size:.75rem;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer}
+  .more button:hover{border-color:var(--accent);color:var(--accent)}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app-shell" data-layout="wide">
   <h1><span>◳</span> Tesseract on Base</h1>
   <p class="sub">
     TVL, share price and depositing wallets for Tesseract's vaults on <b>Base</b>, in one place.
@@ -73,40 +124,87 @@
   </p>
 
   <div class="card">
-    <div class="row">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div>
         <div class="muted" style="margin-bottom:4px">Vault</div>
         <select id="vaultSel"><option value="__all__">All Tesseract vaults</option></select>
       </div>
       <div>
-        <div class="muted" style="margin-bottom:4px">Timeframe</div>
-        <div class="seg" id="segTF">
-          <button data-d="7">7D</button>
-          <button data-d="30">30D</button>
-          <button data-d="90" class="on">90D</button>
-          <button data-d="0">All</button>
-        </div>
+        <div class="muted" style="margin-bottom:4px">View</div>
+        <select id="layoutSel" title="Aspect preset for the chart">
+          <option value="wide">Wide (default)</option>
+          <option value="widescreen">16:9 Widescreen</option>
+          <option value="fourthree">4:3 Wider</option>
+          <option value="compact">1:1 Compact</option>
+        </select>
       </div>
     </div>
     <div class="stats" id="stats"></div>
     <div class="muted" id="updated" style="margin-top:10px"></div>
   </div>
 
-  <div class="card">
-    <h2>TVL <span class="muted" id="tvlUnit"></span>
-      <span class="exports" id="exports">
-        <span class="muted">PNG:</span>
-        <button data-r="16:9">16:9</button><button data-r="1:1">1:1</button><button data-r="4:3">4:3</button><button data-r="4:5">4:5</button><button data-r="9:16">9:16</button>
-      </span>
-    </h2>
-    <div class="plot"><div class="tip" id="tip"></div><div class="bars" id="tvlBars"></div></div>
-    <div class="row muted" id="tvlRange"></div>
-  </div>
+  <section>
+    <header class="section-head">
+      <h2 class="section-title">TVL and share price</h2>
+      <div class="chart-controls">
+        <div class="pill-toggle" id="type-toggle" role="tablist" aria-label="Chart type">
+          <button class="pill-btn is-active" type="button" data-type="bar">Bar</button>
+          <button class="pill-btn" type="button" data-type="line">Line</button>
+        </div>
+        <div class="pill-toggle" id="unit-toggle" role="tablist" aria-label="Denomination">
+          <button class="pill-btn" type="button" data-unit="NATIVE">Native</button>
+          <button class="pill-btn is-active" type="button" data-unit="USD">USD</button>
+        </div>
+        <div class="pill-toggle" id="period-toggle" role="tablist" aria-label="Period">
+          <button class="pill-btn" type="button" data-period="7">7D</button>
+          <button class="pill-btn" type="button" data-period="30">30D</button>
+          <button class="pill-btn is-active" type="button" data-period="90">90D</button>
+          <button class="pill-btn" type="button" data-period="0">All</button>
+        </div>
+      </div>
+    </header>
 
-  <div class="card">
-    <h2>Share price <span class="muted" id="spUnit"></span></h2>
-    <div id="spChart"><div class="plot"><div class="tip" id="tip2"></div><div class="bars" id="spBars"></div></div></div>
-    <div class="row muted" id="spRange"></div>
+    <div class="chart-card">
+      <div class="chart-toolbar">
+        <div class="chart-legend" data-chart="main">
+          <button class="legend-item" type="button" data-legend="tvl" aria-pressed="true" title="Hide TVL">
+            <span class="legend-swatch is-bar" style="background: var(--accent);"></span>
+            TVL
+          </button>
+          <button class="legend-item" type="button" data-legend="sharePrice" aria-pressed="true" title="Hide share price">
+            <span class="legend-swatch is-line-dashed" style="border-top-color: var(--accent-2);"></span>
+            <span id="spLegendLabel">Share price</span>
+          </button>
+        </div>
+        <div class="chart-actions">
+          <button class="chart-action" id="snapshot-png" type="button" title="Download chart as 4:3 PNG">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+            </svg>PNG
+          </button>
+          <button class="chart-action" id="download-csv" type="button" title="Download CSV">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>CSV
+          </button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="main-chart" aria-label="Tesseract TVL and share price over time"></canvas>
+        <div class="loading-state is-overlay" id="main-loading" role="status">
+          <svg class="loading-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5"/>
+            <path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <div class="loading-text">Loading history</div>
+        </div>
+      </div>
+      <div class="muted" id="chartRange" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <div class="card" id="spTableCard">
+    <h2>Share price by vault <span class="muted">· never averaged across vaults</span></h2>
     <div id="spTable"></div>
   </div>
 
@@ -135,49 +233,51 @@
         <th>Wallet</th><th>Vault</th></tr></thead>
       <tbody id="flowBody"></tbody>
     </table></div>
+    <div class="more" id="flowMore"></div>
   </div>
 </div>
 
 <script>
-var state = { vault:'__all__', days:90, vaults:[], snaps:{}, events:[], updatedAt:null };
+var LAYOUT_KEY='tesseract_chart_layout';
+var VALID_LAYOUTS=['wide','widescreen','fourthree','compact'];
+var FLOW_PAGE=25;
+
+var state = {
+  mainChart:null,               // live instance — disposable
+  chartType:'bar',
+  period:90,
+  unit:'USD',
+  chartLayout:'wide',
+  hidden:{ tvl:false, sharePrice:false },
+  vault:'__all__',
+  vaults:[], snaps:{}, events:[], updatedAt:null,
+  flowLimit:FLOW_PAGE,
+};
 
 function fNum(n,d){ return (n==null||isNaN(n))?'—':n.toLocaleString('en-US',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d}); }
 function fUsd(n){ if(n==null||isNaN(n))return '—'; var a=Math.abs(n);
   if(a>=1e6)return '$'+(n/1e6).toFixed(2)+'M'; if(a>=1e3)return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(2); }
 function shortAddr(a){ return a? a.slice(0,6)+'…'+a.slice(-4):'—'; }
 function dstr(ts){ return ts? new Date(ts*1000).toISOString().slice(0,10):'—'; }
-function cutoff(){ return state.days? (Date.now()/1000 - state.days*86400) : 0; }
-
+function cutoff(){ return state.period? (Date.now()/1000 - state.period*86400) : 0; }
 function selVaults(){ return state.vault==='__all__'? state.vaults : state.vaults.filter(function(v){return v.address===state.vault;}); }
 function selEvents(){
-  var addrs={}; selVaults().forEach(function(v){ addrs[v.address]=1; });
-  var c=cutoff();
-  return state.events.filter(function(e){ return addrs[(e.vault||'').toLowerCase()] && (e.timestamp||0)>=c; });
+  var a={}; selVaults().forEach(function(v){a[v.address]=1;}); var c=cutoff();
+  return state.events.filter(function(e){ return a[(e.vault||'').toLowerCase()] && (e.timestamp||0)>=c; });
 }
 
-function renderStats(){
-  var vs=selVaults(), ev=selEvents();
-  var tvl=vs.reduce(function(s,v){return s+(v.tvl||0);},0);
-  var wallets={}; ev.forEach(function(e){ var w=(e.owner||e.sender||'').toLowerCase(); if(w) wallets[w]=1; });
-  var dep=ev.filter(function(e){return e.type==='deposit';});
-  var wd=ev.filter(function(e){return e.type==='withdraw';});
-  var net=dep.reduce(function(s,e){return s+(e.usdValue||0);},0)-wd.reduce(function(s,e){return s+(e.usdValue||0);},0);
-  var active=vs.filter(function(v){return (v.tvl||0)>0;}).length;
-  document.getElementById('stats').innerHTML=[
-    ['Total TVL', fUsd(tvl)],
-    ['Vaults', active+' active · '+(vs.length-active)+' empty'],
-    ['Wallets', Object.keys(wallets).length],
-    ['Deposits', dep.length],
-    ['Withdrawals', wd.length],
-    ['Net flow', (net>=0?'+':'')+fUsd(net)],
-  ].map(function(p){ return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>'; }).join('');
+// Canvas cannot resolve var(--x): tokens are read once per render.
+function getChartTheme(){
+  var css=getComputedStyle(document.documentElement);
+  var read=function(n,f){ return (css.getPropertyValue(n)||f).trim(); };
+  return { accent:read('--accent','#8429FF'), accent2:read('--accent-2','#0EA5E9'),
+    ink:read('--ink','#191717'), ink2:read('--ink-2','#32312b'), ink3:read('--ink-3','#6e6c66'),
+    line2:read('--line-2','#F0F0F0'), bg:read('--bg','#fff'), card:read('--card-2','#fff') };
 }
 
+// Last snapshot per vault per day (the collector runs ~twice daily, summing
+// them double-counts), then forward-fill so every point is a complete set.
 function seriesFor(){
-  // The snapshot collector runs about twice a day, so a day can hold more than
-  // one point per vault. Take the LAST snapshot per vault per day (summing them
-  // double-counted TVL), then forward-fill any vault missing that day so the
-  // total is always a complete set rather than dipping.
   var perVault={}, allDays={}, vs=selVaults();
   vs.forEach(function(v){
     var byDay={};
@@ -192,146 +292,249 @@ function seriesFor(){
   var days=Object.keys(allDays).map(Number).sort(function(a,b){return a-b;});
   var c=cutoff(), carry={}, out=[];
   days.forEach(function(d){
-    var row={day:d, ts:d*86400, tvlUsd:0, parts:[]};
+    var row={day:d, ts:d*86400, tvlUsd:0, native:0, sp:null, spN:0, parts:[]};
     vs.forEach(function(v){
       var sn=perVault[v.address] && perVault[v.address][d];
       if(sn) carry[v.address]=sn;
-      var use=sn||carry[v.address];
-      if(!use) return;
-      row.tvlUsd+=use.tvlUsd||0;
-      row.parts.push({name:v.name, usd:use.tvlUsd||0, assets:use.assets,
-                      sym:v.symbol, sp:use.sharePrice, carried:!sn});
+      var u=sn||carry[v.address];
+      if(!u) return;
+      row.tvlUsd+=u.tvlUsd||0; row.native+=u.assets||0;
+      if(u.sharePrice!=null){ row.sp=(row.sp||0)+u.sharePrice; row.spN++; }
+      row.parts.push({name:v.name,usd:u.tvlUsd||0,carried:!sn});
     });
     if(row.ts>=c) out.push(row);
   });
-  // A few blank days before the first bar so the series does not start flush
-  // against the axis. These render as empty slots and are skipped by the
-  // tooltip and the range label.
-  if(out.length){
-    var PAD=4, first=out[0].day, lead=[];
-    for(var i=PAD;i>0;i--) lead.push({day:first-i, ts:(first-i)*86400, tvlUsd:null, parts:[], pad:true});
-    out=lead.concat(out);
-  }
   return out;
 }
 
-function drawBars(id, pts, pick, fmt){
-  var el=document.getElementById(id);
-  var vals=pts.map(pick).filter(function(v){return v!=null;});
-  if(!vals.length){ el.innerHTML=''; return false; }
-  var max=Math.max.apply(null,vals), min=Math.min.apply(null,vals);
-  // Zero-based unless the series barely moves, in which case zoom the band.
-  var base=(min>0 && (max-min)/max < 0.25) ? min-(max-min)*0.6 : 0;
-  var span=(max-base)||1;
-  el.innerHTML=pts.map(function(p,i){
-    var v=pick(p);
-    if(v==null) return '<div class="bar blank" data-i="'+i+'"></div>';
-    return '<div class="bar" data-i="'+i+'" style="height:'+Math.max(1.5,((v-base)/span)*100)+'%"></div>';
-  }).join('');
-  el._pts=pts; el._pick=pick; el._fmt=fmt||fUsd;
-  return true;
+function chartUnavailable(msg){
+  var l=document.getElementById('main-loading');
+  if(!l) return;
+  l.hidden=false;
+  l.innerHTML='<div class="loading-text" style="max-width:340px;text-align:center;line-height:1.6">'
+    +msg+'<br><span class="muted">The tables below are unaffected.</span></div>';
 }
 
-function attachTip(id){
-  var el=document.getElementById(id);
-  var tip=document.getElementById(id==='spBars'?'tip2':'tip');
-  el.addEventListener('mousemove', function(e){
-    var b=e.target.closest('.bar'); if(!b || !el._pts) { tip.style.display='none'; return; }
-    Array.prototype.forEach.call(el.querySelectorAll('.bar.hot'),function(x){x.classList.remove('hot');});
-    b.classList.add('hot');
-    var p=el._pts[+b.getAttribute('data-i')]; if(!p){ tip.style.display='none'; return; }
-    var v=el._pick(p);
-    var html='<div class="tip-d">'+dstr(p.ts)+'</div><div class="tip-v">'+(v!=null?el._fmt(v):'no data')+'</div>';
-    if(p.parts && p.parts.length>1){
-      html+='<div class="tip-rows">'+p.parts.map(function(x){
-        return '<div><span>'+x.name.replace('TESS ','').replace('Tesseract ','').slice(0,26)+'</span><b>'+fUsd(x.usd)
-          +(x.carried?' <i>carried</i>':'')+'</b></div>';
-      }).join('')+'</div>';
-    } else if(p.parts && p.parts.length===1 && p.parts[0].assets!=null){
-      html+='<div class="tip-rows"><div><span>'+fNum(p.parts[0].assets,4)+' '+(p.parts[0].sym||'')+'</span></div></div>';
-    }
-    tip.innerHTML=html;
-    tip.style.display='block';
-    var r=el.getBoundingClientRect(), br=b.getBoundingClientRect();
-    var left=br.left-r.left+br.width/2;
-    tip.style.left=Math.max(4,Math.min(left, r.width-tip.offsetWidth-4))+'px';
-  });
-  el.addEventListener('mouseleave', function(){
-    tip.style.display='none';
-    Array.prototype.forEach.call(el.querySelectorAll('.bar.hot'),function(x){x.classList.remove('hot');});
-  });
-}
-
-function renderCharts(){
-  var pts=seriesFor(), vs=selVaults();
-  var ok=drawBars('tvlBars', pts, function(p){ return p.tvlUsd||null; }, fUsd);
-  document.getElementById('tvlUnit').textContent = state.vault==='__all__'
-    ? '· USD, all Tesseract Base vaults combined' : '· USD';
-  var real=pts.filter(function(p){ return !p.pad; });
-  document.getElementById('tvlRange').textContent = ok && real.length
-    ? real.length+' days · '+dstr(real[0].ts)+' → '+dstr(real[real.length-1].ts)+' · latest '+fUsd(real[real.length-1].tvlUsd)
-    : 'no snapshots in this timeframe';
-
-  // Share price is per vault. Averaging it across vaults with different
-  // underlyings and start dates produces a number that means nothing, so a
-  // single vault gets a chart and the combined view gets a comparison table.
-  var one = vs.length===1 ? vs[0] : null;
-  var chartWrap=document.getElementById('spChart'), tableWrap=document.getElementById('spTable');
-  if(one){
-    chartWrap.style.display=''; tableWrap.innerHTML='';
-    var sp=pts.filter(function(p){ return !p.pad && p.parts.length && p.parts[0].sp!=null; });
-    var ok2=drawBars('spBars', sp, function(p){ return p.parts[0].sp; }, function(v){ return fNum(v,6); });
-    document.getElementById('spUnit').textContent='· '+one.symbol+' per share · '+one.name;
-    if(ok2){
-      var a=sp[0].parts[0].sp, b=sp[sp.length-1].parts[0].sp;
-      var days=Math.round((sp[sp.length-1].ts-sp[0].ts)/86400);
-      document.getElementById('spRange').textContent=fNum(a,6)+' → '+fNum(b,6)+' = '
-        +((b/a-1)*100).toFixed(2)+'% over '+days+' days (not annualised)';
-    } else document.getElementById('spRange').textContent='no share price in this timeframe';
-  } else {
-    chartWrap.style.display='none';
-    document.getElementById('spUnit').textContent='· per vault — share prices are not averaged';
-    document.getElementById('spRange').textContent='';
-    var rows=vs.map(function(v){
-      var snaps=(state.snaps[v.address]||[]).filter(function(x){ return x.sharePrice!=null && x.timestamp>=cutoff(); });
-      if(snaps.length<2) return null;
-      var f=snaps[0], l=snaps[snaps.length-1];
-      return { name:v.name, sym:v.symbol, first:f.sharePrice, last:l.sharePrice,
-               days:Math.round((l.timestamp-f.timestamp)/86400) };
-    }).filter(Boolean);
-    tableWrap.innerHTML = rows.length
-      ? '<div class="scroll"><table><thead><tr><th>Vault</th><th class="num">Start</th><th class="num">Latest</th>'
-        +'<th class="num">Change</th><th class="num">Period</th></tr></thead><tbody>'
-        + rows.map(function(r){
-            var ch=(r.last/r.first-1)*100;
-            return '<tr><td>'+r.name+'</td><td class="num">'+fNum(r.first,6)+'</td>'
-              +'<td class="num">'+fNum(r.last,6)+'</td>'
-              +'<td class="num" style="color:'+(ch>=0?'var(--green)':'var(--red)')+'">'+(ch>=0?'+':'')+ch.toFixed(2)+'%</td>'
-              +'<td class="num">'+r.days+'d</td></tr>';
-          }).join('')
-        +'</tbody></table></div><div class="muted" style="margin-top:9px">Each figure covers that vault\'s own period. Not annualised.</div>'
-      : '<div class="empty-state">No share price history in this timeframe.</div>';
+function renderMainChart(){
+  // A blocked or failed CDN must not leave the overlay spinning forever.
+  if(typeof Chart==='undefined'){
+    chartUnavailable(window.__chartLoadFailed
+      ? 'Chart library could not be loaded.'
+      : 'Chart library is still loading…');
+    return;
   }
+  var theme=getChartTheme();
+  if(state.mainChart) state.mainChart.destroy();     // destroy first, always
+
+  var pts=seriesFor(), vs=selVaults(), one=vs.length===1?vs[0]:null;
+  var nativeOk=!!one;                                  // mixed underlyings are not additive
+  var unit=nativeOk? state.unit : 'USD';
+  var labels=pts.map(function(p){ return dstr(p.ts); });
+  var tvlVals=pts.map(function(p){ return unit==='NATIVE'? p.native : p.tvlUsd; });
+  // Share price is per vault. Averaging across underlyings means nothing, so
+  // the line only exists when one vault is selected.
+  var spVals=one? pts.map(function(p){ return p.spN? p.sp/p.spN : null; }) : [];
+  var spAvailable=!!one;
+
+  var spBtn=document.querySelector('.legend-item[data-legend="sharePrice"]');
+  spBtn.disabled=!spAvailable;
+  spBtn.title=spAvailable? 'Hide share price' : 'Select a single vault — share prices are not averaged';
+  document.getElementById('spLegendLabel').textContent = spAvailable? 'Share price ('+one.symbol+')' : 'Share price (pick a vault)';
+  document.querySelectorAll('#unit-toggle .pill-btn').forEach(function(b){
+    var isNative=b.getAttribute('data-unit')==='NATIVE';
+    b.disabled = isNative && !nativeOk;
+    b.title = (isNative && !nativeOk)? 'Select a single vault — underlyings differ and are not additive' : '';
+    b.classList.toggle('is-active', b.getAttribute('data-unit')===unit);
+  });
+
+  var datasets=[{
+    label:'TVL', data:tvlVals, type:state.chartType,
+    backgroundColor:theme.accent, borderColor:theme.accent,
+    borderWidth:state.chartType==='line'?2:0,
+    borderRadius:{topLeft:5,topRight:5,bottomLeft:0,bottomRight:0}, borderSkipped:false,
+    barPercentage:0.92, categoryPercentage:0.96,
+    tension:0.25, pointRadius:0, pointHoverRadius:4, fill:false, spanGaps:true,
+    yAxisID:'y', order:2, hidden:!!state.hidden.tvl,
+  }];
+  if(spAvailable){
+    datasets.push({
+      label:'Share price', data:spVals, type:'line',
+      borderColor:theme.accent2, borderWidth:2, borderDash:[5,4],
+      tension:0.25, pointRadius:0, pointHoverRadius:4, fill:false, spanGaps:true,
+      yAxisID:'y1', order:1, hidden:!!state.hidden.sharePrice,
+    });
+  }
+
+  var spVisible = spAvailable && !state.hidden.sharePrice;
+  var tickFont={ family:'Poppins, sans-serif', size:11 };
+  state.mainChart=new Chart(document.getElementById('main-chart').getContext('2d'),{
+    data:{ labels:labels, datasets:datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:false,                              // charts respond, they do not perform
+      interaction:{ mode:'index', intersect:false },
+      layout:{ padding:{ top:6 } },
+      scales:{
+        x:{ grid:{display:false,drawBorder:false}, border:{display:false},
+            ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:8, autoSkip:true } },
+        // beginAtZero must be explicit: Chart.js defaults it true for bars and
+        // false for lines, so the same data would tell two different stories.
+        y:{ grid:{display:false,drawBorder:false}, border:{display:false},
+            beginAtZero:false, grace:'5%',
+            ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:6,
+              callback:function(v){ return unit==='NATIVE'? fNum(v,2) : fUsd(v); } } },
+        y1:{ position:'right', display:spVisible, grid:{display:false,drawBorder:false}, border:{display:false},
+            beginAtZero:false, suggestedMin:0.9, suggestedMax:1.1,
+            ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:8,
+              callback:function(v){ return fNum(v,4); } } },
+      },
+      plugins:{
+        legend:{ display:false },                   // replaced by real DOM buttons
+        tooltip:{
+          backgroundColor:theme.ink, titleColor:theme.card, bodyColor:theme.card,
+          cornerRadius:8, padding:10, displayColors:datasets.length>1,
+          titleFont:{family:'Poppins, sans-serif',size:11},
+          bodyFont:{family:'JetBrains Mono, monospace',size:12},
+          callbacks:{
+            label:function(ctx){
+              if(ctx.dataset.yAxisID==='y1') return ' Share price ' + fNum(ctx.parsed.y,6);
+              return ' TVL ' + (unit==='NATIVE'? fNum(ctx.parsed.y,4)+' '+(one?one.symbol:'') : fUsd(ctx.parsed.y));
+            }
+          }
+        }
+      }
+    }
+  });
+
+  var l=document.getElementById('main-loading'); if(l) l.hidden=true;
+
+  var last=pts[pts.length-1];
+  document.getElementById('chartRange').textContent = pts.length
+    ? pts.length+' days · '+dstr(pts[0].ts)+' → '+dstr(last.ts)+' · latest '
+      +(unit==='NATIVE'? fNum(last.native,4)+' '+(one?one.symbol:'') : fUsd(last.tvlUsd))
+    : 'no snapshots in this timeframe';
+}
+
+/* ---------- exports ---------- */
+function csvCell(v){ var s=String(v==null?'':v); return /[",\n]/.test(s)? '"'+s.replace(/"/g,'""')+'"' : s; }
+function downloadCsv(filename, rows){
+  if(!rows||!rows.length) return;
+  var blob=new Blob([rows.map(function(r){return r.map(csvCell).join(',');}).join('\n')],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },0);
+}
+// CSV exports the FULL series, not the visible slice.
+function exportCsv(){
+  var saved=state.period; state.period=0;
+  var pts=seriesFor(); state.period=saved;
+  var one=selVaults().length===1?selVaults()[0]:null;
+  var rows=[['date','tvl_usd', one? ('tvl_'+one.symbol.toLowerCase()):'tvl_native_mixed', 'share_price']];
+  pts.forEach(function(p){ rows.push([dstr(p.ts), p.tvlUsd, p.native, p.spN? (p.sp/p.spN):'']); });
+  downloadCsv('tesseract-base-tvl.csv', rows);
+}
+
+// PNG exports exactly what is on screen, composed at a fixed 1600x1200.
+function snapshotChartTo43Png(){
+  var chart=state.mainChart; if(!chart||!chart.canvas) return;
+  var W=1600,H=1200, theme=getChartTheme();
+  var out=document.createElement('canvas'); out.width=W; out.height=H;
+  var c=out.getContext('2d');
+  c.fillStyle=theme.card; c.fillRect(0,0,W,H);
+
+  var one=selVaults().length===1?selVaults()[0]:null;
+  var title = one? one.name : 'Tesseract on Base — TVL';
+  var sub = (state.period? ('Last '+state.period+' days') : 'All time');
+  var stamp = new Date().toISOString().slice(0,10);
+  c.fillStyle=theme.ink; c.font='600 38px Poppins, system-ui, sans-serif'; c.textBaseline='top';
+  c.fillText(title,56,50);
+  c.fillStyle=theme.ink3; c.font='500 18px Poppins, system-ui, sans-serif';
+  c.fillText(sub+' · '+stamp,56,100);
+
+  var padX=56,padTop=160,padBottom=70;
+  var plotW=W-padX*2, plotH=H-padTop-padBottom;
+
+  // CSS backgrounds are not canvas pixels — the dot grid is redrawn by hand.
+  c.fillStyle=theme.ink3; c.globalAlpha=0.16;
+  var pitch=22;
+  for(var y=padTop+pitch/2;y<padTop+plotH;y+=pitch){
+    for(var x=padX+pitch/2;x<padX+plotW;x+=pitch){ c.beginPath(); c.arc(x,y,1.2,0,Math.PI*2); c.fill(); }
+  }
+  c.globalAlpha=1;
+
+  // Centre-fit, never stretch: source ratio depends on the active preset.
+  var src=chart.canvas, srcRatio=src.width/src.height, dstRatio=plotW/plotH, dw,dh;
+  if(srcRatio>dstRatio){ dw=plotW; dh=plotW/srcRatio; } else { dh=plotH; dw=plotH*srcRatio; }
+  c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+  c.drawImage(src, padX+(plotW-dw)/2, padTop+(plotH-dh)/2, dw, dh);
+
+  c.fillStyle=theme.ink3; c.font='400 17px Poppins, system-ui, sans-serif';
+  c.fillText('fusionecosystem.xyz/tesseract',56,H-46);
+
+  var done=function(blob){
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download='tesseract-base-tvl-'+stamp+'.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); },0);
+  };
+  if(out.toBlob) out.toBlob(done,'image/png');
+  else { var a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download='tesseract-base-tvl-'+stamp+'.png'; a.click(); }
+}
+
+/* ---------- aspect presets ---------- */
+function applyChartLayout(){
+  document.querySelector('.app-shell').setAttribute('data-layout', state.chartLayout);
+  try{ localStorage.setItem(LAYOUT_KEY, state.chartLayout); }catch(e){}
+  requestAnimationFrame(function(){ if(state.mainChart) state.mainChart.resize(); });
+}
+
+/* ---------- tables ---------- */
+function renderStats(){
+  var vs=selVaults(), ev=selEvents();
+  var tvl=vs.reduce(function(s,v){return s+(v.tvl||0);},0);
+  var w={}; ev.forEach(function(e){ var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1; });
+  var dep=ev.filter(function(e){return e.type==='deposit';}), wd=ev.filter(function(e){return e.type==='withdraw';});
+  var net=dep.reduce(function(s,e){return s+(e.usdValue||0);},0)-wd.reduce(function(s,e){return s+(e.usdValue||0);},0);
+  var active=vs.filter(function(v){return (v.tvl||0)>0;}).length;
+  document.getElementById('stats').innerHTML=[
+    ['Total TVL',fUsd(tvl)],['Vaults',active+' active · '+(vs.length-active)+' empty'],
+    ['Wallets',Object.keys(w).length],['Deposits',dep.length],['Withdrawals',wd.length],
+    ['Net flow',(net>=0?'+':'')+fUsd(net)],
+  ].map(function(p){return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>';}).join('');
+}
+
+function renderSpTable(){
+  var el=document.getElementById('spTable');
+  var rows=state.vaults.map(function(v){
+    var s=(state.snaps[v.address]||[]).filter(function(x){ return x.sharePrice!=null && x.timestamp>=cutoff(); });
+    if(s.length<2) return null;
+    var f=s[0], l=s[s.length-1];
+    return {name:v.name,first:f.sharePrice,last:l.sharePrice,days:Math.round((l.timestamp-f.timestamp)/86400)};
+  }).filter(Boolean);
+  el.innerHTML = rows.length
+    ? '<div class="scroll"><table><thead><tr><th>Vault</th><th class="num">Start</th><th class="num">Latest</th><th class="num">Change</th><th class="num">Period</th></tr></thead><tbody>'
+      + rows.map(function(r){ var ch=(r.last/r.first-1)*100;
+          return '<tr><td>'+r.name+'</td><td class="num">'+fNum(r.first,6)+'</td><td class="num">'+fNum(r.last,6)+'</td>'
+            +'<td class="num" style="color:'+(ch>=0?'var(--green)':'var(--red)')+'">'+(ch>=0?'+':'')+ch.toFixed(2)+'%</td>'
+            +'<td class="num">'+r.days+'d</td></tr>'; }).join('')
+      +'</tbody></table></div><div class="muted" style="margin-top:9px">Each figure covers that vault\'s own period. Not annualised.</div>'
+    : '<div class="empty-state">No share price history in this timeframe.</div>';
 }
 
 function renderVaults(){
-  var vs=state.vaults.slice().sort(function(a,b){ return (b.tvl||0)-(a.tvl||0); });
+  var vs=state.vaults.slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);});
   document.getElementById('vaultCount').textContent='· '+vs.length+' on Base';
   var c=cutoff();
   document.getElementById('vaultBody').innerHTML=vs.map(function(v){
-    var ev=state.events.filter(function(e){ return (e.vault||'').toLowerCase()===v.address && (e.timestamp||0)>=c; });
-    var w={}; ev.forEach(function(e){ var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1; });
-    var snaps=state.snaps[v.address]||[];
-    var last=snaps.length? snaps[snaps.length-1]:null;
-    var empty=(v.tvl||0)===0;
+    var ev=state.events.filter(function(e){return (e.vault||'').toLowerCase()===v.address && (e.timestamp||0)>=c;});
+    var w={}; ev.forEach(function(e){var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1;});
+    var snaps=state.snaps[v.address]||[], last=snaps.length?snaps[snaps.length-1]:null;
     return '<tr><td>'+v.name+'</td>'
       +'<td><a class="addr" href="https://basescan.org/address/'+v.address+'" target="_blank" rel="noopener">'+shortAddr(v.address)+'</a></td>'
-      +'<td class="num">'+fUsd(v.tvl)+'</td>'
-      +'<td class="num">'+(v.apy!=null? v.apy.toFixed(2)+'%':'—')+'</td>'
-      +'<td class="num">'+(last&&last.sharePrice!=null? fNum(last.sharePrice,6):'—')+'</td>'
-      +'<td class="num">'+Object.keys(w).length+'</td>'
-      +'<td class="num">'+ev.length+'</td>'
-      +'<td>'+(empty?'<span class="tag empty">deployed · empty</span>':'active')+'</td></tr>';
+      +'<td class="num">'+fUsd(v.tvl)+'</td><td class="num">'+(v.apy!=null?v.apy.toFixed(2)+'%':'—')+'</td>'
+      +'<td class="num">'+(last&&last.sharePrice!=null?fNum(last.sharePrice,6):'—')+'</td>'
+      +'<td class="num">'+Object.keys(w).length+'</td><td class="num">'+ev.length+'</td>'
+      +'<td>'+((v.tvl||0)===0?'<span class="tag empty">deployed · empty</span>':'active')+'</td></tr>';
   }).join('');
 }
 
@@ -340,152 +543,104 @@ function renderWallets(){
   ev.forEach(function(e){
     var w=(e.owner||e.sender||'').toLowerCase(); if(!w) return;
     var b=by[w]||(by[w]={dep:0,wd:0,depUsd:0,wdUsd:0,n:0,last:0,vaults:{}});
-    if(e.type==='deposit'){ b.dep++; b.depUsd+=e.usdValue||0; } else { b.wd++; b.wdUsd+=e.usdValue||0; }
+    if(e.type==='deposit'){b.dep++;b.depUsd+=e.usdValue||0;} else {b.wd++;b.wdUsd+=e.usdValue||0;}
     b.n++; b.last=Math.max(b.last,e.timestamp||0);
     var vn=(state.vaults.find(function(v){return v.address===(e.vault||'').toLowerCase();})||{}).name;
     if(vn) b.vaults[vn]=1;
   });
-  var rows=Object.entries(by).sort(function(a,b){ return (b[1].depUsd-b[1].wdUsd)-(a[1].depUsd-a[1].wdUsd); });
+  var rows=Object.entries(by).sort(function(a,b){return (b[1].depUsd-b[1].wdUsd)-(a[1].depUsd-a[1].wdUsd);});
   document.getElementById('walletCount').textContent='· '+rows.length+' in timeframe';
   document.getElementById('walletBody').innerHTML = rows.length? rows.map(function(r){
     var w=r[0],b=r[1];
     return '<tr><td><a class="addr" href="https://basescan.org/address/'+w+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
-      +'<td class="num">'+b.dep+'</td><td class="num">'+b.wd+'</td>'
-      +'<td class="num">'+fUsd(b.depUsd-b.wdUsd)+'</td><td class="num">'+b.n+'</td>'
-      +'<td>'+dstr(b.last)+'</td><td class="muted">'+Object.keys(b.vaults).join(', ')+'</td></tr>';
+      +'<td class="num">'+b.dep+'</td><td class="num">'+b.wd+'</td><td class="num">'+fUsd(b.depUsd-b.wdUsd)+'</td>'
+      +'<td class="num">'+b.n+'</td><td>'+dstr(b.last)+'</td><td class="muted">'+Object.keys(b.vaults).join(', ')+'</td></tr>';
   }).join('') : '<tr><td colspan="7" class="empty-state">No wallet activity in this timeframe.</td></tr>';
 }
 
 function renderFlows(){
-  var ev=selEvents().slice().sort(function(a,b){ return (b.timestamp||0)-(a.timestamp||0); });
+  var ev=selEvents().slice().sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0);});
   document.getElementById('flowCount').textContent='· '+ev.length+' in timeframe';
-  document.getElementById('flowBody').innerHTML = ev.length? ev.slice(0,300).map(function(e){
+  var shown=ev.slice(0,state.flowLimit);
+  document.getElementById('flowBody').innerHTML = shown.length? shown.map(function(e){
     var v=state.vaults.find(function(x){return x.address===(e.vault||'').toLowerCase();})||{};
     var w=(e.owner||e.sender||'').toLowerCase();
     return '<tr><td>'+dstr(e.timestamp)+'</td>'
       +'<td><span class="tag '+(e.type==='deposit'?'dep">DEPOSIT':'wd">WITHDRAW')+'</span></td>'
-      +'<td class="num">'+fNum(e.assets,4)+' '+(e.symbol||v.token||'')+'</td>'
+      +'<td class="num">'+fNum(e.assets,4)+' '+(e.symbol||v.symbol||'')+'</td>'
       +'<td class="num">'+fUsd(e.usdValue)+'</td>'
       +'<td><a class="addr" href="https://basescan.org/address/'+w+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
       +'<td>'+(v.name||'—')+'</td></tr>';
   }).join('') : '<tr><td colspan="6" class="empty-state">No flows in this timeframe.</td></tr>';
+  // The table was 2,900px tall unbounded — page height should not scale with row count.
+  document.getElementById('flowMore').innerHTML = ev.length>state.flowLimit
+    ? '<button type="button" id="flowMoreBtn">Show '+Math.min(FLOW_PAGE,ev.length-state.flowLimit)+' more of '+ev.length+'</button>'
+    : (ev.length>FLOW_PAGE? '<button type="button" id="flowLessBtn">Collapse</button>' : '');
+  var mb=document.getElementById('flowMoreBtn');
+  if(mb) mb.addEventListener('click',function(){ state.flowLimit+=FLOW_PAGE; renderFlows(); });
+  var lb=document.getElementById('flowLessBtn');
+  if(lb) lb.addEventListener('click',function(){ state.flowLimit=FLOW_PAGE; renderFlows(); });
 }
 
-// ---- PNG export -------------------------------------------------------
-// The chart is plain DOM, so the figure is redrawn onto a canvas rather than
-// screenshotted. Keeps the export crisp at any aspect ratio.
-var RATIOS = { '16:9':[1600,900], '1:1':[1200,1200], '4:3':[1600,1200], '4:5':[1200,1500], '9:16':[900,1600] };
+function renderAll(){ renderStats(); renderMainChart(); renderSpTable(); renderVaults(); renderWallets(); renderFlows(); }
 
-function exportChart(label){
-  var dim=RATIOS[label]; if(!dim) return;
-  var W=dim[0], H=dim[1];
-  var pts=seriesFor(); var real=pts.filter(function(p){return !p.pad;});
-  if(!real.length) return;
-
-  var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-  var g=cv.getContext('2d');
-  var scale=Math.min(W,H)/1200;
-  var pad={l:Math.round(150*scale), r:Math.round(52*scale), t:Math.round(150*scale), b:Math.round(120*scale)};
-
-  g.fillStyle='#FFFFFF'; g.fillRect(0,0,W,H);
-
-  var vs=selVaults();
-  var title = state.vault==='__all__' ? 'Tesseract on Base — TVL' : vs[0].name;
-  var tfLabel = state.days? ('Last '+state.days+' days') : 'All time';
-  g.fillStyle='#000'; g.font='600 '+Math.round(46*scale)+'px Poppins, sans-serif';
-  g.fillText(title, pad.l, Math.round(64*scale));
-  g.fillStyle='#70747A'; g.font='400 '+Math.round(28*scale)+'px Poppins, sans-serif';
-  g.fillText(tfLabel+'  ·  '+dstr(real[0].ts)+' → '+dstr(real[real.length-1].ts), pad.l, Math.round(108*scale));
-
-  var plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
-  var vals=real.map(function(p){return p.tvlUsd||0;});
-  var max=Math.max.apply(null,vals)||1;
-  var niceMax=Math.pow(10,Math.floor(Math.log10(max)));
-  niceMax=Math.ceil(max/niceMax*2)/2*niceMax;
-
-  // gridlines + y labels
-  g.strokeStyle='#E5E5E5'; g.lineWidth=Math.max(1,scale);
-  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(24*scale)+'px JetBrains Mono, monospace';
-  g.textAlign='right';
-  for(var i=0;i<=4;i++){
-    var frac=i/4, y=pad.t+plotH-frac*plotH;
-    g.beginPath(); g.setLineDash([Math.round(6*scale),Math.round(6*scale)]);
-    g.moveTo(pad.l,y); g.lineTo(pad.l+plotW,y); g.stroke(); g.setLineDash([]);
-    g.fillText(fUsd(niceMax*frac), pad.l-Math.round(16*scale), y+Math.round(9*scale));
-  }
-  g.textAlign='left';
-
-  // bars (padding slots included so spacing matches the page)
-  var n=pts.length, slot=plotW/n, bw=Math.max(1,slot*0.78);
-  pts.forEach(function(p,i){
-    if(p.tvlUsd==null) return;
-    var h=Math.max(2,(p.tvlUsd/niceMax)*plotH);
-    var x=pad.l+i*slot+(slot-bw)/2, y=pad.t+plotH-h;
-    g.fillStyle='#8429FF';
-    var r=Math.min(bw/2,Math.round(6*scale));
-    g.beginPath();
-    if(g.roundRect) g.roundRect(x,y,bw,h,[r,r,0,0]); else g.rect(x,y,bw,h);
-    g.fill();
+/* ---------- controls: every one mutates state, then re-renders ---------- */
+function wirePills(id, attr, apply){
+  document.getElementById(id).addEventListener('click', function(e){
+    var b=e.target.closest('.pill-btn'); if(!b || b.disabled) return;
+    this.querySelectorAll('.pill-btn').forEach(function(x){ x.classList.remove('is-active'); });
+    b.classList.add('is-active');
+    apply(b.getAttribute(attr));
   });
-
-  // axis line + x labels
-  g.strokeStyle='#E5E5E5'; g.beginPath();
-  g.moveTo(pad.l,pad.t+plotH); g.lineTo(pad.l+plotW,pad.t+plotH); g.stroke();
-  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(24*scale)+'px Poppins, sans-serif';
-  var firstReal=pts.findIndex(function(p){return !p.pad;});
-  [[firstReal,'left'],[Math.floor((firstReal+n-1)/2),'center'],[n-1,'right']].forEach(function(t){
-    var p=pts[t[0]]; if(!p) return;
-    g.textAlign=t[1];
-    var x=pad.l+t[0]*slot+slot/2;
-    g.fillText(dstr(p.ts), x, pad.t+plotH+Math.round(46*scale));
-  });
-  g.textAlign='left';
-
-  // footer
-  g.fillStyle='#9BA3AF'; g.font='400 '+Math.round(22*scale)+'px Poppins, sans-serif';
-  g.fillText('fusionecosystem.xyz/tesseract  ·  latest '+fUsd(real[real.length-1].tvlUsd), pad.l, H-Math.round(38*scale));
-
-  cv.toBlob(function(blob){
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='tesseract-base-tvl-'+label.replace(':','x')+'-'+dstr(real[real.length-1].ts)+'.png';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
-  },'image/png');
 }
+wirePills('type-toggle','data-type', function(v){ state.chartType=v; renderMainChart(); });
+wirePills('unit-toggle','data-unit', function(v){ state.unit=v; renderMainChart(); });
+wirePills('period-toggle','data-period', function(v){ state.period=Number(v); state.flowLimit=FLOW_PAGE; renderAll(); });
 
-function renderAll(){ renderStats(); renderCharts(); attachTip('tvlBars'); attachTip('spBars'); renderVaults(); renderWallets(); renderFlows(); }
-
-document.getElementById('segTF').addEventListener('click', function(e){
-  var b=e.target.closest('button'); if(!b) return;
-  Array.prototype.forEach.call(this.querySelectorAll('button'),function(x){x.classList.remove('on');});
-  b.classList.add('on'); state.days=+b.getAttribute('data-d'); renderAll();
+document.querySelectorAll('.chart-legend').forEach(function(group){
+  group.querySelectorAll('.legend-item').forEach(function(item){
+    var key=item.getAttribute('data-legend');
+    item.addEventListener('click', function(){
+      if(item.disabled) return;
+      state.hidden[key]=!state.hidden[key];
+      item.setAttribute('aria-pressed', state.hidden[key]?'false':'true');
+      renderMainChart();
+    });
+  });
 });
-document.getElementById('vaultSel').addEventListener('change', function(){ state.vault=this.value; renderAll(); });
-document.getElementById('exports').addEventListener('click', function(e){
-  var b=e.target.closest('button'); if(b) exportChart(b.getAttribute('data-r'));
+
+document.getElementById('snapshot-png').addEventListener('click', snapshotChartTo43Png);
+document.getElementById('download-csv').addEventListener('click', exportCsv);
+document.getElementById('layoutSel').addEventListener('change', function(){
+  state.chartLayout=VALID_LAYOUTS.indexOf(this.value)>=0? this.value : 'wide';
+  applyChartLayout();
+});
+document.getElementById('vaultSel').addEventListener('change', function(){
+  state.vault=this.value; state.flowLimit=FLOW_PAGE; renderAll();
 });
 
 (function load(){
-  function get(n){ return fetch('../'+n).then(function(r){ return r.ok?r.json():null; }).catch(function(){return null;}); }
-  Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'), get('activity-events.json')]).then(function(res){
-    var iv=res[0], tv=res[1], act=res[2];
-    if(!iv){ document.getElementById('stats').innerHTML='<div class="stat"><div class="k">Error</div><div class="v" style="font-size:.9rem">Could not load vault data</div></div>'; return; }
+  try{
+    var saved=localStorage.getItem(LAYOUT_KEY);
+    if(saved && VALID_LAYOUTS.indexOf(saved)>=0){ state.chartLayout=saved; document.getElementById('layoutSel').value=saved; }
+  }catch(e){}
+  applyChartLayout();
 
-    // Tesseract vaults on Base. Keyed on address — two vaults share a name.
+  function get(n){ return fetch('../'+n).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}); }
+  Promise.all([get('ipor-vaults.json'),get('tvl-snapshots.json'),get('activity-events.json')]).then(function(res){
+    var iv=res[0], tv=res[1], act=res[2];
+    if(!iv){ document.getElementById('main-loading').hidden=true;
+      document.getElementById('stats').innerHTML='<div class="stat"><div class="k">Error</div><div class="v" style="font-size:.9rem">Could not load vault data</div></div>'; return; }
+
     state.vaults=(iv.vaults||[]).filter(function(v){ return v.chain==='base' && /tess/i.test(v.name||''); })
-      .map(function(v){ return { address:(v.address||'').toLowerCase(), name:v.name, token:v.token,
-        tvl:v.tvl, apy:v.apy, symbol:v.token }; });
+      .map(function(v){ return {address:(v.address||'').toLowerCase(),name:v.name,tvl:v.tvl,apy:v.apy,symbol:v.token}; });
 
     if(tv && tv.vaults){
       Object.keys(tv.vaults).forEach(function(k){
         var a=k.toLowerCase();
-        if(state.vaults.some(function(v){return v.address===a;})){
-          var e=tv.vaults[k];
-          state.snaps[a]=(e.snapshots||[]).slice().sort(function(x,y){return x.timestamp-y.timestamp;});
-          var vv=state.vaults.find(function(v){return v.address===a;});
-          if(e.symbol) vv.symbol=e.symbol;
-        }
+        var vv=state.vaults.find(function(v){return v.address===a;});
+        if(vv){ state.snaps[a]=(tv.vaults[k].snapshots||[]).slice().sort(function(x,y){return x.timestamp-y.timestamp;});
+          if(tv.vaults[k].symbol) vv.symbol=tv.vaults[k].symbol; }
       });
     }
     if(act){
@@ -499,8 +654,7 @@ document.getElementById('exports').addEventListener('click', function(e){
       + state.vaults.slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);}).map(function(v){
           return '<option value="'+v.address+'">'+v.name+' · '+shortAddr(v.address)+'</option>'; }).join('');
     document.getElementById('updated').textContent = state.updatedAt
-      ? 'Activity data updated '+new Date(state.updatedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
-      : '';
+      ? 'Activity data updated '+new Date(state.updatedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     renderAll();
   });
 })();
