@@ -463,6 +463,7 @@
           <button data-total-range="30">30d</button>
           <button data-total-range="90">90d</button>
           <button data-total-range="180">180d</button>
+          <button data-total-range="365">1y</button>
           <button data-total-range="all" class="active">All</button>
         </div>
         <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
@@ -480,6 +481,7 @@
           <button data-range="30">30d</button>
           <button data-range="90">90d</button>
           <button data-range="180" class="active">180d</button>
+          <button data-range="365">1y</button>
           <button data-range="all">All</button>
         </div>
         <div class="group">
@@ -518,6 +520,7 @@
       <div class="network-panel" id="networkPanel" style="display:none">
         <div class="network-panel-header">
           <span>Networks</span>
+          <button class="reset-styles" id="toggleAllNetworks" type="button">Unselect all</button>
           <button class="reset-styles" id="resetStyles" type="button">Reset colors &amp; widths</button>
         </div>
         <div class="network-grid" id="networkGrid"></div>
@@ -611,7 +614,13 @@
     function vaultDailySnapshots(snap) {
       const pts = (snap.snapshots || [])
         .filter(s => typeof s.tvlUsd === 'number' && s.tvlUsd >= 0 && s.tvlUsd < HARD_CAP)
-        .map(s => ({ day: s.day != null ? s.day : Math.floor(s.timestamp / DAY_SEC), tvl: s.tvlUsd }));
+        .map(s => ({ day: s.day != null ? s.day : Math.floor(s.timestamp / DAY_SEC), tvl: s.tvlUsd }))
+        // A handful of snapshots carry day 0 because their block timestamp never
+        // resolved. Forward-filling from 1970 stretched the axis across five
+        // decades, and bucketing smeared those points into a phantom bar around
+        // Jan 1971. Fusion did not exist before 2021, so anything older is bad
+        // data, not history.
+        .filter(s => s.day >= MIN_VALID_DAY);
       if (!pts.length) return null;
       const cap = Math.max(median(pts.map(p => p.tvl).filter(x => x > 0)) * 50, 1e6);
       const kept = pts.filter(p => p.tvl <= cap).sort((a, b) => a.day - b.day);
@@ -1091,6 +1100,8 @@
       URL.revokeObjectURL(url);
     }
 
+    // Days-since-epoch floor for a believable data point (2021-01-01).
+    const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
     // Aspect preset. Validated on read so a stale or hand-edited value cannot
     // put the page into an undefined layout.
     const LAYOUT_KEY = 'fusionstats_tvl_layout';
@@ -1180,6 +1191,16 @@
       Plotly.restyle('tvlChart', patch, [idx]);
     }
 
+    // The toggle-all button says what it will do next, so it has to follow
+    // individual checkbox changes too.
+    function syncToggleAllLabel() {
+      const btn = document.getElementById('toggleAllNetworks');
+      if (!btn || !state) return;
+      const chains = chartChains(state);
+      const anyVisible = chains.some(c => chainConfig[c] && chainConfig[c].visible);
+      btn.textContent = anyVisible ? 'Unselect all' : 'Select all';
+    }
+
     function renderNetworkPanel() {
       const chains = chartChains(state);
       const panel = document.getElementById('networkPanel');
@@ -1205,6 +1226,8 @@
           </div>`;
       }).join('');
 
+      syncToggleAllLabel();
+
       grid.querySelectorAll('.network-row').forEach(row => {
         const chain = row.dataset.chain;
         const cbx = row.querySelector('[data-role="visible"]');
@@ -1215,6 +1238,7 @@
         cbx.addEventListener('change', () => {
           chainConfig[chain].visible = cbx.checked;
           row.classList.toggle('hidden', !cbx.checked);
+          syncToggleAllLabel();
           // Visibility change → re-autorange so the remaining lines fill the chart.
           redraw({ resetAxes: true });
         });
@@ -1278,6 +1302,17 @@
       });
       wire('#networkToolbar .group:nth-child(5)', (d) => curStack = d.stack);
       document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
+
+      // One click to clear every network, and one to bring them all back.
+      // Unchecking 15+ boxes by hand to isolate one chain was the only way.
+      document.getElementById('toggleAllNetworks').addEventListener('click', function () {
+        const chains = chartChains(state);
+        const anyVisible = chains.some(c => chainConfig[c] && chainConfig[c].visible);
+        chains.forEach(c => { if (chainConfig[c]) chainConfig[c].visible = !anyVisible; });
+        this.textContent = anyVisible ? 'Select all' : 'Unselect all';
+        renderNetworkPanel();
+        redraw({ resetAxes: true });
+      });
 
       // Total chart toolbar (scoped to #totalToolbar so it doesn't collide
       // with the by-network selectors above).
