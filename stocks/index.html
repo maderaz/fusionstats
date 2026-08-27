@@ -90,6 +90,11 @@
     .loading { color:var(--text-secondary); font-size:0.8rem; padding:2rem; text-align:center; }
     .more { text-align:center; padding:0.75rem 0; }
     .chart-note { font-size:0.7rem; color:var(--text-secondary); padding:0.55rem 0 0.15rem; }
+    .flip { display:inline-flex; border:1px solid var(--stroke); border-radius:999px; overflow:hidden; }
+    .flip button { font-family:inherit; font-size:0.68rem; font-weight:500; padding:0.3rem 0.8rem;
+      border:0; background:var(--surface); color:var(--text-body); cursor:pointer; }
+    .flip button.active { background:var(--accent); color:#fff; }
+    .holders-note { font-size:0.7rem; color:var(--text-secondary); padding:0.5rem 0 0; }
     .caveat { font-size:0.72rem; color:var(--text-secondary); margin:0.5rem 0 1.5rem; line-height:1.55; }
   </style>
 </head>
@@ -170,13 +175,19 @@
 
     <!-- ---------- LIVE FEED ---------- -->
     <div class="chart-card">
-      <div class="chart-section-title">Deposits &amp; exits</div>
+      <div class="chart-section-title" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <span id="feedTitle">Deposits &amp; exits</span>
+        <span class="flip" id="viewFlip" role="tablist" aria-label="Table view">
+          <button data-view="flows" class="active" type="button">Flows</button>
+          <button data-view="holders" type="button">Holders</button>
+        </span>
+      </div>
       <div class="chart-toolbar" id="feedToolbar">
         <div class="group">
           <span class="group-label">Vault</span>
           <select id="feedVault"><option value="__all__">All stock vaults</option></select>
         </div>
-        <div class="group">
+        <div class="group" id="feedTypeGroup">
           <span class="group-label">Type</span>
           <button data-feed-type="" class="active">All</button>
           <button data-feed-type="deposit">Deposits</button>
@@ -184,16 +195,22 @@
         </div>
         <span class="chart-hint" id="feedCount"></span>
       </div>
-      <div class="scroll">
-        <table class="data-table">
-          <thead><tr>
-            <th>When</th><th>Type</th><th class="num">Amount</th><th class="num">USD</th>
-            <th>Vault</th><th>Wallet</th>
-          </tr></thead>
-          <tbody id="feedBody"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
-        </table>
+      <div id="flowsView">
+        <div class="scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th>When</th><th>Type</th><th class="num">Amount</th><th class="num">USD</th>
+              <th>Vault</th><th>Wallet</th>
+            </tr></thead>
+            <tbody id="feedBody"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="more" id="feedMore"></div>
       </div>
-      <div class="more" id="feedMore"></div>
+      <div id="holdersView" style="display:none">
+        <div class="scroll"><table class="data-table" id="holdersTable"></table></div>
+        <div class="holders-note" id="holdersNote"></div>
+      </div>
     </div>
 
     <p class="caveat">
@@ -243,6 +260,18 @@
       return Math.floor(s / 86400) + 'd ago';
     }
     const cutoffFor = (range) => range === 'all' ? 0 : Date.now() / 1000 - parseInt(range, 10) * DAY_SEC;
+    const LEAD_DAYS = 14;
+    // Blank days before the first real point so a series does not start hard
+    // against the axis. Values are null, so the axis extends but nothing draws.
+    // Both charts use this: without it the TVL series (31 days of snapshots)
+    // looked padded while the wallet series (3 days of events) began abruptly.
+    function withLead(pts, key) {
+      if (!pts.length) return pts;
+      const first = pts[0].day;
+      const lead = [];
+      for (let i = LEAD_DAYS; i > 0; i--) { const r = { day: first - i, pad: true }; r[key] = null; lead.push(r); }
+      return lead.concat(pts);
+    }
     const vaultsFor = (sel) => sel === '__all__' ? S.vaults : S.vaults.filter(v => v.address === sel);
 
     // ---- Plotly layout shared by both charts: transparent canvas so the CSS
@@ -332,14 +361,17 @@
     }
 
     function renderTvl() {
-      const pts = tvlSeries(S.tvlVault, S.tvlRange);
+      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl');
       const el = document.getElementById('tvlPlot');
       if (!pts.length) { el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
+      // Plotly renders alongside existing children rather than replacing them,
+      // so the placeholder stayed painted over the chart until it was removed.
+      const ph = el.querySelector('.loading'); if (ph) ph.remove();
       const trace = S.tvlType === 'bar'
-        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.tvl),
+        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.tvl),
             marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } },
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.tvl),
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.tvl),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' };
@@ -347,13 +379,14 @@
 
       const chosen = vaultsFor(S.tvlVault);
       const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
-      const lastDay = pts[pts.length - 1].day;
-      const lastVal = pts[pts.length - 1].tvl;
+      const real = pts.filter(p => !p.pad);
+      const lastDay = real[real.length - 1].day;
+      const lastVal = real[real.length - 1].tvl;
       const note = document.getElementById('tvlNote');
       // Snapshots are taken once a day; the headline figure is live. On a
       // fast-growing vault those differ by real growth, not by an error.
       const drift = liveTvl > 0 && lastVal > 0 ? Math.abs(liveTvl - lastVal) / liveTvl : 0;
-      note.textContent = pts.length + ' daily points · series ends '
+      note.textContent = real.length + ' daily points · series ends '
         + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fUsd(lastVal)
         + (drift > 0.05
             ? ' · live TVL is ' + fUsd(liveTvl) + ' — the series is built from daily snapshots, the headline from the live vault API'
@@ -361,14 +394,15 @@
     }
 
     function renderWallets() {
-      const pts = walletSeries(S.walVault, S.walRange, S.walMode);
+      const pts = withLead(walletSeries(S.walVault, S.walRange, S.walMode), 'v');
       const el = document.getElementById('walPlot');
       if (!pts.length) { el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
+      const ph2 = el.querySelector('.loading'); if (ph2) ph2.remove();
       const trace = S.walMode === 'active'
-        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.v),
+        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.v),
             marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets<extra></extra>' }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.v),
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.v),
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
       Plotly.react('walPlot', [trace], baseLayout(',d'), CONFIG);
@@ -422,6 +456,83 @@
       if (mb) mb.onclick = () => { S.feedLimit += FEED_PAGE; renderFeed(); };
       const lb = document.getElementById('feedLessBtn');
       if (lb) lb.onclick = () => { S.feedLimit = FEED_PAGE; renderFeed(); };
+    }
+
+    // ---- wallet holdings, per ticker ----
+    // Net position = deposits minus withdrawals in vault units, valued at the
+    // latest price we have for that vault. This is derived from flows, not read
+    // from chain balances, so it does not capture yield accrued inside the
+    // vault or shares moved between wallets — the reconciliation line under the
+    // table reports the resulting gap against live TVL.
+    function latestPrices() {
+      const price = {};
+      S.vaults.forEach(v => {
+        const snaps = (S.snaps[v.address] || []).filter(x => x.priceUsd > 0);
+        if (snaps.length) price[v.address] = snaps[snaps.length - 1].priceUsd;
+      });
+      S.events.slice().sort((a, b) => a.timestamp - b.timestamp).forEach(e => {
+        const a = (e.vault || '').toLowerCase();
+        if (!price[a] && e.assets > 0 && e.usdValue > 0) price[a] = e.usdValue / e.assets;
+      });
+      return price;
+    }
+
+    function holdingsRows() {
+      const price = latestPrices();
+      const by = {};
+      S.events.forEach(e => {
+        const a = (e.vault || '').toLowerCase();
+        const w = (e.owner || e.sender || '').toLowerCase();
+        if (!w) return;
+        by[w] = by[w] || {};
+        by[w][a] = (by[w][a] || 0) + (e.type === 'deposit' ? 1 : -1) * (e.assets || 0);
+      });
+      return Object.entries(by).map(([w, pos]) => {
+        let usd = 0;
+        Object.entries(pos).forEach(([a, q]) => { usd += q * (price[a] || 0); });
+        return { wallet: w, pos, usd };
+      }).sort((x, y) => y.usd - x.usd);
+    }
+
+    function renderHolders() {
+      // Only vaults anyone actually holds get a column, so empty vaults do not
+      // add dead width.
+      const rows = holdingsRows();
+      const used = S.vaults.filter(v => rows.some(r => Math.abs(r.pos[v.address] || 0) > 1e-9));
+      const cols = used.length ? used : S.vaults.filter(v => (v.tvl || 0) > 0);
+      const t = document.getElementById('holdersTable');
+      if (!rows.length) { t.innerHTML = '<tbody><tr><td class="loading">No holdings yet.</td></tr></tbody>'; return; }
+      t.innerHTML =
+        '<thead><tr><th>Wallet</th>'
+        + cols.map(v => '<th class="num" title="' + v.name + '">' + v.token + '</th>').join('')
+        + '<th class="num">Total USD</th></tr></thead><tbody>'
+        + rows.map(r =>
+            '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
+            + shortAddr(r.wallet) + '</a></td>'
+            + cols.map(v => {
+                const q = r.pos[v.address];
+                return '<td class="num">' + (q && Math.abs(q) > 1e-9 ? fNum(q, 4) : '<span style="color:var(--text-secondary)">—</span>') + '</td>';
+              }).join('')
+            + '<td class="num"><strong>' + fUsd(r.usd) + '</strong></td></tr>').join('')
+        + '</tbody>';
+
+      const summed = rows.reduce((a, r) => a + r.usd, 0);
+      const live = S.vaults.reduce((a, v) => a + (v.tvl || 0), 0);
+      const gap = live > 0 ? (live - summed) / live * 100 : 0;
+      document.getElementById('holdersNote').textContent =
+        rows.length + ' wallets · holdings sum to ' + fUsd(summed) + ' against ' + fUsd(live)
+        + ' live TVL (' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%). '
+        + 'Positions are derived from deposit and withdrawal flows priced at the latest rate, '
+        + 'so yield accrued inside a vault and any shares transferred between wallets are not reflected.';
+    }
+
+    function applyView(v) {
+      const flows = v !== 'holders';
+      document.getElementById('flowsView').style.display = flows ? '' : 'none';
+      document.getElementById('holdersView').style.display = flows ? 'none' : '';
+      document.getElementById('feedTypeGroup').style.display = flows ? '' : 'none';
+      document.getElementById('feedTitle').textContent = flows ? 'Deposits & exits' : 'Wallet holdings';
+      if (!flows) renderHolders();
     }
 
     // ---- PNG export: transparent, dots + axes + series only ----
@@ -540,6 +651,12 @@
       wireButtons('walToolbar', 'data-wal-range', v => { S.walRange = v; renderWallets(); });
       wireButtons('walToolbar', 'data-wal-mode', v => { S.walMode = v; renderWallets(); });
       wireButtons('feedToolbar', 'data-feed-type', v => { S.feedType = v; S.feedLimit = FEED_PAGE; renderFeed(); });
+      document.querySelectorAll('#viewFlip button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#viewFlip button').forEach(b => b.classList.toggle('active', b === btn));
+          applyView(btn.getAttribute('data-view'));
+        });
+      });
       document.getElementById('layoutSel').addEventListener('change', function () { applyLayout(this.value); });
       const dots = document.getElementById('exportDotsToggle');
       S.exportDots = dots.checked;
