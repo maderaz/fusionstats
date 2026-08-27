@@ -50,17 +50,31 @@ jobs:
           git add -f history.json logs.json activity-events.json
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
-          git diff --cached --quiet && echo "No changes" && exit 0
+          # Generated data never merges cleanly and never should: the freshest
+          # generation supersedes whatever is on the remote. Rebasing it lands
+          # in a conflict, and `|| true` then hides that, leaving the repo mid-
+          # rebase on a detached HEAD where every later pull and push fails.
+          # So on rejection we reset onto origin and replay our own files.
+          FILES=$(git diff --cached --name-only)
+          if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
           git commit -m "Update data files [skip ci]"
-          git pull --rebase --autostash origin ${{ github.ref_name }} || true
-          # Retry with backoff: GitHub occasionally rejects a ref update with a
-          # transient "fatal error in commit_refs"; a re-pull + retry clears it
-          # (and also resolves a race with another cron pushing meanwhile).
+
+          BRANCH="${{ github.ref_name }}"
+          KEEP=$(mktemp -d)
+          for f in $FILES; do mkdir -p "$KEEP/$(dirname "$f")"; cp "$f" "$KEEP/$f"; done
+
           for i in 1 2 3 4 5; do
-            if git push; then exit 0; fi
-            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+            echo "push rejected (attempt $i) — replaying generated files onto origin"
+            git rebase --abort 2>/dev/null || true
+            git merge  --abort 2>/dev/null || true
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            git add -f $FILES
+            if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
+            git commit -m "Update data files [skip ci]"
             sleep $((2**i))
-            git pull --rebase --autostash origin ${{ github.ref_name }} || true
           done
           echo "::error::push still failing after retries"
           exit 1
