@@ -350,6 +350,27 @@
         });
         if (d >= cutoff) out.push({ day: d, tvl: usd, units: units });
       });
+
+      // Snapshots are written once a day, so the series ended yesterday while
+      // the headline read from the live vault API was hours old — the chart
+      // looked a day behind and disagreed with the number above it. Append a
+      // live point for today from the same source the headline uses, so the
+      // two always land on the same value.
+      // days since epoch — Date.now() is milliseconds, so DAY_MS, not DAY_SEC
+      const today = Math.floor(Date.now() / DAY_MS);
+      const liveUsd = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
+      if (liveUsd > 0) {
+        const price = latestPrices();
+        // Units are not published live, so derive them from the live USD figure
+        // at the latest price we have. Value is exact; the unit count carries
+        // that price's staleness.
+        const liveUnits = chosen.reduce((a, v) => {
+          const px = price[v.address] || 0;
+          return a + (px > 0 ? (v.tvl || 0) / px : 0);
+        }, 0);
+        if (out.length && out[out.length - 1].day === today) out.pop();
+        if (today >= cutoff) out.push({ day: today, tvl: liveUsd, units: liveUnits, live: true });
+      }
       return out;
     }
 
@@ -420,16 +441,18 @@
       // Snapshots are taken once a day; the headline figure is live. On a
       // fast-growing vault those differ by real growth, not by an error.
       const drift = liveTvl > 0 && lastVal > 0 ? Math.abs(liveTvl - lastVal) / liveTvl : 0;
+      const endsLive = real.length && real[real.length - 1].live;
       if (usd) {
-        note.textContent = real.length + ' daily points · series ends '
-          + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fUsd(lastVal)
-          + (drift > 0.05
-              ? ' · live TVL is ' + fUsd(liveTvl) + ' — the series is built from daily snapshots, the headline from the live vault API'
-              : ' · live TVL ' + fUsd(liveTvl));
+        note.textContent = real.length + ' points · '
+          + (real.length - (endsLive ? 1 : 0)) + ' daily snapshots'
+          + (endsLive ? ' plus a live point for today' : '')
+          + ' · ends ' + new Date(lastDay * DAY_MS).toISOString().slice(0, 10)
+          + ' at ' + fUsd(lastVal);
       } else {
         const lastUnits = real[real.length - 1].units;
-        note.textContent = real.length + ' daily points · series ends '
+        note.textContent = real.length + ' points · ends '
           + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fNum(lastUnits, 4) + ' ' + unitLabel
+          + (endsLive ? ' (today derived from live TVL at the latest price)' : '')
           + (S.tvlUnit === 'units'
               ? ' · a count of shares across different equities, not a value — switch to USD to compare'
               : '');

@@ -85,9 +85,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f tvl-snapshots.json vault-deployments.json 2>/dev/null || true
-          git diff --cached --quiet && echo "No changes" && exit 0
+          FILES=$(git diff --cached --name-only)
+          if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
           MODE="${{ inputs.mode || 'scheduled' }}"
-          git commit -m "TVL snapshots: $MODE ${{ inputs.vault || '' }} [skip ci]"
+          MSG="TVL snapshots: $MODE ${{ inputs.vault || '' }} [skip ci]"
+          git commit -m "$MSG"
 
           # Backup branch only for manual runs (the expensive full backfills worth
           # protecting). Daily scheduled runs are cheap + idempotent, so skip the
@@ -97,14 +99,26 @@ jobs:
             git push origin "HEAD:refs/heads/$BACKUP" && echo "Backup branch pushed: $BACKUP"
           fi
 
-          git fetch origin ${{ github.ref_name }}
-          git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }} || git rebase --abort || true
+          # Same rule as the other collectors: rebasing generated JSON lands in a
+          # conflict, and aborting it leaves the local commit behind origin, so
+          # every retry repeats the identical failure and the run drops its
+          # snapshot entirely. Reset onto origin and replay our own files.
+          BRANCH="${{ github.ref_name }}"
+          KEEP=$(mktemp -d)
+          for f in $FILES; do mkdir -p "$KEEP/$(dirname "$f")"; cp "$f" "$KEEP/$f"; done
+
           for i in 1 2 3 4 5; do
-            if git push; then exit 0; fi
-            echo "push failed (attempt $i) — re-syncing, retrying in $((2**i))s"
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+            echo "push rejected (attempt $i) — replaying generated files onto origin"
+            git rebase --abort 2>/dev/null || true
+            git merge  --abort 2>/dev/null || true
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            git add -f $FILES
+            if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
+            git commit -m "$MSG"
             sleep $((2**i))
-            git fetch origin ${{ github.ref_name }}
-            git -c rebase.autoStash=true rebase -X theirs origin/${{ github.ref_name }} || git rebase --abort || true
           done
           echo "::error::push still failing after retries"
           exit 1

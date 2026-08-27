@@ -92,7 +92,16 @@ jobs:
             echo "::warning::Rebase failed; result preserved on branch $BACKUP — merge manually."
             exit 1
           fi
+          # A push that never lands must not report success: the backfill would be
+          # silently lost while the run went green. The backup branch above still
+          # holds the result either way.
+          PUSHED=no
           for i in 1 2 3 4; do
-            if git push; then break; fi
+            if git push; then PUSHED=yes; break; fi
+            git fetch origin ${{ github.ref_name }} || true
             sleep $((2**i))
           done
+          if [ "$PUSHED" != "yes" ]; then
+            echo "::error::push never landed — result is preserved on branch $BACKUP"
+            exit 1
+          fi
