@@ -130,6 +130,10 @@
           <button data-tvl-range="all">All</button>
         </div>
         <div class="group">
+          <span class="group-label">Unit</span>
+          <select id="tvlUnit"><option value="usd">USD</option></select>
+        </div>
+        <div class="group">
           <span class="group-label">Type</span>
           <button data-tvl-type="line" class="active">Line</button>
           <button data-tvl-type="bar">Bar</button>
@@ -244,7 +248,7 @@
 
     const S = {
       vaults: [], snaps: {}, events: [], updatedAt: null,
-      tvlVault: '__all__', tvlRange: '90', tvlType: 'line',
+      tvlVault: '__all__', tvlRange: '90', tvlType: 'line', tvlUnit: 'usd',
       walVault: '__all__', walRange: '90', walMode: 'cumulative',
       feedVault: '__all__', feedType: '', feedLimit: FEED_PAGE,
       exportDots: true, layout: 'wide',
@@ -321,14 +325,20 @@
       const days = Object.keys(allDays).map(Number).sort((a, b) => a - b);
       const carry = {}, out = [];
       days.forEach(d => {
-        let total = 0;
+        let usd = 0, units = 0;
         chosen.forEach(v => {
           const sn = perVault[v.address] && perVault[v.address][d];
           if (sn) carry[v.address] = sn;
           const use = sn || carry[v.address];
-          if (use) total += use.tvlUsd || 0;
+          if (!use) return;
+          usd += use.tvlUsd || 0;
+          // Raw vault units. Summing across tickers adds quantities of
+          // different equities, which is not a meaningful total on its own —
+          // it tracks share count, not value. Offered because it answers
+          // "how many shares are in the vaults", and the axis says so.
+          units += use.assets || 0;
         });
-        if (d >= cutoff) out.push({ day: d, tvl: total });
+        if (d >= cutoff) out.push({ day: d, tvl: usd, units: units });
       });
       return out;
     }
@@ -376,15 +386,19 @@
       // Plotly renders alongside existing children rather than replacing them,
       // so the placeholder stayed painted over the chart until it was removed.
       const ph = el.querySelector('.loading'); if (ph) ph.remove();
+      const usd = S.tvlUnit === 'usd';
+      const unitLabel = usd ? 'USD' : (S.tvlUnit === 'units' ? 'units' : S.tvlUnit);
+      const yOf = (p) => p.pad ? null : (usd ? p.tvl : p.units);
+      const hover = usd
+        ? '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>'
+        : '<b>%{x|%b %d, %Y}</b><br>%{y:,.4f} ' + unitLabel + '<extra></extra>';
       const trace = S.tvlType === 'bar'
-        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.tvl),
-            marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } },
-            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.tvl),
+        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(yOf),
+            marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } }, hovertemplate: hover }
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(yOf),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
-            fillcolor: 'rgba(132,41,255,0.10)',
-            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' };
-      Plotly.react('tvlPlot', [trace], baseLayout('$,.2s'), CONFIG);
+            fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
+      Plotly.react('tvlPlot', [trace], baseLayout(usd ? '$,.2s' : ',.4~f'), CONFIG);
 
       const chosen = vaultsFor(S.tvlVault);
       const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
@@ -395,11 +409,20 @@
       // Snapshots are taken once a day; the headline figure is live. On a
       // fast-growing vault those differ by real growth, not by an error.
       const drift = liveTvl > 0 && lastVal > 0 ? Math.abs(liveTvl - lastVal) / liveTvl : 0;
-      note.textContent = real.length + ' daily points · series ends '
-        + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fUsd(lastVal)
-        + (drift > 0.05
-            ? ' · live TVL is ' + fUsd(liveTvl) + ' — the series is built from daily snapshots, the headline from the live vault API'
-            : ' · live TVL ' + fUsd(liveTvl));
+      if (usd) {
+        note.textContent = real.length + ' daily points · series ends '
+          + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fUsd(lastVal)
+          + (drift > 0.05
+              ? ' · live TVL is ' + fUsd(liveTvl) + ' — the series is built from daily snapshots, the headline from the live vault API'
+              : ' · live TVL ' + fUsd(liveTvl));
+      } else {
+        const lastUnits = real[real.length - 1].units;
+        note.textContent = real.length + ' daily points · series ends '
+          + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fNum(lastUnits, 4) + ' ' + unitLabel
+          + (S.tvlUnit === 'units'
+              ? ' · a count of shares across different equities, not a value — switch to USD to compare'
+              : '');
+      }
     }
 
     function renderWallets() {
@@ -621,6 +644,16 @@
         + S.vaults.slice().sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
             .map(v => '<option value="' + v.address + '">' + v.token + ' — ' + v.name + '</option>').join('');
       ['tvlVault', 'walVault', 'feedVault'].forEach(id => { document.getElementById(id).innerHTML = opts; });
+
+      // USD, a raw unit total, then one entry per funded ticker. Picking a
+      // ticker also scopes the chart to that vault — a single vault's unit
+      // count is the only reading where the number means one thing.
+      const funded = S.vaults.filter(v => (v.tvl || 0) > 0 || (S.snaps[v.address] || []).length);
+      document.getElementById('tvlUnit').innerHTML =
+        '<option value="usd">USD</option>'
+        + '<option value="units">Stock units (all)</option>'
+        + funded.map(v => '<option value="' + v.token + '" data-vault="' + v.address + '">'
+            + v.token + ' units</option>').join('');
     }
 
     (async function load() {
@@ -656,7 +689,24 @@
       fillVaultSelects();
       renderStats(); renderTvl(); renderWallets(); renderFeed();
 
-      document.getElementById('tvlVault').addEventListener('change', function () { S.tvlVault = this.value; renderTvl(); });
+      document.getElementById('tvlVault').addEventListener('change', function () {
+        S.tvlVault = this.value;
+        // A per-ticker unit only makes sense for its own vault; drop back to
+        // the aggregate unit when the scope moves elsewhere.
+        const us = document.getElementById('tvlUnit');
+        const opt = us.selectedOptions[0];
+        if (opt && opt.dataset.vault && opt.dataset.vault !== this.value) { us.value = 'units'; S.tvlUnit = 'units'; }
+        renderTvl();
+      });
+      document.getElementById('tvlUnit').addEventListener('change', function () {
+        S.tvlUnit = this.value;
+        const opt = this.selectedOptions[0];
+        if (opt && opt.dataset.vault) {
+          S.tvlVault = opt.dataset.vault;
+          document.getElementById('tvlVault').value = opt.dataset.vault;
+        }
+        renderTvl();
+      });
       document.getElementById('walVault').addEventListener('change', function () { S.walVault = this.value; renderWallets(); });
       document.getElementById('feedVault').addEventListener('change', function () { S.feedVault = this.value; S.feedLimit = FEED_PAGE; renderFeed(); });
       wireButtons('tvlToolbar', 'data-tvl-range', v => { S.tvlRange = v; renderTvl(); });
