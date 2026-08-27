@@ -559,21 +559,51 @@
       return price;
     }
 
+    // Underlying per share, so a share balance can be expressed in vault units.
+    // Derived from the events themselves, never from the snapshot sharePrice:
+    // IPOR share decimals carry a +2 offset, so the snapshot figure is ~100x
+    // the ratio implied by the same events' assets and shares. Mixing the two
+    // inflated every holding by two orders of magnitude.
+    function latestSharePrices() {
+      const sp = {};
+      S.events.slice().sort((a, b) => a.timestamp - b.timestamp).forEach(e => {
+        const a = (e.vault || '').toLowerCase();
+        if (e.assets > 0 && e.shares > 0) sp[a] = e.assets / e.shares;
+      });
+      return sp;
+    }
+
     function holdingsRows() {
       const price = latestPrices();
+      const sharePrice = latestSharePrices();
+      // Net SHARES, not net assets. Shares are conserved: a deposit mints them
+      // and a withdrawal burns them. Assets are not — a vault that earned yield
+      // returns more underlying than went in, so netting assets showed a full
+      // exit as a small negative balance and understated anyone still invested.
       const by = {};
       S.events.forEach(e => {
         const a = (e.vault || '').toLowerCase();
         const w = (e.owner || e.sender || '').toLowerCase();
         if (!w) return;
         by[w] = by[w] || {};
-        by[w][a] = (by[w][a] || 0) + (e.type === 'deposit' ? 1 : -1) * (e.assets || 0);
+        by[w][a] = (by[w][a] || 0) + (e.type === 'deposit' ? 1 : -1) * (e.shares || 0);
       });
-      return Object.entries(by).map(([w, pos]) => {
+      const DUST = 1e-9;
+      return Object.entries(by).map(([w, shares]) => {
+        const pos = {};
         let usd = 0;
-        Object.entries(pos).forEach(([a, q]) => { usd += q * (price[a] || 0); });
-        return { wallet: w, pos, usd };
-      }).sort((x, y) => y.usd - x.usd);
+        Object.entries(shares).forEach(([a, q]) => {
+          // A fully exited position lands on a hair either side of zero from
+          // rounding; treat that as closed rather than as a tiny holding.
+          if (Math.abs(q) < DUST) return;
+          const units = q * (sharePrice[a] || 0);
+          pos[a] = units;
+          usd += units * (price[a] || 0);
+        });
+        return { wallet: w, pos, usd, shares };
+      })
+        .filter(r => Object.keys(r.pos).length)   // drop wallets that have fully exited
+        .sort((x, y) => y.usd - x.usd);
     }
 
     function renderHolders() {
@@ -608,8 +638,9 @@
       document.getElementById('holdersNote').textContent =
         rows.length + ' wallets · holdings sum to ' + fUsd(summed) + ' against ' + fUsd(live)
         + ' live TVL (' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%). '
-        + 'Positions are derived from deposit and withdrawal flows priced at the latest rate, '
-        + 'so yield accrued inside a vault and any shares transferred between wallets are not reflected.';
+        + 'Positions are net vault shares from deposit and withdrawal events, valued at the latest share '
+        + 'and asset price. Wallets that have fully exited are omitted. Shares moved directly between '
+        + 'wallets are not tracked.';
     }
 
     function applyView(v) {
