@@ -90,6 +90,11 @@
     .loading { color:var(--text-secondary); font-size:0.8rem; padding:2rem; text-align:center; }
     .more { text-align:center; padding:0.75rem 0; }
     .chart-note { font-size:0.7rem; color:var(--text-secondary); padding:0.55rem 0 0.15rem; }
+    .debank { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+      border-radius:50%; background:#FF6B00; color:#fff; font-size:0.58rem; font-weight:700;
+      text-decoration:none; line-height:1; margin-left:0.4rem; vertical-align:middle; }
+    .debank:hover { opacity:0.85; }
+    .wallet-cell { display:flex; align-items:center; }
     .flip { display:inline-flex; border:1px solid var(--stroke); border-radius:999px; overflow:hidden; }
     .flip button { font-family:inherit; font-size:0.68rem; font-weight:500; padding:0.3rem 0.8rem;
       border:0; background:var(--surface); color:var(--text-body); cursor:pointer; }
@@ -352,6 +357,10 @@
       // line drops to zero on quiet days.
       let last = 0;
       const full = [];
+      // Start from an explicit zero the day before the first holder, so the
+      // line rises from nothing instead of appearing already at its first
+      // day's count.
+      full.push({ day: days[0] - 1, cumulative: 0, active: 0 });
       for (let d = days[0]; d <= days[days.length - 1]; d++) {
         const row = byDay.get(d);
         if (row) last = row.cumulative;
@@ -507,8 +516,12 @@
         + cols.map(v => '<th class="num" title="' + v.name + '">' + v.token + '</th>').join('')
         + '<th class="num">Total USD</th></tr></thead><tbody>'
         + rows.map(r =>
-            '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
-            + shortAddr(r.wallet) + '</a></td>'
+            '<tr><td><span class="wallet-cell">'
+            + '<a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
+            + shortAddr(r.wallet) + '</a>'
+            + '<a class="debank" href="https://debank.com/profile/' + r.wallet + '" target="_blank" rel="noopener"'
+            + ' title="View ' + r.wallet + ' on DeBank">B</a>'
+            + '</span></td>'
             + cols.map(v => {
                 const q = r.pos[v.address];
                 return '<td class="num">' + (q && Math.abs(q) > 1e-9 ? fNum(q, 4) : '<span style="color:var(--text-secondary)">—</span>') + '</td>';
