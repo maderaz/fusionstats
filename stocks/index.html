@@ -1,23 +1,553 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stock Vaults · Fusion Stats</title>
-<meta name="description" content="Deposits and withdrawals for Fusion vaults backed by tokenised equities.">
-<!-- Entry point for the Activity page with the Stocks filter pre-applied.
-     The filter itself lives on the Activity page so there is one table to
-     maintain; this just carries the intent through in the URL. -->
-<link rel="canonical" href="https://fusionecosystem.xyz/?stocks=only">
-<meta http-equiv="refresh" content="0; url=/?stocks=only">
-<style>
-  body{font-family:'Poppins',system-ui,sans-serif;background:#FAFAFB;color:#70747A;
-    display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:.9rem}
-  a{color:#8429FF}
-</style>
+  <script src="/data-source.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stocks — Fusion Stats</title>
+  <meta name="description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --tint-strong: rgba(25,23,23,.13);
+      --bg:#FFFFFF; --surface:#FFFFFF; --stroke:#E5E5E5; --stroke-light:#F0F0F0;
+      --text:#000000; --text-body:#70747A; --text-secondary:#9BA3AF;
+      --accent:#8429FF; --accent-end:#6C00FF; --accent-bg:rgba(132,41,255,0.10);
+      --green:#16A34A; --red:#DC2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif;
+      background:var(--bg); color:var(--text); padding:1.5rem; line-height:1.5;
+    }
+    .container { max-width: 1240px; margin: 0 auto; }
+    h1 { font-size:1.6rem; font-weight:600; letter-spacing:-0.02em; }
+    .page-sub { color:var(--text-body); font-size:0.85rem; margin-top:0.35rem; max-width:60rem; }
+    .updated { font-size:0.72rem; color:var(--text-secondary); margin-top:0.5rem; }
+
+    .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:0.75rem; margin:1.25rem 0; }
+    .stat { border:1px solid var(--stroke); border-radius:12px; padding:0.85rem 1rem; }
+    .stat .k { font-size:0.63rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-secondary); font-weight:600; }
+    .stat .v { font-family:'JetBrains Mono',monospace; font-size:1.15rem; font-weight:500; margin-top:0.3rem; }
+
+    .chart-card { background:var(--surface); border:1px solid var(--stroke); border-radius:12px; padding:1rem 1rem 0.5rem; margin-bottom:1rem; }
+    .chart-section-title { font-weight:600; font-size:0.95rem; letter-spacing:-0.01em; margin-bottom:0.6rem; }
+    .chart-toolbar { display:flex; gap:0.6rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; }
+    .chart-toolbar .group { display:flex; gap:0.25rem; align-items:center; }
+    .chart-toolbar .group-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); margin-right:0.35rem; }
+    .chart-toolbar button, .chart-toolbar select {
+      font-family:inherit; font-size:0.72rem; padding:0.35rem 0.7rem;
+      border:1px solid var(--stroke); background:var(--surface); color:var(--text-body);
+      border-radius:6px; cursor:pointer; transition:all 0.15s;
+    }
+    .chart-toolbar button:hover, .chart-toolbar select:hover { color:var(--accent); border-color:var(--accent); }
+    .chart-toolbar button.active { color:var(--accent); background:var(--accent-bg); border-color:var(--accent); }
+    .chart-toolbar .action-btn {
+      font-size:0.72rem; padding:0.35rem 0.85rem; border:1px solid var(--accent);
+      background:var(--accent); color:#fff; border-radius:6px; font-weight:500; transition:opacity 0.15s;
+    }
+    .chart-toolbar .action-btn:hover { opacity:0.85; color:#fff; border-color:var(--accent); }
+    .chart-hint { font-size:0.7rem; color:var(--text-secondary); margin-left:auto; }
+
+    /* Plot surface: fixed height, dotted background, no border. Matches /tvl. */
+    .plot {
+      width:100%; height:340px;
+      background-image:radial-gradient(circle,var(--tint-strong) 1px,transparent 1.4px);
+      background-size:14px 14px;
+      background-position:0 100%;   /* bottom-anchored so dots don't slide on switch */
+    }
+    .container[data-layout="compact"] .chart-card,
+    .container[data-layout="fourthree"] .chart-card,
+    .container[data-layout="widescreen"] .chart-card { margin-left:auto; margin-right:auto; }
+    .container[data-layout="compact"] .chart-card { max-width:480px; }
+    .container[data-layout="fourthree"] .chart-card { max-width:680px; }
+    .container[data-layout="widescreen"] .chart-card { max-width:960px; }
+    /* height:auto must be reset alongside aspect-ratio or the base height wins */
+    .container[data-layout="compact"] .plot,
+    .container[data-layout="fourthree"] .plot,
+    .container[data-layout="widescreen"] .plot { height:auto; }
+    .container[data-layout="compact"] .plot { aspect-ratio:1/1; }
+    .container[data-layout="fourthree"] .plot { aspect-ratio:4/3; }
+    .container[data-layout="widescreen"] .plot { aspect-ratio:16/9; }
+    @media (max-width:640px){ .plot { height:240px; } }
+
+    .data-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .data-table th { text-align:left; font-size:0.63rem; text-transform:uppercase; letter-spacing:0.06em;
+      color:var(--text-secondary); font-weight:600; padding:0.5rem 0.6rem; border-bottom:1px solid var(--stroke); }
+    .data-table td { padding:0.55rem 0.6rem; border-bottom:1px solid var(--stroke-light); }
+    .data-table td.num, .data-table th.num { text-align:right; font-family:'JetBrains Mono',monospace; }
+    .data-table tbody tr:hover td { background:rgba(132,41,255,0.04); }
+    .badge { display:inline-block; font-size:0.62rem; font-weight:600; padding:2px 7px; border-radius:5px; }
+    .badge.dep { background:rgba(22,163,74,.12); color:var(--green); }
+    .badge.wd  { background:rgba(220,38,38,.10); color:var(--red); }
+    .addr { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--accent); text-decoration:none; }
+    .addr:hover { text-decoration:underline; }
+    .ticker { font-weight:600; }
+    .scroll { overflow-x:auto; }
+    .loading { color:var(--text-secondary); font-size:0.8rem; padding:2rem; text-align:center; }
+    .more { text-align:center; padding:0.75rem 0; }
+    .chart-note { font-size:0.7rem; color:var(--text-secondary); padding:0.55rem 0 0.15rem; }
+    .caveat { font-size:0.72rem; color:var(--text-secondary); margin:0.5rem 0 1.5rem; line-height:1.55; }
+  </style>
 </head>
 <body>
-  <p>Opening stock vault activity… <a href="/?stocks=only">continue</a></p>
-  <script>location.replace('/?stocks=only');</script>
+  <div class="container" data-layout="wide">
+    <h1>Stocks</h1>
+    <p class="page-sub">
+      Fusion vaults backed by <strong>tokenised equities</strong>. Vaults are identified by their underlying
+      token address rather than by name, so a new stock vault appears here automatically.
+    </p>
+    <div class="updated" id="updated"></div>
+
+    <div class="stat-row" id="stats"></div>
+
+    <!-- ---------- TVL ---------- -->
+    <div class="chart-card">
+      <div class="chart-section-title">TVL across stock vaults</div>
+      <div class="chart-toolbar" id="tvlToolbar">
+        <div class="group">
+          <span class="group-label">Vault</span>
+          <select id="tvlVault"><option value="__all__">All stock vaults</option></select>
+        </div>
+        <div class="group">
+          <span class="group-label">Range</span>
+          <button data-tvl-range="30">30d</button>
+          <button data-tvl-range="90" class="active">90d</button>
+          <button data-tvl-range="180">180d</button>
+          <button data-tvl-range="all">All</button>
+        </div>
+        <div class="group">
+          <span class="group-label">Type</span>
+          <button data-tvl-type="line" class="active">Line</button>
+          <button data-tvl-type="bar">Bar</button>
+        </div>
+        <div class="group">
+          <span class="group-label">View</span>
+          <select id="layoutSel">
+            <option value="wide">Wide</option>
+            <option value="widescreen">16:9</option>
+            <option value="fourthree">4:3</option>
+            <option value="compact">1:1</option>
+          </select>
+        </div>
+        <label class="chart-toolbar" style="margin:0;gap:0.35rem;font-size:0.72rem;color:var(--text-body);cursor:pointer">
+          <input type="checkbox" id="exportDotsToggle" checked style="cursor:pointer">Dots in PNG
+        </label>
+        <button class="action-btn" id="tvlPng" type="button">Download PNG</button>
+      </div>
+      <div class="plot" id="tvlPlot"><div class="loading">Loading…</div></div>
+      <div class="chart-note" id="tvlNote"></div>
+    </div>
+
+    <!-- ---------- WALLETS ---------- -->
+    <div class="chart-card">
+      <div class="chart-section-title">Wallets participating</div>
+      <div class="chart-toolbar" id="walToolbar">
+        <div class="group">
+          <span class="group-label">Vault</span>
+          <select id="walVault"><option value="__all__">All stock vaults</option></select>
+        </div>
+        <div class="group">
+          <span class="group-label">Range</span>
+          <button data-wal-range="30">30d</button>
+          <button data-wal-range="90" class="active">90d</button>
+          <button data-wal-range="180">180d</button>
+          <button data-wal-range="all">All</button>
+        </div>
+        <div class="group">
+          <span class="group-label">Measure</span>
+          <button data-wal-mode="cumulative" class="active">Cumulative</button>
+          <button data-wal-mode="active">Active/day</button>
+        </div>
+        <span class="chart-hint">Cumulative counts every wallet that has ever deposited; active counts distinct wallets transacting that day.</span>
+        <button class="action-btn" id="walPng" type="button">Download PNG</button>
+      </div>
+      <div class="plot" id="walPlot"><div class="loading">Loading…</div></div>
+    </div>
+
+    <!-- ---------- LIVE FEED ---------- -->
+    <div class="chart-card">
+      <div class="chart-section-title">Deposits &amp; exits</div>
+      <div class="chart-toolbar" id="feedToolbar">
+        <div class="group">
+          <span class="group-label">Vault</span>
+          <select id="feedVault"><option value="__all__">All stock vaults</option></select>
+        </div>
+        <div class="group">
+          <span class="group-label">Type</span>
+          <button data-feed-type="" class="active">All</button>
+          <button data-feed-type="deposit">Deposits</button>
+          <button data-feed-type="withdraw">Exits</button>
+        </div>
+        <span class="chart-hint" id="feedCount"></span>
+      </div>
+      <div class="scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th>When</th><th>Type</th><th class="num">Amount</th><th class="num">USD</th>
+            <th>Vault</th><th>Wallet</th>
+          </tr></thead>
+          <tbody id="feedBody"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="more" id="feedMore"></div>
+    </div>
+
+    <p class="caveat">
+      A vault counts as a stock vault when its underlying token address carries the tokenised-equity
+      prefix. Matching on the vault name would wrongly pull in the cbXRP, USDC and WETH carry vaults,
+      which are not equities. Vaults deployed but never funded stay listed with zero values.
+    </p>
+  </div>
+
+  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script defer src="/track.js"></script>
+  <script src="/nav.js"></script>
+  <script>
+  (function () {
+    const DAY_MS = 86400000, DAY_SEC = 86400;
+    // Tokenised-equity underlyings use the 0xb2 vanity prefix. Keyed on the
+    // asset address, never the vault name — see the caveat above.
+    const STOCK_RE = /^0xb20{20}/;
+    // Snapshots whose block timestamp never resolved land on day 0; Fusion did
+    // not exist before 2021, so anything older is bad data rather than history.
+    const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
+    const FEED_PAGE = 25;
+    const LAYOUT_KEY = 'fusionstats_stocks_layout';
+    const VALID_LAYOUTS = ['wide', 'widescreen', 'fourthree', 'compact'];
+    const ACCENT = '#8429FF';
+
+    const S = {
+      vaults: [], snaps: {}, events: [], updatedAt: null,
+      tvlVault: '__all__', tvlRange: '90', tvlType: 'line',
+      walVault: '__all__', walRange: '90', walMode: 'cumulative',
+      feedVault: '__all__', feedType: '', feedLimit: FEED_PAGE,
+      exportDots: true, layout: 'wide',
+    };
+
+    const fUsd = (n) => n == null || isNaN(n) ? '—'
+      : Math.abs(n) >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+      : Math.abs(n) >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K' : '$' + Number(n).toFixed(2);
+    const fNum = (n, d) => n == null || isNaN(n) ? '—'
+      : n.toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
+    const shortAddr = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
+    const dstr = (ts) => ts ? new Date(ts * 1000).toISOString().slice(0, 10) : '—';
+    function timeAgo(ts) {
+      const s = Math.floor(Date.now() / 1000 - ts);
+      if (s < 60) return s + 's ago';
+      if (s < 3600) return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+    const cutoffFor = (range) => range === 'all' ? 0 : Date.now() / 1000 - parseInt(range, 10) * DAY_SEC;
+    const vaultsFor = (sel) => sel === '__all__' ? S.vaults : S.vaults.filter(v => v.address === sel);
+
+    // ---- Plotly layout shared by both charts: transparent canvas so the CSS
+    // dot grid is the scale cue, no gridlines, room between axes and data.
+    function baseLayout(yFmt) {
+      return {
+        autosize: true,
+        margin: { l: 96, r: 40, t: 26, b: 78 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Poppins, -apple-system, sans-serif', color: '#70747A', size: 12 },
+        xaxis: {
+          showgrid: false, linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date',
+          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
+        },
+        yaxis: {
+          showgrid: false, linecolor: '#E5E5E5', tickfont: { size: 11 }, tickformat: yFmt,
+          rangemode: 'tozero', ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
+        },
+        showlegend: false,
+        hovermode: 'x unified',
+      };
+    }
+    const CONFIG = { displayModeBar: false, responsive: true };
+
+    // ---- daily TVL, forward-filled, one point per vault per day ----
+    function tvlSeries(sel, range) {
+      const cutoff = cutoffFor(range) / DAY_SEC;
+      const chosen = vaultsFor(sel);
+      const perVault = {}, allDays = {};
+      chosen.forEach(v => {
+        const byDay = {};
+        (S.snaps[v.address] || []).forEach(sn => {
+          if (sn.day == null || sn.day < MIN_VALID_DAY) return;
+          // The collector runs about twice a day; keep the last point per day
+          // or summing them double-counts.
+          if (!byDay[sn.day] || sn.timestamp > byDay[sn.day].timestamp) byDay[sn.day] = sn;
+        });
+        perVault[v.address] = byDay;
+        Object.keys(byDay).forEach(d => { allDays[d] = 1; });
+      });
+      const days = Object.keys(allDays).map(Number).sort((a, b) => a - b);
+      const carry = {}, out = [];
+      days.forEach(d => {
+        let total = 0;
+        chosen.forEach(v => {
+          const sn = perVault[v.address] && perVault[v.address][d];
+          if (sn) carry[v.address] = sn;
+          const use = sn || carry[v.address];
+          if (use) total += use.tvlUsd || 0;
+        });
+        if (d >= cutoff) out.push({ day: d, tvl: total });
+      });
+      return out;
+    }
+
+    // ---- wallets: cumulative distinct depositors, or distinct per day ----
+    function walletSeries(sel, range, mode) {
+      const chosen = vaultsFor(sel);
+      const addrs = {}; chosen.forEach(v => { addrs[v.address] = 1; });
+      const evs = S.events.filter(e => addrs[(e.vault || '').toLowerCase()] && e.timestamp)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      if (!evs.length) return [];
+      const byDay = new Map();
+      const seen = new Set();
+      evs.forEach(e => {
+        const d = Math.floor(e.timestamp / DAY_SEC);
+        const w = (e.owner || e.sender || '').toLowerCase();
+        if (!w) return;
+        if (!byDay.has(d)) byDay.set(d, { day: d, active: new Set(), cumulative: 0 });
+        byDay.get(d).active.add(w);
+        seen.add(w);
+        byDay.get(d).cumulative = seen.size;   // running distinct total
+      });
+      const cutoff = cutoffFor(range) / DAY_SEC;
+      const days = [...byDay.keys()].sort((a, b) => a - b);
+      // Carry the cumulative figure across days with no activity, otherwise the
+      // line drops to zero on quiet days.
+      let last = 0;
+      const full = [];
+      for (let d = days[0]; d <= days[days.length - 1]; d++) {
+        const row = byDay.get(d);
+        if (row) last = row.cumulative;
+        full.push({ day: d, cumulative: last, active: row ? row.active.size : 0 });
+      }
+      return full.filter(p => p.day >= cutoff).map(p => ({ day: p.day, v: mode === 'active' ? p.active : p.cumulative }));
+    }
+
+    function renderTvl() {
+      const pts = tvlSeries(S.tvlVault, S.tvlRange);
+      const el = document.getElementById('tvlPlot');
+      if (!pts.length) { el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
+      const trace = S.tvlType === 'bar'
+        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.tvl),
+            marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } },
+            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' }
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.tvl),
+            line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
+            fillcolor: 'rgba(132,41,255,0.10)',
+            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>' };
+      Plotly.react('tvlPlot', [trace], baseLayout('$,.2s'), CONFIG);
+
+      const chosen = vaultsFor(S.tvlVault);
+      const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
+      const lastDay = pts[pts.length - 1].day;
+      const lastVal = pts[pts.length - 1].tvl;
+      const note = document.getElementById('tvlNote');
+      // Snapshots are taken once a day; the headline figure is live. On a
+      // fast-growing vault those differ by real growth, not by an error.
+      const drift = liveTvl > 0 && lastVal > 0 ? Math.abs(liveTvl - lastVal) / liveTvl : 0;
+      note.textContent = pts.length + ' daily points · series ends '
+        + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fUsd(lastVal)
+        + (drift > 0.05
+            ? ' · live TVL is ' + fUsd(liveTvl) + ' — the series is built from daily snapshots, the headline from the live vault API'
+            : ' · live TVL ' + fUsd(liveTvl));
+    }
+
+    function renderWallets() {
+      const pts = walletSeries(S.walVault, S.walRange, S.walMode);
+      const el = document.getElementById('walPlot');
+      if (!pts.length) { el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
+      const trace = S.walMode === 'active'
+        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.v),
+            marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
+            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets<extra></extra>' }
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.v),
+            line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
+            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
+      Plotly.react('walPlot', [trace], baseLayout(',d'), CONFIG);
+    }
+
+    function renderStats() {
+      const tvl = S.vaults.reduce((s, v) => s + (v.tvl || 0), 0);
+      const funded = S.vaults.filter(v => (v.tvl || 0) > 0).length;
+      const wallets = new Set(S.events.map(e => (e.owner || e.sender || '').toLowerCase()).filter(Boolean));
+      const dep = S.events.filter(e => e.type === 'deposit');
+      const wd = S.events.filter(e => e.type === 'withdraw');
+      const net = dep.reduce((s, e) => s + (e.usdValue || 0), 0) - wd.reduce((s, e) => s + (e.usdValue || 0), 0);
+      document.getElementById('stats').innerHTML = [
+        ['Total TVL', fUsd(tvl)],
+        ['Vaults', funded + ' funded · ' + (S.vaults.length - funded) + ' empty'],
+        ['Wallets', wallets.size],
+        ['Deposits', dep.length],
+        ['Exits', wd.length],
+        ['Net flow', (net >= 0 ? '+' : '') + fUsd(net)],
+      ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
+    }
+
+    function renderFeed() {
+      const addrs = {}; vaultsFor(S.feedVault).forEach(v => { addrs[v.address] = 1; });
+      let evs = S.events.filter(e => addrs[(e.vault || '').toLowerCase()]);
+      if (S.feedType) evs = evs.filter(e => e.type === S.feedType);
+      evs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      document.getElementById('feedCount').textContent = evs.length + ' events';
+      const shown = evs.slice(0, S.feedLimit);
+      const body = document.getElementById('feedBody');
+      body.innerHTML = shown.length ? shown.map(e => {
+        const v = S.vaults.find(x => x.address === (e.vault || '').toLowerCase()) || {};
+        const w = (e.owner || e.sender || '').toLowerCase();
+        return '<tr>'
+          + '<td>' + (e.timestamp ? timeAgo(e.timestamp) : '#' + e.block) + '</td>'
+          + '<td><span class="badge ' + (e.type === 'deposit' ? 'dep">DEPOSIT' : 'wd">EXIT') + '</span></td>'
+          + '<td class="num">' + fNum(e.assets, 4) + ' ' + (e.symbol || v.token || '') + '</td>'
+          + '<td class="num">' + fUsd(e.usdValue) + '</td>'
+          + '<td><span class="ticker">' + (v.token || '') + '</span> <span style="color:var(--text-secondary)">'
+            + (v.name || '—') + '</span></td>'
+          + '<td><a class="addr" href="https://basescan.org/address/' + w + '" target="_blank" rel="noopener">'
+            + shortAddr(w) + '</a></td>'
+          + '</tr>';
+      }).join('') : '<tr><td colspan="6" class="loading">No events for this selection.</td></tr>';
+
+      const more = document.getElementById('feedMore');
+      more.innerHTML = evs.length > S.feedLimit
+        ? '<button class="action-btn" id="feedMoreBtn" type="button">Show ' + Math.min(FEED_PAGE, evs.length - S.feedLimit) + ' more</button>'
+        : (S.feedLimit > FEED_PAGE ? '<button class="action-btn" id="feedLessBtn" type="button">Collapse</button>' : '');
+      const mb = document.getElementById('feedMoreBtn');
+      if (mb) mb.onclick = () => { S.feedLimit += FEED_PAGE; renderFeed(); };
+      const lb = document.getElementById('feedLessBtn');
+      if (lb) lb.onclick = () => { S.feedLimit = FEED_PAGE; renderFeed(); };
+    }
+
+    // ---- PNG export: transparent, dots + axes + series only ----
+    function composeExport(pngUrl, w, h, filename) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const c = cv.getContext('2d');
+          // No background fill — the image drops onto any deck without a slab.
+          if (S.exportDots) {
+            const pitch = Math.max(14, Math.round(w / 96));
+            c.fillStyle = '#191717';
+            c.globalAlpha = 0.18;   // stronger than on screen: no card behind it
+            for (let y = h - pitch / 2; y > 0; y -= pitch) {
+              for (let x = pitch / 2; x < w; x += pitch) {
+                c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
+              }
+            }
+            c.globalAlpha = 1;
+          }
+          c.drawImage(img, 0, 0, w, h);
+          cv.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 0);
+            resolve();
+          }, 'image/png');
+        };
+        img.onerror = () => resolve();
+        img.src = pngUrl;
+      });
+    }
+
+    async function downloadPlot(id, slug) {
+      const gd = document.getElementById(id);
+      if (!gd || !gd.data) return;
+      const stamp = new Date().toISOString().slice(0, 10);
+      const w = gd.clientWidth, h = gd.clientHeight, scale = 2;
+      // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
+      // the layout font sizes and labels come out half-size.
+      const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
+      await composeExport(url, w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png');
+    }
+
+    function applyLayout(v) {
+      S.layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'wide';
+      document.querySelector('.container').setAttribute('data-layout', S.layout);
+      try { localStorage.setItem(LAYOUT_KEY, S.layout); } catch (e) {}
+      requestAnimationFrame(() => {
+        ['tvlPlot', 'walPlot'].forEach(id => {
+          const gd = document.getElementById(id);
+          if (gd && gd.data) { try { Plotly.Plots.resize(gd); } catch (e) {} }
+        });
+      });
+    }
+
+    function wireButtons(scope, attr, apply) {
+      document.querySelectorAll('#' + scope + ' button[' + attr + ']').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#' + scope + ' button[' + attr + ']')
+            .forEach(b => b.classList.toggle('active', b === btn));
+          apply(btn.getAttribute(attr));
+        });
+      });
+    }
+
+    function fillVaultSelects() {
+      const opts = '<option value="__all__">All stock vaults</option>'
+        + S.vaults.slice().sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
+            .map(v => '<option value="' + v.address + '">' + v.token + ' — ' + v.name + '</option>').join('');
+      ['tvlVault', 'walVault', 'feedVault'].forEach(id => { document.getElementById(id).innerHTML = opts; });
+    }
+
+    (async function load() {
+      try { const s = localStorage.getItem(LAYOUT_KEY); if (s && VALID_LAYOUTS.indexOf(s) >= 0) S.layout = s; } catch (e) {}
+      document.getElementById('layoutSel').value = S.layout;
+      applyLayout(S.layout);
+
+      const get = (n) => fetch('/' + n).then(r => r.ok ? r.json() : null).catch(() => null);
+      const [iv, tv, act] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'), get('activity-events.json')]);
+      if (!iv) { document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; return; }
+
+      S.vaults = (iv.vaults || [])
+        .filter(v => STOCK_RE.test((v.assetAddress || '').toLowerCase()))
+        .map(v => ({ address: (v.address || '').toLowerCase(), name: v.name, token: v.token, tvl: v.tvl, apy: v.apy }));
+
+      if (tv && tv.vaults) {
+        Object.keys(tv.vaults).forEach(k => {
+          const a = k.toLowerCase();
+          if (S.vaults.some(v => v.address === a)) {
+            S.snaps[a] = (tv.vaults[k].snapshots || []).slice().sort((x, y) => x.timestamp - y.timestamp);
+          }
+        });
+      }
+      if (act) {
+        const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
+        S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);
+        S.updatedAt = act.updatedAt;
+      }
+      document.getElementById('updated').textContent = S.updatedAt
+        ? 'Data updated ' + new Date(S.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '';
+
+      fillVaultSelects();
+      renderStats(); renderTvl(); renderWallets(); renderFeed();
+
+      document.getElementById('tvlVault').addEventListener('change', function () { S.tvlVault = this.value; renderTvl(); });
+      document.getElementById('walVault').addEventListener('change', function () { S.walVault = this.value; renderWallets(); });
+      document.getElementById('feedVault').addEventListener('change', function () { S.feedVault = this.value; S.feedLimit = FEED_PAGE; renderFeed(); });
+      wireButtons('tvlToolbar', 'data-tvl-range', v => { S.tvlRange = v; renderTvl(); });
+      wireButtons('tvlToolbar', 'data-tvl-type', v => { S.tvlType = v; renderTvl(); });
+      wireButtons('walToolbar', 'data-wal-range', v => { S.walRange = v; renderWallets(); });
+      wireButtons('walToolbar', 'data-wal-mode', v => { S.walMode = v; renderWallets(); });
+      wireButtons('feedToolbar', 'data-feed-type', v => { S.feedType = v; S.feedLimit = FEED_PAGE; renderFeed(); });
+      document.getElementById('layoutSel').addEventListener('change', function () { applyLayout(this.value); });
+      const dots = document.getElementById('exportDotsToggle');
+      S.exportDots = dots.checked;
+      dots.addEventListener('change', () => { S.exportDots = dots.checked; });
+      document.getElementById('tvlPng').addEventListener('click', () => downloadPlot('tvlPlot', 'tvl'));
+      document.getElementById('walPng').addEventListener('click', () => downloadPlot('walPlot', 'wallets'));
+    })();
+  })();
+  </script>
 </body>
 </html>

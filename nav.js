@@ -11,6 +11,7 @@
     { href: '/monitor',                label: 'Monitor', badge: 'NEW' },
     { href: '/switchers',              label: 'Switchers', badge: 'NEW' },
     { href: '/dust',                   label: 'Dust Tracker', badge: 'NEW' },
+    { href: '/stocks',                 label: 'Stocks', badge: 'NEW' },
     { href: '/all-vaults',             label: 'All Vaults' },
     { href: '/tvl',                    label: 'TVL' },
     { href: '/dominance',              label: 'Dominance' },
