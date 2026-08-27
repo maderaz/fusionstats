@@ -99,6 +99,15 @@
     .flip button { font-family:inherit; font-size:0.68rem; font-weight:500; padding:0.3rem 0.8rem;
       border:0; background:var(--surface); color:var(--text-body); cursor:pointer; }
     .flip button.active { background:var(--accent); color:#fff; }
+    .breakdown { border-top:1px solid var(--stroke-light); margin-top:0.35rem; padding-top:0.65rem; }
+    .breakdown table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+    .breakdown th { text-align:left; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;
+      color:var(--text-secondary); font-weight:600; padding:0.35rem 0.5rem; border-bottom:1px solid var(--stroke); }
+    .breakdown td { padding:0.4rem 0.5rem; border-bottom:1px solid var(--stroke-light); }
+    .breakdown td.num, .breakdown th.num { text-align:right; font-family:'JetBrains Mono',monospace; }
+    .breakdown tr.total td { border-bottom:0; font-weight:600; }
+    .breakdown tr.total td.num { border-top:1px solid var(--stroke); }
+    .bar-cell { display:block; height:4px; border-radius:2px; background:var(--accent); opacity:0.75; }
     .holders-note { font-size:0.7rem; color:var(--text-secondary); padding:0.5rem 0 0; }
     .caveat { font-size:0.72rem; color:var(--text-secondary); margin:0.5rem 0 1.5rem; line-height:1.55; }
   </style>
@@ -154,6 +163,7 @@
       </div>
       <div class="plot" id="tvlPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="tvlNote"></div>
+      <div id="unitsBreakdown" style="display:none"></div>
     </div>
 
     <!-- ---------- WALLETS ---------- -->
@@ -399,6 +409,7 @@
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
       Plotly.react('tvlPlot', [trace], baseLayout(usd ? '$,.2s' : ',.4~f'), CONFIG);
+      renderUnitsBreakdown();
 
       const chosen = vaultsFor(S.tvlVault);
       const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
@@ -488,6 +499,45 @@
       if (mb) mb.onclick = () => { S.feedLimit += FEED_PAGE; renderFeed(); };
       const lb = document.getElementById('feedLessBtn');
       if (lb) lb.onclick = () => { S.feedLimit = FEED_PAGE; renderFeed(); };
+    }
+
+    // ---- latest unit count per ticker ----
+    // Each vault's figure is the last point of its own forward-filled series,
+    // which is exactly what the chart's final value sums, so the breakdown and
+    // the chart always agree.
+    function renderUnitsBreakdown() {
+      const box = document.getElementById('unitsBreakdown');
+      if (S.tvlUnit !== 'units') { box.style.display = 'none'; box.innerHTML = ''; return; }
+      const price = latestPrices();
+      const rows = vaultsFor(S.tvlVault).map(v => {
+        const pts = tvlSeries(v.address, S.tvlRange);
+        if (!pts.length) return null;
+        const units = pts[pts.length - 1].units || 0;
+        if (units <= 0) return null;
+        return { token: v.token, name: v.name, units, usd: units * (price[v.address] || 0) };
+      }).filter(Boolean).sort((a, b) => b.units - a.units);
+
+      if (!rows.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      const totU = rows.reduce((a, r) => a + r.units, 0);
+      const totUsd = rows.reduce((a, r) => a + r.usd, 0);
+      const max = Math.max(...rows.map(r => r.units));
+
+      box.style.display = '';
+      box.innerHTML = '<div class="breakdown"><table><thead><tr>'
+        + '<th>Ticker</th><th class="num">Units</th><th class="num">Share</th><th class="num">Value</th>'
+        + '</tr></thead><tbody>'
+        + rows.map(r =>
+            '<tr><td><strong>' + r.token + '</strong> '
+            + '<span style="color:var(--text-secondary);font-size:0.72rem">' + r.name + '</span>'
+            + '<span class="bar-cell" style="width:' + (r.units / max * 100).toFixed(1) + '%"></span></td>'
+            + '<td class="num">' + fNum(r.units, 4) + '</td>'
+            + '<td class="num">' + (totU ? (r.units / totU * 100).toFixed(1) + '%' : '—') + '</td>'
+            + '<td class="num">' + fUsd(r.usd) + '</td></tr>').join('')
+        + '<tr class="total"><td>Total <span style="color:var(--text-secondary);font-weight:400;font-size:0.72rem">'
+        + rows.length + ' tickers · units are share counts, not a like-for-like sum</span></td>'
+        + '<td class="num">' + fNum(totU, 4) + '</td><td class="num">100%</td>'
+        + '<td class="num">' + fUsd(totUsd) + '</td></tr>'
+        + '</tbody></table></div>';
     }
 
     // ---- wallet holdings, per ticker ----
