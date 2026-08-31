@@ -133,6 +133,7 @@
         </div>
         <div class="group">
           <span class="group-label">Range</span>
+          <button data-tvl-range="7">7d</button>
           <button data-tvl-range="30">30d</button>
           <button data-tvl-range="90" class="active">90d</button>
           <button data-tvl-range="180">180d</button>
@@ -176,6 +177,7 @@
         </div>
         <div class="group">
           <span class="group-label">Range</span>
+          <button data-wal-range="7">7d</button>
           <button data-wal-range="30">30d</button>
           <button data-wal-range="90" class="active">90d</button>
           <button data-wal-range="180">180d</button>
@@ -279,16 +281,28 @@
       return Math.floor(s / 86400) + 'd ago';
     }
     const cutoffFor = (range) => range === 'all' ? 0 : Date.now() / 1000 - parseInt(range, 10) * DAY_SEC;
+    const HOUR_SEC = 3600;
+    // Hourly points inside a week, daily beyond it. TVL snapshots land ~1.7x a
+    // day at scattered hours, so an hourly bucket does not invent resolution —
+    // it stops the previous code collapsing several real samples into one point
+    // per day. Wallet events carry exact timestamps, where hourly is genuinely
+    // finer: 47 populated hours against 8 days over the last week.
+    const stepFor = (range) => (range !== 'all' && parseInt(range, 10) <= 7) ? HOUR_SEC : DAY_SEC;
     const LEAD_DAYS = 14;
     // Blank days before the first real point so a series does not start hard
     // against the axis. Values are null, so the axis extends but nothing draws.
     // Both charts use this: without it the TVL series (31 days of snapshots)
     // looked padded while the wallet series (3 days of events) began abruptly.
-    function withLead(pts, key) {
+    function withLead(pts, key, range) {
       if (!pts.length) return pts;
-      const first = pts[0].day;
+      const step = stepFor(range);
+      // Keep the blank run the same wall-clock length whatever the step, so a
+      // 7d hourly view does not get a two-week gap in front of it.
+      const span = Math.min(LEAD_DAYS * DAY_SEC, Math.max(step * 6, DAY_SEC));
+      const n = Math.max(3, Math.round(span / step));
+      const first = pts[0].ts;
       const lead = [];
-      for (let i = LEAD_DAYS; i > 0; i--) { const r = { day: first - i, pad: true }; r[key] = null; lead.push(r); }
+      for (let i = n; i > 0; i--) { const r = { ts: first - i * step, pad: true }; r[key] = null; lead.push(r); }
       return lead.concat(pts);
     }
     const vaultsFor = (sel) => sel === '__all__' ? S.vaults : S.vaults.filter(v => v.address === sel);
@@ -318,100 +332,102 @@
 
     // ---- daily TVL, forward-filled, one point per vault per day ----
     function tvlSeries(sel, range) {
-      const cutoff = cutoffFor(range) / DAY_SEC;
+      const step = stepFor(range);
+      const cutoff = cutoffFor(range);
       const chosen = vaultsFor(sel);
-      const perVault = {}, allDays = {};
+
+      // Bucket each vault's snapshots by the chosen step, keeping the latest
+      // sample in each bucket, then walk the union of buckets forward-filling
+      // every vault. Snapshots do not line up across vaults — they land at
+      // different hours — so a shared axis with forward-fill is what keeps the
+      // total honest instead of dropping a vault on hours it did not report.
+      const perVault = {}, allBuckets = {};
       chosen.forEach(v => {
-        const byDay = {};
+        const byB = {};
         (S.snaps[v.address] || []).forEach(sn => {
-          if (sn.day == null || sn.day < MIN_VALID_DAY) return;
-          // The collector runs about twice a day; keep the last point per day
-          // or summing them double-counts.
-          if (!byDay[sn.day] || sn.timestamp > byDay[sn.day].timestamp) byDay[sn.day] = sn;
+          if (!sn.timestamp || sn.day == null || sn.day < MIN_VALID_DAY) return;
+          const bk = Math.floor(sn.timestamp / step);
+          if (!byB[bk] || sn.timestamp > byB[bk].timestamp) byB[bk] = sn;
         });
-        perVault[v.address] = byDay;
-        Object.keys(byDay).forEach(d => { allDays[d] = 1; });
+        perVault[v.address] = byB;
+        Object.keys(byB).forEach(bk => { allBuckets[bk] = 1; });
       });
-      const days = Object.keys(allDays).map(Number).sort((a, b) => a - b);
+
+      const buckets = Object.keys(allBuckets).map(Number).sort((a, b) => a - b);
       const carry = {}, out = [];
-      days.forEach(d => {
+      buckets.forEach(bk => {
         let usd = 0, units = 0;
         chosen.forEach(v => {
-          const sn = perVault[v.address] && perVault[v.address][d];
+          const sn = perVault[v.address] && perVault[v.address][bk];
           if (sn) carry[v.address] = sn;
           const use = sn || carry[v.address];
           if (!use) return;
           usd += use.tvlUsd || 0;
-          // Raw vault units. Summing across tickers adds quantities of
-          // different equities, which is not a meaningful total on its own —
-          // it tracks share count, not value. Offered because it answers
-          // "how many shares are in the vaults", and the axis says so.
           units += use.assets || 0;
         });
-        if (d >= cutoff) out.push({ day: d, tvl: usd, units: units });
+        const ts = bk * step;
+        if (ts >= cutoff) out.push({ ts, tvl: usd, units });
       });
 
-      // Snapshots are written once a day, so the series ended yesterday while
-      // the headline read from the live vault API was hours old — the chart
-      // looked a day behind and disagreed with the number above it. Append a
-      // live point for today from the same source the headline uses, so the
-      // two always land on the same value.
-      // days since epoch — Date.now() is milliseconds, so DAY_MS, not DAY_SEC
-      const today = Math.floor(Date.now() / DAY_MS);
+      // Snapshots are written on a cron, so the series would otherwise end at
+      // the last one rather than now. Append a live point from the same source
+      // the headline uses, so chart and headline always agree.
+      const nowTs = Math.floor(Date.now() / 1000);
       const liveUsd = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
       if (liveUsd > 0) {
         const price = latestPrices();
-        // Units are not published live, so derive them from the live USD figure
-        // at the latest price we have. Value is exact; the unit count carries
-        // that price's staleness.
+        // Units are not published live: derive them from live USD at the latest
+        // price. The value is exact, the unit count carries that price's age.
         const liveUnits = chosen.reduce((a, v) => {
           const px = price[v.address] || 0;
           return a + (px > 0 ? (v.tvl || 0) / px : 0);
         }, 0);
-        if (out.length && out[out.length - 1].day === today) out.pop();
-        if (today >= cutoff) out.push({ day: today, tvl: liveUsd, units: liveUnits, live: true });
+        if (out.length && nowTs - out[out.length - 1].ts < step) out.pop();
+        if (nowTs >= cutoff) out.push({ ts: nowTs, tvl: liveUsd, units: liveUnits, live: true });
       }
       return out;
     }
 
-    // ---- wallets: cumulative distinct depositors, or distinct per day ----
+    // ---- wallets: cumulative distinct depositors, or distinct per bucket ----
     function walletSeries(sel, range, mode) {
+      const step = stepFor(range);
       const chosen = vaultsFor(sel);
       const addrs = {}; chosen.forEach(v => { addrs[v.address] = 1; });
       const evs = S.events.filter(e => addrs[(e.vault || '').toLowerCase()] && e.timestamp)
         .sort((a, b) => a.timestamp - b.timestamp);
       if (!evs.length) return [];
-      const byDay = new Map();
+
+      const byB = new Map();
       const seen = new Set();
       evs.forEach(e => {
-        const d = Math.floor(e.timestamp / DAY_SEC);
         const w = (e.owner || e.sender || '').toLowerCase();
         if (!w) return;
-        if (!byDay.has(d)) byDay.set(d, { day: d, active: new Set(), cumulative: 0 });
-        byDay.get(d).active.add(w);
+        const bk = Math.floor(e.timestamp / step);
+        if (!byB.has(bk)) byB.set(bk, { active: new Set(), cumulative: 0 });
+        byB.get(bk).active.add(w);
         seen.add(w);
-        byDay.get(d).cumulative = seen.size;   // running distinct total
+        byB.get(bk).cumulative = seen.size;
       });
-      const cutoff = cutoffFor(range) / DAY_SEC;
-      const days = [...byDay.keys()].sort((a, b) => a - b);
-      // Carry the cumulative figure across days with no activity, otherwise the
-      // line drops to zero on quiet days.
-      let last = 0;
+
+      const keys = [...byB.keys()].sort((a, b) => a - b);
       const full = [];
-      // Start from an explicit zero the day before the first holder, so the
-      // line rises from nothing instead of appearing already at its first
-      // day's count.
-      full.push({ day: days[0] - 1, cumulative: 0, active: 0 });
-      for (let d = days[0]; d <= days[days.length - 1]; d++) {
-        const row = byDay.get(d);
+      // Explicit zero one bucket before the first holder, so the line rises
+      // from nothing rather than starting at its first reading.
+      full.push({ ts: (keys[0] - 1) * step, cumulative: 0, active: 0 });
+      let last = 0;
+      for (let bk = keys[0]; bk <= keys[keys.length - 1]; bk++) {
+        const row = byB.get(bk);
         if (row) last = row.cumulative;
-        full.push({ day: d, cumulative: last, active: row ? row.active.size : 0 });
+        // Carry the running total through quiet buckets, or the line would
+        // drop to zero every hour with no activity.
+        full.push({ ts: bk * step, cumulative: last, active: row ? row.active.size : 0 });
       }
-      return full.filter(p => p.day >= cutoff).map(p => ({ day: p.day, v: mode === 'active' ? p.active : p.cumulative }));
+      const cutoff = cutoffFor(range);
+      return full.filter(p => p.ts >= cutoff).map(p => ({ ts: p.ts, v: mode === 'active' ? p.active : p.cumulative }));
     }
 
     function renderTvl() {
-      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl');
+      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange);
       const el = document.getElementById('tvlPlot');
       if (!pts.length) { el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
       // Plotly renders alongside existing children rather than replacing them,
@@ -424,9 +440,9 @@
         ? '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>'
         : '<b>%{x|%b %d, %Y}</b><br>%{y:,.4f} ' + unitLabel + '<extra></extra>';
       const trace = S.tvlType === 'bar'
-        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(yOf),
+        ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
             marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } }, hovertemplate: hover }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(yOf),
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
       Plotly.react('tvlPlot', [trace], baseLayout(usd ? '$,.2s' : ',.4~f'), CONFIG);
@@ -435,7 +451,7 @@
       const chosen = vaultsFor(S.tvlVault);
       const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
       const real = pts.filter(p => !p.pad);
-      const lastDay = real[real.length - 1].day;
+      const lastTs = real[real.length - 1].ts;
       const lastVal = real[real.length - 1].tvl;
       const note = document.getElementById('tvlNote');
       // Snapshots are taken once a day; the headline figure is live. On a
@@ -444,14 +460,14 @@
       const endsLive = real.length && real[real.length - 1].live;
       if (usd) {
         note.textContent = real.length + ' points · '
-          + (real.length - (endsLive ? 1 : 0)) + ' daily snapshots'
+          + (real.length - (endsLive ? 1 : 0)) + (stepFor(S.tvlRange) === HOUR_SEC ? ' hourly samples' : ' daily samples')
           + (endsLive ? ' plus a live point for today' : '')
-          + ' · ends ' + new Date(lastDay * DAY_MS).toISOString().slice(0, 10)
+          + ' · ends ' + new Date(lastTs * 1000).toISOString().slice(0, 16).replace('T', ' ')
           + ' at ' + fUsd(lastVal);
       } else {
         const lastUnits = real[real.length - 1].units;
         note.textContent = real.length + ' points · ends '
-          + new Date(lastDay * DAY_MS).toISOString().slice(0, 10) + ' at ' + fNum(lastUnits, 4) + ' ' + unitLabel
+          + new Date(lastTs * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' at ' + fNum(lastUnits, 4) + ' ' + unitLabel
           + (endsLive ? ' (today derived from live TVL at the latest price)' : '')
           + (S.tvlUnit === 'units'
               ? ' · a count of shares across different equities, not a value — switch to USD to compare'
@@ -460,15 +476,15 @@
     }
 
     function renderWallets() {
-      const pts = withLead(walletSeries(S.walVault, S.walRange, S.walMode), 'v');
+      const pts = withLead(walletSeries(S.walVault, S.walRange, S.walMode), 'v', S.walRange);
       const el = document.getElementById('walPlot');
       if (!pts.length) { el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
       const ph2 = el.querySelector('.loading'); if (ph2) ph2.remove();
       const trace = S.walMode === 'active'
-        ? { type: 'bar', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.v),
+        ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets<extra></extra>' }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => p.pad ? null : p.v),
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
       Plotly.react('walPlot', [trace], baseLayout(',d'), CONFIG);
