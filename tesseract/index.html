@@ -57,6 +57,20 @@
     color:var(--ink-2);font-family:inherit;font-size:.72rem;font-weight:500;padding:5px 10px;
     border-radius:var(--radius-pill);cursor:pointer}
   .chart-action:hover{border-color:var(--accent);color:var(--accent)}
+  .title-prompt{position:absolute;top:calc(100% + 8px);right:0;z-index:20;width:330px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.12)}
+  .title-prompt[hidden]{display:none}
+  .title-prompt label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--ink-3);font-weight:600;margin-bottom:6px}
+  .title-prompt input{width:100%;font-family:inherit;font-size:.82rem;padding:7px 9px;
+    border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .title-prompt input:focus{outline:none;border-color:var(--accent)}
+  .title-prompt-actions{display:flex;gap:6px;margin-top:10px}
+  .title-prompt button{font-family:inherit;font-size:.72rem;padding:6px 12px;border-radius:var(--radius-pill);cursor:pointer}
+  .tp-primary{border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:500}
+  .tp-plain{border:1px solid var(--line);background:var(--card);color:var(--ink-2)}
+  .tp-plain:hover{border-color:var(--accent);color:var(--accent)}
 
   /* ---- the plot surface: dot grid, no border, no gridlines ---- */
   .chart-container{
@@ -176,7 +190,16 @@
             <span id="spLegendLabel">Share price</span>
           </button>
         </div>
-        <div class="chart-actions">
+        <div class="chart-actions" style="position:relative">
+          <div class="title-prompt" id="titlePrompt" hidden>
+            <label for="exportTitle">Chart title</label>
+            <input id="exportTitle" type="text" autocomplete="off" spellcheck="false">
+            <div class="title-prompt-actions">
+              <button type="button" class="tp-primary" id="titleGo">Download</button>
+              <button type="button" class="tp-plain" id="titleDefault">Use default</button>
+              <button type="button" class="tp-plain" id="titleCancel">Cancel</button>
+            </div>
+          </div>
           <button class="chart-action" id="snapshot-png" type="button" title="Download chart as 4:3 PNG">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
@@ -441,8 +464,15 @@ function exportCsv(){
   downloadCsv('tesseract-base-tvl.csv', rows);
 }
 
+// The title the export uses when nothing is typed. Shared with the prompt so
+// the placeholder always shows exactly what "Use default" will produce.
+function defaultExportTitle(){
+  var vs = selVaults();
+  return vs.length === 1 ? vs[0].name : 'Tesseract on Base — TVL';
+}
+
 // PNG exports exactly what is on screen, composed at a fixed 1600x1200.
-function snapshotChartTo43Png(){
+function snapshotChartTo43Png(customTitle){
   var chart=state.mainChart, cfg=state.lastConfig;
   if(!chart||!chart.canvas||!cfg) return;
   var W=1600,H=1200, theme=getChartTheme();
@@ -451,7 +481,7 @@ function snapshotChartTo43Png(){
   c.fillStyle=theme.card; c.fillRect(0,0,W,H);
 
   var one=cfg.one;
-  var title = one? one.name : 'Tesseract on Base — TVL';
+  var title = (customTitle && customTitle.trim()) || defaultExportTitle();
   var sub = (state.period? ('Last '+state.period+' days') : 'All time');
   var stamp = new Date().toISOString().slice(0,10);
   c.fillStyle=theme.ink; c.font='600 38px Poppins, system-ui, sans-serif'; c.textBaseline='top';
@@ -640,7 +670,39 @@ document.querySelectorAll('.chart-legend').forEach(function(group){
   });
 });
 
-document.getElementById('snapshot-png').addEventListener('click', snapshotChartTo43Png);
+(function wireExportTitle(){
+  var prompt = document.getElementById('titlePrompt');
+  var input  = document.getElementById('exportTitle');
+
+  function open(){
+    // Prefill with the default so it is editable rather than a placeholder the
+    // user has to retype, and select it so typing replaces it in one go.
+    input.value = defaultExportTitle();
+    prompt.hidden = false;
+    input.focus(); input.select();
+  }
+  function close(){ prompt.hidden = true; }
+  function go(useDefault){
+    var t = useDefault ? '' : input.value;
+    close();
+    snapshotChartTo43Png(t);
+  }
+
+  document.getElementById('snapshot-png').addEventListener('click', function(e){
+    e.stopPropagation();
+    if (prompt.hidden) open(); else close();
+  });
+  document.getElementById('titleGo').addEventListener('click', function(){ go(false); });
+  document.getElementById('titleDefault').addEventListener('click', function(){ go(true); });
+  document.getElementById('titleCancel').addEventListener('click', close);
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); go(false); }
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  // Clicking away cancels, but clicks inside the panel must not.
+  prompt.addEventListener('click', function(e){ e.stopPropagation(); });
+  document.addEventListener('click', function(){ if (!prompt.hidden) close(); });
+})();
 document.getElementById('download-csv').addEventListener('click', exportCsv);
 document.getElementById('layoutSel').addEventListener('change', function(){
   state.chartLayout=VALID_LAYOUTS.indexOf(this.value)>=0? this.value : 'wide';
