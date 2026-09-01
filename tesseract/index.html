@@ -529,9 +529,6 @@ function snapshotChartTo43Png(customTitle){
   c.drawImage(off, padX, padTop, plotW, plotH);
   tmp.destroy();
 
-  c.fillStyle=theme.ink3; c.font='400 17px Poppins, system-ui, sans-serif';
-  c.fillText('fusionecosystem.xyz/tesseract',56,H-46);
-
   var done=function(blob){
     var url=URL.createObjectURL(blob), a=document.createElement('a');
     a.href=url; a.download='tesseract-base-tvl-'+stamp+'.png';
