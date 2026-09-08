@@ -151,6 +151,20 @@
   .gap-bar{height:7px;border-radius:var(--radius-pill);background:var(--tint-thin);margin-top:11px;overflow:hidden}
   .gap-bar > span{display:block;height:100%;border-radius:var(--radius-pill);background:var(--accent)}
   .gap-bar.is-record > span{background:var(--red)}
+  .info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;padding:0;
+    border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink-3);
+    font-family:inherit;font-size:.58rem;font-weight:700;cursor:help;margin-left:6px;
+    vertical-align:middle;position:relative}
+  .info:hover,.info:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+  /* display:none, not visibility:hidden — a hidden-but-laid-out 300px bubble
+     still counted toward document scroll width and put a horizontal scrollbar
+     on the whole page at 768px. Anchored right so it opens inward from the
+     button and stays inside the card at every width. */
+  .info .tip{display:none;position:absolute;bottom:calc(100% + 9px);right:0;
+    width:300px;max-width:min(300px,60vw);background:var(--ink);color:#fff;border-radius:10px;padding:11px 13px;
+    font-size:.72rem;font-weight:400;line-height:1.55;text-transform:none;letter-spacing:0;text-align:left;
+    box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:30;pointer-events:none}
+  .info:hover .tip,.info:focus-visible .tip{display:block}
   .gap-flag{display:inline-block;font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:5px;
     background:rgba(220,38,38,.10);color:var(--red);margin-left:7px;vertical-align:middle}
 
@@ -290,7 +304,7 @@
         <div class="s" id="bdWhat"></div>
       </div>
       <div class="gap-panel">
-        <div class="k">Current dry spell vs record</div>
+        <div class="k">Current dry spell vs record<button class="info" type="button" aria-label="How the record is measured">i<span class="tip" role="tooltip">Gaps are measured from <b>1 May 2026</b> — the point Tesseract stepped up its deployment on Fusion. Before that, deposits over $100k were occasional, and a single 123-day stretch between two of them would set a record that says nothing about how Tesseract operates now.</span></button></div>
         <div class="v" id="bdGap">—</div>
         <div class="gap-bar" id="bdBar"><span style="width:0"></span></div>
         <div class="s" id="bdRecord"></div>
@@ -350,6 +364,13 @@ var TESS_RE=/tess/i;
 // size, and two $60k deposits on one day are not one $120k allocation.
 var BIG_DEPOSIT_USD=100000;
 var BIG_DEPOSIT_LABEL='$100k';
+
+// Gaps are only measured from here — the point Tesseract stepped up its
+// deployment on Fusion. Two of the 71 large deposits on record predate it,
+// and the 123-day stretch between them would otherwise set a record that
+// describes our collection window rather than how Tesseract operates now.
+var GAP_EPOCH=Date.UTC(2026,4,1)/1000;   // 2026-05-01
+var GAP_EPOCH_LABEL='1 May 2026';
 
 var EXPLORER={ ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io',
   avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
@@ -724,18 +745,22 @@ function renderBigDeposits(){
     + (lv.chain? ' <span class="muted">('+chainLabel(lv.chain)+')</span>':'')
     + (lw? ' · <a class="addr" href="'+addrUrl(lv.chain,lw)+'" target="_blank" rel="noopener">'+shortAddr(lw)+'</a>':'');
 
-  // Gaps BETWEEN two large deposits. The stretch before the first one measures
-  // how far back our event history reaches, not how long Tesseract went quiet,
-  // so it is not a candidate for the record.
+  // Gaps BETWEEN two large deposits, and only from the epoch onwards. Two
+  // things are excluded on purpose: the stretch before the first deposit,
+  // which measures how far back our events reach rather than how long
+  // Tesseract went quiet, and everything before Tesseract scaled up on Fusion.
+  var era=big.filter(function(e){ return e.timestamp>=GAP_EPOCH; });
   var gaps=[];
-  for(var i=1;i<big.length;i++){
-    gaps.push({ days:(big[i].timestamp-big[i-1].timestamp)/86400, from:big[i-1].timestamp, to:big[i].timestamp });
+  for(var i=1;i<era.length;i++){
+    gaps.push({ days:(era[i].timestamp-era[i-1].timestamp)/86400, from:era[i-1].timestamp, to:era[i].timestamp });
   }
 
   if(!gaps.length){
     gapEl.textContent=fDays(since);
     barEl.classList.remove('is-record'); barEl.firstElementChild.style.width='0';
-    recEl.textContent='Only one large deposit on record — no closed gap to compare against yet.';
+    recEl.textContent = era.length
+      ? 'Only one large deposit since '+GAP_EPOCH_LABEL+' — no closed gap to compare against yet.'
+      : 'No large deposit since '+GAP_EPOCH_LABEL+' — nothing to measure a record against.';
   } else {
     var rec=gaps.slice().sort(function(x,y){ return y.days-x.days; })[0];
     var sorted=gaps.map(function(g){return g.days;}).sort(function(x,y){return x-y;});
@@ -750,12 +775,12 @@ function renderBigDeposits(){
         ? 'Past the longest gap on record ('+fDays(rec.days)+').'
         : Math.round(pct)+'% of the longest gap on record, '+fDays(rec.days)+'.')
       +'<br>Record ran '+dstr(rec.from)+' → '+dstr(rec.to)+' · typical gap '+fDays(med)
-      +' across '+gaps.length+' of them.';
+      +' across '+gaps.length+' of them, since '+GAP_EPOCH_LABEL+'.';
   }
 
-  noteEl.textContent='Single deposit events over '+BIG_DEPOSIT_LABEL+', measured over the full collected history'
-    +(firstTs? ' (from '+dstr(firstTs)+')':'')+' — not the chart timeframe. '
-    +big.length+' such deposit'+(big.length===1?'':'s')+' in this scope.';
+  noteEl.textContent='Single deposit events over '+BIG_DEPOSIT_LABEL+' — '+big.length
+    +' in this scope'+(firstTs? ', collected from '+dstr(firstTs):'')+'. '
+    +'Neither panel follows the chart timeframe; gaps are measured from '+GAP_EPOCH_LABEL+' onwards.';
 }
 
 // One row per chain Tesseract is deployed on. This is the drilldown index:
