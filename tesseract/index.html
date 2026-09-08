@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Tesseract on Base</title>
+<title>Tesseract Vaults</title>
+<script src="/data-source.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" onerror="window.__chartLoadFailed=true"></script>
 <style>
@@ -29,6 +30,7 @@
   .card h2{font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .muted{color:var(--ink-3);font-weight:400;font-size:.78rem}
   select{font-family:inherit;font-size:.8rem;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);max-width:100%}
+  #vaultSel{max-width:min(100%,400px)}
 
   /* ---- section head: controls that shape the DATA ---- */
   .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:22px}
@@ -121,6 +123,8 @@
   .addr{font-family:var(--mono);font-size:.74rem;color:var(--accent);text-decoration:none}
   .addr:hover{text-decoration:underline}
   .scroll{overflow-x:auto}
+  .scroll.is-tall{max-height:520px;overflow-y:auto}
+  .scroll.is-tall th{position:sticky;top:0;background:var(--card);z-index:1}
   .empty-state{color:var(--ink-3);font-size:.82rem;padding:16px 0}
   .note{background:rgba(132,41,255,.08);border:1px solid rgba(132,41,255,.22);border-radius:10px;padding:10px 13px;font-size:.78rem;color:var(--ink-3);margin-top:12px}
   .more{margin-top:12px;text-align:center}
@@ -131,14 +135,18 @@
 </head>
 <body>
 <div class="app-shell" data-layout="wide">
-  <h1><span>◳</span> Tesseract on Base</h1>
-  <p class="sub">
-    TVL, share price and depositing wallets for Tesseract's vaults on <b>Base</b>, in one place.
+  <h1><span>◳</span> <span id="pageTitle">Tesseract Vaults</span></h1>
+  <p class="sub" id="pageSub">
+    TVL, share price and depositing wallets for every Tesseract vault, across every network we track.
     Built from the data this site already collects — no separate pipeline.
   </p>
 
   <div class="card">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <div class="muted" style="margin-bottom:4px">Network</div>
+        <select id="netSel"><option value="__all__">All networks</option></select>
+      </div>
       <div>
         <div class="muted" style="margin-bottom:4px">Vault</div>
         <select id="vaultSel"><option value="__all__">All Tesseract vaults</option></select>
@@ -226,6 +234,15 @@
     </div>
   </section>
 
+  <div class="card" id="netCard">
+    <h2>Networks <span class="muted" id="netCount"></span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Network</th><th class="num">Vaults</th><th class="num">TVL</th><th class="num">Share</th>
+        <th class="num">Wallets</th><th class="num">Events</th><th></th></tr></thead>
+      <tbody id="netBody"></tbody>
+    </table></div>
+  </div>
+
   <div class="card" id="spTableCard">
     <h2>Share price by vault <span class="muted">· never averaged across vaults</span></h2>
     <div id="spTable"></div>
@@ -233,8 +250,8 @@
 
   <div class="card">
     <h2>Vaults <span class="muted" id="vaultCount"></span></h2>
-    <div class="scroll"><table>
-      <thead><tr><th>Vault</th><th>Address</th><th class="num">TVL</th><th class="num">APY</th>
+    <div class="scroll is-tall"><table>
+      <thead><tr><th>Vault</th><th>Network</th><th>Address</th><th class="num">TVL</th><th class="num">APY</th>
         <th class="num">Share price</th><th class="num">Wallets</th><th class="num">Events</th><th>Status</th></tr></thead>
       <tbody id="vaultBody"></tbody>
     </table></div>
@@ -253,7 +270,7 @@
     <h2>Deposits &amp; withdrawals <span class="muted" id="flowCount"></span></h2>
     <div class="scroll"><table>
       <thead><tr><th>Date</th><th>Type</th><th class="num">Amount</th><th class="num">USD</th>
-        <th>Wallet</th><th>Vault</th></tr></thead>
+        <th>Wallet</th><th>Vault</th><th>Network</th></tr></thead>
       <tbody id="flowBody"></tbody>
     </table></div>
     <div class="more" id="flowMore"></div>
@@ -265,6 +282,20 @@ var LAYOUT_KEY='tesseract_chart_layout';
 var VALID_LAYOUTS=['wide','widescreen','fourthree','compact'];
 var FLOW_PAGE=25;
 
+// Tesseract deploys under two naming conventions — "TESS <asset> …" and
+// "Tesseract <asset> …" — so one case-insensitive stem matches both, on
+// every chain. Nothing else in ipor-vaults.json contains it.
+var TESS_RE=/tess/i;
+
+var EXPLORER={ ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io',
+  avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
+  ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
+var CHAIN_LABEL={ ethereum:'Ethereum', base:'Base', arbitrum:'Arbitrum', avalanche:'Avalanche',
+  unichain:'Unichain', plasma:'Plasma', ink:'Ink', katana:'Katana', tac:'TAC' };
+function chainLabel(c){ return CHAIN_LABEL[c] || (c? c.charAt(0).toUpperCase()+c.slice(1) : 'Unknown'); }
+function explorerFor(c){ return EXPLORER[c] || 'https://etherscan.io'; }
+function addrUrl(chain,a){ return explorerFor(chain)+'/address/'+a; }
+
 var state = {
   mainChart:null,               // live instance — disposable
   chartType:'bar',
@@ -272,6 +303,7 @@ var state = {
   unit:'USD',
   chartLayout:'wide',
   hidden:{ tvl:false, sharePrice:false },
+  network:'__all__',
   vault:'__all__',
   vaults:[], snaps:{}, events:[], updatedAt:null,
   flowLimit:FLOW_PAGE,
@@ -283,10 +315,37 @@ function fUsd(n){ if(n==null||isNaN(n))return '—'; var a=Math.abs(n);
 function shortAddr(a){ return a? a.slice(0,6)+'…'+a.slice(-4):'—'; }
 function dstr(ts){ return ts? new Date(ts*1000).toISOString().slice(0,10):'—'; }
 function cutoff(){ return state.period? (Date.now()/1000 - state.period*86400) : 0; }
-function selVaults(){ return state.vault==='__all__'? state.vaults : state.vaults.filter(function(v){return v.address===state.vault;}); }
-function selEvents(){
-  var a={}; selVaults().forEach(function(v){a[v.address]=1;}); var c=cutoff();
+
+// Two nested scopes. `netVaults` is the drilldown — every Tesseract vault on
+// the chosen chain, or all of them. `selVaults` narrows that to one vault when
+// the vault picker is used. Tables that describe the drilldown itself (vaults,
+// share price) read the first; anything aggregated reads the second.
+function netVaults(){ return state.network==='__all__'? state.vaults : state.vaults.filter(function(v){return v.chain===state.network;}); }
+function selVaults(){
+  var vs=netVaults();
+  return state.vault==='__all__'? vs : vs.filter(function(v){return v.address===state.vault;});
+}
+function eventsFor(vs){
+  var a={}; vs.forEach(function(v){a[v.address]=1;}); var c=cutoff();
   return state.events.filter(function(e){ return a[(e.vault||'').toLowerCase()] && (e.timestamp||0)>=c; });
+}
+function selEvents(){ return eventsFor(selVaults()); }
+// Keyed on what the user picked, not on how many vaults happen to be in scope:
+// a chain holding exactly one vault is still a network view, and its export
+// should say so.
+function pickedVault(){
+  if(state.vault==='__all__') return null;
+  return selVaults().length===1? selVaults()[0] : null;
+}
+function scopeLabel(){
+  var one=pickedVault();
+  if(one) return one.name;
+  return state.network==='__all__'? 'Tesseract (all networks)' : 'Tesseract on '+chainLabel(state.network);
+}
+function scopeSlug(){
+  var one=pickedVault();
+  if(one) return 'tesseract-'+one.address.slice(0,10);
+  return state.network==='__all__'? 'tesseract-all-networks' : 'tesseract-'+state.network;
 }
 
 // Canvas cannot resolve var(--x): tokens are read once per render.
@@ -459,16 +518,16 @@ function exportCsv(){
   var saved=state.period; state.period=0;
   var pts=seriesFor(); state.period=saved;
   var one=selVaults().length===1?selVaults()[0]:null;
-  var rows=[['date','tvl_usd', one? ('tvl_'+one.symbol.toLowerCase()):'tvl_native_mixed', 'share_price']];
-  pts.forEach(function(p){ rows.push([dstr(p.ts), p.tvlUsd, p.native, p.spN? (p.sp/p.spN):'']); });
-  downloadCsv('tesseract-base-tvl.csv', rows);
+  var scope=state.network==='__all__'? 'all networks' : chainLabel(state.network);
+  var rows=[['date','tvl_usd', one? ('tvl_'+one.symbol.toLowerCase()):'tvl_native_mixed', 'share_price','scope']];
+  pts.forEach(function(p){ rows.push([dstr(p.ts), p.tvlUsd, p.native, p.spN? (p.sp/p.spN):'', one? one.chain : scope]); });
+  downloadCsv(scopeSlug()+'-tvl.csv', rows);
 }
 
 // The title the export uses when nothing is typed. Shared with the prompt so
 // the placeholder always shows exactly what "Use default" will produce.
 function defaultExportTitle(){
-  var vs = selVaults();
-  return vs.length === 1 ? vs[0].name : 'Tesseract on Base — TVL';
+  return pickedVault() ? scopeLabel() : scopeLabel() + ' — TVL';
 }
 
 // PNG exports exactly what is on screen, composed at a fixed 1600x1200.
@@ -531,12 +590,12 @@ function snapshotChartTo43Png(customTitle){
 
   var done=function(blob){
     var url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download='tesseract-base-tvl-'+stamp+'.png';
+    a.href=url; a.download=scopeSlug()+'-tvl-'+stamp+'.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(url); },0);
   };
   if(out.toBlob) out.toBlob(done,'image/png');
-  else { var a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download='tesseract-base-tvl-'+stamp+'.png'; a.click(); }
+  else { var a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download=scopeSlug()+'-tvl-'+stamp+'.png'; a.click(); }
 }
 
 /* ---------- aspect presets ---------- */
@@ -554,25 +613,66 @@ function renderStats(){
   var dep=ev.filter(function(e){return e.type==='deposit';}), wd=ev.filter(function(e){return e.type==='withdraw';});
   var net=dep.reduce(function(s,e){return s+(e.usdValue||0);},0)-wd.reduce(function(s,e){return s+(e.usdValue||0);},0);
   var active=vs.filter(function(v){return (v.tvl||0)>0;}).length;
-  document.getElementById('stats').innerHTML=[
-    ['Total TVL',fUsd(tvl)],['Vaults',active+' active · '+(vs.length-active)+' empty'],
-    ['Wallets',Object.keys(w).length],['Deposits',dep.length],['Withdrawals',wd.length],
-    ['Net flow',(net>=0?'+':'')+fUsd(net)],
-  ].map(function(p){return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>';}).join('');
+  var chains={}; vs.forEach(function(v){ if(v.chain) chains[v.chain]=1; });
+  var nChains=Object.keys(chains).length;
+  var tiles=[['Total TVL',fUsd(tvl)],['Vaults',active+' active · '+(vs.length-active)+' empty']];
+  if(nChains>1) tiles.push(['Networks',String(nChains)]);
+  tiles=tiles.concat([['Wallets',Object.keys(w).length],['Deposits',dep.length],['Withdrawals',wd.length],
+    ['Net flow',(net>=0?'+':'')+fUsd(net)]]);
+  document.getElementById('stats').innerHTML=tiles
+    .map(function(p){return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>';}).join('');
+}
+
+// One row per chain Tesseract is deployed on. This is the drilldown index:
+// picking a row is the same as picking that network in the selector.
+function renderNetworks(){
+  var card=document.getElementById('netCard');
+  var groups={};
+  state.vaults.forEach(function(v){ (groups[v.chain]=groups[v.chain]||[]).push(v); });
+  var chains=Object.keys(groups);
+  // With one chain the table restates the header — hide it rather than pad it.
+  card.hidden = chains.length<2;
+  if(card.hidden) return;
+
+  var total=state.vaults.reduce(function(s,v){return s+(v.tvl||0);},0);
+  var rows=chains.map(function(c){
+    var vs=groups[c], ev=eventsFor(vs), w={};
+    ev.forEach(function(e){ var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1; });
+    return { chain:c, n:vs.length, active:vs.filter(function(v){return (v.tvl||0)>0;}).length,
+      tvl:vs.reduce(function(s,v){return s+(v.tvl||0);},0), wallets:Object.keys(w).length, events:ev.length };
+  }).sort(function(a,b){ return b.tvl-a.tvl; });
+
+  document.getElementById('netCount').textContent='· '+rows.length+' networks · '+state.vaults.length+' vaults';
+  document.getElementById('netBody').innerHTML=rows.map(function(r){
+    var sh=total? (100*r.tvl/total):0;
+    var on=state.network===r.chain;
+    return '<tr'+(on?' style="background:var(--tint-thin)"':'')+'>'
+      +'<td><b>'+chainLabel(r.chain)+'</b></td>'
+      +'<td class="num">'+r.active+' active · '+(r.n-r.active)+' empty</td>'
+      +'<td class="num">'+fUsd(r.tvl)+'</td>'
+      +'<td class="num">'+sh.toFixed(1)+'%</td>'
+      +'<td class="num">'+r.wallets+'</td><td class="num">'+r.events+'</td>'
+      +'<td><button type="button" class="chart-action" data-drill="'+r.chain+'">'
+        +(on?'Viewing':'View')+'</button></td></tr>';
+  }).join('');
+  document.getElementById('netBody').querySelectorAll('button[data-drill]').forEach(function(b){
+    b.addEventListener('click', function(){ setNetwork(b.getAttribute('data-drill')); });
+  });
 }
 
 function renderSpTable(){
   var el=document.getElementById('spTable');
-  var rows=state.vaults.map(function(v){
+  var rows=netVaults().map(function(v){
     var s=(state.snaps[v.address]||[]).filter(function(x){ return x.sharePrice!=null && x.timestamp>=cutoff(); });
     if(s.length<2) return null;
     var f=s[0], l=s[s.length-1];
-    return {name:v.name,first:f.sharePrice,last:l.sharePrice,days:Math.round((l.timestamp-f.timestamp)/86400)};
+    return {name:v.name,chain:v.chain,first:f.sharePrice,last:l.sharePrice,days:Math.round((l.timestamp-f.timestamp)/86400)};
   }).filter(Boolean);
   el.innerHTML = rows.length
-    ? '<div class="scroll"><table><thead><tr><th>Vault</th><th class="num">Start</th><th class="num">Latest</th><th class="num">Change</th><th class="num">Period</th></tr></thead><tbody>'
+    ? '<div class="scroll is-tall"><table><thead><tr><th>Vault</th><th>Network</th><th class="num">Start</th><th class="num">Latest</th><th class="num">Change</th><th class="num">Period</th></tr></thead><tbody>'
       + rows.map(function(r){ var ch=(r.last/r.first-1)*100;
-          return '<tr><td>'+r.name+'</td><td class="num">'+fNum(r.first,6)+'</td><td class="num">'+fNum(r.last,6)+'</td>'
+          return '<tr><td>'+r.name+'</td><td class="muted">'+chainLabel(r.chain)+'</td>'
+            +'<td class="num">'+fNum(r.first,6)+'</td><td class="num">'+fNum(r.last,6)+'</td>'
             +'<td class="num" style="color:'+(ch>=0?'var(--green)':'var(--red)')+'">'+(ch>=0?'+':'')+ch.toFixed(2)+'%</td>'
             +'<td class="num">'+r.days+'d</td></tr>'; }).join('')
       +'</tbody></table></div><div class="muted" style="margin-top:9px">Each figure covers that vault\'s own period. Not annualised.</div>'
@@ -580,15 +680,17 @@ function renderSpTable(){
 }
 
 function renderVaults(){
-  var vs=state.vaults.slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);});
-  document.getElementById('vaultCount').textContent='· '+vs.length+' on Base';
+  var vs=netVaults().slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);});
+  document.getElementById('vaultCount').textContent='· '+vs.length
+    +(state.network==='__all__'? ' across all networks' : ' on '+chainLabel(state.network));
   var c=cutoff();
   document.getElementById('vaultBody').innerHTML=vs.map(function(v){
     var ev=state.events.filter(function(e){return (e.vault||'').toLowerCase()===v.address && (e.timestamp||0)>=c;});
     var w={}; ev.forEach(function(e){var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1;});
     var snaps=state.snaps[v.address]||[], last=snaps.length?snaps[snaps.length-1]:null;
     return '<tr><td>'+v.name+'</td>'
-      +'<td><a class="addr" href="https://basescan.org/address/'+v.address+'" target="_blank" rel="noopener">'+shortAddr(v.address)+'</a></td>'
+      +'<td class="muted">'+chainLabel(v.chain)+'</td>'
+      +'<td><a class="addr" href="'+addrUrl(v.chain,v.address)+'" target="_blank" rel="noopener">'+shortAddr(v.address)+'</a></td>'
       +'<td class="num">'+fUsd(v.tvl)+'</td><td class="num">'+(v.apy!=null?v.apy.toFixed(2)+'%':'—')+'</td>'
       +'<td class="num">'+(last&&last.sharePrice!=null?fNum(last.sharePrice,6):'—')+'</td>'
       +'<td class="num">'+Object.keys(w).length+'</td><td class="num">'+ev.length+'</td>'
@@ -600,19 +702,25 @@ function renderWallets(){
   var ev=selEvents(), by={};
   ev.forEach(function(e){
     var w=(e.owner||e.sender||'').toLowerCase(); if(!w) return;
-    var b=by[w]||(by[w]={dep:0,wd:0,depUsd:0,wdUsd:0,n:0,last:0,vaults:{}});
+    var b=by[w]||(by[w]={dep:0,wd:0,depUsd:0,wdUsd:0,n:0,last:0,vaults:{},chains:{},lastChain:null});
     if(e.type==='deposit'){b.dep++;b.depUsd+=e.usdValue||0;} else {b.wd++;b.wdUsd+=e.usdValue||0;}
-    b.n++; b.last=Math.max(b.last,e.timestamp||0);
-    var vn=(state.vaults.find(function(v){return v.address===(e.vault||'').toLowerCase();})||{}).name;
-    if(vn) b.vaults[vn]=1;
+    b.n++;
+    var vv=state.vaults.find(function(v){return v.address===(e.vault||'').toLowerCase();})||{};
+    // A wallet can be active on several chains; the explorer link follows the
+    // most recent event so it always points somewhere the wallet exists.
+    if((e.timestamp||0)>=b.last){ b.last=e.timestamp||0; if(vv.chain) b.lastChain=vv.chain; }
+    if(vv.name) b.vaults[vv.name]=1;
+    if(vv.chain) b.chains[vv.chain]=1;
   });
   var rows=Object.entries(by).sort(function(a,b){return (b[1].depUsd-b[1].wdUsd)-(a[1].depUsd-a[1].wdUsd);});
   document.getElementById('walletCount').textContent='· '+rows.length+' in timeframe';
   document.getElementById('walletBody').innerHTML = rows.length? rows.map(function(r){
     var w=r[0],b=r[1];
-    return '<tr><td><a class="addr" href="https://basescan.org/address/'+w+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
+    var cs=Object.keys(b.chains);
+    var vaultCol=Object.keys(b.vaults).join(', ')+(cs.length>1? ' · '+cs.length+' networks':'');
+    return '<tr><td><a class="addr" href="'+addrUrl(b.lastChain,w)+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
       +'<td class="num">'+b.dep+'</td><td class="num">'+b.wd+'</td><td class="num">'+fUsd(b.depUsd-b.wdUsd)+'</td>'
-      +'<td class="num">'+b.n+'</td><td>'+dstr(b.last)+'</td><td class="muted">'+Object.keys(b.vaults).join(', ')+'</td></tr>';
+      +'<td class="num">'+b.n+'</td><td>'+dstr(b.last)+'</td><td class="muted">'+vaultCol+'</td></tr>';
   }).join('') : '<tr><td colspan="7" class="empty-state">No wallet activity in this timeframe.</td></tr>';
 }
 
@@ -627,9 +735,10 @@ function renderFlows(){
       +'<td><span class="tag '+(e.type==='deposit'?'dep">DEPOSIT':'wd">WITHDRAW')+'</span></td>'
       +'<td class="num">'+fNum(e.assets,4)+' '+(e.symbol||v.symbol||'')+'</td>'
       +'<td class="num">'+fUsd(e.usdValue)+'</td>'
-      +'<td><a class="addr" href="https://basescan.org/address/'+w+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
-      +'<td>'+(v.name||'—')+'</td></tr>';
-  }).join('') : '<tr><td colspan="6" class="empty-state">No flows in this timeframe.</td></tr>';
+      +'<td><a class="addr" href="'+addrUrl(v.chain,w)+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
+      +'<td>'+(v.name||'—')+'</td>'
+      +'<td class="muted">'+chainLabel(v.chain)+'</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="empty-state">No flows in this timeframe.</td></tr>';
   // The table was 2,900px tall unbounded — page height should not scale with row count.
   document.getElementById('flowMore').innerHTML = ev.length>state.flowLimit
     ? '<button type="button" id="flowMoreBtn">Show '+Math.min(FLOW_PAGE,ev.length-state.flowLimit)+' more of '+ev.length+'</button>'
@@ -640,7 +749,43 @@ function renderFlows(){
   if(lb) lb.addEventListener('click',function(){ state.flowLimit=FLOW_PAGE; renderFlows(); });
 }
 
-function renderAll(){ renderStats(); renderMainChart(); renderSpTable(); renderVaults(); renderWallets(); renderFlows(); }
+function renderAll(){ renderStats(); renderMainChart(); renderNetworks(); renderSpTable(); renderVaults(); renderWallets(); renderFlows(); }
+
+// The heading follows the drilldown, so a screenshot of the page always says
+// which scope it is showing — the same string the PNG export stamps on.
+function renderHeading(){
+  var all=state.network==='__all__';
+  document.getElementById('pageTitle').textContent = all? 'Tesseract Vaults' : 'Tesseract on '+chainLabel(state.network);
+  document.getElementById('pageSub').innerHTML = all
+    ? "TVL, share price and depositing wallets for every Tesseract vault, across every network we track. "
+      + "Built from the data this site already collects — no separate pipeline."
+    : "TVL, share price and depositing wallets for Tesseract's vaults on <b>"+chainLabel(state.network)+"</b>. "
+      + "Pick <i>All networks</i> above to go back to the full overview.";
+}
+
+// Vaults are listed per network, so the picker is rebuilt whenever the network
+// changes — a vault selected on one chain must not survive into another.
+function fillVaultSelect(){
+  var vs=netVaults().slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);});
+  var sel=document.getElementById('vaultSel');
+  sel.innerHTML='<option value="__all__">All Tesseract vaults ('+vs.length+')</option>'
+    + vs.map(function(v){
+        return '<option value="'+v.address+'">'+v.name
+          + (state.network==='__all__'? ' · '+chainLabel(v.chain) : '')
+          + ' · '+shortAddr(v.address)+'</option>'; }).join('');
+  if(!vs.some(function(v){return v.address===state.vault;})) state.vault='__all__';
+  sel.value=state.vault;
+}
+
+function setNetwork(chain){
+  state.network=chain;
+  state.vault='__all__';
+  state.flowLimit=FLOW_PAGE;
+  document.getElementById('netSel').value=chain;
+  fillVaultSelect();
+  renderHeading();
+  renderAll();
+}
 
 /* ---------- controls: every one mutates state, then re-renders ---------- */
 function wirePills(id, attr, apply){
@@ -708,6 +853,7 @@ document.getElementById('layoutSel').addEventListener('change', function(){
 document.getElementById('vaultSel').addEventListener('change', function(){
   state.vault=this.value; state.flowLimit=FLOW_PAGE; renderAll();
 });
+document.getElementById('netSel').addEventListener('change', function(){ setNetwork(this.value); });
 
 (function load(){
   try{
@@ -722,8 +868,10 @@ document.getElementById('vaultSel').addEventListener('change', function(){
     if(!iv){ document.getElementById('main-loading').hidden=true;
       document.getElementById('stats').innerHTML='<div class="stat"><div class="k">Error</div><div class="v" style="font-size:.9rem">Could not load vault data</div></div>'; return; }
 
-    state.vaults=(iv.vaults||[]).filter(function(v){ return v.chain==='base' && /tess/i.test(v.name||''); })
-      .map(function(v){ return {address:(v.address||'').toLowerCase(),name:v.name,tvl:v.tvl,apy:v.apy,symbol:v.token}; });
+    // Every network, not just Base: the name stem is the whole discriminator.
+    state.vaults=(iv.vaults||[]).filter(function(v){ return TESS_RE.test(v.name||''); })
+      .map(function(v){ return {address:(v.address||'').toLowerCase(),name:v.name,chain:v.chain,
+        tvl:v.tvl,apy:v.apy,symbol:v.token}; });
 
     if(tv && tv.vaults){
       Object.keys(tv.vaults).forEach(function(k){
@@ -739,10 +887,17 @@ document.getElementById('vaultSel').addEventListener('change', function(){
       state.updatedAt=act.updatedAt;
     }
 
-    var sel=document.getElementById('vaultSel');
-    sel.innerHTML='<option value="__all__">All Tesseract vaults ('+state.vaults.length+')</option>'
-      + state.vaults.slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);}).map(function(v){
-          return '<option value="'+v.address+'">'+v.name+' · '+shortAddr(v.address)+'</option>'; }).join('');
+    // Networks are offered highest-TVL first, so the drilldown people want most
+    // is the first one under "All networks".
+    var byChain={};
+    state.vaults.forEach(function(v){ byChain[v.chain]=(byChain[v.chain]||0)+(v.tvl||0); });
+    var chains=Object.keys(byChain).sort(function(a,b){ return byChain[b]-byChain[a]; });
+    var counts={}; state.vaults.forEach(function(v){ counts[v.chain]=(counts[v.chain]||0)+1; });
+    document.getElementById('netSel').innerHTML=
+      '<option value="__all__">All networks ('+chains.length+')</option>'
+      + chains.map(function(c){ return '<option value="'+c+'">'+chainLabel(c)+' · '+counts[c]+(counts[c]===1?' vault':' vaults')+'</option>'; }).join('');
+    fillVaultSelect();
+    renderHeading();
     document.getElementById('updated').textContent = state.updatedAt
       ? 'Activity data updated '+new Date(state.updatedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     renderAll();
