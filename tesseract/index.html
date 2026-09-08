@@ -29,8 +29,17 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:16px}
   .card h2{font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .muted{color:var(--ink-3);font-weight:400;font-size:.78rem}
-  select{font-family:inherit;font-size:.8rem;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);max-width:100%}
-  #vaultSel{max-width:min(100%,400px)}
+  select{font-family:inherit;font-size:.8rem;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);max-width:100%;width:100%}
+
+  /* One row, always. The vault picker is the only one whose text can run long,
+     so it takes the slack and truncates; the other two stay at their content
+     width. Below 760px the row wraps rather than crushing the labels. */
+  .controls{display:flex;gap:10px;align-items:flex-end;flex-wrap:nowrap}
+  .controls > div{min-width:0}
+  .controls .ctl-net{flex:0 0 auto;min-width:150px}
+  .controls .ctl-vault{flex:1 1 auto;min-width:0}
+  .controls .ctl-view{flex:0 0 auto;min-width:150px}
+  @media (max-width:760px){ .controls{flex-wrap:wrap} .controls > div{flex:1 1 100%} }
 
   /* ---- section head: controls that shape the DATA ---- */
   .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:22px}
@@ -108,10 +117,16 @@
   @keyframes dash-spin{to{transform:rotate(360deg)}}
   .loading-text{font-size:.78rem;color:var(--ink-3)}
 
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-top:14px}
-  .stat{border:1px solid var(--line);border-radius:11px;padding:12px 14px}
-  .stat .k{font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600}
-  .stat .v{font-family:var(--mono);font-size:1.12rem;font-weight:500;margin-top:5px}
+  /* Every tile on one line. auto-flow:column keeps them in a single track no
+     matter how many there are; on narrow screens the row scrolls sideways
+     instead of reflowing into a second and third bank of boxes. */
+  .stats{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(120px,1fr);gap:10px;margin-top:14px;
+    overflow-x:auto;padding-bottom:2px}
+  .stat{border:1px solid var(--line);border-radius:11px;padding:11px 12px;min-width:0}
+  .stat .k{font-size:.63rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stat .v{font-family:var(--mono);font-size:1.05rem;font-weight:500;margin-top:5px;white-space:nowrap}
+  .stat .s{font-size:.66rem;color:var(--ink-3);margin-top:2px;white-space:nowrap}
   table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.8rem}
   th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:600;padding:8px 9px;border-bottom:1px solid var(--line)}
   td{padding:9px;border-bottom:1px solid var(--line-2)}
@@ -123,6 +138,20 @@
   .addr{font-family:var(--mono);font-size:.74rem;color:var(--accent);text-decoration:none}
   .addr:hover{text-decoration:underline}
   .scroll{overflow-x:auto}
+  /* The vaults column listed every name and shoved every other column off the
+     table. One name plus a count, truncated, with the full list on hover. */
+  table.is-fixed{table-layout:fixed}
+  table.is-fixed td{overflow:hidden;text-overflow:ellipsis}
+  /* The name truncates, the "+N" never does — a clipped count would hide the
+     very thing it exists to say. */
+  .vault-cell > .vault-wrap{display:flex;align-items:baseline;gap:6px;width:100%}
+  .vault-cell .vault-name{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-3)}
+  .vault-more{flex:0 0 auto;font-size:.68rem;font-weight:600;color:var(--ink-3);
+    background:var(--tint-thin);border-radius:5px;padding:1px 5px}
+  .app-cta{color:var(--accent);text-decoration:none;font-weight:500;white-space:nowrap}
+  .app-cta:hover{text-decoration:underline;text-underline-offset:2px}
+  .addr-sub{display:block;font-family:var(--mono);font-size:.68rem;color:var(--ink-3);text-decoration:none;margin-top:2px}
+  .addr-sub:hover{color:var(--accent)}
   .scroll.is-tall{max-height:520px;overflow-y:auto}
   .scroll.is-tall th{position:sticky;top:0;background:var(--card);z-index:1}
   .empty-state{color:var(--ink-3);font-size:.82rem;padding:16px 0}
@@ -142,16 +171,16 @@
   </p>
 
   <div class="card">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div>
+    <div class="controls">
+      <div class="ctl-net">
         <div class="muted" style="margin-bottom:4px">Network</div>
         <select id="netSel"><option value="__all__">All networks</option></select>
       </div>
-      <div>
+      <div class="ctl-vault">
         <div class="muted" style="margin-bottom:4px">Vault</div>
         <select id="vaultSel"><option value="__all__">All Tesseract vaults</option></select>
       </div>
-      <div>
+      <div class="ctl-view">
         <div class="muted" style="margin-bottom:4px">View</div>
         <select id="layoutSel" title="Aspect preset for the chart">
           <option value="wide">Wide (default)</option>
@@ -167,7 +196,7 @@
 
   <section>
     <header class="section-head">
-      <h2 class="section-title">TVL and share price</h2>
+      <h2 class="section-title">TVL</h2>
       <div class="chart-controls">
         <div class="pill-toggle" id="type-toggle" role="tablist" aria-label="Chart type">
           <button class="pill-btn is-active" type="button" data-type="bar">Bar</button>
@@ -180,8 +209,8 @@
         <div class="pill-toggle" id="period-toggle" role="tablist" aria-label="Period">
           <button class="pill-btn" type="button" data-period="7">7D</button>
           <button class="pill-btn" type="button" data-period="30">30D</button>
-          <button class="pill-btn is-active" type="button" data-period="90">90D</button>
-          <button class="pill-btn" type="button" data-period="0">All</button>
+          <button class="pill-btn" type="button" data-period="90">90D</button>
+          <button class="pill-btn is-active" type="button" data-period="0">All</button>
         </div>
       </div>
     </header>
@@ -192,10 +221,6 @@
           <button class="legend-item" type="button" data-legend="tvl" aria-pressed="true" title="Hide TVL">
             <span class="legend-swatch is-bar" style="background: var(--accent);"></span>
             TVL
-          </button>
-          <button class="legend-item" type="button" data-legend="sharePrice" aria-pressed="true" title="Hide share price">
-            <span class="legend-swatch is-line-dashed" style="border-top-color: var(--accent-2);"></span>
-            <span id="spLegendLabel">Share price</span>
           </button>
         </div>
         <div class="chart-actions" style="position:relative">
@@ -221,7 +246,7 @@
         </div>
       </div>
       <div class="chart-container">
-        <canvas id="main-chart" aria-label="Tesseract TVL and share price over time"></canvas>
+        <canvas id="main-chart" aria-label="Tesseract TVL over time"></canvas>
         <div class="loading-state is-overlay" id="main-loading" role="status">
           <svg class="loading-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5"/>
@@ -233,6 +258,14 @@
       <div class="muted" id="chartRange" style="margin-top:10px"></div>
     </div>
   </section>
+
+  <div class="card">
+    <h2>Vaults <span class="muted" id="vaultCount"></span></h2>
+    <div class="scroll is-tall"><table>
+      <thead><tr><th>Vault</th><th>Network</th><th class="num">APY</th><th class="num">TVL</th><th></th></tr></thead>
+      <tbody id="vaultBody"></tbody>
+    </table></div>
+  </div>
 
   <div class="card" id="netCard">
     <h2>Networks <span class="muted" id="netCount"></span></h2>
@@ -249,19 +282,12 @@
   </div>
 
   <div class="card">
-    <h2>Vaults <span class="muted" id="vaultCount"></span></h2>
-    <div class="scroll is-tall"><table>
-      <thead><tr><th>Vault</th><th>Network</th><th>Address</th><th class="num">TVL</th><th class="num">APY</th>
-        <th class="num">Share price</th><th class="num">Wallets</th><th class="num">Events</th><th>Status</th></tr></thead>
-      <tbody id="vaultBody"></tbody>
-    </table></div>
-  </div>
-
-  <div class="card">
     <h2>Wallets depositing <span class="muted" id="walletCount"></span></h2>
-    <div class="scroll"><table>
-      <thead><tr><th>Wallet</th><th class="num">Deposits</th><th class="num">Withdrawals</th>
-        <th class="num">Net (USD)</th><th class="num">Events</th><th>Last activity</th><th>Vaults</th></tr></thead>
+    <div class="scroll is-tall"><table class="is-fixed">
+      <colgroup><col style="width:14%"><col style="width:14%"><col style="width:11%">
+        <col style="width:12%"><col style="width:14%"><col style="width:35%"></colgroup>
+      <thead><tr><th>Wallet</th><th class="num">Net (USD)</th><th class="num">Deposits</th>
+        <th class="num">Withdrawals</th><th>Last activity</th><th>Vaults</th></tr></thead>
       <tbody id="walletBody"></tbody>
     </table></div>
   </div>
@@ -299,10 +325,10 @@ function addrUrl(chain,a){ return explorerFor(chain)+'/address/'+a; }
 var state = {
   mainChart:null,               // live instance — disposable
   chartType:'bar',
-  period:90,
+  period:0,
   unit:'USD',
   chartLayout:'wide',
-  hidden:{ tvl:false, sharePrice:false },
+  hidden:{ tvl:false },
   network:'__all__',
   vault:'__all__',
   vaults:[], snaps:{}, events:[], updatedAt:null,
@@ -312,6 +338,8 @@ var state = {
 function fNum(n,d){ return (n==null||isNaN(n))?'—':n.toLocaleString('en-US',{minimumFractionDigits:d==null?2:d,maximumFractionDigits:d==null?2:d}); }
 function fUsd(n){ if(n==null||isNaN(n))return '—'; var a=Math.abs(n);
   if(a>=1e6)return '$'+(n/1e6).toFixed(2)+'M'; if(a>=1e3)return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(2); }
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function shortAddr(a){ return a? a.slice(0,6)+'…'+a.slice(-4):'—'; }
 function dstr(ts){ return ts? new Date(ts*1000).toISOString().slice(0,10):'—'; }
 function cutoff(){ return state.period? (Date.now()/1000 - state.period*86400) : 0; }
@@ -413,15 +441,8 @@ function renderMainChart(){
   var unit=nativeOk? state.unit : 'USD';
   var labels=pts.map(function(p){ return dstr(p.ts); });
   var tvlVals=pts.map(function(p){ return unit==='NATIVE'? p.native : p.tvlUsd; });
-  // Share price is per vault. Averaging across underlyings means nothing, so
-  // the line only exists when one vault is selected.
-  var spVals=one? pts.map(function(p){ return p.spN? p.sp/p.spN : null; }) : [];
-  var spAvailable=!!one;
-
-  var spBtn=document.querySelector('.legend-item[data-legend="sharePrice"]');
-  spBtn.disabled=!spAvailable;
-  spBtn.title=spAvailable? 'Hide share price' : 'Select a single vault — share prices are not averaged';
-  document.getElementById('spLegendLabel').textContent = spAvailable? 'Share price ('+one.symbol+')' : 'Share price (pick a vault)';
+  // This chart is TVL and nothing else. Share price is per vault and cannot be
+  // averaged across underlyings, so it lives in its own table further down.
   document.querySelectorAll('#unit-toggle .pill-btn').forEach(function(b){
     var isNative=b.getAttribute('data-unit')==='NATIVE';
     b.disabled = isNative && !nativeOk;
@@ -438,18 +459,9 @@ function renderMainChart(){
     tension:0.25, pointRadius:0, pointHoverRadius:4, fill:false, spanGaps:true,
     yAxisID:'y', order:2, hidden:!!state.hidden.tvl,
   }];
-  if(spAvailable){
-    datasets.push({
-      label:'Share price', data:spVals, type:'line',
-      borderColor:theme.accent2, borderWidth:2, borderDash:[5,4],
-      tension:0.25, pointRadius:0, pointHoverRadius:4, fill:false, spanGaps:true,
-      yAxisID:'y1', order:1, hidden:!!state.hidden.sharePrice,
-    });
-  }
 
-  var spVisible = spAvailable && !state.hidden.sharePrice;
   var tickFont={ family:'Poppins, sans-serif', size:11 };
-  state.lastConfig={ labels:labels, datasets:datasets, unit:unit, one:one, spVisible:spVisible, tvlVals:tvlVals };
+  state.lastConfig={ labels:labels, datasets:datasets, unit:unit, one:one, tvlVals:tvlVals };
   state.mainChart=new Chart(document.getElementById('main-chart').getContext('2d'),{
     data:{ labels:labels, datasets:datasets },
     options:{
@@ -472,21 +484,16 @@ function renderMainChart(){
             min: tvlVals.some(function(v){ return v<0; }) ? undefined : 0,
             ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:6,
               callback:function(v){ return unit==='NATIVE'? fNum(v,2) : fUsd(v); } } },
-        y1:{ position:'right', display:spVisible, grid:{display:false,drawBorder:false}, border:{display:false},
-            beginAtZero:false, suggestedMin:0.9, suggestedMax:1.1,
-            ticks:{ color:theme.ink3, font:tickFont, maxTicksLimit:8,
-              callback:function(v){ return fNum(v,4); } } },
       },
       plugins:{
         legend:{ display:false },                   // replaced by real DOM buttons
         tooltip:{
           backgroundColor:theme.ink, titleColor:theme.card, bodyColor:theme.card,
-          cornerRadius:8, padding:10, displayColors:datasets.length>1,
+          cornerRadius:8, padding:10, displayColors:false,
           titleFont:{family:'Poppins, sans-serif',size:11},
           bodyFont:{family:'JetBrains Mono, monospace',size:12},
           callbacks:{
             label:function(ctx){
-              if(ctx.dataset.yAxisID==='y1') return ' Share price ' + fNum(ctx.parsed.y,6);
               return ' TVL ' + (unit==='NATIVE'? fNum(ctx.parsed.y,4)+' '+(one?one.symbol:'') : fUsd(ctx.parsed.y));
             }
           }
@@ -577,10 +584,6 @@ function snapshotChartTo43Png(customTitle){
             min: cfg.tvlVals.some(function(v){ return v<0; }) ? undefined : 0,
             ticks:{ color:theme.ink3, font:{family:'Poppins, sans-serif',size:15}, maxTicksLimit:6,
               callback:function(v){ return cfg.unit==='NATIVE'? fNum(v,2) : fUsd(v); } } },
-        y1:{ position:'right', display:cfg.spVisible, grid:{display:false,drawBorder:false}, border:{display:false},
-            beginAtZero:false, suggestedMin:0.9, suggestedMax:1.1,
-            ticks:{ color:theme.ink3, font:{family:'Poppins, sans-serif',size:15}, maxTicksLimit:8,
-              callback:function(v){ return fNum(v,4); } } },
       },
       plugins:{ legend:{display:false}, tooltip:{enabled:false} }
     }
@@ -615,12 +618,16 @@ function renderStats(){
   var active=vs.filter(function(v){return (v.tvl||0)>0;}).length;
   var chains={}; vs.forEach(function(v){ if(v.chain) chains[v.chain]=1; });
   var nChains=Object.keys(chains).length;
-  var tiles=[['Total TVL',fUsd(tvl)],['Vaults',active+' active · '+(vs.length-active)+' empty']];
-  if(nChains>1) tiles.push(['Networks',String(nChains)]);
-  tiles=tiles.concat([['Wallets',Object.keys(w).length],['Deposits',dep.length],['Withdrawals',wd.length],
-    ['Net flow',(net>=0?'+':'')+fUsd(net)]]);
-  document.getElementById('stats').innerHTML=tiles
-    .map(function(p){return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div></div>';}).join('');
+  // Value on one line, the qualifier demoted to a sub-line — "58 active · 9
+  // empty" as a value was wide enough to push the row onto a second bank.
+  var tiles=[['Total TVL',fUsd(tvl),''],['Vaults',String(active),'active of '+vs.length]];
+  if(nChains>1) tiles.push(['Networks',String(nChains),'']);
+  tiles=tiles.concat([['Wallets',String(Object.keys(w).length),''],['Deposits',String(dep.length),''],
+    ['Withdrawals',String(wd.length),''],['Net flow',(net>=0?'+':'')+fUsd(net),'']]);
+  document.getElementById('stats').innerHTML=tiles.map(function(p){
+    return '<div class="stat"><div class="k">'+p[0]+'</div><div class="v">'+p[1]+'</div>'
+      +(p[2]? '<div class="s">'+p[2]+'</div>':'')+'</div>';
+  }).join('');
 }
 
 // One row per chain Tesseract is deployed on. This is the drilldown index:
@@ -683,18 +690,14 @@ function renderVaults(){
   var vs=netVaults().slice().sort(function(a,b){return (b.tvl||0)-(a.tvl||0);});
   document.getElementById('vaultCount').textContent='· '+vs.length
     +(state.network==='__all__'? ' across all networks' : ' on '+chainLabel(state.network));
-  var c=cutoff();
   document.getElementById('vaultBody').innerHTML=vs.map(function(v){
-    var ev=state.events.filter(function(e){return (e.vault||'').toLowerCase()===v.address && (e.timestamp||0)>=c;});
-    var w={}; ev.forEach(function(e){var x=(e.owner||e.sender||'').toLowerCase(); if(x)w[x]=1;});
-    var snaps=state.snaps[v.address]||[], last=snaps.length?snaps[snaps.length-1]:null;
-    return '<tr><td>'+v.name+'</td>'
+    return '<tr><td>'+v.name
+      +((v.tvl||0)===0? ' <span class="tag empty">empty</span>':'')
+      +'<a class="addr-sub" href="'+addrUrl(v.chain,v.address)+'" target="_blank" rel="noopener">'+shortAddr(v.address)+'</a></td>'
       +'<td class="muted">'+chainLabel(v.chain)+'</td>'
-      +'<td><a class="addr" href="'+addrUrl(v.chain,v.address)+'" target="_blank" rel="noopener">'+shortAddr(v.address)+'</a></td>'
-      +'<td class="num">'+fUsd(v.tvl)+'</td><td class="num">'+(v.apy!=null?v.apy.toFixed(2)+'%':'—')+'</td>'
-      +'<td class="num">'+(last&&last.sharePrice!=null?fNum(last.sharePrice,6):'—')+'</td>'
-      +'<td class="num">'+Object.keys(w).length+'</td><td class="num">'+ev.length+'</td>'
-      +'<td>'+((v.tvl||0)===0?'<span class="tag empty">deployed · empty</span>':'active')+'</td></tr>';
+      +'<td class="num">'+(v.apy!=null? v.apy.toFixed(2)+'%':'—')+'</td>'
+      +'<td class="num">'+fUsd(v.tvl)+'</td>'
+      +'<td><a class="app-cta" href="https://app.ipor.io/fusion/'+v.chain+'/'+v.address+'" target="_blank" rel="noopener">Open in App ↗</a></td></tr>';
   }).join('');
 }
 
@@ -716,12 +719,21 @@ function renderWallets(){
   document.getElementById('walletCount').textContent='· '+rows.length+' in timeframe';
   document.getElementById('walletBody').innerHTML = rows.length? rows.map(function(r){
     var w=r[0],b=r[1];
-    var cs=Object.keys(b.chains);
-    var vaultCol=Object.keys(b.vaults).join(', ')+(cs.length>1? ' · '+cs.length+' networks':'');
+    var names=Object.keys(b.vaults), cs=Object.keys(b.chains);
+    // One name, a count for the rest, the whole list on hover. The Events
+    // column is gone — it was always deposits + withdrawals.
+    var full=names.join(', ')+(cs.length>1? ' · across '+cs.length+' networks':'');
+    var cell=names.length
+      ? '<span class="vault-name">'+esc(names[0])+'</span>'
+        +(names.length>1? '<span class="vault-more">+'+(names.length-1)+'</span>':'')
+      : '<span class="vault-name">—</span>';
+    var net=b.depUsd-b.wdUsd;
     return '<tr><td><a class="addr" href="'+addrUrl(b.lastChain,w)+'" target="_blank" rel="noopener">'+shortAddr(w)+'</a></td>'
-      +'<td class="num">'+b.dep+'</td><td class="num">'+b.wd+'</td><td class="num">'+fUsd(b.depUsd-b.wdUsd)+'</td>'
-      +'<td class="num">'+b.n+'</td><td>'+dstr(b.last)+'</td><td class="muted">'+vaultCol+'</td></tr>';
-  }).join('') : '<tr><td colspan="7" class="empty-state">No wallet activity in this timeframe.</td></tr>';
+      +'<td class="num" style="color:'+(net>=0?'var(--green)':'var(--red)')+'">'+(net>=0?'+':'')+fUsd(net)+'</td>'
+      +'<td class="num">'+b.dep+'</td><td class="num">'+b.wd+'</td>'
+      +'<td>'+dstr(b.last)+'</td>'
+      +'<td class="vault-cell" title="'+esc(full)+'"><span class="vault-wrap">'+cell+'</span></td></tr>';
+  }).join('') : '<tr><td colspan="6" class="empty-state">No wallet activity in this timeframe.</td></tr>';
 }
 
 function renderFlows(){
