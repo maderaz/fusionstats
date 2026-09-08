@@ -140,6 +140,20 @@
   .scroll{overflow-x:auto}
   /* The vaults column listed every name and shoved every other column off the
      table. One name plus a count, truncated, with the full list on hover. */
+  /* large-deposit indicators */
+  .gap-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  @media (max-width:720px){ .gap-grid{grid-template-columns:1fr} }
+  .gap-panel{border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .gap-panel .k{font-size:.63rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:600}
+  .gap-panel .v{font-family:var(--mono);font-size:1.25rem;font-weight:500;margin-top:6px}
+  .gap-panel .s{font-size:.74rem;color:var(--ink-3);margin-top:7px;line-height:1.55}
+  .gap-panel .s .addr{white-space:nowrap}
+  .gap-bar{height:7px;border-radius:var(--radius-pill);background:var(--tint-thin);margin-top:11px;overflow:hidden}
+  .gap-bar > span{display:block;height:100%;border-radius:var(--radius-pill);background:var(--accent)}
+  .gap-bar.is-record > span{background:var(--red)}
+  .gap-flag{display:inline-block;font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:5px;
+    background:rgba(220,38,38,.10);color:var(--red);margin-left:7px;vertical-align:middle}
+
   table.is-fixed{table-layout:fixed}
   table.is-fixed td{overflow:hidden;text-overflow:ellipsis}
   /* The name truncates, the "+N" never does — a clipped count would hide the
@@ -267,6 +281,24 @@
     </table></div>
   </div>
 
+  <div class="card" id="bigDepCard">
+    <h2>Large deposits <span class="muted" id="bdScope"></span></h2>
+    <div class="gap-grid">
+      <div class="gap-panel">
+        <div class="k">Last deposit over $100k</div>
+        <div class="v" id="bdWhen">—</div>
+        <div class="s" id="bdWhat"></div>
+      </div>
+      <div class="gap-panel">
+        <div class="k">Current dry spell vs record</div>
+        <div class="v" id="bdGap">—</div>
+        <div class="gap-bar" id="bdBar"><span style="width:0"></span></div>
+        <div class="s" id="bdRecord"></div>
+      </div>
+    </div>
+    <div class="muted" id="bdNote" style="margin-top:11px"></div>
+  </div>
+
   <div class="card" id="netCard">
     <h2>Networks <span class="muted" id="netCount"></span></h2>
     <div class="scroll"><table>
@@ -312,6 +344,12 @@ var FLOW_PAGE=25;
 // "Tesseract <asset> …" — so one case-insensitive stem matches both, on
 // every chain. Nothing else in ipor-vaults.json contains it.
 var TESS_RE=/tess/i;
+
+// What counts as Tesseract actually deploying capital. A single deposit event
+// over this, not a daily total: the question is when money last arrived in
+// size, and two $60k deposits on one day are not one $120k allocation.
+var BIG_DEPOSIT_USD=100000;
+var BIG_DEPOSIT_LABEL='$100k';
 
 var EXPLORER={ ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io',
   avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
@@ -630,6 +668,96 @@ function renderStats(){
   }).join('');
 }
 
+// Deposits over the threshold in the current scope, oldest first.
+//
+// These deliberately ignore the chart's timeframe. A record measured over the
+// last 90 days is not a record, and "when did money last arrive" is a question
+// about the whole history, not about the window someone happens to be looking
+// at. Scope (network / vault) is respected — the timeframe is not.
+function bigDeposits(){
+  var a={}; selVaults().forEach(function(v){ a[v.address]=1; });
+  return state.events.filter(function(e){
+    return e.type==='deposit' && e.timestamp && a[(e.vault||'').toLowerCase()]
+      && (e.usdValue||0) > BIG_DEPOSIT_USD;
+  }).sort(function(x,y){ return x.timestamp-y.timestamp; });
+}
+
+function fDays(d){
+  var n = d>=10? Math.round(d) : Math.round(d*10)/10;
+  return n + (n===1? ' day':' days');
+}
+
+function renderBigDeposits(){
+  var big=bigDeposits();
+  var scope=state.network==='__all__'? 'all networks' : chainLabel(state.network);
+  var one=pickedVault();
+  document.getElementById('bdScope').textContent='· over $100k · '+(one? one.name : scope);
+
+  var whenEl=document.getElementById('bdWhen'), whatEl=document.getElementById('bdWhat');
+  var gapEl=document.getElementById('bdGap'), barEl=document.getElementById('bdBar');
+  var recEl=document.getElementById('bdRecord'), noteEl=document.getElementById('bdNote');
+
+  // The first collected event bounds what any of this can claim — for the
+  // scope on screen, not for the page as a whole.
+  var inScope={}; selVaults().forEach(function(v){ inScope[v.address]=1; });
+  var firstTs=state.events.reduce(function(m,e){
+    if(!e.timestamp || !inScope[(e.vault||'').toLowerCase()]) return m;
+    return (!m || e.timestamp<m)? e.timestamp : m; }, 0);
+
+  if(!big.length){
+    whenEl.textContent='—';
+    whatEl.textContent='No deposit over '+BIG_DEPOSIT_LABEL+' in this scope.';
+    gapEl.textContent='—'; recEl.textContent=''; barEl.classList.remove('is-record');
+    barEl.firstElementChild.style.width='0';
+    noteEl.textContent=firstTs? 'Collected activity for this scope starts '+dstr(firstTs)+'.' : 'No collected activity for this scope.';
+    return;
+  }
+
+  var last=big[big.length-1];
+  var nowSec=Date.now()/1000;
+  var since=(nowSec-last.timestamp)/86400;
+  var lv=state.vaults.find(function(v){ return v.address===(last.vault||'').toLowerCase(); })||{};
+  var lw=(last.owner||last.sender||'').toLowerCase();
+
+  whenEl.textContent=dstr(last.timestamp);
+  whatEl.innerHTML=fDays(since)+' ago · '+fUsd(last.usdValue)+' into '+esc(lv.name||'—')
+    + (lv.chain? ' <span class="muted">('+chainLabel(lv.chain)+')</span>':'')
+    + (lw? ' · <a class="addr" href="'+addrUrl(lv.chain,lw)+'" target="_blank" rel="noopener">'+shortAddr(lw)+'</a>':'');
+
+  // Gaps BETWEEN two large deposits. The stretch before the first one measures
+  // how far back our event history reaches, not how long Tesseract went quiet,
+  // so it is not a candidate for the record.
+  var gaps=[];
+  for(var i=1;i<big.length;i++){
+    gaps.push({ days:(big[i].timestamp-big[i-1].timestamp)/86400, from:big[i-1].timestamp, to:big[i].timestamp });
+  }
+
+  if(!gaps.length){
+    gapEl.textContent=fDays(since);
+    barEl.classList.remove('is-record'); barEl.firstElementChild.style.width='0';
+    recEl.textContent='Only one large deposit on record — no closed gap to compare against yet.';
+  } else {
+    var rec=gaps.slice().sort(function(x,y){ return y.days-x.days; })[0];
+    var sorted=gaps.map(function(g){return g.days;}).sort(function(x,y){return x-y;});
+    var med=sorted.length%2? sorted[(sorted.length-1)/2] : (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2;
+    var isRecord=since>rec.days;
+    var pct=Math.min(100, (since/rec.days)*100);
+
+    gapEl.innerHTML=fDays(since)+(isRecord? '<span class="gap-flag">NEW RECORD</span>':'');
+    barEl.classList.toggle('is-record', isRecord);
+    barEl.firstElementChild.style.width=pct.toFixed(1)+'%';
+    recEl.innerHTML=(isRecord
+        ? 'Past the longest gap on record ('+fDays(rec.days)+').'
+        : Math.round(pct)+'% of the longest gap on record, '+fDays(rec.days)+'.')
+      +'<br>Record ran '+dstr(rec.from)+' → '+dstr(rec.to)+' · typical gap '+fDays(med)
+      +' across '+gaps.length+' of them.';
+  }
+
+  noteEl.textContent='Single deposit events over '+BIG_DEPOSIT_LABEL+', measured over the full collected history'
+    +(firstTs? ' (from '+dstr(firstTs)+')':'')+' — not the chart timeframe. '
+    +big.length+' such deposit'+(big.length===1?'':'s')+' in this scope.';
+}
+
 // One row per chain Tesseract is deployed on. This is the drilldown index:
 // picking a row is the same as picking that network in the selector.
 function renderNetworks(){
@@ -761,7 +889,7 @@ function renderFlows(){
   if(lb) lb.addEventListener('click',function(){ state.flowLimit=FLOW_PAGE; renderFlows(); });
 }
 
-function renderAll(){ renderStats(); renderMainChart(); renderNetworks(); renderSpTable(); renderVaults(); renderWallets(); renderFlows(); }
+function renderAll(){ renderStats(); renderMainChart(); renderBigDeposits(); renderNetworks(); renderSpTable(); renderVaults(); renderWallets(); renderFlows(); }
 
 // The heading follows the drilldown, so a screenshot of the page always says
 // which scope it is showing — the same string the PNG export stamps on.
