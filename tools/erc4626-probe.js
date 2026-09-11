@@ -285,6 +285,41 @@ const EVENTS = ['Deposit(address,address,uint256,uint256)', 'Withdraw(address,ad
 
   /* ------------------------------------------------------------- verdict */
   const count = (a) => a.filter(Boolean).length;
+  const lvFinal = V.map(([sig]) => live[sig] != null);
+
+  // ---- can the exit path run at all? --------------------------------------
+  // If withdraw/redeem revert unconditionally too, then previewWithdraw
+  // reverting is consistent with EIP-4626 ("MAY revert due to other conditions
+  // that would also cause withdraw to revert"). If they do NOT, the previews
+  // are a genuine deviation. A zero-amount call is the cleanest test: on a
+  // conforming vault it is a no-op that returns 0.
+  console.log('\n=== EXIT PATH: zero-amount eth_call (no transaction is sent) ===');
+  const mutProbe = [
+    ['deposit(uint256,address)',          [encUint(0), encAddr(ZERO)]],
+    ['mint(uint256,address)',             [encUint(0), encAddr(ZERO)]],
+    ['withdraw(uint256,address,address)', [encUint(0), encAddr(ZERO), encAddr(ZERO)]],
+    ['redeem(uint256,address,address)',   [encUint(0), encAddr(ZERO), encAddr(ZERO)]],
+  ];
+  for (const [sig, args] of mutProbe) {
+    const r = await call(ADDR, sel(sig) + args.join(''));
+    console.log('  ' + sig.padEnd(36) + ' -> ' + (r.revert ? 'REVERT (' + String(r.revert).slice(0, 60) + ')'
+      : r.empty ? 'empty' : 'ok (' + asUint(r.data).toString() + ')'));
+  }
+
+  // ---- is this an async / gated vault? ------------------------------------
+  console.log('\n=== CONTEXT: async-vault and gating selectors in the implementation ===');
+  const extras = [
+    'requestRedeem(uint256,address,address)', 'requestDeposit(uint256,address,address)',
+    'pendingRedeemRequest(uint256,address)', 'claimableRedeemRequest(uint256,address)',
+    'pendingDepositRequest(uint256,address)', 'share()', 'setOperator(address,bool)',
+    'paused()', 'pause()', 'unpause()', 'owner()', 'hasRole(bytes32,address)',
+  ];
+  for (const sig of extras) {
+    const hit = inCode(sel(sig));
+    if (hit) console.log('  yes  0x' + sel(sig) + '  ' + sig);
+  }
+  if (!extras.some((sig) => inCode(sel(sig)))) console.log('  (none found)');
+
   console.log('\n=== VERDICT ===');
   console.log('EIP-4626 views          static ' + count(sv) + '/' + V.length + '   live ' + count(lv) + '/' + V.length + ' first try, ' + count(lvFinal) + '/' + V.length + ' after scale sweep');
   console.log('EIP-4626 mutative       static ' + count(sm) + '/' + MUT.length);
@@ -292,7 +327,6 @@ const EVENTS = ['Deposit(address,address,uint256,uint256)', 'Withdraw(address,ad
   console.log('ERC-20 views            static ' + count(s2v) + '/' + ERC20_V.length + '   live ' + count(l2) + '/' + ERC20_V.length);
   console.log('ERC-20 mutative         static ' + count(s2m) + '/' + ERC20_MUT.length);
 
-  const lvFinal = V.map(([sig]) => live[sig] != null);
   const viewsOk = count(lvFinal) === V.length;
   const mutOk = count(sm) === MUT.length;
   const erc20Ok = count(l2) === ERC20_V.length && count(s2m) === ERC20_MUT.length;
