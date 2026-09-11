@@ -133,20 +133,27 @@ function asString(w) {
 }
 
 /* ------------------------------------------------------------ the interface */
-const V = [ // EIP-4626 view surface — probed live
-  ['asset()',                   'addr'],
-  ['totalAssets()',             'uint'],
-  ['convertToShares(uint256)',  'uint', [encUint(10n ** 18n)]],
-  ['convertToAssets(uint256)',  'uint', [encUint(10n ** 18n)]],
-  ['maxDeposit(address)',       'uint', [encAddr(ZERO)]],
-  ['previewDeposit(uint256)',   'uint', [encUint(10n ** 18n)]],
-  ['maxMint(address)',          'uint', [encAddr(ZERO)]],
-  ['previewMint(uint256)',      'uint', [encUint(10n ** 18n)]],
-  ['maxWithdraw(address)',      'uint', [encAddr(ZERO)]],
-  ['previewWithdraw(uint256)',  'uint', [encUint(10n ** 18n)]],
-  ['maxRedeem(address)',        'uint', [encAddr(ZERO)]],
-  ['previewRedeem(uint256)',    'uint', [encUint(10n ** 18n)]],
-];
+// Probe amounts are scaled to the vault's own decimals, not hardcoded to 1e18.
+// A 1e18 argument against an 8-decimal vault holding 3e10 units asks it to
+// price a withdrawal larger than anything that could exist, and the revert
+// that follows says nothing about whether the function is implemented.
+function viewSurface(ONE) {
+  return [
+    ['asset()',                   'addr'],
+    ['totalAssets()',             'uint'],
+    ['convertToShares(uint256)',  'uint', [encUint(ONE)]],
+    ['convertToAssets(uint256)',  'uint', [encUint(ONE)]],
+    ['maxDeposit(address)',       'uint', [encAddr(ZERO)]],
+    ['previewDeposit(uint256)',   'uint', [encUint(ONE)]],
+    ['maxMint(address)',          'uint', [encAddr(ZERO)]],
+    ['previewMint(uint256)',      'uint', [encUint(ONE)]],
+    ['maxWithdraw(address)',      'uint', [encAddr(ZERO)]],
+    ['previewWithdraw(uint256)',  'uint', [encUint(ONE)]],
+    ['maxRedeem(address)',        'uint', [encAddr(ZERO)]],
+    ['previewRedeem(uint256)',    'uint', [encUint(ONE)]],
+  ];
+}
+let V = viewSurface(10n ** 18n);
 const MUT = [ // EIP-4626 state-changing surface — static check only
   'deposit(uint256,address)', 'mint(uint256,address)',
   'withdraw(uint256,address,address)', 'redeem(uint256,address,address)',
@@ -214,7 +221,12 @@ const EVENTS = ['Deposit(address,address,uint256,uint256)', 'Withdraw(address,ad
     console.log('  ' + (ok ? 'yes' : 'NO ') + '  0x' + h.slice(0, 16) + '…  ' + e); return ok; });
 
   // ---- live pass -----------------------------------------------------------
+  const decRes = await call(ADDR, sel('decimals()'));
+  const DEC = decRes.data ? Number(asUint(decRes.data)) : 18;
+  const ONE = 10n ** BigInt(DEC);
+  V = viewSurface(ONE);
   console.log('\n=== LIVE: eth_call and decode ===');
+  console.log('  (share decimals ' + DEC + ' — uint256 arguments are ' + ONE.toString() + ' = one whole unit)');
   const live = {};
   async function probe(sig, kind, args = []) {
     const r = await call(ADDR, sel(sig) + args.join(''));
@@ -248,24 +260,48 @@ const EVENTS = ['Deposit(address,address,uint256,uint256)', 'Withdraw(address,ad
     }
   }
 
+  // ---- scale sweep ---------------------------------------------------------
+  // A preview that reverts at one amount but answers at another is implemented;
+  // it is refusing a specific request. That distinction decides the verdict.
+  const shaky = ['previewWithdraw(uint256)', 'previewRedeem(uint256)', 'previewDeposit(uint256)',
+                 'previewMint(uint256)', 'convertToShares(uint256)', 'convertToAssets(uint256)'];
+  const failing = shaky.filter((sig) => live[sig] === null || live[sig] === undefined);
+  if (failing.length) {
+    console.log('\n=== SCALE SWEEP: the amounts at which each failing preview answers ===');
+    const ta = live['totalAssets()'] ? BigInt(live['totalAssets()']) : 0n;
+    const amounts = [['1 unit-of-account', 1n], ['0.01 whole', ONE / 100n], ['1 whole', ONE],
+                     ['totalAssets', ta], ['10x totalAssets', ta * 10n], ['1e18', 10n ** 18n]];
+    for (const sig of failing) {
+      console.log('-- ' + sig);
+      for (const [label, amt] of amounts) {
+        if (amt <= 0n) continue;
+        const r = await call(ADDR, sel(sig) + encUint(amt));
+        const shown = r.revert ? 'REVERT' : r.empty ? 'empty' : asUint(r.data).toString();
+        console.log('   ' + label.padEnd(20) + ' ' + amt.toString().padStart(22) + ' -> ' + shown);
+        if (!r.revert && !r.empty) live[sig] = shown;   // it answers somewhere: implemented
+      }
+    }
+  }
+
   /* ------------------------------------------------------------- verdict */
   const count = (a) => a.filter(Boolean).length;
   console.log('\n=== VERDICT ===');
-  console.log('EIP-4626 views          static ' + count(sv) + '/' + V.length + '   live ' + count(lv) + '/' + V.length);
+  console.log('EIP-4626 views          static ' + count(sv) + '/' + V.length + '   live ' + count(lv) + '/' + V.length + ' first try, ' + count(lvFinal) + '/' + V.length + ' after scale sweep');
   console.log('EIP-4626 mutative       static ' + count(sm) + '/' + MUT.length);
   console.log('EIP-4626 events         static ' + count(se) + '/' + EVENTS.length);
   console.log('ERC-20 views            static ' + count(s2v) + '/' + ERC20_V.length + '   live ' + count(l2) + '/' + ERC20_V.length);
   console.log('ERC-20 mutative         static ' + count(s2m) + '/' + ERC20_MUT.length);
 
-  const viewsOk = count(lv) === V.length;
+  const lvFinal = V.map(([sig]) => live[sig] != null);
+  const viewsOk = count(lvFinal) === V.length;
   const mutOk = count(sm) === MUT.length;
   const erc20Ok = count(l2) === ERC20_V.length && count(s2m) === ERC20_MUT.length;
   console.log('');
   if (viewsOk && mutOk && erc20Ok) console.log('=> ERC-4626 COMPATIBLE: full view surface answers live, all four mutative');
-  else if (count(lv) === 0 && count(sm) === 0) console.log('=> NOT ERC-4626: none of the interface is present');
+  else if (count(lvFinal) === 0 && count(sm) === 0) console.log('=> NOT ERC-4626: none of the interface is present');
   else console.log('=> PARTIAL — see the per-function rows above; this is not a conforming ERC-4626 vault');
 
-  const missingV = V.filter((_, i) => !lv[i]).map(([s]) => s);
+  const missingV = V.filter((_, i) => !lvFinal[i]).map(([s]) => s);
   const missingM = MUT.filter((_, i) => !sm[i]);
   if (missingV.length) console.log('   missing/failing views     : ' + missingV.join(', '));
   if (missingM.length) console.log('   missing mutative functions: ' + missingM.join(', '));
