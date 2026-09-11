@@ -1,0 +1,34 @@
+# TEMPORARY — one-off ERC-4626 interface probe. Delete this branch when done.
+name: TMP ERC-4626 probe
+
+on:
+  push:
+    branches: [claude/tmp-erc4626-probe]
+  workflow_dispatch:
+    inputs:
+      address:
+        description: Contract address
+        required: true
+        default: '0x02b12a394f0a98b80e53d85f6831041932f1b621'
+      chain:
+        description: base | ethereum
+        required: true
+        default: base
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Probe
+        run: |
+          node tools/erc4626-probe.js \
+            "${{ github.event.inputs.address || '0x02b12a394f0a98b80e53d85f6831041932f1b621' }}" \
+            "${{ github.event.inputs.chain || 'base' }}"
