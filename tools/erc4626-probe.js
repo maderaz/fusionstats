@@ -79,10 +79,15 @@ const sel  = (s) => hash(s).slice(0, 8);
 
 /* --------------------------------------------------------------------- rpc */
 let RPC_OK = null;
-async function rpc(method, params) {
-  const urls = RPC_OK ? [RPC_OK] : RPCS[CHAIN];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Public endpoints rate-limit hard on a burst of eth_calls. Rotate on 429
+// rather than dying: every endpoint is reading the same chain, so falling
+// through to the next one costs nothing but a round trip.
+async function rpc(method, params, attempt = 0) {
+  const order = RPC_OK ? [RPC_OK, ...RPCS[CHAIN].filter((u) => u !== RPC_OK)] : RPCS[CHAIN];
   let lastErr;
-  for (const url of urls) {
+  for (const url of order) {
     try {
       const ctl = new AbortController();
       const t = setTimeout(() => ctl.abort(), 20000);
@@ -91,13 +96,16 @@ async function rpc(method, params) {
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: ctl.signal,
       });
       clearTimeout(t);
+      if (res.status === 429) { if (RPC_OK === url) RPC_OK = null; lastErr = new Error(url + ' 429'); continue; }
       if (!res.ok) { lastErr = new Error(url + ' HTTP ' + res.status); continue; }
       const j = await res.json();
       if (j.error) return { error: j.error };          // a revert is an answer, not a transport failure
       RPC_OK = url;
+      await sleep(120);                                 // pace the burst
       return { result: j.result };
     } catch (e) { lastErr = e; }
   }
+  if (attempt < 4) { await sleep(1500 * (attempt + 1)); return rpc(method, params, attempt + 1); }
   throw lastErr || new Error('all RPCs failed');
 }
 
