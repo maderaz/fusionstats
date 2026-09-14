@@ -84,6 +84,20 @@ const CHAIN_CHUNKS = {
 // Max seconds to spend scanning a single chain (prevents workflow hangs)
 const CHAIN_TIMEOUT_MS = 150_000; // 2.5 min per chain
 
+// Timestamps get their own budget rather than sharing the log-scan deadline.
+// Sharing it meant the fetch was always already past the deadline on arrival,
+// so every event was written with timestamp 0 — present in the file, invisible
+// on every page that filters or sorts by time.
+const TIMESTAMP_BUDGET_MS = 30_000;
+
+// The workflow step is capped at 8 minutes and a hard kill loses even the
+// partial progress we did make. One wall-clock budget covers the WHOLE run —
+// chain scans and the repair passes that follow — because budgeting only the
+// scans lets the repairs run past the cap and lose everything anyway.
+const RUN_BUDGET_MS = Number(process.env.ACTIVITY_RUN_BUDGET_MS || 6.5 * 60_000);
+// Held back from that budget so tagging + the final write always happen.
+const WRITE_RESERVE_MS = 20_000;
+
 // DeFi Llama chain prefix for price lookups
 const LLAMA_CHAIN = {
   ethereum: 'ethereum',
@@ -426,6 +440,45 @@ async function priceForDay(symbol, tokenAddr, timestamp, chain) {
 // and each event is valued at its OWN historical price (not a current proxy).
 // Most-recent first — those matter most for the headline cards. Bounded by
 // count + wall-clock so it fits inside the regular collector's timeout.
+// Back-fill timestamps for events that were stored without one. A run whose
+// timestamp fetch was cut short used to write `timestamp: 0` and move on, so
+// the event sat in the file complete in every other respect yet invisible to
+// every page — all of which filter or sort by time. Those events are already
+// paid for; this recovers them rather than re-scanning the chain for logs we
+// have. Spread over runs: bounded by both a block count and a deadline.
+async function repairEventTimestamps(events, vaults = [], { limit = 600, deadlineMs = 60_000 } = {}) {
+  const chainOf = {};
+  vaults.forEach(v => { chainOf[v.address] = v.chain; });
+
+  const undated = events.filter(e => !e.timestamp && e.block);
+  if (undated.length === 0) return 0;
+
+  // Newest blocks first — recent activity is what a reader notices missing.
+  const wanted = new Map();                       // block -> chain
+  for (const e of undated) {
+    const chain = chainOf[(e.vault || '').toLowerCase()];
+    if (chain && CHAIN_RPCS[chain]) wanted.set(e.block, chain);
+  }
+  const blocks = [...wanted.keys()].sort((a, b) => b - a).slice(0, limit);
+  console.log(`\nRepairing timestamps: ${undated.length} undated events over ${wanted.size} blocks (trying ${blocks.length})`);
+
+  const start = Date.now();
+  const tsMap = {};
+  for (let i = 0; i < blocks.length; i += 10) {
+    if (Date.now() - start > deadlineMs) { console.log(`  (stopped at ${i}/${blocks.length} — deadline; the rest retry next run)`); break; }
+    const batch = blocks.slice(i, i + 10);
+    const got = await Promise.all(batch.map(b => getBlockTimestamp(wanted.get(b), b).catch(() => 0)));
+    got.forEach((ts, j) => { if (ts) tsMap[batch[j]] = ts; });
+  }
+
+  let fixed = 0;
+  for (const e of undated) {
+    if (tsMap[e.block]) { e.timestamp = tsMap[e.block]; fixed++; }
+  }
+  console.log(`  Recovered ${fixed} of ${undated.length} undated events`);
+  return fixed;
+}
+
 async function repairActivityPrices(events, vaults = [], { limit = Infinity, deadlineMs = Infinity } = {}) {
   // Resolve underlying token / chain / symbol from vault metadata when the
   // event itself lacks them (older events predate those fields).
@@ -488,6 +541,31 @@ async function enrichWithPrices(events) {
 // Batch scan: accepts array of addresses so one eth_getLogs covers all vaults on a chain.
 // Respects `deadline` (Date.now() + ms) — aborts scanning once exceeded.
 // Returns { logs, reachedBlock } so caller knows where partial progress stopped.
+// Where each vault's cursor lands after a scan. Pure, so the invariant can be
+// tested without a chain behind it.
+//
+//   - a cursor only ever moves FORWARDS (a rewind means rescanning millions of
+//     blocks and re-deriving events we already hold)
+//   - it never passes a block whose events we could not date, because an
+//     undated event is invisible downstream — banking that block would turn a
+//     retryable gap into a permanent one
+function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undatedBlocks = [] }) {
+  let progress = reachedBlock;
+  if (undatedBlocks.length > 0) progress = Math.min(progress, Math.min(...undatedBlocks) - 1);
+  const stop = progress >= currentBlock ? currentBlock : progress;
+  const out = {};
+  for (const addr of addresses) {
+    const prev = prevCursors[addr] || 0;
+    out[addr] = stop > prev ? stop : prev;
+  }
+  return out;
+}
+
+// `topic` may be a single topic0 or an array of them. eth_getLogs treats an
+// array as OR, so deposits and withdrawals come back in ONE pass over the
+// range. That matters for more than speed: scanning them separately meant the
+// first topic could eat the whole deadline and the second never ran, leaving
+// `reachedBlock` at fromBlock-1 and the cursor permanently stuck.
 async function scanLogs(chain, addresses, topic, fromBlock, toBlock, deadline) {
   const allLogs = [];
   const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
@@ -1408,6 +1486,12 @@ async function main() {
 
   // Scan new events across all supported chains
   let newEventsTotal = 0;
+  const runDeadline = Date.now() + RUN_BUDGET_MS;
+  // Clamp the reserve: with a small budget a fixed 20s reserve swallows the
+  // whole thing and every chain is skipped, so the collector quietly does
+  // nothing — the exact silent-failure shape this change exists to remove.
+  const writeReserve = Math.min(WRITE_RESERVE_MS, Math.floor(RUN_BUDGET_MS * 0.15));
+  const budgetLeft = () => runDeadline - Date.now() - writeReserve;
 
   // Reset lastBlock for vaults with 0 events (need deeper backfill)
   const eventVaults = new Set(data.events.map(e => e.vault));
@@ -1428,6 +1512,10 @@ async function main() {
 
   for (const [chain, chainVaults] of Object.entries(byChain)) {
     if (!CHAIN_RPCS[chain]) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
+    if (budgetLeft() <= 0) {
+      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (run budget spent; it keeps its cursor and resumes next run)`);
+      continue;
+    }
 
     let currentBlock;
     try {
@@ -1457,19 +1545,24 @@ async function main() {
     const allAddresses = vaultsToScan.map(v => v.vault.address);
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
-    const deadline = Date.now() + CHAIN_TIMEOUT_MS;
-    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(CHAIN_TIMEOUT_MS/1000)}s)...`);
+    // Whichever runs out first: this chain's slice, or the run as a whole.
+    const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
+    const deadline = Date.now() + chainMs;
+    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(chainMs/1000)}s)...`);
 
     try {
-      // Single batch eth_getLogs for all vaults on this chain
-      const dep = await scanLogs(chain, allAddresses, DEPOSIT_TOPIC, earliestFrom, currentBlock, deadline);
-      const wd  = await scanLogs(chain, allAddresses, WITHDRAW_TOPIC, earliestFrom, currentBlock, deadline);
-      const depositLogs = dep.logs;
-      const withdrawLogs = wd.logs;
-      // Conservative: use the min progress block across both topics
-      const progressBlock = Math.min(dep.reachedBlock, wd.reachedBlock);
+      // One batch eth_getLogs for all vaults AND both topics on this chain.
+      const scan = await scanLogs(chain, allAddresses, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
+                                  earliestFrom, currentBlock, deadline);
+      const depositLogs  = scan.logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
+      const withdrawLogs = scan.logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
+      // One pass means one honest progress block for both topics.
+      let progressBlock = scan.reachedBlock;
 
       console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
+      if (progressBlock < earliestFrom) {
+        console.log(`  ::warning::${chain} made NO progress this run (${currentBlock - earliestFrom + 1} blocks behind) — the range is too big for the deadline`);
+      }
 
       const addrIdx = new Map(vaultsToScan.map(v => [v.vault.address, v]));
       const newEvents = [];
@@ -1487,36 +1580,56 @@ async function main() {
       parseInto(depositLogs, parseDepositLog);
       parseInto(withdrawLogs, parseWithdrawLog);
 
-      newEventsTotal += newEvents.length;
-
-      // Fetch timestamps (batch 10 at a time), with chain deadline
-      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))];
+      // Oldest blocks first: whatever we manage to date lets the cursor move
+      // that far, instead of dating the newest and advancing nothing.
+      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))].sort((a, b) => a - b);
+      const tsMap = {};
       if (uniqueBlocks.length > 0) {
+        const tsDeadline = Date.now() + Math.max(5_000, Math.min(TIMESTAMP_BUDGET_MS, budgetLeft()));
         console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
-        const tsMap = {};
         for (let i = 0; i < uniqueBlocks.length; i += 10) {
-          if (Date.now() > deadline) { console.log('  (timestamp fetch cut short — deadline)'); break; }
+          if (Date.now() > tsDeadline) {
+            console.log(`  (timestamp fetch cut short at ${i}/${uniqueBlocks.length} — the rest retry next run)`);
+            break;
+          }
           const batch = uniqueBlocks.slice(i, i + 10);
           const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
-          results.forEach((ts, j) => { tsMap[batch[j]] = ts; });
+          results.forEach((ts, j) => { if (ts) tsMap[batch[j]] = ts; });
         }
-        newEvents.forEach(e => { e.timestamp = tsMap[e.block] || 0; });
       }
 
-      newEvents.forEach(e => {
+      // An undated event is unusable downstream — it cannot be filtered by
+      // timeframe, sorted, or priced. Drop it and hold the cursor below its
+      // block so the next run finds it again, rather than banking a gap.
+      const undated = newEvents.filter(e => !tsMap[e.block]);
+      const undatedBlocks = [...new Set(undated.map(e => e.block))];
+      if (undated.length > 0) {
+        console.log(`  ${undated.length} events had no timestamp — cursor held below block ${Math.min(...undatedBlocks)} so they are re-scanned`);
+      }
+      const newEventsDated = newEvents.filter(e => tsMap[e.block]);
+      newEventsDated.forEach(e => { e.timestamp = tsMap[e.block]; });
+
+      newEventsTotal += newEventsDated.length;
+
+      newEventsDated.forEach(e => {
         e.assets = Math.round(e.assets * 1e6) / 1e6;
         e.shares = Math.round(e.shares * 1e6) / 1e6;
       });
 
-      await enrichWithPrices(newEvents);
-      data.events.push(...newEvents);
-      // Persist partial progress: use progressBlock if we didn't reach currentBlock
-      const stopBlock = (progressBlock >= currentBlock) ? currentBlock : progressBlock;
-      if (stopBlock >= earliestFrom) {
-        for (const { vault } of vaultsToScan) {
-          data.lastBlock[vault.address] = stopBlock;
-        }
-      }
+      await enrichWithPrices(newEventsDated);
+      data.events.push(...newEventsDated);
+
+      // The old rule compared stopBlock against the batch's earliest fromBlock,
+      // so one vault lagging behind the rest could both stall every cursor and
+      // — had it advanced — rewind the healthy ones by millions of blocks.
+      const advanced = nextCursors({
+        addresses: vaultsToScan.map(v => v.vault.address),
+        prevCursors: data.lastBlock,
+        reachedBlock: progressBlock,
+        currentBlock,
+        undatedBlocks,
+      });
+      Object.assign(data.lastBlock, advanced);
     } catch (e) {
       console.log(`  ${chain} batch scan failed: ${e.message}`);
     }
@@ -1551,7 +1664,17 @@ async function main() {
   // ordering means each 20-min run clears the freshest gaps and chips away at
   // any backlog. Public repo ⇒ unlimited minutes, so running it every cycle is
   // free. For a full one-shot sweep use: node collect-activity.js --repair-prices-activity
-  await repairActivityPrices(data.events, VAULTS, { limit: 300, deadlineMs: 90_000 });
+  // Repairs run on whatever the scans left behind, split between them. Both
+  // are resumable across runs, so being cut short costs nothing but time.
+  // Timestamps go first: a repaired timestamp is what lets the price repair
+  // find a price for that event at all.
+  const repairMs = Math.max(0, budgetLeft());
+  if (repairMs > 5_000) {
+    await repairEventTimestamps(data.events, VAULTS, { limit: 600, deadlineMs: repairMs * 0.5 });
+    await repairActivityPrices(data.events, VAULTS, { limit: 300, deadlineMs: Math.max(0, budgetLeft()) });
+  } else {
+    console.log('\nSkipping repair passes — run budget spent (they resume next run)');
+  }
 
   tagSyntheticEvents(data.events, VAULTS);
 
@@ -1563,8 +1686,14 @@ async function main() {
   console.log(`New events this run: ${newEventsTotal}`);
 }
 
-main().catch(e => {
-  console.error('Fatal error:', e.message);
-  // Exit cleanly — don't break the pipeline if activity collection fails
-  process.exit(0);
-});
+// Only run the collector when invoked as a script — requiring this file for a
+// test must not kick off a full chain scan.
+if (require.main === module) {
+  main().catch(e => {
+    console.error('Fatal error:', e.message);
+    // Exit cleanly — don't break the pipeline if activity collection fails
+    process.exit(0);
+  });
+}
+
+module.exports = { nextCursors };
