@@ -29,6 +29,8 @@ jobs:
           console.log('undated events:', (ev.events||[]).filter(e=>!e.timestamp).length);
           "
       - name: Run collector (writes locally only, never pushed)
+        # Same cap as prod's collect.yml step — a pass here must mean a pass there.
+        timeout-minutes: 8
         run: node collect-activity.js
       - name: Cursor state AFTER
         run: |

@@ -91,8 +91,12 @@ const CHAIN_TIMEOUT_MS = 150_000; // 2.5 min per chain
 const TIMESTAMP_BUDGET_MS = 30_000;
 
 // The workflow step is capped at 8 minutes and a hard kill loses even the
-// partial progress we did make, so stop cleanly with room to write the file.
-const EVENT_SCAN_BUDGET_MS = 6 * 60_000;
+// partial progress we did make. One wall-clock budget covers the WHOLE run —
+// chain scans and the repair passes that follow — because budgeting only the
+// scans lets the repairs run past the cap and lose everything anyway.
+const RUN_BUDGET_MS = Number(process.env.ACTIVITY_RUN_BUDGET_MS || 6.5 * 60_000);
+// Held back from that budget so tagging + the final write always happen.
+const WRITE_RESERVE_MS = 20_000;
 
 // DeFi Llama chain prefix for price lookups
 const LLAMA_CHAIN = {
@@ -1482,7 +1486,8 @@ async function main() {
 
   // Scan new events across all supported chains
   let newEventsTotal = 0;
-  const scanStartedAt = Date.now();
+  const runDeadline = Date.now() + RUN_BUDGET_MS;
+  const budgetLeft = () => runDeadline - Date.now() - WRITE_RESERVE_MS;
 
   // Reset lastBlock for vaults with 0 events (need deeper backfill)
   const eventVaults = new Set(data.events.map(e => e.vault));
@@ -1503,8 +1508,8 @@ async function main() {
 
   for (const [chain, chainVaults] of Object.entries(byChain)) {
     if (!CHAIN_RPCS[chain]) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
-    if (Date.now() - scanStartedAt > EVENT_SCAN_BUDGET_MS) {
-      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (global scan budget spent; it keeps its cursor and resumes next run)`);
+    if (budgetLeft() <= 0) {
+      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (run budget spent; it keeps its cursor and resumes next run)`);
       continue;
     }
 
@@ -1536,8 +1541,10 @@ async function main() {
     const allAddresses = vaultsToScan.map(v => v.vault.address);
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
-    const deadline = Date.now() + CHAIN_TIMEOUT_MS;
-    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(CHAIN_TIMEOUT_MS/1000)}s)...`);
+    // Whichever runs out first: this chain's slice, or the run as a whole.
+    const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
+    const deadline = Date.now() + chainMs;
+    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(chainMs/1000)}s)...`);
 
     try {
       // One batch eth_getLogs for all vaults AND both topics on this chain.
@@ -1574,7 +1581,7 @@ async function main() {
       const uniqueBlocks = [...new Set(newEvents.map(e => e.block))].sort((a, b) => a - b);
       const tsMap = {};
       if (uniqueBlocks.length > 0) {
-        const tsDeadline = Date.now() + TIMESTAMP_BUDGET_MS;
+        const tsDeadline = Date.now() + Math.max(5_000, Math.min(TIMESTAMP_BUDGET_MS, budgetLeft()));
         console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
         for (let i = 0; i < uniqueBlocks.length; i += 10) {
           if (Date.now() > tsDeadline) {
@@ -1653,10 +1660,17 @@ async function main() {
   // ordering means each 20-min run clears the freshest gaps and chips away at
   // any backlog. Public repo ⇒ unlimited minutes, so running it every cycle is
   // free. For a full one-shot sweep use: node collect-activity.js --repair-prices-activity
-  // Timestamps first: a repaired timestamp is what makes the price repair
-  // below able to find a price for that event at all.
-  await repairEventTimestamps(data.events, VAULTS, { limit: 600, deadlineMs: 60_000 });
-  await repairActivityPrices(data.events, VAULTS, { limit: 300, deadlineMs: 90_000 });
+  // Repairs run on whatever the scans left behind, split between them. Both
+  // are resumable across runs, so being cut short costs nothing but time.
+  // Timestamps go first: a repaired timestamp is what lets the price repair
+  // find a price for that event at all.
+  const repairMs = Math.max(0, budgetLeft());
+  if (repairMs > 5_000) {
+    await repairEventTimestamps(data.events, VAULTS, { limit: 600, deadlineMs: repairMs * 0.5 });
+    await repairActivityPrices(data.events, VAULTS, { limit: 300, deadlineMs: Math.max(0, budgetLeft()) });
+  } else {
+    console.log('\nSkipping repair passes — run budget spent (they resume next run)');
+  }
 
   tagSyntheticEvents(data.events, VAULTS);
 
