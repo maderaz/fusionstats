@@ -1487,7 +1487,11 @@ async function main() {
   // Scan new events across all supported chains
   let newEventsTotal = 0;
   const runDeadline = Date.now() + RUN_BUDGET_MS;
-  const budgetLeft = () => runDeadline - Date.now() - WRITE_RESERVE_MS;
+  // Clamp the reserve: with a small budget a fixed 20s reserve swallows the
+  // whole thing and every chain is skipped, so the collector quietly does
+  // nothing — the exact silent-failure shape this change exists to remove.
+  const writeReserve = Math.min(WRITE_RESERVE_MS, Math.floor(RUN_BUDGET_MS * 0.15));
+  const budgetLeft = () => runDeadline - Date.now() - writeReserve;
 
   // Reset lastBlock for vaults with 0 events (need deeper backfill)
   const eventVaults = new Set(data.events.map(e => e.vault));
