@@ -717,6 +717,22 @@
     const RANGE_LABEL = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days',
                           '180': 'Last 180 days', all: 'All time' };
 
+    // "Apple Carry Trade" -> "Apple". Derived from the vault name rather than a
+    // hardcoded ticker map, so a vault added tomorrow reads correctly with no
+    // change here.
+    function companyOf(name) {
+      return String(name || '').replace(/\s*carry\s*trade.*$/i, '').trim();
+    }
+
+    // The figures behind the headline, taken from the same series the chart
+    // plots so the words and the picture can never disagree.
+    function tvlLatest() {
+      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange).filter(p => !p.pad);
+      if (!pts.length) return null;
+      const last = pts[pts.length - 1];
+      return { usd: last.tvl || 0, units: last.units || 0 };
+    }
+
     // Read the control's own chosen label rather than re-deriving one. The
     // headline then cannot drift from what the page says on screen.
     function selLabel(id, fallback) {
@@ -733,8 +749,31 @@
     // never disagree with what is actually plotted.
     function chartMeta(id) {
       if (id === 'tvlPlot') {
+        // Headline and subheading swap with the denomination. Whichever measure
+        // the chart is drawing leads; the other one becomes the counterweight
+        // underneath, so the image always carries both numbers either way.
+        const fig = tvlLatest();
+        const oneVault = S.tvlVault !== '__all__';
+        const vault = oneVault ? (S.vaults.find(v => v.address === S.tvlVault) || {}) : {};
+        const company = companyOf(vault.name);
+        const usdMode = S.tvlUnit === 'usd';
+        // Name the ticker whenever the scope is a single vault — in USD mode the
+        // unit dropdown says "USD", but the units underneath are still that
+        // vault's own share, not a mixed "tokenized stock" total.
+        const ticker = (!usdMode && S.tvlUnit !== 'units') ? S.tvlUnit : (vault.token || '');
+
+        const unitsHeadline = [company, 'Tokenized Stock Units Across Fusion Vaults']
+          .filter(Boolean).join(' ');
+        const title = usdMode ? 'TVL Across Fusion Stock Vaults' : unitsHeadline;
+
+        let sub = '';
+        if (fig) {
+          sub = usdMode
+            ? fNum(fig.units, 4) + ' ' + (ticker || 'tokenized stock') + ' units'
+            : 'TVL: ' + fUsd(fig.usd);
+        }
         return {
-          title: 'TVL across stock vaults',
+          title, sub,
           scope: [selLabel('tvlVault', 'All stock vaults'),
                   RANGE_LABEL[S.tvlRange] || S.tvlRange,
                   selLabel('tvlUnit', 'USD'),
@@ -742,8 +781,13 @@
           note: (document.getElementById('tvlNote') || {}).textContent || '',
         };
       }
+      const wPts = walletSeries(S.walVault, S.walRange, S.walMode);
+      const wLast = wPts.length ? wPts[wPts.length - 1].v : null;
       return {
-        title: 'Wallets participating',
+        title: 'Wallets Participating Across Fusion Stock Vaults',
+        sub: wLast == null ? '' : (S.walMode === 'active'
+          ? wLast + ' wallets active in the latest bucket'
+          : wLast + ' wallets have deposited'),
         scope: [selLabel('walVault', 'All stock vaults'),
                 RANGE_LABEL[S.walRange] || S.walRange,
                 activeLabel('walToolbar', 'data-wal-mode', 'Cumulative')].join('  ·  '),
@@ -784,17 +828,30 @@
         const img = new Image();
         img.onload = () => {
           const titled = S.pngStyle === 'titled' && meta;
-          const pad = Math.round(w / 40);
-          const titleSize = Math.round(w / 52);
-          const subSize = Math.round(w / 96);
-          const noteSize = Math.round(w / 112);
+          const pad = Math.round(w / 36);
+          // Poster-scale: the headline and its counterweight are the point of
+          // this export, so they are sized to be read across a room, not to sit
+          // politely above the plot. The scope line stays small underneath.
+          const titleSize = Math.round(w / 26);
+          const subSize = Math.round(w / 44);
+          const scopeSize = Math.round(w / 104);
+          const noteSize = Math.round(w / 116);
 
           // Measure first: the header and footer grow with however many lines
-          // the description wraps to, so nothing is ever clipped.
+          // the text wraps to, so nothing is ever clipped.
           const probe = document.createElement('canvas').getContext('2d');
+          const maxW = w - pad * 2;
+          probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+          const titleLines = titled ? wrapText(probe, meta.title, maxW) : [];
           probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-          const noteLines = titled && meta.note ? wrapText(probe, meta.note, w - pad * 2) : [];
-          const headH = titled ? pad + titleSize + Math.round(subSize * 1.6) + pad : 0;
+          const noteLines = titled && meta.note ? wrapText(probe, meta.note, maxW) : [];
+
+          const titleLH = Math.round(titleSize * 1.16);
+          const headH = titled
+            ? pad + titleLines.length * titleLH
+              + (meta.sub ? Math.round(subSize * 1.35) : 0)
+              + Math.round(scopeSize * 2.1) + pad
+            : 0;
           const footH = noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0;
 
           const cv = document.createElement('canvas');
@@ -807,14 +864,22 @@
 
           if (titled) {
             c.textBaseline = 'top';
+            let y = pad;
             c.fillStyle = '#000000';
             c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-            c.fillText(meta.title, pad, pad);
-            c.fillStyle = '#70747A';
-            c.font = '400 ' + subSize + 'px Poppins, sans-serif';
+            titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
+            if (meta.sub) {
+              c.fillStyle = '#8429FF';                 // the counterweight figure
+              c.font = '500 ' + subSize + 'px Poppins, sans-serif';
+              c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
+              y += Math.round(subSize * 1.35);
+            }
+            c.fillStyle = '#9BA3AF';
+            c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
             c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
-                       pad, pad + Math.round(titleSize * 1.25));
+                       pad, y + Math.round(scopeSize * 0.5));
             if (noteLines.length) {
+              c.fillStyle = '#70747A';
               c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
               const lh = Math.round(noteSize * 1.5);
               noteLines.forEach((ln, i) => c.fillText(ln, pad, headH + h + Math.round(pad * 0.4) + i * lh));
