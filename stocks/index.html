@@ -157,8 +157,15 @@
             <option value="compact">1:1</option>
           </select>
         </div>
+        <div class="group">
+          <span class="group-label">PNG</span>
+          <select data-png-style>
+            <option value="bare">Transparent</option>
+            <option value="titled">White + headline</option>
+          </select>
+        </div>
         <label class="chart-toolbar" style="margin:0;gap:0.35rem;font-size:0.72rem;color:var(--text-body);cursor:pointer">
-          <input type="checkbox" id="exportDotsToggle" checked style="cursor:pointer">Dots in PNG
+          <input type="checkbox" data-png-dots checked style="cursor:pointer">Dots
         </label>
         <button class="action-btn" id="tvlPng" type="button">Download PNG</button>
       </div>
@@ -189,6 +196,16 @@
           <button data-wal-mode="active">Active/day</button>
         </div>
         <span class="chart-hint">Cumulative counts every wallet that has ever deposited; active counts distinct wallets transacting that day.</span>
+        <div class="group">
+          <span class="group-label">PNG</span>
+          <select data-png-style>
+            <option value="bare">Transparent</option>
+            <option value="titled">White + headline</option>
+          </select>
+        </div>
+        <label class="chart-toolbar" style="margin:0;gap:0.35rem;font-size:0.72rem;color:var(--text-body);cursor:pointer">
+          <input type="checkbox" data-png-dots checked style="cursor:pointer">Dots
+        </label>
         <button class="action-btn" id="walPng" type="button">Download PNG</button>
       </div>
       <div class="plot" id="walPlot"><div class="loading">Loading…</div></div>
@@ -263,7 +280,7 @@
       tvlVault: '__all__', tvlRange: '90', tvlType: 'line', tvlUnit: 'usd',
       walVault: '__all__', walRange: '90', walMode: 'cumulative',
       feedVault: '__all__', feedType: '', feedLimit: FEED_PAGE,
-      exportDots: true, layout: 'wide',
+      exportDots: true, pngStyle: 'bare', layout: 'wide',
     };
 
     const fUsd = (n) => n == null || isNaN(n) ? '—'
@@ -691,27 +708,119 @@
       if (!flows) renderHolders();
     }
 
-    // ---- PNG export: transparent, dots + axes + series only ----
-    function composeExport(pngUrl, w, h, filename) {
+    // ---- PNG export ------------------------------------------------------
+    // Two styles. `bare` is transparent with an optional dot grid — drops onto
+    // any deck without a slab. `titled` is the self-contained one: white paper,
+    // dots over the plot, and the chart's own headline and description baked in
+    // so the image still says what it is once it leaves the site.
+
+    const RANGE_LABEL = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days',
+                          '180': 'Last 180 days', all: 'All time' };
+
+    // Read the control's own chosen label rather than re-deriving one. The
+    // headline then cannot drift from what the page says on screen.
+    function selLabel(id, fallback) {
+      const el = document.getElementById(id);
+      const opt = el && el.selectedOptions && el.selectedOptions[0];
+      return opt ? opt.textContent.trim() : fallback;
+    }
+    function activeLabel(scope, attr, fallback) {
+      const btn = document.querySelector('#' + scope + ' button[' + attr + '].active');
+      return btn ? btn.textContent.trim() : fallback;
+    }
+
+    // What the headline says about each chart, read from live state so it can
+    // never disagree with what is actually plotted.
+    function chartMeta(id) {
+      if (id === 'tvlPlot') {
+        return {
+          title: 'TVL across stock vaults',
+          scope: [selLabel('tvlVault', 'All stock vaults'),
+                  RANGE_LABEL[S.tvlRange] || S.tvlRange,
+                  selLabel('tvlUnit', 'USD'),
+                  activeLabel('tvlToolbar', 'data-tvl-type', 'Line')].join('  ·  '),
+          note: (document.getElementById('tvlNote') || {}).textContent || '',
+        };
+      }
+      return {
+        title: 'Wallets participating',
+        scope: [selLabel('walVault', 'All stock vaults'),
+                RANGE_LABEL[S.walRange] || S.walRange,
+                activeLabel('walToolbar', 'data-wal-mode', 'Cumulative')].join('  ·  '),
+        note: S.walMode === 'active'
+          ? 'Distinct wallets transacting in each bucket.'
+          : 'Every wallet that has ever deposited into a stock vault, counted once.',
+      };
+    }
+
+    function wrapText(c, text, maxWidth) {
+      const out = [];
+      for (const para of String(text).split('\n')) {
+        let line = '';
+        for (const word of para.split(/\s+/).filter(Boolean)) {
+          const test = line ? line + ' ' + word : word;
+          if (c.measureText(test).width > maxWidth && line) { out.push(line); line = word; }
+          else line = test;
+        }
+        if (line) out.push(line);
+      }
+      return out;
+    }
+
+    function paintDots(c, x, y, w, h) {
+      const pitch = Math.max(14, Math.round(w / 96));
+      c.fillStyle = '#191717';
+      c.globalAlpha = 0.18;   // stronger than on screen: no card behind it
+      for (let yy = y + h - pitch / 2; yy > y; yy -= pitch) {
+        for (let xx = x + pitch / 2; xx < x + w; xx += pitch) {
+          c.beginPath(); c.arc(xx, yy, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
+        }
+      }
+      c.globalAlpha = 1;
+    }
+
+    function composeExport(pngUrl, w, h, filename, meta) {
       return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => {
+          const titled = S.pngStyle === 'titled' && meta;
+          const pad = Math.round(w / 40);
+          const titleSize = Math.round(w / 52);
+          const subSize = Math.round(w / 96);
+          const noteSize = Math.round(w / 112);
+
+          // Measure first: the header and footer grow with however many lines
+          // the description wraps to, so nothing is ever clipped.
+          const probe = document.createElement('canvas').getContext('2d');
+          probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+          const noteLines = titled && meta.note ? wrapText(probe, meta.note, w - pad * 2) : [];
+          const headH = titled ? pad + titleSize + Math.round(subSize * 1.6) + pad : 0;
+          const footH = noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0;
+
           const cv = document.createElement('canvas');
-          cv.width = w; cv.height = h;
+          cv.width = w; cv.height = h + headH + footH;
           const c = cv.getContext('2d');
-          // No background fill — the image drops onto any deck without a slab.
-          if (S.exportDots) {
-            const pitch = Math.max(14, Math.round(w / 96));
-            c.fillStyle = '#191717';
-            c.globalAlpha = 0.18;   // stronger than on screen: no card behind it
-            for (let y = h - pitch / 2; y > 0; y -= pitch) {
-              for (let x = pitch / 2; x < w; x += pitch) {
-                c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
-              }
+
+          if (titled) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
+          if (S.exportDots) paintDots(c, 0, headH, w, h);
+          c.drawImage(img, 0, headH, w, h);
+
+          if (titled) {
+            c.textBaseline = 'top';
+            c.fillStyle = '#000000';
+            c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+            c.fillText(meta.title, pad, pad);
+            c.fillStyle = '#70747A';
+            c.font = '400 ' + subSize + 'px Poppins, sans-serif';
+            c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
+                       pad, pad + Math.round(titleSize * 1.25));
+            if (noteLines.length) {
+              c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+              const lh = Math.round(noteSize * 1.5);
+              noteLines.forEach((ln, i) => c.fillText(ln, pad, headH + h + Math.round(pad * 0.4) + i * lh));
             }
-            c.globalAlpha = 1;
           }
-          c.drawImage(img, 0, 0, w, h);
+
           cv.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -734,7 +843,8 @@
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
       const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
-      await composeExport(url, w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png');
+      await composeExport(url, w * scale, h * scale,
+                          'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id));
     }
 
     function applyLayout(v) {
@@ -841,9 +951,32 @@
         });
       });
       document.getElementById('layoutSel').addEventListener('change', function () { applyLayout(this.value); });
-      const dots = document.getElementById('exportDotsToggle');
-      S.exportDots = dots.checked;
-      dots.addEventListener('change', () => { S.exportDots = dots.checked; });
+      // The two toolbars carry the same export controls; keep them in lockstep
+      // and remember the choice, so it is not re-picked for every download.
+      const PNG_KEY = 'stocks_png_style', DOTS_KEY = 'stocks_png_dots';
+      const styleSels = [...document.querySelectorAll('select[data-png-style]')];
+      const dotBoxes  = [...document.querySelectorAll('input[data-png-dots]')];
+      try {
+        const sv = localStorage.getItem(PNG_KEY);
+        if (sv === 'bare' || sv === 'titled') S.pngStyle = sv;
+        const dv = localStorage.getItem(DOTS_KEY);
+        if (dv !== null) S.exportDots = dv === '1';
+      } catch (e) {}
+      const syncExportControls = () => {
+        styleSels.forEach(el => { el.value = S.pngStyle; });
+        dotBoxes.forEach(el => { el.checked = S.exportDots; });
+      };
+      syncExportControls();
+      styleSels.forEach(el => el.addEventListener('change', () => {
+        S.pngStyle = el.value === 'titled' ? 'titled' : 'bare';
+        try { localStorage.setItem(PNG_KEY, S.pngStyle); } catch (e) {}
+        syncExportControls();
+      }));
+      dotBoxes.forEach(el => el.addEventListener('change', () => {
+        S.exportDots = el.checked;
+        try { localStorage.setItem(DOTS_KEY, S.exportDots ? '1' : '0'); } catch (e) {}
+        syncExportControls();
+      }));
       document.getElementById('tvlPng').addEventListener('click', () => downloadPlot('tvlPlot', 'tvl'));
       document.getElementById('walPng').addEventListener('click', () => downloadPlot('walPlot', 'wallets'));
     })();
