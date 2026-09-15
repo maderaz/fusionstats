@@ -217,7 +217,8 @@ console.log('\nScenario 2 — RPC too slow to finish: must make partial progress
 
   // Successive runs must converge rather than repeat the same range forever.
   let prev = s1.cursorA, advanced = 0;
-  for (let i = 0; i < 6; i++) {
+  // Generous: the point is that it converges, not how few passes it takes.
+  for (let i = 0; i < 14; i++) {
     run(dir, { ACTIVITY_RUN_BUDGET_MS: process.env.ACTIVITY_RUN_BUDGET_MS || '25000' });
     const s = state(dir);
     if (s.cursorA > prev) advanced++;

@@ -38,17 +38,29 @@ const NEW_VAULT_BACKFILL = {
 };
 
 // Per-chain RPC endpoints (free, no auth)
+// Order matters: rpcCall walks this list and only remembers an endpoint after
+// it succeeds, so a dead one at the front is paid for on every cold call.
+// Measured 2026-09-15 (tools/getlogs-probe.js) against the real endpoints:
+//   ethereum  publicnode  403 at 10k blocks, OK at 5k and below
+//             drpc        HTTP 400 on every span and address count
+//             llamarpc    HTTP 403 on every span and address count
+//             cloudflare  "range too large. Max range: 800", then 429
+//   base      publicnode  403 above ~8 addresses, and 3.0s per failure
+//             mainnet.base.org  413 at 10k/5k, OK at 2k
+//             drpc 400, llamarpc 403 throughout
+// The known-good endpoint now leads; the dead ones stay as last-resort
+// redundancy in case they recover, where they cost nothing.
 const CHAIN_RPCS = {
   ethereum: [
     'https://ethereum-rpc.publicnode.com',
+    'https://cloudflare-eth.com',
     'https://eth.drpc.org',
     'https://eth.llamarpc.com',
-    'https://cloudflare-eth.com',
   ],
   base: [
+    'https://mainnet.base.org',
     'https://base-rpc.publicnode.com',
     'https://base.drpc.org',
-    'https://mainnet.base.org',
     'https://base.llamarpc.com',
   ],
   arbitrum: [
@@ -70,15 +82,29 @@ const CHAIN_RPCS = {
   ],
 };
 
-// Per-chain scan chunk sizes (smaller = less likely to hit RPC limits)
+// Per-chain scan chunk sizes, set from the measured caps above with margin.
+// 10k was above every Ethereum endpoint's limit and above Base's, so the first
+// request of every chunk failed, fell through all four endpoints, and then had
+// to bisect its way down — which is how a three-chunk range burned 150s and
+// advanced nothing.
 const CHAIN_CHUNKS = {
-  ethereum:  10_000,
-  base:      10_000,
-  arbitrum:  10_000,
+  ethereum:   4_000,   // publicnode serves 5k; 4k leaves room
+  base:       2_000,   // mainnet.base.org serves 2k, 413s at 5k
+  arbitrum:  10_000,   // measured healthy — 11 vaults, full range in 6s
   plasma:    10_000,
   avalanche: 10_000,
   unichain:  10_000,
-  _default:  10_000,
+  _default:   5_000,
+};
+
+// Some endpoints reject by address-list length independently of block span:
+// Base publicnode served 8 addresses and 403'd on 16+. Splitting the batch
+// keeps every request inside that limit; the extra round trips cost far less
+// than one rejected request falling through four endpoints.
+const CHAIN_ADDR_BATCH = {
+  ethereum: 25,
+  base:      8,
+  _default: 25,
 };
 
 // Max seconds to spend scanning a single chain (prevents workflow hangs)
@@ -1551,13 +1577,27 @@ async function main() {
     console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(chainMs/1000)}s)...`);
 
     try {
-      // One batch eth_getLogs for all vaults AND both topics on this chain.
-      const scan = await scanLogs(chain, allAddresses, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
-                                  earliestFrom, currentBlock, deadline);
-      const depositLogs  = scan.logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
-      const withdrawLogs = scan.logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
-      // One pass means one honest progress block for both topics.
-      let progressBlock = scan.reachedBlock;
+      // Split the address list so no request exceeds what the endpoint will
+      // serve. Each group is scanned over the same range and reports its own
+      // reached block; the chain's progress is the WORST of them, because a
+      // block is only covered once every vault has been asked about it.
+      const perReq = CHAIN_ADDR_BATCH[chain] || CHAIN_ADDR_BATCH._default;
+      const groups = [];
+      for (let i = 0; i < allAddresses.length; i += perReq) groups.push(allAddresses.slice(i, i + perReq));
+
+      const logs = [];
+      let progressBlock = Infinity;
+      for (const group of groups) {
+        const r = await scanLogs(chain, group, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
+                                 earliestFrom, currentBlock, deadline);
+        logs.push(...r.logs);
+        progressBlock = Math.min(progressBlock, r.reachedBlock);
+      }
+      if (!isFinite(progressBlock)) progressBlock = earliestFrom - 1;
+      if (groups.length > 1) console.log(`  (${groups.length} address groups of up to ${perReq})`);
+
+      const depositLogs  = logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
+      const withdrawLogs = logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
 
       console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
       if (progressBlock < earliestFrom) {
