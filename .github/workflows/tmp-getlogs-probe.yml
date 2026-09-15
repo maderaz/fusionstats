@@ -1,0 +1,23 @@
+# TEMPORARY — measures eth_getLogs behaviour so collector params can be chosen
+# from data rather than guessed. Read-only, pushes nothing. Delete when done.
+name: TMP getLogs probe
+
+on:
+  push:
+    branches: [claude/eth-getlogs-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - name: Ethereum
+        run: node tools/getlogs-probe.js ethereum
+      - name: Base (the chain that works — for contrast)
+        run: node tools/getlogs-probe.js base
