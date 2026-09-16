@@ -1144,29 +1144,40 @@
     const SERIES_COLORS = ['#8429FF', '#0EA5E9', '#16A34A', '#D97706', '#DC2626', '#7C3AED', '#0D9488', '#DB2777'];
     function seriesColor(i) { return SERIES_COLORS[i % SERIES_COLORS.length]; }
 
-    // Coinbase's own tokenised-equity marks, served by Basescan. Keyed on the
-    // ticker with the trailing 'c' some of them carry stripped, so GOOGLc and
-    // a future GOOGL both resolve.
+    // The tokenised equities Coinbase issues on Base, keyed by ticker with the
+    // trailing 'c' stripped — GOOGLc and a future GOOGL both land here.
     //
-    // Hotlinked rather than vendored: the sandbox cannot reach basescan.org to
-    // download them. That makes every one of these a URL that might 404 or be
-    // blocked, so `iconFor` renders a coloured dot underneath and swaps to it
-    // on error — a missing mark degrades to the dot the table had before,
-    // never to a broken-image glyph.
-    const ICON_BASE = 'https://basescan.org/token/images/';
-    const TOKEN_ICON = {
-      NVDA:  ICON_BASE + 'coinbasetokenize_nvda.svg',
-      META:  ICON_BASE + 'coinbasetokenize_meta.svg',
-      GOOGL: ICON_BASE + 'coinbasetokenize_goog.svg',
-      GOOG:  ICON_BASE + 'coinbasetokenize_goog.svg',
-      AAPL:  ICON_BASE + 'coinbasetokenize_aapl.svg',
-      COIN:  ICON_BASE + 'coinbasetokenize_coin.svg',
-      MSFT:  ICON_BASE + 'coinbasetokenize_msft.svg',
+    // `company` is the issuer's own name for the underlying, which is not what
+    // the vault is called: the vault reads "Google Carry Trade" where the token
+    // represents Alphabet, and "MicroStrategy" is now Strategy.
+    //
+    // `icon` is the tradfi ticker, which is how Basescan names the mark file.
+    // Marks are vendored into /stocks/icons rather than hotlinked: served from
+    // our own origin they cannot 404 mid-session, rate-limit, or change shape
+    // underneath the page. Refresh or extend with tools/fetch-token-icons.js.
+    //
+    // A token absent from this table still charts and still totals — it is only
+    // named and iconed by this table, not admitted by it. Discovery stays with
+    // the underlying-address filter, so a new listing appears on its own.
+    const ICON_BASE = '/stocks/icons/';
+    const STOCK_TOKENS = {
+      AAPL:  { company: 'Apple',      icon: 'aapl' },
+      GOOGL: { company: 'Alphabet',   icon: 'goog' },
+      NVDA:  { company: 'NVIDIA',     icon: 'nvda' },
+      META:  { company: 'Meta',       icon: 'meta' },
+      AMZN:  { company: 'Amazon',     icon: 'amzn' },
+      MSFT:  { company: 'Microsoft',  icon: 'msft' },
+      MSTR:  { company: 'Strategy',   icon: 'mstr' },
+      SNDK:  { company: 'SanDisk',    icon: 'sndk' },
+      SPCX:  { company: 'SpaceX',     icon: 'spcx' },
+      TSLA:  { company: 'Tesla',      icon: 'tsla' },
+      COIN:  { company: 'Coinbase',   icon: 'coin' },
     };
+    const normToken = (t) => String(t || '').toUpperCase().replace(/C$/, '');
+    const tokenMeta = (t) => STOCK_TOKENS[normToken(t)] || null;
     function iconUrlFor(token) {
-      if (!token) return null;
-      const t = String(token).toUpperCase();
-      return TOKEN_ICON[t] || TOKEN_ICON[t.replace(/C$/, '')] || null;
+      const m = tokenMeta(token);
+      return m ? ICON_BASE + m.icon + '.svg' : null;
     }
     // A mark if we have one, the series dot if we do not — and the dot again
     // if the mark fails to load.
@@ -1175,7 +1186,7 @@
       const dot = '<span class="dot" style="background:' + color + '"></span>';
       if (!url) return dot;
       return '<span class="tok-badge">'
-        + '<img src="' + url + '" alt="" loading="lazy" '
+        + '<img src="' + url + '" alt="" '
         + 'onerror="this.closest(\'.tok-badge\').classList.add(\'no-icon\')">'
         + dot + '</span>';
     }
@@ -1270,7 +1281,7 @@
         + '<th>Token</th><th class="num">Return</th><th class="num">Annualised</th>'
         + '<th class="num">Days tracked</th></tr></thead><tbody>'
         + series.map((r, i) =>
-            '<tr>' + nameCell(companyOf(r.vault.name), seriesColor(i), null, r.vault.token)
+            '<tr>' + nameCell(companyOf(r.vault.name, r.vault.token), seriesColor(i), null, r.vault.token)
             + '<td><span class="ticker">' + r.vault.token + '</span></td>'
             + '<td class="num ' + (r.total >= 0 ? 'pos' : 'neg') + '">'
             + (r.total >= 0 ? '+' : '') + (r.total * 100).toFixed(2) + '%</td>'
@@ -1319,7 +1330,7 @@
                 const tok = byAddr[a] || '?';
                 const url = iconUrlFor(tok);
                 return '<span class="badge" style="background:var(--accent-bg);color:var(--accent);margin-right:0.25rem">'
-                  + (url ? '<img class="tok-inline" src="' + url + '" alt="" loading="lazy" '
+                  + (url ? '<img class="tok-inline" src="' + url + '" alt="" '
                            + 'onerror="this.remove()">' : '')
                   + tok + '</span>';
               }).join('') + '</td></tr>').join('')
@@ -1335,18 +1346,44 @@
       const price = latestPrices(), sp = latestSharePrices();
       const wallets = {};
       holdingsRows().forEach(r => Object.keys(r.pos).forEach(a => { (wallets[a] = wallets[a] || new Set()).add(r.wallet); }));
-      const rows = S.vaults.map(v => {
+      // One row per underlying token, not per vault. Two vaults run on the same
+      // Alphabet token — "Google Carry Trade" and "…Tezos" — and listing both
+      // read as two companies. Grouping keeps every dollar and shows the four
+      // tokens that actually exist.
+      const byToken = {};
+      S.vaults.forEach(v => {
         const pts = tvlSeries(v.address, 'all');
         const last = pts.length ? pts[pts.length - 1] : null;
-        return { v, units: last ? last.units : 0, usd: last ? last.tvl : (v.tvl || 0),
-                 wallets: (wallets[v.address] || new Set()).size, sp: sp[v.address], price: price[v.address] };
-      }).sort((a, b) => b.usd - a.usd);
+        const key = normToken(v.token) || v.address;
+        const g = byToken[key] || (byToken[key] = {
+          token: v.token, name: v.name, units: 0, usd: 0, wallets: new Set(),
+          sp: null, spTvl: 0, vaults: [],
+        });
+        g.units += last ? (last.units || 0) : 0;
+        g.usd += last ? (last.tvl || 0) : (v.tvl || 0);
+        (wallets[v.address] || new Set()).forEach(w => g.wallets.add(w));
+        // Underlying-per-share is a rate, not a total, so it cannot be summed —
+        // and it must not be taken from whichever vault happens to iterate
+        // last. A near-empty sibling carrying a default 0.010000 overwrote
+        // Alphabet's real 0.010282 that way. Take the largest vault's.
+        const spHere = sp[v.address];
+        if (spHere && (g.sp == null || (v.tvl || 0) > (g.spTvl || 0))) {
+          g.sp = spHere; g.spTvl = v.tvl || 0;
+        }
+        g.vaults.push(v);
+      });
+      const rows = Object.values(byToken)
+        .map(g => ({ v: g.vaults.slice().sort((a, b) => (b.tvl || 0) - (a.tvl || 0))[0],
+                     token: g.token, units: g.units, usd: g.usd,
+                     wallets: g.wallets.size, sp: g.sp, vaults: g.vaults.length }))
+        .sort((a, b) => b.usd - a.usd);
       document.getElementById('refTable').innerHTML =
         '<div class="scroll"><table class="data-table"><thead><tr><th>Company</th><th>Token</th><th class="num">Shares held</th>'
         + '<th class="num">Value</th><th class="num">Wallets</th><th class="num">Underlying / share</th><th>Contract</th></tr></thead><tbody>'
         + rows.map((r, i) =>
-            '<tr>' + nameCell(companyOf(r.v.name), seriesColor(i), null, r.v.token)
-            + '<td><span class="ticker">' + r.v.token + '</span></td>'
+            '<tr>' + nameCell(companyOf(r.v.name, r.token), seriesColor(i), null, r.token)
+            + '<td><span class="ticker">' + r.token + '</span>'
+            + (r.vaults > 1 ? '<span class="muted-note"> · ' + r.vaults + ' vaults</span>' : '') + '</td>'
             + '<td class="num">' + (r.units ? fNum(r.units, 4) : '—') + '</td>'
             + '<td class="num">' + fUsd(r.usd) + '</td>'
             + '<td class="num">' + (r.wallets || '—') + '</td>'
@@ -1377,7 +1414,9 @@
     // "Apple Carry Trade" -> "Apple". Derived from the vault name rather than a
     // hardcoded ticker map, so a vault added tomorrow reads correctly with no
     // change here.
-    function companyOf(name) {
+    function companyOf(name, token) {
+      const m = tokenMeta(token);
+      if (m) return m.company;
       return String(name || '').replace(/\s*carry\s*trade.*$/i, '').trim();
     }
 
@@ -1412,7 +1451,7 @@
         const fig = tvlLatest();
         const oneVault = S.tvlVault !== '__all__';
         const vault = oneVault ? (S.vaults.find(v => v.address === S.tvlVault) || {}) : {};
-        const company = companyOf(vault.name);
+        const company = companyOf(vault.name, vault.token);
         const usdMode = S.tvlUnit === 'usd';
         // Name the ticker whenever the scope is a single vault — in USD mode the
         // unit dropdown says "USD", but the units underneath are still that
@@ -1769,7 +1808,7 @@
       document.getElementById('retCsv').addEventListener('click', () => {
         const series = returnSeries(S.retRange);
         downloadCsv('fusion-stocks-returns', [['token', 'company', 'total_return', 'annualised', 'days'],
-          ...series.map(r => [r.vault.token, companyOf(r.vault.name), r.total, r.annualised == null ? '' : r.annualised, r.days])]);
+          ...series.map(r => [r.vault.token, companyOf(r.vault.name, r.vault.token), r.total, r.annualised == null ? '' : r.annualised, r.days])]);
       });
       document.getElementById('concCsv').addEventListener('click', () => {
         const c = concentration(); if (!c) return;
@@ -1783,7 +1822,7 @@
         downloadCsv('fusion-stocks-reference', [['company', 'token', 'address', 'shares_held', 'value_usd', 'underlying_per_share', 'price_usd'],
           ...S.vaults.map(v => {
             const pts = tvlSeries(v.address, 'all'); const last = pts.length ? pts[pts.length - 1] : null;
-            return [companyOf(v.name), v.token, v.address, last ? last.units : 0,
+            return [companyOf(v.name, v.token), v.token, v.address, last ? last.units : 0,
                     last ? last.tvl : (v.tvl || 0), sp[v.address] || '', price[v.address] || ''];
           })]);
       });
