@@ -56,6 +56,16 @@
     /* ---- a colour that ties a row to its series, as the legend does ---- */
     .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:0.5rem;
            vertical-align:middle; flex:0 0 8px; }
+    /* The mark and its fallback dot occupy the same slot; only one shows. */
+    .tok-badge { display:inline-flex; align-items:center; flex:0 0 auto; }
+    .tok-badge img { width:18px; height:18px; border-radius:50%; margin-right:0.5rem;
+                     background:var(--stroke-light); object-fit:contain; }
+    .tok-badge .dot { display:none; }
+    .tok-badge.no-icon img { display:none; }
+    .tok-badge.no-icon .dot { display:inline-block; }
+    /* Inline marks sit with the ticker text in the holdings badges. */
+    .tok-inline { width:14px; height:14px; border-radius:50%; margin-right:0.3rem;
+                  vertical-align:-2px; object-fit:contain; }
     .name-cell { display:flex; align-items:center; min-width:0; }
     .name-cell > span.label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
@@ -1133,17 +1143,53 @@
 
     const SERIES_COLORS = ['#8429FF', '#0EA5E9', '#16A34A', '#D97706', '#DC2626', '#7C3AED', '#0D9488', '#DB2777'];
     function seriesColor(i) { return SERIES_COLORS[i % SERIES_COLORS.length]; }
+
+    // Coinbase's own tokenised-equity marks, served by Basescan. Keyed on the
+    // ticker with the trailing 'c' some of them carry stripped, so GOOGLc and
+    // a future GOOGL both resolve.
+    //
+    // Hotlinked rather than vendored: the sandbox cannot reach basescan.org to
+    // download them. That makes every one of these a URL that might 404 or be
+    // blocked, so `iconFor` renders a coloured dot underneath and swaps to it
+    // on error — a missing mark degrades to the dot the table had before,
+    // never to a broken-image glyph.
+    const ICON_BASE = 'https://basescan.org/token/images/';
+    const TOKEN_ICON = {
+      NVDA:  ICON_BASE + 'coinbasetokenize_nvda.svg',
+      META:  ICON_BASE + 'coinbasetokenize_meta.svg',
+      GOOGL: ICON_BASE + 'coinbasetokenize_goog.svg',
+      GOOG:  ICON_BASE + 'coinbasetokenize_goog.svg',
+      AAPL:  ICON_BASE + 'coinbasetokenize_aapl.svg',
+      COIN:  ICON_BASE + 'coinbasetokenize_coin.svg',
+      MSFT:  ICON_BASE + 'coinbasetokenize_msft.svg',
+    };
+    function iconUrlFor(token) {
+      if (!token) return null;
+      const t = String(token).toUpperCase();
+      return TOKEN_ICON[t] || TOKEN_ICON[t.replace(/C$/, '')] || null;
+    }
+    // A mark if we have one, the series dot if we do not — and the dot again
+    // if the mark fails to load.
+    function iconFor(token, color) {
+      const url = iconUrlFor(token);
+      const dot = '<span class="dot" style="background:' + color + '"></span>';
+      if (!url) return dot;
+      return '<span class="tok-badge">'
+        + '<img src="' + url + '" alt="" loading="lazy" '
+        + 'onerror="this.closest(\'.tok-badge\').classList.add(\'no-icon\')">'
+        + dot + '</span>';
+    }
     function shareCell(frac) {
       const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
       return '<td class="num"><span class="share-cell">'
         + '<span class="share-track"><span class="share-fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
         + '<span class="share-pct">' + pct.toFixed(1) + '%</span></span></td>';
     }
-    function nameCell(label, color, href) {
+    function nameCell(label, color, href, token) {
       const inner = href
         ? '<a class="addr" href="' + href + '" target="_blank" rel="noopener">' + label + '</a>'
         : '<strong>' + label + '</strong>';
-      return '<td><span class="name-cell"><span class="dot" style="background:' + color + '"></span>'
+      return '<td><span class="name-cell">' + iconFor(token, color)
         + '<span class="label">' + inner + '</span></span></td>';
     }
 
@@ -1224,7 +1270,7 @@
         + '<th>Token</th><th class="num">Return</th><th class="num">Annualised</th>'
         + '<th class="num">Days tracked</th></tr></thead><tbody>'
         + series.map((r, i) =>
-            '<tr>' + nameCell(companyOf(r.vault.name), seriesColor(i), null)
+            '<tr>' + nameCell(companyOf(r.vault.name), seriesColor(i), null, r.vault.token)
             + '<td><span class="ticker">' + r.vault.token + '</span></td>'
             + '<td class="num ' + (r.total >= 0 ? 'pos' : 'neg') + '">'
             + (r.total >= 0 ? '+' : '') + (r.total * 100).toFixed(2) + '%</td>'
@@ -1269,9 +1315,14 @@
             + shortAddr(r.wallet) + '</a></td>'
             + '<td class="num">' + fUsd(r.usd) + '</td>'
             + shareCell(c.total ? r.usd / c.total : 0)
-            + '<td>' + Object.keys(r.pos).map(a =>
-                '<span class="badge" style="background:var(--accent-bg);color:var(--accent);margin-right:0.25rem">'
-                + (byAddr[a] || '?') + '</span>').join('') + '</td></tr>').join('')
+            + '<td>' + Object.keys(r.pos).map(a => {
+                const tok = byAddr[a] || '?';
+                const url = iconUrlFor(tok);
+                return '<span class="badge" style="background:var(--accent-bg);color:var(--accent);margin-right:0.25rem">'
+                  + (url ? '<img class="tok-inline" src="' + url + '" alt="" loading="lazy" '
+                           + 'onerror="this.remove()">' : '')
+                  + tok + '</span>';
+              }).join('') + '</td></tr>').join('')
         + '</tbody></table></div>';
 
       document.getElementById('concNote').textContent =
@@ -1294,7 +1345,7 @@
         '<div class="scroll"><table class="data-table"><thead><tr><th>Company</th><th>Token</th><th class="num">Shares held</th>'
         + '<th class="num">Value</th><th class="num">Wallets</th><th class="num">Underlying / share</th><th>Contract</th></tr></thead><tbody>'
         + rows.map((r, i) =>
-            '<tr>' + nameCell(companyOf(r.v.name), seriesColor(i), null)
+            '<tr>' + nameCell(companyOf(r.v.name), seriesColor(i), null, r.v.token)
             + '<td><span class="ticker">' + r.v.token + '</span></td>'
             + '<td class="num">' + (r.units ? fNum(r.units, 4) : '—') + '</td>'
             + '<td class="num">' + fUsd(r.usd) + '</td>'
