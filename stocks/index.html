@@ -29,21 +29,57 @@
       --green:#3DD68C; --red:#FF6B6B;
     }
 
-    /* two-up panels used by the route / origin / holder sections */
-    .two-up { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; margin-top:0.75rem; }
-    @media (max-width:860px) { .two-up { grid-template-columns:1fr; } }
-    .sub-title { font-size:0.8rem; font-weight:600; margin-bottom:0.45rem; }
-    .muted-note { font-weight:400; font-size:0.72rem; color:var(--text-secondary); }
-    .bar-row { position:relative; }
-    .bar-fill {
-      position:absolute; left:0; top:0; bottom:0; background:var(--accent-bg);
-      border-radius:3px; z-index:0;
+    /* ---- panels ---- */
+    .two-up { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1rem; }
+    @media (max-width:900px) { .two-up { grid-template-columns:1fr; } }
+    .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin-bottom:0.6rem; }
+    .sub-title { font-size:0.82rem; font-weight:600; letter-spacing:-0.005em; }
+    .muted-note { font-weight:400; font-size:0.72rem; color:var(--text-secondary); line-height:1.55; }
+
+    /* Card header: title left, actions hard right — one rhythm everywhere. */
+    .card-head {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:1rem; flex-wrap:wrap; margin-bottom:0.85rem;
     }
-    .bar-row > * { position:relative; z-index:1; }
+    .card-actions { display:flex; gap:0.4rem; align-items:center; margin-left:auto; }
+
+    /* ---- a share bar that lives in its own cell, rather than a tinted band
+           smeared behind the whole row ---- */
+    .share-cell { display:flex; align-items:center; gap:0.5rem; justify-content:flex-end; }
+    .share-track {
+      flex:0 0 58px; height:5px; border-radius:999px;
+      background:var(--stroke-light); overflow:hidden;
+    }
+    .share-fill { display:block; height:100%; border-radius:999px; background:var(--accent); }
+    .share-pct { font-family:'JetBrains Mono',monospace; font-size:0.75rem; min-width:3.1rem; text-align:right; }
+
+    /* ---- a colour that ties a row to its series, as the legend does ---- */
+    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:0.5rem;
+           vertical-align:middle; flex:0 0 8px; }
+    /* The mark and its fallback dot occupy the same slot; only one shows. */
+    .tok-badge { display:inline-flex; align-items:center; flex:0 0 auto; }
+    .tok-badge img { width:18px; height:18px; border-radius:50%; margin-right:0.5rem;
+                     background:var(--stroke-light); object-fit:contain; }
+    .tok-badge .dot { display:none; }
+    .tok-badge.no-icon img { display:none; }
+    .tok-badge.no-icon .dot { display:inline-block; }
+    /* Inline marks sit with the ticker text in the holdings badges. */
+    .tok-inline { width:14px; height:14px; border-radius:50%; margin-right:0.3rem;
+                  vertical-align:-2px; object-fit:contain; }
+    .name-cell { display:flex; align-items:center; min-width:0; }
+    .name-cell > span.label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* ---- tabular figures so columns line up down the page ---- */
+    .data-table td.num, .data-table th.num { font-variant-numeric:tabular-nums; }
+    .data-table tbody tr:last-child td { border-bottom:0; }
+    .data-table.tight td { padding:0.45rem 0.6rem; }
+    .pos { color:var(--green); } .neg { color:var(--red); }
+
     .missing {
-      font-size:0.76rem; color:var(--text-body); background:var(--stroke-light);
-      border:1px solid var(--stroke); border-radius:8px; padding:0.6rem 0.75rem;
+      font-size:0.78rem; color:var(--text-body); background:var(--stroke-light);
+      border:1px dashed var(--stroke); border-radius:10px; padding:0.85rem 1rem; line-height:1.55;
     }
+    .plot .missing { margin:1.5rem 0; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif;
@@ -71,10 +107,16 @@
     }
     .chart-toolbar button:hover, .chart-toolbar select:hover { color:var(--accent); border-color:var(--accent); }
     .chart-toolbar button.active { color:var(--accent); background:var(--accent-bg); border-color:var(--accent); }
+    /* Both selectors on purpose: inside a toolbar, the generic
+       `.chart-toolbar button` rule out-specifies a bare `.action-btn` and the
+       fill is lost. */
+    .action-btn,
     .chart-toolbar .action-btn {
+      font-family:inherit; cursor:pointer;
       font-size:0.72rem; padding:0.35rem 0.85rem; border:1px solid var(--accent);
-      background:var(--accent); color:#fff; border-radius:6px; font-weight:500; transition:opacity 0.15s;
+      background:var(--accent); color:#fff; border-radius:7px; font-weight:500; transition:opacity 0.15s;
     }
+    .action-btn:hover,
     .chart-toolbar .action-btn:hover { opacity:0.85; color:#fff; border-color:var(--accent); }
     .chart-hint { font-size:0.7rem; color:var(--text-secondary); margin-left:auto; }
 
@@ -262,29 +304,38 @@
           <button data-flow-range="90" class="active">90d</button>
           <button data-flow-range="all">All</button>
         </div>
-        <span class="chart-hint">Inflows above the line, exits below in red. Net is the difference.</span>
-        <button class="action-btn" id="flowPng" type="button">PNG</button>
-        <button class="action-btn" id="flowCsv" type="button">CSV</button>
+        <div class="card-actions">
+          <button class="action-btn" id="flowPng" type="button">PNG</button>
+          <button class="action-btn" id="flowCsv" type="button">CSV</button>
+        </div>
       </div>
+      <div class="muted-note" style="margin:-0.35rem 0 0.5rem">Inflows above the line, exits below in red.
+        The line is the daily net.</div>
       <div class="plot" id="flowPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="flowNote"></div>
     </div>
 
     <!-- ---------- HOW PEOPLE GOT IN ---------- -->
     <div class="chart-card">
-      <div class="chart-section-title">How people got in</div>
-      <div class="chart-toolbar">
-        <span class="chart-hint">A deposit whose sender differs from its owner was pushed by a contract —
-          a zap, an aggregator, a referral wrapper. Routers we cannot name keep their address.</span>
-        <button class="action-btn" id="routeCsv" type="button">CSV</button>
+      <div class="card-head">
+        <div class="chart-section-title" style="margin:0">How people got in</div>
+        <div class="card-actions"><button class="action-btn" id="routeCsv" type="button">CSV</button></div>
       </div>
+      <div class="muted-note" style="margin:-0.35rem 0 0.25rem">A deposit whose sender differs from its owner was
+        pushed by a contract — a zap, an aggregator, a referral wrapper. Routers we cannot name keep their address.</div>
       <div class="two-up">
         <div>
-          <div class="sub-title">Gross inflow by route <span class="muted-note">everything that came in, including money since withdrawn</span></div>
+          <div class="panel-head">
+            <div class="sub-title">Gross inflow by route</div>
+            <div class="muted-note">everything that came in, including money since withdrawn</div>
+          </div>
           <div id="routeTable"></div>
         </div>
         <div>
-          <div class="sub-title">Value by origin <span class="muted-note">of what is still here today</span></div>
+          <div class="panel-head">
+            <div class="sub-title">Value by origin</div>
+            <div class="muted-note">of what is still here today</div>
+          </div>
           <div id="originTable"></div>
         </div>
       </div>
@@ -302,30 +353,40 @@
           <button data-ret-range="90" class="active">90d</button>
           <button data-ret-range="all">All</button>
         </div>
-        <span class="chart-hint">Measured on price per share, not on value held — value moves whenever
-          someone deposits, price only moves when the strategy earns. Indexed to 100 at the start of the range.</span>
-        <button class="action-btn" id="retPng" type="button">PNG</button>
-        <button class="action-btn" id="retCsv" type="button">CSV</button>
+        <div class="card-actions">
+          <button class="action-btn" id="retPng" type="button">PNG</button>
+          <button class="action-btn" id="retCsv" type="button">CSV</button>
+        </div>
       </div>
+      <div class="muted-note" style="margin:-0.35rem 0 0.5rem">Measured on price per share, not on value held —
+        value moves whenever someone deposits, price only moves when the strategy earns.
+        Indexed to 100 at the start of the range.</div>
       <div class="plot" id="retPlot"><div class="loading">Loading…</div></div>
       <div id="retTable"></div>
     </div>
 
     <!-- ---------- WHO HOLDS IT ---------- -->
     <div class="chart-card">
-      <div class="chart-section-title">Who holds it</div>
-      <div class="chart-toolbar">
-        <span class="chart-hint">Current balances, not deposit history. Wallets that have fully exited are not counted.</span>
-        <button class="action-btn" id="concCsv" type="button">CSV</button>
+      <div class="card-head">
+        <div class="chart-section-title" style="margin:0">Who holds it</div>
+        <div class="card-actions"><button class="action-btn" id="concCsv" type="button">CSV</button></div>
       </div>
-      <div class="stats" id="concStats"></div>
-      <div class="two-up" style="margin-top:0.9rem">
+      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">Current balances, not deposit history.
+        Wallets that have fully exited are not counted.</div>
+      <div class="stat-row" id="concStats" style="margin:0 0 0.25rem"></div>
+      <div class="two-up">
         <div>
-          <div class="sub-title">Diversification <span class="muted-note">how many companies each wallet holds</span></div>
+          <div class="panel-head">
+            <div class="sub-title">Diversification</div>
+            <div class="muted-note">how many companies each wallet holds</div>
+          </div>
           <div id="diversTable"></div>
         </div>
         <div>
-          <div class="sub-title">Largest holders</div>
+          <div class="panel-head">
+            <div class="sub-title">Largest holders</div>
+            <div class="muted-note">top 10 by value</div>
+          </div>
           <div id="topHolders"></div>
         </div>
       </div>
@@ -334,9 +395,9 @@
 
     <!-- ---------- REFERENCE ---------- -->
     <div class="chart-card">
-      <div class="chart-section-title">Per company</div>
-      <div class="chart-toolbar">
-        <button class="action-btn" id="refCsv" type="button">CSV</button>
+      <div class="card-head">
+        <div class="chart-section-title" style="margin:0">Per company</div>
+        <div class="card-actions"><button class="action-btn" id="refCsv" type="button">CSV</button></div>
       </div>
       <div id="refTable"></div>
     </div>
@@ -1080,24 +1141,87 @@
         + (S.scale === 'log' ? ' · log scale does not apply to a series that crosses zero' : '');
     }
 
+    const SERIES_COLORS = ['#8429FF', '#0EA5E9', '#16A34A', '#D97706', '#DC2626', '#7C3AED', '#0D9488', '#DB2777'];
+    function seriesColor(i) { return SERIES_COLORS[i % SERIES_COLORS.length]; }
+
+    // The tokenised equities Coinbase issues on Base, keyed by ticker with the
+    // trailing 'c' stripped — GOOGLc and a future GOOGL both land here.
+    //
+    // `company` is the issuer's own name for the underlying, which is not what
+    // the vault is called: the vault reads "Google Carry Trade" where the token
+    // represents Alphabet, and "MicroStrategy" is now Strategy.
+    //
+    // `icon` is the tradfi ticker, which is how Basescan names the mark file.
+    // Marks are vendored into /stocks/icons rather than hotlinked: served from
+    // our own origin they cannot 404 mid-session, rate-limit, or change shape
+    // underneath the page. Refresh or extend with tools/fetch-token-icons.js.
+    //
+    // A token absent from this table still charts and still totals — it is only
+    // named and iconed by this table, not admitted by it. Discovery stays with
+    // the underlying-address filter, so a new listing appears on its own.
+    const ICON_BASE = '/stocks/icons/';
+    const STOCK_TOKENS = {
+      AAPL:  { company: 'Apple',      icon: 'aapl' },
+      GOOGL: { company: 'Alphabet',   icon: 'goog' },
+      NVDA:  { company: 'NVIDIA',     icon: 'nvda' },
+      META:  { company: 'Meta',       icon: 'meta' },
+      AMZN:  { company: 'Amazon',     icon: 'amzn' },
+      MSFT:  { company: 'Microsoft',  icon: 'msft' },
+      MSTR:  { company: 'Strategy',   icon: 'mstr' },
+      SNDK:  { company: 'SanDisk',    icon: 'sndk' },
+      SPCX:  { company: 'SpaceX',     icon: 'spcx' },
+      TSLA:  { company: 'Tesla',      icon: 'tsla' },
+      COIN:  { company: 'Coinbase',   icon: 'coin' },
+    };
+    const normToken = (t) => String(t || '').toUpperCase().replace(/C$/, '');
+    const tokenMeta = (t) => STOCK_TOKENS[normToken(t)] || null;
+    function iconUrlFor(token) {
+      const m = tokenMeta(token);
+      return m ? ICON_BASE + m.icon + '.svg' : null;
+    }
+    // A mark if we have one, the series dot if we do not — and the dot again
+    // if the mark fails to load.
+    function iconFor(token, color) {
+      const url = iconUrlFor(token);
+      const dot = '<span class="dot" style="background:' + color + '"></span>';
+      if (!url) return dot;
+      return '<span class="tok-badge">'
+        + '<img src="' + url + '" alt="" '
+        + 'onerror="this.closest(\'.tok-badge\').classList.add(\'no-icon\')">'
+        + dot + '</span>';
+    }
+    function shareCell(frac) {
+      const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
+      return '<td class="num"><span class="share-cell">'
+        + '<span class="share-track"><span class="share-fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
+        + '<span class="share-pct">' + pct.toFixed(1) + '%</span></span></td>';
+    }
+    function nameCell(label, color, href, token) {
+      const inner = href
+        ? '<a class="addr" href="' + href + '" target="_blank" rel="noopener">' + label + '</a>'
+        : '<strong>' + label + '</strong>';
+      return '<td><span class="name-cell">' + iconFor(token, color)
+        + '<span class="label">' + inner + '</span></span></td>';
+    }
+
     function renderRoutes() {
       const totals = routeTotals(S.flowRange);
       if (!totals.length) { missing('routeTable', 'No deposits in this range.'); return; }
       const sum = totals.reduce((a, r) => a + r.usd, 0);
       const max = Math.max(...totals.map(r => r.usd)) || 1;
+      // Colour is assigned by rank and reused by the origin table, so the same
+      // route reads as the same thing in both.
+      S.routeColor = {};
+      totals.forEach((r, i) => { S.routeColor[r.route] = seriesColor(i); });
       document.getElementById('routeTable').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Route</th><th class="num">Inflow</th>'
+        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Route</th><th class="num">Inflow</th>'
         + '<th class="num">Share</th><th class="num">Deposits</th><th class="num">Wallets</th></tr></thead><tbody>'
         + totals.map(r =>
-            '<tr class="bar-row"><td><span class="bar-fill" style="width:' + (r.usd / max * 100).toFixed(1) + '%"></span>'
-            + (r.route === DIRECT
-                ? '<strong>Direct</strong>'
-                : (routeIsNamed(r.route)
-                    ? '<strong>' + routeLabel(r.route) + '</strong>'
-                    : '<a class="addr" href="https://basescan.org/address/' + r.route + '" target="_blank" rel="noopener">'
-                      + routeLabel(r.route) + '</a>'))
-            + '</td><td class="num">' + fUsd(r.usd) + '</td>'
-            + '<td class="num">' + (sum ? (r.usd / sum * 100).toFixed(1) + '%' : '—') + '</td>'
+            '<tr>'
+            + nameCell(routeLabel(r.route), S.routeColor[r.route],
+                       routeIsNamed(r.route) ? null : 'https://basescan.org/address/' + r.route)
+            + '<td class="num">' + fUsd(r.usd) + '</td>'
+            + shareCell(sum ? r.usd / sum : 0)
             + '<td class="num">' + r.n + '</td><td class="num">' + r.wallets + '</td></tr>').join('')
         + '</tbody></table></div>';
       const named = totals.filter(r => routeIsNamed(r.route)).length;
@@ -1111,19 +1235,19 @@
     function renderOrigin() {
       const o = originOfValueHere();
       if (!o.list.length && !o.unattributed) { missing('originTable', 'No wallet currently holds a position.'); return; }
-      const max = Math.max(...o.list.map(r => r.usd), o.unattributed) || 1;
-      const row = (label, usd, isAddr, addr) =>
-        '<tr class="bar-row"><td><span class="bar-fill" style="width:' + (usd / max * 100).toFixed(1) + '%"></span>'
-        + (isAddr ? '<a class="addr" href="https://basescan.org/address/' + addr + '" target="_blank" rel="noopener">' + label + '</a>'
-                  : '<strong>' + label + '</strong>')
-        + '</td><td class="num">' + fUsd(usd) + '</td>'
-        + '<td class="num">' + (o.total ? (usd / o.total * 100).toFixed(1) + '%' : '—') + '</td></tr>';
+      const colorOf = (route) => (S.routeColor && S.routeColor[route]) || 'var(--text-secondary)';
+      const row = (label, usd, color, href) =>
+        '<tr>' + nameCell(label, color, href)
+        + '<td class="num">' + fUsd(usd) + '</td>'
+        + shareCell(o.total ? usd / o.total : 0) + '</tr>';
       document.getElementById('originTable').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Route</th><th class="num">Value here</th><th class="num">Share</th></tr></thead><tbody>'
-        + o.list.map(r => row(routeLabel(r.route), r.usd, !routeIsNamed(r.route), r.route)).join('')
-        + (o.unattributed > 0.005 ? row('Unattributed', o.unattributed, false) : '')
+        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Route</th>'
+        + '<th class="num">Value here</th><th class="num">Share</th></tr></thead><tbody>'
+        + o.list.map(r => row(routeLabel(r.route), r.usd, colorOf(r.route),
+            routeIsNamed(r.route) ? null : 'https://basescan.org/address/' + r.route)).join('')
+        + (o.unattributed > 0.005 ? row('Unattributed', o.unattributed, 'var(--text-secondary)', null) : '')
         + '</tbody></table></div>'
-        + '<div class="muted-note" style="margin-top:0.5rem">Shares are fungible once minted, so nothing on chain '
+        + '<div class="muted-note" style="margin-top:0.65rem">Shares are fungible once minted, so nothing on chain '
         + 'ties a surviving balance to the deposit it came from. Each wallet\'s remaining position is split across '
         + 'its own routes in proportion to what it deposited through each. '
         + (o.unattributed > 0.005 ? 'Unattributed is value held by wallets with no deposit on record — received by transfer.' : '')
@@ -1139,7 +1263,7 @@
         document.getElementById('retTable').innerHTML = ''; return;
       }
       const ph = el.querySelector('.loading'); if (ph) ph.remove();
-      const palette = [ACCENT, '#0EA5E9', '#16A34A', '#D97706', '#DC2626', '#7C3AED'];
+      const palette = SERIES_COLORS;
       const traces = series.map((r, i) => ({
         type: S.tvlType === 'bar' ? 'scatter' : 'scatter', mode: 'lines',
         name: r.vault.token, x: r.pts.map(p => new Date(p.ts * 1000)), y: r.pts.map(p => p.idx),
@@ -1153,18 +1277,21 @@
       Plotly.react('retPlot', traces, lay, CONFIG);
 
       document.getElementById('retTable').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Company</th><th>Token</th><th class="num">Return</th>'
-        + '<th class="num">Annualised</th><th class="num">Days</th></tr></thead><tbody>'
-        + series.map(r =>
-            '<tr><td>' + companyOf(r.vault.name) + '</td><td><strong>' + r.vault.token + '</strong></td>'
-            + '<td class="num" style="color:' + (r.total >= 0 ? 'var(--green)' : 'var(--red)') + '">'
+        '<div class="scroll" style="margin-top:0.9rem"><table class="data-table"><thead><tr><th>Company</th>'
+        + '<th>Token</th><th class="num">Return</th><th class="num">Annualised</th>'
+        + '<th class="num">Days tracked</th></tr></thead><tbody>'
+        + series.map((r, i) =>
+            '<tr>' + nameCell(companyOf(r.vault.name, r.vault.token), seriesColor(i), null, r.vault.token)
+            + '<td><span class="ticker">' + r.vault.token + '</span></td>'
+            + '<td class="num ' + (r.total >= 0 ? 'pos' : 'neg') + '">'
             + (r.total >= 0 ? '+' : '') + (r.total * 100).toFixed(2) + '%</td>'
             + '<td class="num">' + (r.annualised == null
                 ? '<span class="muted-note">under 14d</span>'
-                : (r.annualised >= 0 ? '+' : '') + (r.annualised * 100).toFixed(1) + '%') + '</td>'
+                : '<span class="' + (r.annualised >= 0 ? 'pos' : 'neg') + '">'
+                  + (r.annualised >= 0 ? '+' : '') + (r.annualised * 100).toFixed(1) + '%</span>') + '</td>'
             + '<td class="num">' + r.days.toFixed(1) + '</td></tr>').join('')
         + '</tbody></table></div>'
-        + '<div class="muted-note" style="margin-top:0.5rem">Annualised is withheld below two weeks — '
+        + '<div class="muted-note" style="margin-top:0.65rem">Annualised is withheld below two weeks — '
         + 'a few days of noise should not become a headline number.</div>';
     }
 
@@ -1182,19 +1309,31 @@
       const keys = Object.keys(d.buckets).map(Number).sort((a, b) => a - b);
       const totalW = keys.reduce((a, k) => a + d.buckets[k], 0);
       document.getElementById('diversTable').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Companies held</th><th class="num">Wallets</th><th class="num">Share</th></tr></thead><tbody>'
-        + keys.map(k => '<tr><td>' + k + (k === 1 ? ' company' : ' companies') + '</td>'
+        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Companies held</th>'
+        + '<th class="num">Wallets</th><th class="num">Share</th></tr></thead><tbody>'
+        + keys.map((k, i) => '<tr>'
+            + nameCell(k + (k === 1 ? ' company' : ' companies'), seriesColor(i), null)
             + '<td class="num">' + d.buckets[k] + '</td>'
-            + '<td class="num">' + (totalW ? (d.buckets[k] / totalW * 100).toFixed(1) + '%' : '—') + '</td></tr>').join('')
+            + shareCell(totalW ? d.buckets[k] / totalW : 0) + '</tr>').join('')
         + '</tbody></table></div>';
 
       const byAddr = {}; S.vaults.forEach(v => { byAddr[v.address] = v.token; });
       document.getElementById('topHolders').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Wallet</th><th class="num">Value</th><th>Holds</th></tr></thead><tbody>'
+        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Wallet</th>'
+        + '<th class="num">Value</th><th class="num">Share</th><th>Holds</th></tr></thead><tbody>'
         + c.rows.slice(0, 10).map(r =>
             '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
-            + shortAddr(r.wallet) + '</a></td><td class="num">' + fUsd(r.usd) + '</td>'
-            + '<td class="muted-note">' + Object.keys(r.pos).map(a => byAddr[a] || '?').join(', ') + '</td></tr>').join('')
+            + shortAddr(r.wallet) + '</a></td>'
+            + '<td class="num">' + fUsd(r.usd) + '</td>'
+            + shareCell(c.total ? r.usd / c.total : 0)
+            + '<td>' + Object.keys(r.pos).map(a => {
+                const tok = byAddr[a] || '?';
+                const url = iconUrlFor(tok);
+                return '<span class="badge" style="background:var(--accent-bg);color:var(--accent);margin-right:0.25rem">'
+                  + (url ? '<img class="tok-inline" src="' + url + '" alt="" '
+                           + 'onerror="this.remove()">' : '')
+                  + tok + '</span>';
+              }).join('') + '</td></tr>').join('')
         + '</tbody></table></div>';
 
       document.getElementById('concNote').textContent =
@@ -1207,17 +1346,44 @@
       const price = latestPrices(), sp = latestSharePrices();
       const wallets = {};
       holdingsRows().forEach(r => Object.keys(r.pos).forEach(a => { (wallets[a] = wallets[a] || new Set()).add(r.wallet); }));
-      const rows = S.vaults.map(v => {
+      // One row per underlying token, not per vault. Two vaults run on the same
+      // Alphabet token — "Google Carry Trade" and "…Tezos" — and listing both
+      // read as two companies. Grouping keeps every dollar and shows the four
+      // tokens that actually exist.
+      const byToken = {};
+      S.vaults.forEach(v => {
         const pts = tvlSeries(v.address, 'all');
         const last = pts.length ? pts[pts.length - 1] : null;
-        return { v, units: last ? last.units : 0, usd: last ? last.tvl : (v.tvl || 0),
-                 wallets: (wallets[v.address] || new Set()).size, sp: sp[v.address], price: price[v.address] };
-      }).sort((a, b) => b.usd - a.usd);
+        const key = normToken(v.token) || v.address;
+        const g = byToken[key] || (byToken[key] = {
+          token: v.token, name: v.name, units: 0, usd: 0, wallets: new Set(),
+          sp: null, spTvl: 0, vaults: [],
+        });
+        g.units += last ? (last.units || 0) : 0;
+        g.usd += last ? (last.tvl || 0) : (v.tvl || 0);
+        (wallets[v.address] || new Set()).forEach(w => g.wallets.add(w));
+        // Underlying-per-share is a rate, not a total, so it cannot be summed —
+        // and it must not be taken from whichever vault happens to iterate
+        // last. A near-empty sibling carrying a default 0.010000 overwrote
+        // Alphabet's real 0.010282 that way. Take the largest vault's.
+        const spHere = sp[v.address];
+        if (spHere && (g.sp == null || (v.tvl || 0) > (g.spTvl || 0))) {
+          g.sp = spHere; g.spTvl = v.tvl || 0;
+        }
+        g.vaults.push(v);
+      });
+      const rows = Object.values(byToken)
+        .map(g => ({ v: g.vaults.slice().sort((a, b) => (b.tvl || 0) - (a.tvl || 0))[0],
+                     token: g.token, units: g.units, usd: g.usd,
+                     wallets: g.wallets.size, sp: g.sp, vaults: g.vaults.length }))
+        .sort((a, b) => b.usd - a.usd);
       document.getElementById('refTable').innerHTML =
-        '<div class="scroll"><table><thead><tr><th>Company</th><th>Token</th><th class="num">Shares held</th>'
+        '<div class="scroll"><table class="data-table"><thead><tr><th>Company</th><th>Token</th><th class="num">Shares held</th>'
         + '<th class="num">Value</th><th class="num">Wallets</th><th class="num">Underlying / share</th><th>Contract</th></tr></thead><tbody>'
-        + rows.map(r =>
-            '<tr><td>' + companyOf(r.v.name) + '</td><td><strong>' + r.v.token + '</strong></td>'
+        + rows.map((r, i) =>
+            '<tr>' + nameCell(companyOf(r.v.name, r.token), seriesColor(i), null, r.token)
+            + '<td><span class="ticker">' + r.token + '</span>'
+            + (r.vaults > 1 ? '<span class="muted-note"> · ' + r.vaults + ' vaults</span>' : '') + '</td>'
             + '<td class="num">' + (r.units ? fNum(r.units, 4) : '—') + '</td>'
             + '<td class="num">' + fUsd(r.usd) + '</td>'
             + '<td class="num">' + (r.wallets || '—') + '</td>'
@@ -1248,7 +1414,9 @@
     // "Apple Carry Trade" -> "Apple". Derived from the vault name rather than a
     // hardcoded ticker map, so a vault added tomorrow reads correctly with no
     // change here.
-    function companyOf(name) {
+    function companyOf(name, token) {
+      const m = tokenMeta(token);
+      if (m) return m.company;
       return String(name || '').replace(/\s*carry\s*trade.*$/i, '').trim();
     }
 
@@ -1283,7 +1451,7 @@
         const fig = tvlLatest();
         const oneVault = S.tvlVault !== '__all__';
         const vault = oneVault ? (S.vaults.find(v => v.address === S.tvlVault) || {}) : {};
-        const company = companyOf(vault.name);
+        const company = companyOf(vault.name, vault.token);
         const usdMode = S.tvlUnit === 'usd';
         // Name the ticker whenever the scope is a single vault — in USD mode the
         // unit dropdown says "USD", but the units underneath are still that
@@ -1640,7 +1808,7 @@
       document.getElementById('retCsv').addEventListener('click', () => {
         const series = returnSeries(S.retRange);
         downloadCsv('fusion-stocks-returns', [['token', 'company', 'total_return', 'annualised', 'days'],
-          ...series.map(r => [r.vault.token, companyOf(r.vault.name), r.total, r.annualised == null ? '' : r.annualised, r.days])]);
+          ...series.map(r => [r.vault.token, companyOf(r.vault.name, r.vault.token), r.total, r.annualised == null ? '' : r.annualised, r.days])]);
       });
       document.getElementById('concCsv').addEventListener('click', () => {
         const c = concentration(); if (!c) return;
@@ -1654,7 +1822,7 @@
         downloadCsv('fusion-stocks-reference', [['company', 'token', 'address', 'shares_held', 'value_usd', 'underlying_per_share', 'price_usd'],
           ...S.vaults.map(v => {
             const pts = tvlSeries(v.address, 'all'); const last = pts.length ? pts[pts.length - 1] : null;
-            return [companyOf(v.name), v.token, v.address, last ? last.units : 0,
+            return [companyOf(v.name, v.token), v.token, v.address, last ? last.units : 0,
                     last ? last.tvl : (v.tvl || 0), sp[v.address] || '', price[v.address] || ''];
           })]);
       });
