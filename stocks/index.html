@@ -932,27 +932,52 @@
        do. Where a figure rests on an assumption, the assumption is stated in
        the UI rather than buried here. */
 
-    // A deposit whose `sender` differs from its `owner` was pushed by a
-    // contract on the owner's behalf — a zap, an aggregator, a referral
-    // wrapper. Names only where a name is verified; everything else keeps its
+    // Where a deposit came from. Two shapes, and only one of them is obvious.
+    //
+    //   sender != owner   A contract pushed the deposit on someone else's
+    //                     behalf — a zap, an aggregator, a referral wrapper.
+    //                     The sender is the route.
+    //   sender == owner   Usually a wallet depositing for itself. But it is
+    //                     also what an autocompounder looks like: Harvest's
+    //                     strategy holds the Fusion position on behalf of
+    //                     Harvest's own depositors, and deposits under its own
+    //                     address. Reading only the first shape filed the
+    //                     single largest source of stock-vault deposits under
+    //                     "Direct" — four Harvest strategies, 165 deposits.
+    //                     So when the owner is itself a known protocol
+    //                     contract, that protocol is the route.
+    //
+    // Names only where a name is established; everything else keeps its
     // address, because "Other" hides exactly the thing worth finding out.
-    // Filled from router-identity.json, produced by tools/identify-routers.js:
-    // it reads each router's VERIFIED SOURCE on Basescan and looks for the
-    // protocol's own fingerprints — storage namespaces, contract and interface
-    // names. Those are the protocol's words about itself, not our guess, and
-    // every entry carries the evidence that named it.
+    // Filled from router-identity.json, produced by tools/identify-routers.js.
+    // Each entry records HOW it was named, and the page keeps the two apart:
+    //   via 'source'    the protocol's fingerprints are in the contract's own
+    //                   verified source — its words about itself;
+    //   via 'deployer'  the contract is a bare proxy that says nothing, and the
+    //                   name comes from Basescan's attribution of who deployed
+    //                   it. Good evidence, but not the contract's own.
     let ROUTER_ID = {};
+    let COVERAGE = {};   // what the identification sweep reached; see _meta in router-identity.json
     const DIRECT = 'direct';
+    const knownProtocol = (addr) => {
+      const id = ROUTER_ID[addr];
+      return id && id.protocol ? id : null;
+    };
     function depositRoute(e) {
       const sender = (e.sender || '').toLowerCase();
       const owner = (e.owner || '').toLowerCase();
-      return (sender && owner && sender !== owner) ? sender : DIRECT;
+      if (!sender || !owner) return DIRECT;
+      if (sender !== owner) return sender;
+      return knownProtocol(owner) ? owner : DIRECT;
     }
     function routeInfo(route) {
       if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true };
       const id = ROUTER_ID[route];
       if (id && id.protocol) {
-        return { protocol: id.protocol, detail: (id.contractNames || [])[0] || '', named: true,
+        return { protocol: id.protocol, named: true, via: id.via,
+                 detail: id.via === 'deployer'
+                   ? 'deployed by ' + id.protocol
+                   : (id.contractNames || [])[0] || '',
                  reason: id.reason, evidence: id.evidence };
       }
       return { protocol: shortAddr(route), named: false,
@@ -988,9 +1013,13 @@
         if (e.type !== 'deposit' || !e.timestamp || e.timestamp < cutoff) return;
         if (!S.vaultSet.has((e.vault || '').toLowerCase())) return;
         const r = depositRoute(e);
-        const t = by[r] || (by[r] = { route: r, usd: 0, n: 0, wallets: new Set() });
+        const t = by[r] || (by[r] = { route: r, usd: 0, n: 0, wallets: new Set(), selfOwned: false });
         t.usd += e.usdValue || 0; t.n++;
         const w = (e.owner || '').toLowerCase(); if (w) t.wallets.add(w);
+        // The protocol deposited under its own address, so the wallet count
+        // for this route is 1 by construction — it is the protocol's contract,
+        // standing in for depositors we cannot see from here.
+        if (r !== DIRECT && w === r) t.selfOwned = true;
       });
       return Object.values(by)
         .map(t => ({ ...t, wallets: t.wallets.size }))
@@ -1367,7 +1396,11 @@
               + (info.reason ? ' title="' + esc(info.reason) + '"' : '') + '>'
               + esc(info.detail || '—') + '</td>'
               + '<td class="num">' + r.n + '</td>'
-              + '<td class="num">' + r.wallets + '</td>'
+              + (r.selfOwned
+                  ? '<td class="num" title="This protocol holds the position under its own address, '
+                    + 'so its own depositors are not visible in our data — the count is the contract, not people.">'
+                    + '1 <span class="muted-note">contract</span></td>'
+                  : '<td class="num">' + r.wallets + '</td>')
               + '<td class="num">' + fUsd(r.usd) + '</td>'
               + shareCell(grossSum ? r.usd / grossSum : 0)
               + '<td class="num">' + (here > 0.005 ? fUsd(here) : '—') + '</td>'
@@ -1395,20 +1428,47 @@
 
       renderRoutePie();
 
+      // Count what the file actually says. An entry written before this page
+      // learned the difference carries no `via`, and must not be silently
+      // counted as either kind — the whole point of the split is that they are
+      // not equally strong.
+      const namedReal = named.filter(r => r.route !== DIRECT);
+      const bySource = namedReal.filter(r => routeInfo(r.route).via === 'source').length;
+      const byDeployer = namedReal.filter(r => routeInfo(r.route).via === 'deployer').length;
+      const byUnstated = namedReal.length - bySource - byDeployer;
+      const custodial = totals.filter(r => r.selfOwned);
+
       document.getElementById('routeNote').innerHTML =
         '<strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
         + 'later exited reads high on <em>Gross in</em> and low here. That ratio is the reason both numbers share a row.'
-        + '<br>Protocols are identified from each router\'s verified source on Basescan — storage namespaces, contract '
-        + 'and interface names — not from a list we maintain by hand. '
-        + named.length + ' of ' + totals.length + ' routes named'
+        + '<br>Protocols are identified from Basescan, not from a list we maintain by hand: '
+        + bySource + ' from the contract\'s own verified source — storage namespaces, contract and interface names'
+        + (byDeployer
+            ? '; ' + byDeployer + ' from who deployed it, where the contract is a bare proxy that says nothing about '
+              + 'itself. That second kind is Basescan\'s attribution rather than the protocol\'s own words, so it is '
+              + 'counted separately'
+            : '')
+        + (byUnstated ? '; ' + byUnstated + ' named before that distinction was recorded' : '')
+        + '. ' + namedReal.length + ' of ' + (namedReal.length + unnamed.length) + ' routes named'
         + (unnamed.length
             ? '; ' + unnamed.length + ' unidentified (' + fUsd(unnamedUsd) + ', '
               + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0') + '% of inflow) — hover the contract column for why'
             : '')
         + '.'
+        + (custodial.length
+            ? '<br><strong>' + custodial.map(r => routeInfo(r.route).protocol).join(', ') + '</strong> '
+              + (custodial.length === 1 ? 'holds its position' : 'hold their positions')
+              + ' under ' + (custodial.length === 1 ? 'its' : 'their') + ' own address rather than routing to yours, '
+              + 'which is why the wallet count there is a contract and not a number of people. How many depositors sit '
+              + 'behind it is a question for that protocol\'s own books, not ours.'
+            : '')
         + '<br>Retained above 100% is not an error — the surviving position is worth more than the dollars that '
         + 'bought it, because the strategy earned and the underlying equity moved.'
-        + (absent.length ? '<br>Searched for and not found in this range: ' + absent.join(', ') + '.' : '');
+        + (absent.length ? '<br>Searched for and not found in this range: ' + absent.join(', ') + '.' : '')
+        + (COVERAGE.minSelfDeposits
+            ? '<br>Every contract that deposited into these vaults has been checked. Elsewhere on the site the sweep '
+              + 'stops at addresses with fewer than ' + COVERAGE.minSelfDeposits + ' deposits of their own.'
+            : '');
     }
 
     function renderReturns() {
@@ -1478,9 +1538,16 @@
       document.getElementById('topHolders').innerHTML =
         '<div class="scroll"><table class="data-table tight"><thead><tr><th>Wallet</th>'
         + '<th class="num">Value</th><th class="num">Share</th><th>Holds</th></tr></thead><tbody>'
-        + c.rows.slice(0, 10).map(r =>
-            '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
-            + shortAddr(r.wallet) + '</a></td>'
+        + c.rows.slice(0, 10).map(r => {
+            // A protocol contract in this list is not a whale, it is a queue.
+            // Showing it as a bare address invites exactly the wrong reading.
+            const id = knownProtocol(r.wallet);
+            return '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
+            + shortAddr(r.wallet) + '</a>'
+            + (id ? ' <span class="badge" title="' + esc(id.reason || '') + ' — this contract holds the position for '
+                    + esc(id.protocol) + '\'s own depositors, who are not individually visible here">'
+                    + esc(id.protocol) + '</span>' : '')
+            + '</td>'
             + '<td class="num">' + fUsd(r.usd) + '</td>'
             + shareCell(c.total ? r.usd / c.total : 0)
             + '<td>' + Object.keys(r.pos).map(a => {
@@ -1490,13 +1557,23 @@
                   + (url ? '<img class="tok-inline" src="' + url + '" alt="" '
                            + 'onerror="this.remove()">' : '')
                   + tok + '</span>';
-              }).join('') + '</td></tr>').join('')
+              }).join('') + '</td></tr>'; }).join('')
         + '</tbody></table></div>';
 
-      document.getElementById('concNote').textContent =
+      const pooled = c.rows.filter(r => knownProtocol(r.wallet));
+      const pooledUsd = pooled.reduce((a, r) => a + r.usd, 0);
+      document.getElementById('concNote').innerHTML =
         'Effective holders is the inverse Herfindahl index: the number of equally-sized wallets this '
         + 'distribution actually amounts to. ' + c.holders + ' holders came out as an effective '
-        + c.effective.toFixed(1) + ', so a few wallets carry more than a flat headcount suggests.';
+        + c.effective.toFixed(1) + ', so a few wallets carry more than a flat headcount suggests.'
+        + (pooled.length
+            ? ' Read that with one caveat: ' + pooled.length + ' of those '
+              + (pooled.length === 1 ? 'holders is a protocol contract' : 'holders are protocol contracts')
+              + ' (' + [...new Set(pooled.map(r => knownProtocol(r.wallet).protocol))].join(', ') + ', '
+              + fUsd(pooledUsd) + ', ' + (c.total ? (pooledUsd / c.total * 100).toFixed(1) : '0') + '% of value) '
+              + 'holding on behalf of their own depositors. Concentration here therefore reads higher than the '
+              + 'spread of actual people, by an amount this data cannot measure.'
+            : '');
     }
 
     function renderReference() {
@@ -1908,6 +1985,10 @@
       // Absent or stale, every router simply falls back to its address — the
       // page never depends on this file being there.
       ROUTER_ID = rid || {};
+      // _meta records how far the identification sweep reached. It is not an
+      // address, so lift it out before anything looks a route up in here.
+      COVERAGE = ROUTER_ID._meta || {};
+      delete ROUTER_ID._meta;
       if (!iv) { document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; return; }
 
       S.vaults = (iv.vaults || [])
