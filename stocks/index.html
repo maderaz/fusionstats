@@ -321,24 +321,10 @@
         <div class="chart-section-title" style="margin:0">How people got in</div>
         <div class="card-actions"><button class="action-btn" id="routeCsv" type="button">CSV</button></div>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.25rem">A deposit whose sender differs from its owner was
-        pushed by a contract — a zap, an aggregator, a referral wrapper. Routers we cannot name keep their address.</div>
-      <div class="two-up">
-        <div>
-          <div class="panel-head">
-            <div class="sub-title">Gross inflow by route</div>
-            <div class="muted-note">everything that came in, including money since withdrawn</div>
-          </div>
-          <div id="routeTable"></div>
-        </div>
-        <div>
-          <div class="panel-head">
-            <div class="sub-title">Value by origin</div>
-            <div class="muted-note">of what is still here today</div>
-          </div>
-          <div id="originTable"></div>
-        </div>
-      </div>
+      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">A deposit whose sender differs from its owner was
+        pushed by a contract — a zap, an aggregator, a referral wrapper. Each one is named from its own verified
+        source on Basescan; anything we cannot name keeps its address and says why.</div>
+      <div id="routeTable"></div>
       <div class="chart-note" id="routeNote"></div>
     </div>
 
@@ -509,6 +495,10 @@
     const fNum = (n, d) => n == null || isNaN(n) ? '—'
       : n.toLocaleString('en-US', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d });
     const shortAddr = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
+    // Contract names and reasons in router-identity.json are lifted from
+    // scraped Basescan HTML, so they are untrusted text going into innerHTML.
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const dstr = (ts) => ts ? new Date(ts * 1000).toISOString().slice(0, 10) : '—';
     function timeAgo(ts) {
       const s = Math.floor(Date.now() / 1000 - ts);
@@ -912,20 +902,31 @@
     // contract on the owner's behalf — a zap, an aggregator, a referral
     // wrapper. Names only where a name is verified; everything else keeps its
     // address, because "Other" hides exactly the thing worth finding out.
-    const ROUTER_NAMES = {
-      '0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db': 'IPOR Referral Vault',
-    };
+    // Filled from router-identity.json, produced by tools/identify-routers.js:
+    // it reads each router's VERIFIED SOURCE on Basescan and looks for the
+    // protocol's own fingerprints — storage namespaces, contract and interface
+    // names. Those are the protocol's words about itself, not our guess, and
+    // every entry carries the evidence that named it.
+    let ROUTER_ID = {};
     const DIRECT = 'direct';
     function depositRoute(e) {
       const sender = (e.sender || '').toLowerCase();
       const owner = (e.owner || '').toLowerCase();
       return (sender && owner && sender !== owner) ? sender : DIRECT;
     }
-    function routeLabel(route) {
-      if (route === DIRECT) return 'Direct';
-      return ROUTER_NAMES[route] || (route.slice(0, 6) + '…' + route.slice(-4));
+    function routeInfo(route) {
+      if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true };
+      const id = ROUTER_ID[route];
+      if (id && id.protocol) {
+        return { protocol: id.protocol, detail: (id.contractNames || [])[0] || '', named: true,
+                 reason: id.reason, evidence: id.evidence };
+      }
+      return { protocol: shortAddr(route), named: false,
+               detail: id ? '' : 'not yet checked',
+               reason: id ? id.reason : 'not yet checked' };
     }
-    function routeIsNamed(route) { return route === DIRECT || !!ROUTER_NAMES[route]; }
+    function routeLabel(route) { return routeInfo(route).protocol; }
+    function routeIsNamed(route) { return routeInfo(route).named; }
 
     // Daily deposit/exit totals in USD. Inflows positive, exits negative.
     function flowSeries(sel, range) {
@@ -1207,51 +1208,87 @@
     function renderRoutes() {
       const totals = routeTotals(S.flowRange);
       if (!totals.length) { missing('routeTable', 'No deposits in this range.'); return; }
-      const sum = totals.reduce((a, r) => a + r.usd, 0);
-      const max = Math.max(...totals.map(r => r.usd)) || 1;
-      // Colour is assigned by rank and reused by the origin table, so the same
-      // route reads as the same thing in both.
+      const o = originOfValueHere();
+      const stillHere = {}; o.list.forEach(r => { stillHere[r.route] = r.usd; });
+
+      const grossSum = totals.reduce((a, r) => a + r.usd, 0);
+      const hereSum = o.total || 0;
+
+      // Colour by rank, reused by the chart legend below.
       S.routeColor = {};
       totals.forEach((r, i) => { S.routeColor[r.route] = seriesColor(i); });
-      document.getElementById('routeTable').innerHTML =
-        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Route</th><th class="num">Inflow</th>'
-        + '<th class="num">Share</th><th class="num">Deposits</th><th class="num">Wallets</th></tr></thead><tbody>'
-        + totals.map(r =>
-            '<tr>'
-            + nameCell(routeLabel(r.route), S.routeColor[r.route],
-                       routeIsNamed(r.route) ? null : 'https://basescan.org/address/' + r.route)
-            + '<td class="num">' + fUsd(r.usd) + '</td>'
-            + shareCell(sum ? r.usd / sum : 0)
-            + '<td class="num">' + r.n + '</td><td class="num">' + r.wallets + '</td></tr>').join('')
-        + '</tbody></table></div>';
-      const named = totals.filter(r => routeIsNamed(r.route)).length;
-      document.getElementById('routeNote').textContent =
-        totals.length + ' routes · ' + named + ' named, ' + (totals.length - named)
-        + ' shown by address because no verified name was found for them. '
-        + 'Gross inflow and value-still-here answer different questions: a route that pumped money in and '
-        + 'later exited reads large on the left and near-zero on the right.';
-    }
 
-    function renderOrigin() {
-      const o = originOfValueHere();
-      if (!o.list.length && !o.unattributed) { missing('originTable', 'No wallet currently holds a position.'); return; }
-      const colorOf = (route) => (S.routeColor && S.routeColor[route]) || 'var(--text-secondary)';
-      const row = (label, usd, color, href) =>
-        '<tr>' + nameCell(label, color, href)
-        + '<td class="num">' + fUsd(usd) + '</td>'
-        + shareCell(o.total ? usd / o.total : 0) + '</tr>';
-      document.getElementById('originTable').innerHTML =
-        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Route</th>'
-        + '<th class="num">Value here</th><th class="num">Share</th></tr></thead><tbody>'
-        + o.list.map(r => row(routeLabel(r.route), r.usd, colorOf(r.route),
-            routeIsNamed(r.route) ? null : 'https://basescan.org/address/' + r.route)).join('')
-        + (o.unattributed > 0.005 ? row('Unattributed', o.unattributed, 'var(--text-secondary)', null) : '')
-        + '</tbody></table></div>'
-        + '<div class="muted-note" style="margin-top:0.65rem">Shares are fungible once minted, so nothing on chain '
-        + 'ties a surviving balance to the deposit it came from. Each wallet\'s remaining position is split across '
-        + 'its own routes in proportion to what it deposited through each. '
-        + (o.unattributed > 0.005 ? 'Unattributed is value held by wallets with no deposit on record — received by transfer.' : '')
-        + '</div>';
+      // Gross inflow and what is still here belong in the same row, not in two
+      // tables side by side: the interesting number is the ratio between them,
+      // and a reader should not have to hold one ranking in their head while
+      // reading the other.
+      document.getElementById('routeTable').innerHTML =
+        '<div class="scroll"><table class="data-table route-table"><thead><tr>'
+        + '<th>Route</th><th>Contract</th>'
+        + '<th class="num">Deposits</th><th class="num">Wallets</th>'
+        + '<th class="num">Gross in</th><th class="num">Share of in</th>'
+        + '<th class="num">Still here</th><th class="num">Retained</th>'
+        + '</tr></thead><tbody>'
+        + totals.map(r => {
+            const info = routeInfo(r.route);
+            const here = stillHere[r.route] || 0;
+            const retained = r.usd > 0 ? here / r.usd : null;
+            const rClass = retained == null ? '' : (retained >= 0.75 ? 'pos' : retained <= 0.25 ? 'neg' : '');
+            // Over 100% is not an error: the position is worth more than the
+            // dollars that bought it, because the strategy earned and the
+            // underlying equity moved. Flag it so it reads as a gain.
+            const rTitle = retained != null && retained > 1.005
+              ? ' title="Worth more than went in — the position gained value since deposit"' : '';
+            return '<tr>'
+              + '<td><span class="name-cell"><span class="dot" style="background:' + S.routeColor[r.route] + '"></span>'
+              + '<span class="label">' + (info.named
+                  ? '<strong>' + esc(info.protocol) + '</strong>'
+                  : '<a class="addr" href="https://basescan.org/address/' + r.route + '" target="_blank" rel="noopener">'
+                    + esc(info.protocol) + '</a>') + '</span></span></td>'
+              + '<td class="muted-note"'
+              + (info.reason ? ' title="' + esc(info.reason) + '"' : '') + '>'
+              + esc(info.detail || '—') + '</td>'
+              + '<td class="num">' + r.n + '</td>'
+              + '<td class="num">' + r.wallets + '</td>'
+              + '<td class="num">' + fUsd(r.usd) + '</td>'
+              + shareCell(grossSum ? r.usd / grossSum : 0)
+              + '<td class="num">' + (here > 0.005 ? fUsd(here) : '—') + '</td>'
+              + '<td class="num ' + rClass + '"' + rTitle + '>'
+              + (retained == null ? '—' : (retained * 100).toFixed(0) + '%'
+                  + (retained > 1.005 ? ' <span class="muted-note">▲</span>' : '')) + '</td>'
+              + '</tr>';
+          }).join('')
+        + (o.unattributed > 0.005
+            ? '<tr><td><span class="name-cell"><span class="dot" style="background:var(--text-secondary)"></span>'
+              + '<span class="label"><strong>Unattributed</strong></span></span></td>'
+              + '<td class="muted-note">holders with no deposit on record — arrived by transfer</td>'
+              + '<td class="num">—</td><td class="num">—</td><td class="num">—</td>'
+              + '<td class="num">—</td><td class="num">' + fUsd(o.unattributed) + '</td>'
+              + '<td class="num">—</td></tr>'
+            : '')
+        + '</tbody></table></div>';
+
+      const named = totals.filter(r => routeIsNamed(r.route));
+      const unnamed = totals.filter(r => !routeIsNamed(r.route));
+      const unnamedUsd = unnamed.reduce((a, r) => a + r.usd, 0);
+      const looked = ['Harvest', 'Spectra', 'Zyfi', 'Portals', 'Enso', 'Odos', '1inch', 'ParaSwap', 'LI.FI', 'Pendle', 'IPOR'];
+      const found = [...new Set(named.map(r => routeInfo(r.route).protocol))].filter(x => x !== 'Direct');
+      const absent = looked.filter(x => !found.includes(x));
+
+      document.getElementById('routeNote').innerHTML =
+        '<strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
+        + 'later exited reads high on <em>Gross in</em> and low here. That ratio is the reason both numbers share a row.'
+        + '<br>Protocols are identified from each router\'s verified source on Basescan — storage namespaces, contract '
+        + 'and interface names — not from a list we maintain by hand. '
+        + named.length + ' of ' + totals.length + ' routes named'
+        + (unnamed.length
+            ? '; ' + unnamed.length + ' unidentified (' + fUsd(unnamedUsd) + ', '
+              + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0') + '% of inflow) — hover the contract column for why'
+            : '')
+        + '.'
+        + '<br>Retained above 100% is not an error — the surviving position is worth more than the dollars that '
+        + 'bought it, because the strategy earned and the underlying equity moved.'
+        + (absent.length ? '<br>Searched for and not found in this range: ' + absent.join(', ') + '.' : '');
     }
 
     function renderReturns() {
@@ -1676,7 +1713,11 @@
       applyLayout(S.layout);
 
       const get = (n) => fetch('/' + n).then(r => r.ok ? r.json() : null).catch(() => null);
-      const [iv, tv, act] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'), get('activity-events.json')]);
+      const [iv, tv, act, rid] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'),
+                                                    get('activity-events.json'), get('router-identity.json')]);
+      // Absent or stale, every router simply falls back to its address — the
+      // page never depends on this file being there.
+      ROUTER_ID = rid || {};
       if (!iv) { document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; return; }
 
       S.vaults = (iv.vaults || [])
@@ -1703,7 +1744,7 @@
 
       fillVaultSelects();
       renderStats(); renderTvl(); renderWallets(); renderFeed();
-      renderFlows(); renderRoutes(); renderOrigin(); renderReturns();
+      renderFlows(); renderRoutes(); renderReturns();
       renderConcentration(); renderReference();
 
       document.getElementById('tvlVault').addEventListener('change', function () {
@@ -1774,7 +1815,7 @@
         S.flowVault = this.value; renderFlows();
       });
       wireButtons('flowToolbar', 'data-flow-range', v => {
-        S.flowRange = v; renderFlows(); renderRoutes(); renderOrigin();
+        S.flowRange = v; renderFlows(); renderRoutes();
       });
       wireButtons('retToolbar', 'data-ret-range', v => { S.retRange = v; renderReturns(); });
 
@@ -1802,8 +1843,14 @@
       document.getElementById('routeCsv').addEventListener('click', () => {
         const t = routeTotals(S.flowRange), o = originOfValueHere();
         const byRoute = {}; o.list.forEach(r => { byRoute[r.route] = r.usd; });
-        downloadCsv('fusion-stocks-routes', [['route', 'label', 'gross_inflow_usd', 'deposits', 'wallets', 'value_here_usd'],
-          ...t.map(r => [r.route, routeLabel(r.route), r.usd, r.n, r.wallets, byRoute[r.route] || 0])]);
+        downloadCsv('fusion-stocks-routes', [
+          ['route', 'protocol', 'contract', 'identified_by', 'deposits', 'wallets',
+           'gross_inflow_usd', 'value_here_usd', 'retained'],
+          ...t.map(r => {
+            const i = routeInfo(r.route), here = byRoute[r.route] || 0;
+            return [r.route, i.protocol, i.detail || '', i.reason || '', r.n, r.wallets,
+                    r.usd, here, r.usd > 0 ? here / r.usd : ''];
+          })]);
       });
       document.getElementById('retCsv').addEventListener('click', () => {
         const series = returnSeries(S.retRange);
