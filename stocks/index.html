@@ -31,6 +31,22 @@
 
     /* ---- panels ---- */
     .two-up { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1rem; }
+    /* The donut is a summary; the table is the detail. Give the table the room
+       and let the donut sit beside it rather than stacking a tall chart above
+       a tall table. */
+    .route-split { display:grid; grid-template-columns:minmax(260px,32%) 1fr; gap:1.5rem; align-items:start; }
+    @media (max-width:980px) { .route-split { grid-template-columns:1fr; } }
+    .plot-pie { height:260px; }
+    .container[data-layout="compact"] .plot-pie,
+    .container[data-layout="fourthree"] .plot-pie,
+    .container[data-layout="widescreen"] .plot-pie { aspect-ratio:auto; height:260px; }
+    .pie-legend { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem; }
+    .pie-legend .row { display:flex; align-items:center; gap:0.5rem; font-size:0.74rem; }
+    .pie-legend .row .label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pie-legend .row .val { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+                            color:var(--text-body); flex:0 0 auto; }
+    .pie-legend .row .pct { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
+                            flex:0 0 3.2rem; text-align:right; }
     @media (max-width:900px) { .two-up { grid-template-columns:1fr; } }
     .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin-bottom:0.6rem; }
     .sub-title { font-size:0.82rem; font-weight:600; letter-spacing:-0.005em; }
@@ -324,7 +340,25 @@
       <div class="muted-note" style="margin:-0.35rem 0 0.75rem">A deposit whose sender differs from its owner was
         pushed by a contract — a zap, an aggregator, a referral wrapper. Each one is named from its own verified
         source on Basescan; anything we cannot name keeps its address and says why.</div>
-      <div id="routeTable"></div>
+      <div class="route-split">
+        <div>
+          <div class="panel-head">
+            <div class="sub-title">Share by route</div>
+            <div class="flip" id="pieMetric">
+              <button data-pie="gross" class="active" type="button">Gross in</button>
+              <button data-pie="here" type="button">Still here</button>
+            </div>
+          </div>
+          <div class="plot plot-pie" id="routePie"><div class="loading">Loading…</div></div>
+          <div id="routeLegend" class="pie-legend"></div>
+          <div class="card-actions" style="margin:0.6rem 0 0">
+            <button class="action-btn" id="piePng" type="button">PNG</button>
+          </div>
+        </div>
+        <div>
+          <div id="routeTable"></div>
+        </div>
+      </div>
       <div class="chart-note" id="routeNote"></div>
     </div>
 
@@ -485,7 +519,7 @@
       // new: analytics sections
       vaultSet: new Set(),
       scale: 'linear', theme: 'light',
-      flowVault: '__all__', flowRange: '90',
+      flowVault: '__all__', flowRange: '90', pieMetric: 'gross',
       retRange: '90',
     };
 
@@ -1205,6 +1239,90 @@
         + '<span class="label">' + inner + '</span></span></td>';
     }
 
+    // The donut summarises the same rows the table details. It reads whichever
+    // measure the toggle names, because "how people got in" and "whose money is
+    // still here" are different pies and conflating them was the original sin
+    // of this section.
+    function routePieData() {
+      const totals = routeTotals(S.flowRange);
+      if (!totals.length) return null;
+      const o = originOfValueHere();
+      const here = {}; o.list.forEach(r => { here[r.route] = r.usd; });
+
+      let rows = S.pieMetric === 'here'
+        ? totals.map(r => ({ route: r.route, usd: here[r.route] || 0 }))
+        : totals.map(r => ({ route: r.route, usd: r.usd }));
+      if (S.pieMetric === 'here' && o.unattributed > 0.005) {
+        rows = rows.concat([{ route: '__unattributed__', usd: o.unattributed }]);
+      }
+      rows = rows.filter(r => r.usd > 0).sort((a, b) => b.usd - a.usd);
+      if (!rows.length) return null;
+
+      const total = rows.reduce((a, r) => a + r.usd, 0);
+      // Slices under 1% are unreadable and unlabellable; roll them into one
+      // named slice that says how many it stands for rather than dropping them.
+      const BIG = 0.01;
+      const big = rows.filter(r => r.usd / total >= BIG);
+      const small = rows.filter(r => r.usd / total < BIG);
+      const out = big.map(r => ({
+        route: r.route,
+        label: r.route === '__unattributed__' ? 'Unattributed' : routeInfo(r.route).protocol,
+        usd: r.usd,
+        color: (S.routeColor && S.routeColor[r.route]) || 'var(--text-secondary)',
+      }));
+      if (small.length) {
+        out.push({
+          route: '__small__',
+          label: small.length + ' route' + (small.length === 1 ? '' : 's') + ' under 1%',
+          usd: small.reduce((a, r) => a + r.usd, 0),
+          color: '#9BA3AF',
+        });
+      }
+      return { rows: out, total };
+    }
+
+    function renderRoutePie() {
+      const el = document.getElementById('routePie');
+      const data = routePieData();
+      if (!data) {
+        el.innerHTML = '<div class="missing">No deposits in this range, so there is nothing to divide.</div>';
+        document.getElementById('routeLegend').innerHTML = '';
+        return;
+      }
+      const ph = el.querySelector('.loading'); if (ph) ph.remove();
+
+      // Colours are resolved here rather than handed to Plotly as var(--x),
+      // which it cannot read.
+      const colors = data.rows.map(r => r.color.startsWith('var(')
+        ? cssVar(r.color.slice(4, -1), '#9BA3AF') : r.color);
+
+      Plotly.react('routePie', [{
+        type: 'pie', hole: 0.58,
+        labels: data.rows.map(r => r.label),
+        values: data.rows.map(r => r.usd),
+        marker: { colors, line: { color: cssVar('--surface', '#fff'), width: 2 } },
+        textinfo: 'none',                 // the legend below carries the labels
+        hovertemplate: '<b>%{label}</b><br>%{value:$,.0f} · %{percent}<extra></extra>',
+        sort: false, direction: 'clockwise',
+      }], {
+        margin: { l: 8, r: 8, t: 8, b: 8 },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        showlegend: false,
+        font: { family: 'Poppins, -apple-system, sans-serif', color: cssVar('--text-body', '#70747A'), size: 12 },
+        annotations: [{
+          text: '<b>' + fUsd(data.total) + '</b><br><span style="font-size:10px">'
+                + (S.pieMetric === 'here' ? 'still here' : 'gross in') + '</span>',
+          showarrow: false, font: { size: 15, color: cssVar('--text', '#000') },
+        }],
+      }, CONFIG);
+
+      document.getElementById('routeLegend').innerHTML = data.rows.map(r =>
+        '<div class="row"><span class="dot" style="background:' + r.color + '"></span>'
+        + '<span class="label">' + esc(r.label) + '</span>'
+        + '<span class="val">' + fUsd(r.usd) + '</span>'
+        + '<span class="pct">' + (r.usd / data.total * 100).toFixed(1) + '%</span></div>').join('');
+    }
+
     function renderRoutes() {
       const totals = routeTotals(S.flowRange);
       if (!totals.length) { missing('routeTable', 'No deposits in this range.'); return; }
@@ -1274,6 +1392,8 @@
       const looked = ['Harvest', 'Spectra', 'Zyfi', 'Portals', 'Enso', 'Odos', '1inch', 'ParaSwap', 'LI.FI', 'Pendle', 'IPOR'];
       const found = [...new Set(named.map(r => routeInfo(r.route).protocol))].filter(x => x !== 'Direct');
       const absent = looked.filter(x => !found.includes(x));
+
+      renderRoutePie();
 
       document.getElementById('routeNote').innerHTML =
         '<strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
@@ -1525,6 +1645,30 @@
           note: 'Inflows above the line, exits below. In ' + fUsd(tIn) + ', out ' + fUsd(tOut) + '.',
         };
       }
+      if (id === 'routePie') {
+        const data = routePieData();
+        const gross = S.pieMetric !== 'here';
+        const top = data && data.rows[0];
+        return {
+          title: gross
+            ? 'How People Got Into Fusion Stock Vaults'
+            : 'Where the Money Still Here Came From',
+          sub: data ? fUsd(data.total) + (gross ? ' deposited in total' : ' still held') : '',
+          scope: [RANGE_LABEL[S.flowRange] || S.flowRange,
+                  gross ? 'Gross inflow by route' : 'Value still here by route'].join('  ·  '),
+          note: top
+            ? top.label + ' leads with ' + (top.usd / data.total * 100).toFixed(1) + '%. '
+              + 'Routes are identified from each contract\'s verified source on Basescan.'
+            : '',
+          // Painted onto the export canvas — a pie without its key is useless,
+          // and a DOM legend is not part of the plot image.
+          legend: data ? data.rows.map(r => ({
+            label: r.label,
+            value: fUsd(r.usd) + '  ' + (r.usd / data.total * 100).toFixed(1) + '%',
+            color: r.color.startsWith('var(') ? cssVar(r.color.slice(4, -1), '#9BA3AF') : r.color,
+          })) : null,
+        };
+      }
       if (id === 'retPlot') {
         const series = returnSeries(S.retRange);
         const best = series[0];
@@ -1608,7 +1752,25 @@
               + (meta.sub ? Math.round(subSize * 1.35) : 0)
               + Math.round(scopeSize * 2.1) + pad
             : 0;
-          const footH = noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0;
+
+          // A pie is unreadable without its key, and a DOM legend is not part
+          // of the plot image. When a chart supplies `legend`, it is laid out
+          // and painted here so the exported file carries the same key the page
+          // shows. Drawn even in the transparent style — a pie with no legend
+          // is not a smaller export, it is a useless one.
+          const legSize = Math.round(w / 90);
+          const legLH = Math.round(legSize * 2.1);
+          const legend = (meta && meta.legend) || null;
+          let legCols = 1, legRows = 0, legH = 0;
+          if (legend && legend.length) {
+            probe.font = '500 ' + legSize + 'px Poppins, sans-serif';
+            const widest = Math.max(...legend.map(l =>
+              probe.measureText(l.label + '   ' + l.value).width)) + legSize * 3;
+            legCols = Math.max(1, Math.min(legend.length, Math.floor(maxW / widest)));
+            legRows = Math.ceil(legend.length / legCols);
+            legH = legRows * legLH + pad;
+          }
+          const footH = (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + legH;
 
           const cv = document.createElement('canvas');
           cv.width = w; cv.height = h + headH + footH;
@@ -1638,8 +1800,30 @@
               c.fillStyle = '#70747A';
               c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
               const lh = Math.round(noteSize * 1.5);
-              noteLines.forEach((ln, i) => c.fillText(ln, pad, headH + h + Math.round(pad * 0.4) + i * lh));
+              noteLines.forEach((ln, i) =>
+                c.fillText(ln, pad, headH + h + legH + Math.round(pad * 0.4) + i * lh));
             }
+          }
+
+          if (legend && legend.length) {
+            const colW = Math.floor(maxW / legCols);
+            const top = headH + h + Math.round(pad * 0.5);
+            legend.forEach((item, i) => {
+              const col = i % legCols, row = Math.floor(i / legCols);
+              const x = pad + col * colW, y = top + row * legLH;
+              c.fillStyle = item.color;
+              c.beginPath();
+              c.arc(x + legSize * 0.5, y + legSize * 0.6, legSize * 0.5, 0, Math.PI * 2);
+              c.fill();
+              c.textBaseline = 'top';
+              c.fillStyle = titled ? '#000000' : '#191717';
+              c.font = '500 ' + legSize + 'px Poppins, sans-serif';
+              c.fillText(item.label, x + legSize * 1.6, y);
+              const lw = c.measureText(item.label).width;
+              c.fillStyle = '#70747A';
+              c.font = '400 ' + legSize + 'px Poppins, sans-serif';
+              c.fillText(item.value, x + legSize * 1.6 + lw + legSize * 0.8, y);
+            });
           }
 
           cv.toBlob((blob) => {
@@ -1656,11 +1840,17 @@
       });
     }
 
-    async function downloadPlot(id, slug) {
+    async function downloadPlot(id, slug, size) {
       const gd = document.getElementById(id);
       if (!gd || !gd.data) return;
       const stamp = new Date().toISOString().slice(0, 10);
-      const w = gd.clientWidth, h = gd.clientHeight, scale = 2;
+      // Charts export at their on-screen size so the picture matches the page.
+      // The donut is the exception: it lives in a narrow sidebar column, and
+      // inheriting ~310px would put the title and legend on a canvas too small
+      // to read them. It gets a size worth looking at instead.
+      const w = (size && size.width) || gd.clientWidth;
+      const h = (size && size.height) || gd.clientHeight;
+      const scale = 2;
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
       const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
@@ -1818,10 +2008,13 @@
         S.flowRange = v; renderFlows(); renderRoutes();
       });
       wireButtons('retToolbar', 'data-ret-range', v => { S.retRange = v; renderReturns(); });
+      wireButtons('pieMetric', 'data-pie', v => { S.pieMetric = v; renderRoutePie(); });
+      document.getElementById('piePng').addEventListener('click',
+        () => downloadPlot('routePie', 'routes', { width: 900, height: 560 }));
 
       // Scale and theme are page-wide: repaint everything that draws.
       const repaintAll = () => {
-        renderTvl(); renderWallets(); renderFlows(); renderReturns();
+        renderTvl(); renderWallets(); renderFlows(); renderReturns(); renderRoutePie();
       };
       wireButtons('tvlToolbar', 'data-scale', v => { S.scale = v; repaintAll(); });
       wireButtons('tvlToolbar', 'data-theme-set', v => { applyTheme(v); repaintAll(); });
