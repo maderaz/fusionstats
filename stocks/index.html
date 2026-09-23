@@ -50,6 +50,10 @@
     @media (max-width:900px) { .two-up { grid-template-columns:1fr; } }
     .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin-bottom:0.6rem; }
     .sub-title { font-size:0.82rem; font-weight:600; letter-spacing:-0.005em; }
+    .sub-note {
+      display: block; font-size: 0.65rem; line-height: 1.1; margin-top: 0.1rem;
+      color: var(--text-secondary); letter-spacing: 0.02em; white-space: nowrap;
+    }
     .muted-note { font-weight:400; font-size:0.72rem; color:var(--text-secondary); line-height:1.55; }
 
     /* Card header: title left, actions hard right — one rhythm everywhere. */
@@ -963,24 +967,48 @@
       const id = ROUTER_ID[addr];
       return id && id.protocol ? id : null;
     };
-    function depositRoute(e) {
+    // The contract a deposit came through, or DIRECT.
+    function depositContract(e) {
       const sender = (e.sender || '').toLowerCase();
       const owner = (e.owner || '').toLowerCase();
       if (!sender || !owner) return DIRECT;
       if (sender !== owner) return sender;
       return knownProtocol(owner) ? owner : DIRECT;
     }
+
+    // …and the row it belongs on. A protocol usually runs more than one
+    // contract: Harvest deploys one strategy per ticker, so attributing by
+    // contract put four rows reading "Harvest" next to each other, identical
+    // and unrankable. The question this section asks is which PROTOCOL people
+    // came through, so named contracts collapse onto their protocol and
+    // unidentified ones stay separate — merging those would be inventing a
+    // relationship we have no evidence for.
+    const PROTO = 'p:';
+    function depositRoute(e) {
+      const c = depositContract(e);
+      if (c === DIRECT) return DIRECT;
+      const id = knownProtocol(c);
+      return id ? PROTO + id.protocol : c;
+    }
     function routeInfo(route) {
       if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true };
-      const id = ROUTER_ID[route];
-      if (id && id.protocol) {
-        return { protocol: id.protocol, named: true, via: id.via,
-                 detail: id.via === 'deployer'
-                   ? 'deployed by ' + id.protocol
-                   : (id.contractNames || [])[0] || '',
-                 reason: id.reason, evidence: id.evidence };
+      if (route.startsWith(PROTO)) {
+        const name = route.slice(PROTO.length);
+        // Every checked contract carrying this name, so the row can say how
+        // many there are and how each of them was established.
+        const mine = Object.values(ROUTER_ID).filter(v => v && v.protocol === name);
+        const via = mine.every(v => v.via === 'source') ? 'source'
+                  : mine.every(v => v.via === 'deployer') ? 'deployer' : 'mixed';
+        return { protocol: name, named: true, via,
+                 // The detail column describes a single contract. When a row
+                 // stands for several, the row itself says how many it saw —
+                 // a count taken from this range, not from the whole file.
+                 detail: via === 'deployer' ? 'proxy, deployed by ' + name
+                                            : (mine[0] && (mine[0].contractNames || [])[0]) || '',
+                 reason: (mine[0] || {}).reason, evidence: (mine[0] || {}).evidence };
       }
-      return { protocol: shortAddr(route), named: false,
+      const id = ROUTER_ID[route];
+      return { protocol: shortAddr(route), named: false, contracts: 1,
                detail: id ? '' : 'not yet checked',
                reason: id ? id.reason : 'not yet checked' };
     }
@@ -1013,16 +1041,18 @@
         if (e.type !== 'deposit' || !e.timestamp || e.timestamp < cutoff) return;
         if (!S.vaultSet.has((e.vault || '').toLowerCase())) return;
         const r = depositRoute(e);
-        const t = by[r] || (by[r] = { route: r, usd: 0, n: 0, wallets: new Set(), selfOwned: false });
+        const t = by[r] || (by[r] = { route: r, usd: 0, n: 0, wallets: new Set(),
+                                      contracts: new Set(), selfOwned: false });
         t.usd += e.usdValue || 0; t.n++;
+        t.contracts.add(depositContract(e));
         const w = (e.owner || '').toLowerCase(); if (w) t.wallets.add(w);
-        // The protocol deposited under its own address, so the wallet count
-        // for this route is 1 by construction — it is the protocol's contract,
-        // standing in for depositors we cannot see from here.
-        if (r !== DIRECT && w === r) t.selfOwned = true;
+        // The protocol deposited under its own address, so the "wallets" on
+        // this route are its own contracts, not people. Compare against the
+        // contract, not the row it was grouped onto.
+        if (r !== DIRECT && w === depositContract(e)) t.selfOwned = true;
       });
       return Object.values(by)
-        .map(t => ({ ...t, wallets: t.wallets.size }))
+        .map(t => ({ ...t, wallets: t.wallets.size, contracts: t.contracts.size }))
         .sort((a, b) => b.usd - a.usd);
     }
 
@@ -1394,12 +1424,19 @@
                     + esc(info.protocol) + '</a>') + '</span></span></td>'
               + '<td class="muted-note"'
               + (info.reason ? ' title="' + esc(info.reason) + '"' : '') + '>'
-              + esc(info.detail || '—') + '</td>'
+              + (r.contracts > 1
+                  ? r.contracts + ' contracts'
+                    + (info.via === 'deployer' ? ', deployed by ' + esc(info.protocol) : '')
+                  : esc(info.detail || '—')) + '</td>'
               + '<td class="num">' + r.n + '</td>'
+              // Deliberately two lines: the number belongs under the Wallets
+              // header, the qualifier contradicts that header, and letting the
+              // two share a line just wraps at whatever width is left over.
               + (r.selfOwned
-                  ? '<td class="num" title="This protocol holds the position under its own address, '
-                    + 'so its own depositors are not visible in our data — the count is the contract, not people.">'
-                    + '1 <span class="muted-note">contract</span></td>'
+                  ? '<td class="num" title="This protocol holds the position under its own addresses, '
+                    + 'so its depositors are not visible in our data — the count is contracts, not people.">'
+                    + r.wallets + '<span class="sub-note">contract'
+                    + (r.wallets === 1 ? '' : 's') + '</span></td>'
                   : '<td class="num">' + r.wallets + '</td>')
               + '<td class="num">' + fUsd(r.usd) + '</td>'
               + shareCell(grossSum ? r.usd / grossSum : 0)
@@ -1437,6 +1474,7 @@
       const byDeployer = namedReal.filter(r => routeInfo(r.route).via === 'deployer').length;
       const byUnstated = namedReal.length - bySource - byDeployer;
       const custodial = totals.filter(r => r.selfOwned);
+      const custodialNames = [...new Set(custodial.map(r => routeInfo(r.route).protocol))];
 
       document.getElementById('routeNote').innerHTML =
         '<strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
@@ -1455,12 +1493,13 @@
               + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0') + '% of inflow) — hover the contract column for why'
             : '')
         + '.'
-        + (custodial.length
-            ? '<br><strong>' + custodial.map(r => routeInfo(r.route).protocol).join(', ') + '</strong> '
-              + (custodial.length === 1 ? 'holds its position' : 'hold their positions')
-              + ' under ' + (custodial.length === 1 ? 'its' : 'their') + ' own address rather than routing to yours, '
-              + 'which is why the wallet count there is a contract and not a number of people. How many depositors sit '
-              + 'behind it is a question for that protocol\'s own books, not ours.'
+        + (custodialNames.length
+            ? '<br><strong>' + custodialNames.join(', ') + '</strong> '
+              + (custodialNames.length === 1 ? 'holds its position' : 'hold their positions')
+              + ' under ' + (custodialNames.length === 1 ? 'its' : 'their') + ' own addresses rather than routing to '
+              + 'yours, which is why the wallet count there counts contracts and not people. How many depositors sit '
+              + 'behind ' + (custodialNames.length === 1 ? 'it' : 'them') + ' is a question for '
+              + (custodialNames.length === 1 ? 'that protocol\'s' : 'those protocols\'') + ' own books, not ours.'
             : '')
         + '<br>Retained above 100% is not an error — the surviving position is worth more than the dollars that '
         + 'bought it, because the strategy earned and the underlying equity moved.'
