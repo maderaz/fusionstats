@@ -103,6 +103,24 @@ function creatorOf(html) {
   return { address: m[1].toLowerCase(), label: /^0x/.test(label) ? null : label };
 }
 
+// Named counterparties from the address's transaction list. This is the
+// WEAKEST thing on the page — "this contract's transactions go through LI.FI"
+// is not "this contract is LI.FI", and conflating the two is how 0xd9a11d88
+// came to be recorded as LI.FI in the first place. Kept in its own field,
+// never promoted to `protocol`, and only collected for contracts nothing
+// better could identify, where it is the only lead there is.
+function interactionsWith(html) {
+  const out = new Set();
+  // Basescan's tooltips carry the tag AND the address, so the window has to be
+  // wide enough for both — a 60-char cap truncated "LI.FI: LiFi Diamond<br/>
+  // (0x1231…)" before it could ever match. Both quote styles appear.
+  for (const m of html.matchAll(/(?:data-bs-)?title=(?:'([^']{3,160})'|"([^"]{3,160})")/g)) {
+    const hits = matchSignatures(m[1] || m[2] || '');
+    if (hits.length) out.add(hits[0].protocol);
+  }
+  return [...out];
+}
+
 function tokenNameOf(html) {
   const m = html.match(/Token Tracker[\s\S]{0,400}?href='\/token\/0x[0-9a-fA-F]{40}'[^>]*>([^<]{2,60})</);
   return m ? m[1].replace(/\s+/g, ' ').trim() : null;
@@ -154,7 +172,7 @@ function classify(html) {
   if (inSource.length) {
     return { protocol: inSource[0].protocol, via: 'source', isContract: true, verified,
              contractNames: names, tokenName: token,
-             creator: creator.label || creator.address,
+             creator: creator.label || creator.address, creatorAddress: creator.address,
              alsoMatched: inSource.slice(1).map(h => h.protocol),
              reason: 'verified source matches ' + inSource[0].matched,
              evidence: inSource[0].evidence };
@@ -166,16 +184,20 @@ function classify(html) {
   const inLabel = label ? matchSignatures(label) : [];
   if (inLabel.length) {
     return { protocol: inLabel[0].protocol, via: 'deployer', isContract: true, verified,
-             contractNames: names, tokenName: token, creator: creator.label || creator.address,
+             contractNames: names, tokenName: token, creator: creator.label || creator.address, creatorAddress: creator.address,
              alsoMatched: inLabel.slice(1).map(h => h.protocol),
              reason: 'deployed by ' + creator.label + (token ? ', issues ' + token : ''),
              evidence: label };
   }
 
+  const seen = interactionsWith(html);
   return { protocol: null, via: null, isContract: true, verified,
            contractNames: names, tokenName: token, creator: creator.label || creator.address,
-           reason: verified ? 'verified source, no known fingerprint'
-                            : 'source not verified on Basescan' };
+           creatorAddress: creator.address,
+           interactsWith: seen,
+           reason: (verified ? 'verified source, no known fingerprint'
+                             : 'source not verified on Basescan')
+                   + (seen.length ? '; transacts with ' + seen.join(', ') : '') };
 }
 
 // Every contract that has put money into a vault: the ones that pushed it for

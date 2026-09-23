@@ -975,6 +975,37 @@
       const id = ROUTER_ID[addr];
       return id && id.protocol ? id : null;
     };
+
+    // IPOR is not a route into Fusion — IPOR *is* Fusion. Its ReferralPlasmaVault
+    // and zap contracts are the app's own deposit path, so listing them beside
+    // Harvest and Portals reads as a third party when it is the front door.
+    const DISPLAY_NAME = { IPOR: 'Direct Zap' };
+    const displayName = (p) => DISPLAY_NAME[p] || p;
+
+    // Which owners each depositing contract has ever deposited for. Built once
+    // from the events, because it is what tells a personal smart account apart
+    // from a protocol router: an account deposits only for itself and for the
+    // address that deployed it.
+    let CONTRACT_OWNERS = {};
+    function buildContractOwners() {
+      CONTRACT_OWNERS = {};
+      S.events.forEach(e => {
+        if (e.type !== 'deposit') return;
+        const sender = (e.sender || '').toLowerCase(), owner = (e.owner || '').toLowerCase();
+        if (!sender || !owner) return;
+        (CONTRACT_OWNERS[sender] = CONTRACT_OWNERS[sender] || new Set()).add(owner);
+      });
+    }
+    // An unverified contract whose deployer is one of the addresses it deposits
+    // for is that person's own wallet contract, not a route anyone else can
+    // take. Saying so is worth more than showing them eight hex characters.
+    function smartAccount(addr) {
+      const id = ROUTER_ID[addr];
+      if (!id || id.protocol || !id.creatorAddress) return null;
+      const owners = CONTRACT_OWNERS[addr];
+      if (!owners || !owners.has(id.creatorAddress)) return null;
+      return { owner: id.creatorAddress, interactsWith: id.interactsWith || [] };
+    }
     // The contract a deposit came through, or DIRECT.
     function depositContract(e) {
       const sender = (e.sender || '').toLowerCase();
@@ -999,7 +1030,7 @@
       return id ? PROTO + id.protocol : c;
     }
     function routeInfo(route) {
-      if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true };
+      if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true, kind: 'direct' };
       if (route.startsWith(PROTO)) {
         const name = route.slice(PROTO.length);
         // Every checked contract carrying this name, so the row can say how
@@ -1007,7 +1038,7 @@
         const mine = Object.values(ROUTER_ID).filter(v => v && v.protocol === name);
         const via = mine.every(v => v.via === 'source') ? 'source'
                   : mine.every(v => v.via === 'deployer') ? 'deployer' : 'mixed';
-        return { protocol: name, named: true, via,
+        return { protocol: displayName(name), rawProtocol: name, named: true, kind: 'protocol', via,
                  // The detail column describes a single contract. When a row
                  // stands for several, the row itself says how many it saw —
                  // a count taken from this range, not from the whole file.
@@ -1015,9 +1046,25 @@
                                             : (mine[0] && (mine[0].contractNames || [])[0]) || '',
                  reason: (mine[0] || {}).reason, evidence: (mine[0] || {}).evidence };
       }
+      const acct = smartAccount(route);
+      if (acct) {
+        return { protocol: 'Smart account', named: true, kind: 'account', via: 'creator',
+                 // The legend is one narrow line and ellipsises anything longer,
+                 // which ate the "· LI.FI" when the address came first. The
+                 // address is in the table; the protocol is the part worth the
+                 // width, so it wins the tiebreak.
+                 pieLabel: 'Smart account · '
+                   + (acct.interactsWith.length ? acct.interactsWith.join(', ') : shortAddr(acct.owner)),
+                 detail: 'own contract of ' + shortAddr(acct.owner)
+                   + (acct.interactsWith.length ? ' · funds arrive via ' + acct.interactsWith.join(', ') : ''),
+                 reason: 'deployed by ' + acct.owner + ', which is one of the addresses it deposits for'
+                   + (acct.interactsWith.length
+                       ? '. Its transactions go through ' + acct.interactsWith.join(', ')
+                         + ' — that is who it trades with, not what it is.' : '') };
+      }
       const id = ROUTER_ID[route];
-      return { protocol: shortAddr(route), named: false, contracts: 1,
-               detail: id ? '' : 'not yet checked',
+      return { protocol: shortAddr(route), named: false, kind: 'unknown', contracts: 1,
+               detail: id ? (id.verified ? 'verified, no known fingerprint' : 'source not verified') : 'not yet checked',
                reason: id ? id.reason : 'not yet checked' };
     }
     function routeLabel(route) { return routeInfo(route).protocol; }
@@ -1326,14 +1373,20 @@
       if (!rows.length) return null;
 
       const total = rows.reduce((a, r) => a + r.usd, 0);
-      // Slices under 1% are unreadable and unlabellable; roll them into one
-      // named slice that says how many it stands for rather than dropping them.
-      const BIG = 0.01;
-      const big = rows.filter(r => r.usd / total >= BIG);
-      const small = rows.filter(r => r.usd / total < BIG);
+      // Slices under 1% are unreadable in the ring — but the legend is a list,
+      // and a list has room. Rolling three tiny routes into "3 routes under 1%"
+      // was hiding the only trace of LI.FI on the page. So the rollup now only
+      // fires when there are enough of them to swamp the legend; below that
+      // they are named, with their value, even though the wedge is a sliver.
+      const BIG = 0.01, ROLLUP_AT = 5;
+      const under = rows.filter(r => r.usd / total < BIG);
+      const roll = under.length >= ROLLUP_AT;
+      const big = roll ? rows.filter(r => r.usd / total >= BIG) : rows;
+      const small = roll ? under : [];
       const out = big.map(r => ({
         route: r.route,
-        label: r.route === '__unattributed__' ? 'Unattributed' : routeInfo(r.route).protocol,
+        label: r.route === '__unattributed__' ? 'Unattributed'
+                 : (routeInfo(r.route).pieLabel || routeInfo(r.route).protocol),
         usd: r.usd,
         color: (S.routeColor && S.routeColor[r.route]) || 'var(--text-secondary)',
       }));
@@ -1464,12 +1517,22 @@
             : '')
         + '</tbody></table></div>';
 
-      const named = totals.filter(r => routeIsNamed(r.route));
-      const unnamed = totals.filter(r => !routeIsNamed(r.route));
+      const ri = (r) => routeInfo(r.route);
+      const protocols = totals.filter(r => ri(r).kind === 'protocol');
+      const accounts = totals.filter(r => ri(r).kind === 'account');
+      const unnamed = totals.filter(r => ri(r).kind === 'unknown');
       const unnamedUsd = unnamed.reduce((a, r) => a + r.usd, 0);
+      // Matched on the protocol's real name, not its display name, or renaming
+      // IPOR to "Direct Zap" would make the page report IPOR as never found.
       const looked = ['Harvest', 'Spectra', 'Zyfi', 'Portals', 'Enso', 'Odos', '1inch', 'ParaSwap', 'LI.FI', 'Pendle', 'IPOR'];
-      const found = [...new Set(named.map(r => routeInfo(r.route).protocol))].filter(x => x !== 'Direct');
-      const absent = looked.filter(x => !found.includes(x));
+      const found = new Set(protocols.map(r => ri(r).rawProtocol));
+      // A contract we could not name still tells us something when its
+      // transactions run through a protocol. Not a sighting, but not nothing.
+      const seenVia = new Set();
+      totals.forEach(r => ((ROUTER_ID[r.route] || {}).interactsWith || []).forEach(x => {
+        if (!found.has(x)) seenVia.add(x);
+      }));
+      const absent = looked.filter(x => !found.has(x) && !seenVia.has(x));
 
       renderRoutePie();
 
@@ -1477,9 +1540,9 @@
       // learned the difference carries no `via`, and must not be silently
       // counted as either kind — the whole point of the split is that they are
       // not equally strong.
-      const namedReal = named.filter(r => r.route !== DIRECT);
-      const bySource = namedReal.filter(r => routeInfo(r.route).via === 'source').length;
-      const byDeployer = namedReal.filter(r => routeInfo(r.route).via === 'deployer').length;
+      const namedReal = protocols;
+      const bySource = namedReal.filter(r => ri(r).via === 'source').length;
+      const byDeployer = namedReal.filter(r => ri(r).via === 'deployer').length;
       const byUnstated = namedReal.length - bySource - byDeployer;
       const custodial = totals.filter(r => r.selfOwned);
       const custodialNames = [...new Set(custodial.map(r => routeInfo(r.route).protocol))];
@@ -1495,12 +1558,22 @@
               + 'counted separately'
             : '')
         + (byUnstated ? '; ' + byUnstated + ' named before that distinction was recorded' : '')
-        + '. ' + namedReal.length + ' of ' + (namedReal.length + unnamed.length) + ' routes named'
-        + (unnamed.length
-            ? '; ' + unnamed.length + ' unidentified (' + fUsd(unnamedUsd) + ', '
-              + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0') + '% of inflow) — hover the contract column for why'
+        + '. '
+        + (accounts.length
+            ? accounts.length + ' further ' + (accounts.length === 1 ? 'route is a' : 'routes are')
+              + ' personal smart ' + (accounts.length === 1 ? 'account' : 'accounts')
+              + ' — an unverified contract deployed by one of the addresses it deposits for, which makes it that '
+              + 'person\'s own wallet rather than a way in anyone else can take. '
             : '')
-        + '.'
+        + (unnamed.length
+            ? unnamed.length + (unnamed.length === 1 ? ' contract remains' : ' contracts remain') + ' unidentified ('
+              + fUsd(unnamedUsd) + ', ' + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0')
+              + '% of inflow) — hover the contract column for why.'
+            : 'Every contract on this list is accounted for.')
+        + (seenVia.size
+            ? ' ' + [...seenVia].join(', ') + ' appears only as a counterparty in those contracts\' transactions, '
+              + 'which says how the money travelled, not who deposited it.'
+            : '')
         + (custodialNames.length
             ? '<br><strong>' + custodialNames.join(', ') + '</strong> '
               + (custodialNames.length === 1 ? 'holds its position' : 'hold their positions')
@@ -2054,6 +2127,7 @@
       if (act) {
         const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
         S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);
+        buildContractOwners();
         S.updatedAt = act.updatedAt;
       }
       document.getElementById('updated').textContent = S.updatedAt
