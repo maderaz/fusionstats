@@ -34,13 +34,18 @@
     /* The donut is a summary; the table is the detail. Give the table the room
        and let the donut sit beside it rather than stacking a tall chart above
        a tall table. */
-    .route-split { display:grid; grid-template-columns:minmax(260px,32%) 1fr; gap:1.5rem; align-items:start; }
-    @media (max-width:980px) { .route-split { grid-template-columns:1fr; } }
-    .plot-pie { height:260px; }
+    /* The donut used to sit in a 32% sidebar beside the table, which left both
+       cramped: a 260px pie with a one-per-line legend, and a wide table
+       squeezed into what was left. They answer the same question at different
+       resolutions, so they now stack — ranking first, then the shape of it. */
+    .route-pie-block { margin:1.75rem 0 0; padding:1.5rem 0 0; border-top:1px solid var(--border); }
+    .plot-pie { height:360px; max-width:620px; margin:0 auto; }
     .container[data-layout="compact"] .plot-pie,
     .container[data-layout="fourthree"] .plot-pie,
-    .container[data-layout="widescreen"] .plot-pie { aspect-ratio:auto; height:260px; }
-    .pie-legend { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.5rem; }
+    .container[data-layout="widescreen"] .plot-pie { aspect-ratio:auto; height:360px; }
+    /* Full width means the legend reads in columns rather than one tall list. */
+    .pie-legend { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+      gap:0.45rem 1.75rem; margin:1.1rem auto 0; max-width:940px; }
     .pie-legend .row { display:flex; align-items:center; gap:0.5rem; font-size:0.74rem; }
     .pie-legend .row .label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .pie-legend .row .val { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
@@ -49,6 +54,7 @@
                             flex:0 0 3.2rem; text-align:right; }
     @media (max-width:900px) { .two-up { grid-template-columns:1fr; } }
     .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin-bottom:0.6rem; }
+    .panel-head-actions { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
     .sub-title { font-size:0.82rem; font-weight:600; letter-spacing:-0.005em; }
     .sub-note {
       display: block; font-size: 0.65rem; line-height: 1.1; margin-top: 0.1rem;
@@ -161,6 +167,9 @@
     .container[data-layout="fourthree"] .plot { aspect-ratio:4/3; }
     .container[data-layout="widescreen"] .plot { aspect-ratio:16/9; }
     @media (max-width:640px){ .plot { height:240px; } }
+    /* Declared after .plot's own small-screen height, not with the other
+       .plot-pie rules: same specificity, so source order decides. */
+    @media (max-width:640px){ .plot-pie { height:300px; } }
 
     .data-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
     .data-table th { text-align:left; font-size:0.63rem; text-transform:uppercase; letter-spacing:0.06em;
@@ -341,28 +350,27 @@
         <div class="chart-section-title" style="margin:0">How people got in</div>
         <div class="card-actions"><button class="action-btn" id="routeCsv" type="button">CSV</button></div>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">A deposit whose sender differs from its owner was
-        pushed by a contract — a zap, an aggregator, a referral wrapper. Each one is named from its own verified
-        source on Basescan; anything we cannot name keeps its address and says why.</div>
-      <div class="route-split">
-        <div>
-          <div class="panel-head">
-            <div class="sub-title">Share by route</div>
+      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">Two kinds of contract bring money in: one that
+        pushes a deposit on your behalf — a zap, an aggregator, a referral wrapper — and one that deposits for
+        itself and holds the shares for its own depositors, which is what an autocompounder does. Both are counted
+        here. Each is named from Basescan; anything we cannot name keeps its address and says why.</div>
+      <div id="routeTable"></div>
+
+      <div class="route-pie-block">
+        <div class="panel-head">
+          <div class="sub-title">Share by route</div>
+          <div class="panel-head-actions">
             <div class="flip" id="pieMetric">
               <button data-pie="gross" class="active" type="button">Gross in</button>
               <button data-pie="here" type="button">Still here</button>
             </div>
-          </div>
-          <div class="plot plot-pie" id="routePie"><div class="loading">Loading…</div></div>
-          <div id="routeLegend" class="pie-legend"></div>
-          <div class="card-actions" style="margin:0.6rem 0 0">
             <button class="action-btn" id="piePng" type="button">PNG</button>
           </div>
         </div>
-        <div>
-          <div id="routeTable"></div>
-        </div>
+        <div class="plot plot-pie" id="routePie"><div class="loading">Loading…</div></div>
+        <div id="routeLegend" class="pie-legend"></div>
       </div>
+
       <div class="chart-note" id="routeNote"></div>
     </div>
 
