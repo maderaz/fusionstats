@@ -838,9 +838,10 @@
     // Each vault's figure is the last point of its own forward-filled series,
     // which is exactly what the chart's final value sums, so the breakdown and
     // the chart always agree.
-    function renderUnitsBreakdown() {
-      const box = document.getElementById('unitsBreakdown');
-      if (S.tvlUnit !== 'units') { box.style.display = 'none'; box.innerHTML = ''; return; }
+    // The per-ticker split behind the units chart. Shared by the on-page table
+    // and the PNG export so the two can never disagree about what the chart is
+    // made of.
+    function unitsBreakdown() {
       const price = latestPrices();
       const rows = vaultsFor(S.tvlVault).map(v => {
         const pts = tvlSeries(v.address, S.tvlRange);
@@ -849,10 +850,17 @@
         if (units <= 0) return null;
         return { token: v.token, name: v.name, units, usd: units * (price[v.address] || 0) };
       }).filter(Boolean).sort((a, b) => b.units - a.units);
+      const totU = rows.reduce((a, r) => a + r.units, 0);
+      return { rows, totU, totUsd: rows.reduce((a, r) => a + r.usd, 0),
+               share: (r) => (totU ? r.units / totU : 0) };
+    }
+
+    function renderUnitsBreakdown() {
+      const box = document.getElementById('unitsBreakdown');
+      if (S.tvlUnit !== 'units') { box.style.display = 'none'; box.innerHTML = ''; return; }
+      const { rows, totU, totUsd } = unitsBreakdown();
 
       if (!rows.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      const totU = rows.reduce((a, r) => a + r.units, 0);
-      const totUsd = rows.reduce((a, r) => a + r.usd, 0);
       const max = Math.max(...rows.map(r => r.units));
 
       box.style.display = '';
@@ -1324,6 +1332,11 @@
     };
     const normToken = (t) => String(t || '').toUpperCase().replace(/C$/, '');
     const tokenMeta = (t) => STOCK_TOKENS[normToken(t)] || null;
+    // The tokenised ticker, spelled the way the token itself is: AAPLc, not
+    // AAPL. The vault list is inconsistent about the suffix — "GOOGLc" and
+    // "META" sit side by side — and a legend that mixes the two reads as two
+    // different kinds of thing.
+    const tickerLabel = (t) => (tokenMeta(t) ? normToken(t) + 'c' : String(t || ''));
     function iconUrlFor(token) {
       const m = tokenMeta(token);
       return m ? ICON_BASE + m.icon + '.svg' : null;
@@ -1822,8 +1835,44 @@
             ? fNum(fig.units, 4) + ' ' + (ticker || 'tokenized stock') + ' units'
             : 'TVL: ' + fUsd(fig.usd);
         }
+
+        // Every ticker mode draws one line, so a single unit total says nothing
+        // about which equities make it up. With "Stock units (all)" the export
+        // trades the TVL counterweight — a dollar figure under a chart that is
+        // not drawing dollars — for the split the line is actually a sum of.
+        let legend = null, legendTotal = null;
+        if (S.tvlUnit === 'units') {
+          const b = unitsBreakdown();
+          if (b.rows.length) {
+            sub = '';
+            // One entry per TOKEN, not per vault. Two vaults run on the same
+            // Alphabet token — "Google Carry Trade" and "…Tezos" — and listing
+            // both put GOOGLc in the legend twice, once at 37.3% and once at
+            // 0.0%. Units of the same underlying do add up, unlike units across
+            // different equities, so this sum is the one that is legitimate.
+            const byToken = new Map();
+            b.rows.forEach(r => {
+              const k = normToken(r.token) || r.token;
+              byToken.set(k, (byToken.get(k) || 0) + r.units);
+            });
+            const grouped = [...byToken.entries()].sort((x, y) => y[1] - x[1]);
+            if (grouped.length > 1) {
+              legend = grouped.map(([tok, units], i) => ({
+                label: tickerLabel(tok),
+                value: (b.totU ? units / b.totU * 100 : 0).toFixed(1) + '%',
+                icon: iconUrlFor(tok),
+                color: seriesColor(i),
+              }));
+            }
+            legendTotal = {
+              value: fNum(b.totU, 4),
+              label: 'tokenized units held across Fusion ecosystem vaults',
+            };
+          }
+        }
+
         return {
-          title, sub,
+          title, sub, legend, legendTotal, legendRow: !!legendTotal,
           scope: [selLabel('tvlVault', 'All stock vaults'),
                   RANGE_LABEL[S.tvlRange] || S.tvlRange,
                   selLabel('tvlUnit', 'USD'),
@@ -1853,9 +1902,14 @@
           sub: data ? fUsd(data.total) + (gross ? ' deposited in total' : ' still held') : '',
           scope: [RANGE_LABEL[S.flowRange] || S.flowRange,
                   gross ? 'Gross inflow by route' : 'Value still here by route'].join('  ·  '),
+          // Not "from each contract's verified source" any more — some names
+          // come from who deployed a bare proxy, and two of these routes are
+          // personal wallets rather than protocols. The export should not claim
+          // a uniform standard of evidence the page itself stopped claiming.
           note: top
             ? top.label + ' leads with ' + (top.usd / data.total * 100).toFixed(1) + '%. '
-              + 'Routes are identified from each contract\'s verified source on Basescan.'
+              + 'Routes are identified from Basescan — each contract\'s own verified source where it has one, '
+              + 'otherwise who deployed it.'
             : '',
           // Painted onto the export canvas — a pie without its key is useless,
           // and a DOM legend is not part of the plot image.
@@ -1920,120 +1974,197 @@
       c.globalAlpha = 1;
     }
 
-    function composeExport(pngUrl, w, h, filename, meta) {
+    // Canvas drawing is synchronous, so anything painted from a file — the plot
+    // itself, a ticker's mark — has to be decoded first. A mark that fails to
+    // load resolves to null and falls back to the series dot.
+    function loadImage(src) {
+      return new Promise((res) => {
+        if (!src) return res(null);
+        const im = new Image();
+        im.onload = () => res(im);
+        im.onerror = () => res(null);
+        im.src = src;
+      });
+    }
+
+    async function composeExport(pngUrl, w, h, filename, meta) {
+      const img = await loadImage(pngUrl);
+      if (!img) return;
+      if (meta && meta.legend) {
+        const marks = await Promise.all(meta.legend.map(l => loadImage(l.icon)));
+        meta.legend.forEach((l, i) => { l.mark = marks[i]; });
+      }
       return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          const titled = S.pngStyle === 'titled' && meta;
-          const pad = Math.round(w / 36);
-          // Poster-scale: the headline and its counterweight are the point of
-          // this export, so they are sized to be read across a room, not to sit
-          // politely above the plot. The scope line stays small underneath.
-          const titleSize = Math.round(w / 26);
-          const subSize = Math.round(w / 44);
-          const scopeSize = Math.round(w / 104);
-          const noteSize = Math.round(w / 116);
+        const titled = S.pngStyle === 'titled' && meta;
+        const pad = Math.round(w / 36);
+        // Poster-scale: the headline and its counterweight are the point of
+        // this export, so they are sized to be read across a room, not to sit
+        // politely above the plot. The scope line stays small underneath.
+        const titleSize = Math.round(w / 26);
+        const subSize = Math.round(w / 44);
+        const scopeSize = Math.round(w / 104);
+        const noteSize = Math.round(w / 116);
 
-          // Measure first: the header and footer grow with however many lines
-          // the text wraps to, so nothing is ever clipped.
-          const probe = document.createElement('canvas').getContext('2d');
-          const maxW = w - pad * 2;
-          probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-          const titleLines = titled ? wrapText(probe, meta.title, maxW) : [];
-          probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-          const noteLines = titled && meta.note ? wrapText(probe, meta.note, maxW) : [];
+        // Measure first: the header and footer grow with however many lines
+        // the text wraps to, so nothing is ever clipped.
+        const probe = document.createElement('canvas').getContext('2d');
+        const maxW = w - pad * 2;
+        probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+        const titleLines = titled ? wrapText(probe, meta.title, maxW) : [];
+        probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+        const noteLines = titled && meta.note ? wrapText(probe, meta.note, maxW) : [];
 
-          const titleLH = Math.round(titleSize * 1.16);
-          const headH = titled
-            ? pad + titleLines.length * titleLH
-              + (meta.sub ? Math.round(subSize * 1.35) : 0)
-              + Math.round(scopeSize * 2.1) + pad
-            : 0;
+        const titleLH = Math.round(titleSize * 1.16);
+        const headH = titled
+          ? pad + titleLines.length * titleLH
+            + (meta.sub ? Math.round(subSize * 1.35) : 0)
+            + Math.round(scopeSize * 2.1) + pad
+          : 0;
 
-          // A pie is unreadable without its key, and a DOM legend is not part
-          // of the plot image. When a chart supplies `legend`, it is laid out
-          // and painted here so the exported file carries the same key the page
-          // shows. Drawn even in the transparent style — a pie with no legend
-          // is not a smaller export, it is a useless one.
-          const legSize = Math.round(w / 90);
-          const legLH = Math.round(legSize * 2.1);
-          const legend = (meta && meta.legend) || null;
-          let legCols = 1, legRows = 0, legH = 0;
-          if (legend && legend.length) {
-            probe.font = '500 ' + legSize + 'px Poppins, sans-serif';
+        // A pie is unreadable without its key, and a DOM legend is not part
+        // of the plot image. When a chart supplies `legend`, it is laid out
+        // and painted here so the exported file carries the same key the page
+        // shows. Drawn even in the transparent style — a pie with no legend
+        // is not a smaller export, it is a useless one.
+        const legSize = Math.round(w / 90);
+        const legLH = Math.round(legSize * 2.1);
+        const legend = (meta && meta.legend) || null;
+        const legTotal = (meta && meta.legendTotal) || null;
+        const totValSize = Math.round(legSize * 1.3), totLblSize = Math.round(legSize * 0.9);
+        const labelW = (t) => { probe.font = '500 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
+        const valueW = (t) => { probe.font = '400 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
+        const itemW = (l) => legSize * 1.7 + labelW(l.label) + legSize * 0.7 + valueW(l.value);
+
+        let totalW = 0;
+        if (legTotal) {
+          probe.font = '600 ' + totValSize + 'px Poppins, sans-serif';
+          const vw = probe.measureText(legTotal.value).width;
+          probe.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+          totalW = vw + totLblSize * 0.7 + probe.measureText(legTotal.label).width;
+        }
+
+        // Two shapes. A key for a pie wants a grid; a per-ticker breakdown
+        // under a single line wants one row, with the headline figure pushed
+        // to the far right so the eye reads split-then-total.
+        let legCols = 1, legRows = 0, legH = 0, oneRow = false, itemGap = 0, totalOwnLine = false;
+        if (legend && legend.length) {
+          const rowW = legend.reduce((a, l) => a + itemW(l), 0);
+          if (meta.legendRow) {
+            oneRow = true;
+            const gaps = Math.max(1, legend.length - 1);
+            // Does the whole thing fit beside the total? If not, the total
+            // drops to its own line rather than colliding with the tickers.
+            const spare = maxW - rowW - totalW - legSize * 2;
+            totalOwnLine = spare < 0;
+            const room = (totalOwnLine ? maxW : maxW - totalW - legSize * 2) - rowW;
+            itemGap = Math.max(legSize, Math.min(legSize * 3, room / gaps));
+            legRows = 1 + (totalOwnLine ? 1 : 0);
+            legH = legRows * legLH + pad;
+          } else {
             const widest = Math.max(...legend.map(l =>
-              probe.measureText(l.label + '   ' + l.value).width)) + legSize * 3;
+              labelW(l.label + '   ' + l.value))) + legSize * 3;
             legCols = Math.max(1, Math.min(legend.length, Math.floor(maxW / widest)));
             legRows = Math.ceil(legend.length / legCols);
             legH = legRows * legLH + pad;
           }
-          const footH = (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + legH;
+        } else if (legTotal) {
+          legH = legLH + pad;
+        }
+        const footH = (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + legH;
 
-          const cv = document.createElement('canvas');
-          cv.width = w; cv.height = h + headH + footH;
-          const c = cv.getContext('2d');
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h + headH + footH;
+        const c = cv.getContext('2d');
 
-          if (titled) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
-          if (S.exportDots) paintDots(c, 0, headH, w, h);
-          c.drawImage(img, 0, headH, w, h);
+        if (titled) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
+        if (S.exportDots) paintDots(c, 0, headH, w, h);
+        c.drawImage(img, 0, headH, w, h);
 
-          if (titled) {
-            c.textBaseline = 'top';
-            let y = pad;
-            c.fillStyle = '#000000';
-            c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-            titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
-            if (meta.sub) {
-              c.fillStyle = '#8429FF';                 // the counterweight figure
-              c.font = '500 ' + subSize + 'px Poppins, sans-serif';
-              c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
-              y += Math.round(subSize * 1.35);
-            }
-            c.fillStyle = '#9BA3AF';
-            c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
-            c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
-                       pad, y + Math.round(scopeSize * 0.5));
-            if (noteLines.length) {
-              c.fillStyle = '#70747A';
-              c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-              const lh = Math.round(noteSize * 1.5);
-              noteLines.forEach((ln, i) =>
-                c.fillText(ln, pad, headH + h + legH + Math.round(pad * 0.4) + i * lh));
-            }
+        if (titled) {
+          c.textBaseline = 'top';
+          let y = pad;
+          c.fillStyle = '#000000';
+          c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+          titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
+          if (meta.sub) {
+            c.fillStyle = '#8429FF';                 // the counterweight figure
+            c.font = '500 ' + subSize + 'px Poppins, sans-serif';
+            c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
+            y += Math.round(subSize * 1.35);
           }
+          c.fillStyle = '#9BA3AF';
+          c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
+          c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
+                     pad, y + Math.round(scopeSize * 0.5));
+          if (noteLines.length) {
+            c.fillStyle = '#70747A';
+            c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+            const lh = Math.round(noteSize * 1.5);
+            noteLines.forEach((ln, i) =>
+              c.fillText(ln, pad, headH + h + legH + Math.round(pad * 0.4) + i * lh));
+          }
+        }
 
-          if (legend && legend.length) {
-            const colW = Math.floor(maxW / legCols);
-            const top = headH + h + Math.round(pad * 0.5);
-            legend.forEach((item, i) => {
-              const col = i % legCols, row = Math.floor(i / legCols);
-              const x = pad + col * colW, y = top + row * legLH;
+        const legTop = headH + h + Math.round(pad * 0.5);
+        if (legend && legend.length) {
+          // The mark if the file decoded, the series dot if it did not — the
+          // same fallback the page itself uses, so an export never shows a
+          // gap where a ticker should be.
+          const drawKey = (item, x, y) => {
+            if (item.mark) {
+              c.drawImage(item.mark, x, y - legSize * 0.06, legSize * 1.15, legSize * 1.15);
+            } else {
               c.fillStyle = item.color;
               c.beginPath();
               c.arc(x + legSize * 0.5, y + legSize * 0.6, legSize * 0.5, 0, Math.PI * 2);
               c.fill();
-              c.textBaseline = 'top';
-              c.fillStyle = titled ? '#000000' : '#191717';
-              c.font = '500 ' + legSize + 'px Poppins, sans-serif';
-              c.fillText(item.label, x + legSize * 1.6, y);
-              const lw = c.measureText(item.label).width;
-              c.fillStyle = '#70747A';
-              c.font = '400 ' + legSize + 'px Poppins, sans-serif';
-              c.fillText(item.value, x + legSize * 1.6 + lw + legSize * 0.8, y);
+            }
+            c.textBaseline = 'top';
+            c.fillStyle = titled ? '#000000' : '#191717';
+            c.font = '500 ' + legSize + 'px Poppins, sans-serif';
+            c.fillText(item.label, x + legSize * 1.7, y);
+            const lw = c.measureText(item.label).width;
+            c.fillStyle = '#70747A';
+            c.font = '400 ' + legSize + 'px Poppins, sans-serif';
+            c.fillText(item.value, x + legSize * 1.7 + lw + legSize * 0.7, y);
+          };
+
+          if (oneRow) {
+            let x = pad;
+            legend.forEach((item) => { drawKey(item, x, legTop); x += itemW(item) + itemGap; });
+          } else {
+            const colW = Math.floor(maxW / legCols);
+            legend.forEach((item, i) => {
+              drawKey(item, pad + (i % legCols) * colW, legTop + Math.floor(i / legCols) * legLH);
             });
           }
+        }
 
-          cv.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 0);
-            resolve();
-          }, 'image/png');
-        };
-        img.onerror = () => resolve();
-        img.src = pngUrl;
+        if (legTotal) {
+          // Right-aligned: the tickers read left to right, the figure they
+          // sum to closes the line.
+          const y = legTop + (totalOwnLine ? legLH : 0);
+          c.textBaseline = 'top';
+          c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+          const lw = c.measureText(legTotal.label).width;
+          c.font = '600 ' + totValSize + 'px Poppins, sans-serif';
+          const vw = c.measureText(legTotal.value).width;
+          const x = pad + maxW - (vw + totLblSize * 0.7 + lw);
+          c.fillStyle = '#8429FF';
+          c.fillText(legTotal.value, x, y - Math.round(totValSize * 0.1));
+          c.fillStyle = '#70747A';
+          c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+          c.fillText(legTotal.label, x + vw + totLblSize * 0.7, y + Math.round(totLblSize * 0.22));
+        }
+
+        cv.toBlob((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 0);
+          resolve();
+        }, 'image/png');
       });
     }
 
