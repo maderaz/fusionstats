@@ -267,7 +267,8 @@
         <div class="group">
           <span class="group-label">PNG</span>
           <select data-png-style>
-            <option value="bare">Transparent</option>
+            <option value="bare">Transparent, chart only</option>
+            <option value="clear">Transparent + headline</option>
             <option value="titled">White + headline</option>
           </select>
         </div>
@@ -275,6 +276,9 @@
           <input type="checkbox" data-png-dots checked style="cursor:pointer">Dots
         </label>
         <button class="action-btn" id="tvlPng" type="button">Download PNG</button>
+        <button class="action-btn" id="tvlCsv" type="button"
+                title="Every point behind the line as plotted, so the chart can be rebuilt from the numbers">
+          Download datapoints (.csv)</button>
       </div>
       <div class="plot" id="tvlPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="tvlNote"></div>
@@ -306,7 +310,8 @@
         <div class="group">
           <span class="group-label">PNG</span>
           <select data-png-style>
-            <option value="bare">Transparent</option>
+            <option value="bare">Transparent, chart only</option>
+            <option value="clear">Transparent + headline</option>
             <option value="titled">White + headline</option>
           </select>
         </div>
@@ -520,6 +525,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 0);
     }
     const VALID_LAYOUTS = ['wide', 'widescreen', 'fourthree', 'compact'];
+    const PNG_STYLES = ['bare', 'clear', 'titled'];
     const ACCENT = '#8429FF';
 
     const S = {
@@ -1770,10 +1776,13 @@
     }
 
     // ---- PNG export ------------------------------------------------------
-    // Two styles. `bare` is transparent with an optional dot grid — drops onto
-    // any deck without a slab. `titled` is the self-contained one: white paper,
-    // dots over the plot, and the chart's own headline and description baked in
-    // so the image still says what it is once it leaves the site.
+    // Three styles, from two independent questions — does the file carry its
+    // own headline, and does it carry its own background.
+    //   bare    transparent, chart only. Drops onto any deck without a slab.
+    //   clear   transparent, with the headline. For a deck that supplies its
+    //           own background but still wants the image to say what it is.
+    //   titled  white paper and the headline. Self-contained: it survives being
+    //           forwarded with no context at all.
 
     const RANGE_LABEL = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days',
                           '180': 'Last 180 days', all: 'All time' };
@@ -1995,7 +2004,11 @@
         meta.legend.forEach((l, i) => { l.mark = marks[i]; });
       }
       return new Promise((resolve) => {
-        const titled = S.pngStyle === 'titled' && meta;
+        // Background and headline used to be the same switch. They are two
+        // questions: does the file carry its own explanation, and does it
+        // carry its own background.
+        const hasHeader = (S.pngStyle === 'titled' || S.pngStyle === 'clear') && !!meta;
+        const opaque = S.pngStyle === 'titled';
         const pad = Math.round(w / 36);
         // Poster-scale: the headline and its counterweight are the point of
         // this export, so they are sized to be read across a room, not to sit
@@ -2010,9 +2023,9 @@
         const probe = document.createElement('canvas').getContext('2d');
         const maxW = w - pad * 2;
         probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-        const titleLines = titled ? wrapText(probe, meta.title, maxW) : [];
+        const titleLines = hasHeader ? wrapText(probe, meta.title, maxW) : [];
         probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-        const noteLines = titled && meta.note ? wrapText(probe, meta.note, maxW) : [];
+        const noteLines = hasHeader && meta.note ? wrapText(probe, meta.note, maxW) : [];
 
         const titleLH = Math.round(titleSize * 1.16);
 
@@ -2027,7 +2040,7 @@
         // plotted line is made of — so in that mode it sits in the header at
         // subheading scale, not in small type under the chart. A pie's key is
         // a different job and stays below the plot at footnote scale.
-        const inHeader = titled && !!(meta && meta.legendRow) && !!legend;
+        const inHeader = hasHeader && !!(meta && meta.legendRow) && !!legend;
         const legSize = inHeader ? Math.round(w / 58) : Math.round(w / 90);
         const legLH = Math.round(legSize * (inHeader ? 1.7 : 2.1));
         const totValSize = Math.round(legSize * (inHeader ? 1.15 : 1.3));
@@ -2075,26 +2088,33 @@
 
         // The header owns the legend in units mode, so it takes that height
         // instead of the subheading's.
-        const headLegH = inHeader ? legH + Math.round(legSize * 0.5) : 0;
-        const headH = titled
+        // Room under the total line before the plot starts. The legend is the
+        // subheading now, and a subheading that butts against the chart reads
+        // as part of it.
+        const headLegH = inHeader ? legH + Math.round(legSize * 1.1) : 0;
+        const headH = hasHeader
           ? pad + titleLines.length * titleLH
             + (meta.sub ? Math.round(subSize * 1.35) : 0)
-            + headLegH
-            + Math.round(scopeSize * 2.1) + pad
+            + headLegH + Math.round(pad * 0.3)
           : 0;
         const footLegH = inHeader ? 0 : legH;
-        const footH = (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
+        // Scope is caption material — which vaults, which range, which day —
+        // so it sits under the chart with the note rather than wedged between
+        // the headline and the plot, where it was crowding both.
+        const scopeH = hasHeader ? Math.round(scopeSize * 2.4) : 0;
+        const footH = scopeH
+          + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
 
         const cv = document.createElement('canvas');
         cv.width = w; cv.height = h + headH + footH;
         const c = cv.getContext('2d');
 
-        if (titled) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
+        if (opaque) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
         if (S.exportDots) paintDots(c, 0, headH, w, h);
         c.drawImage(img, 0, headH, w, h);
 
         let headLegendY = null;
-        if (titled) {
+        if (hasHeader) {
           c.textBaseline = 'top';
           let y = pad;
           c.fillStyle = '#000000';
@@ -2109,16 +2129,17 @@
           // The legend stands in for the subheading here; painted once its
           // helpers exist, below. Only the position is decided at this point.
           if (inHeader) { headLegendY = y + Math.round(legSize * 0.2); y += headLegH; }
+
           c.fillStyle = '#9BA3AF';
           c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
           c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
-                     pad, y + Math.round(scopeSize * 0.5));
+                     pad, headH + h + footLegH + Math.round(scopeSize * 0.9));
           if (noteLines.length) {
             c.fillStyle = '#70747A';
             c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
             const lh = Math.round(noteSize * 1.5);
             noteLines.forEach((ln, i) =>
-              c.fillText(ln, pad, headH + h + legH + Math.round(pad * 0.4) + i * lh));
+              c.fillText(ln, pad, headH + h + footLegH + scopeH + Math.round(pad * 0.3) + i * lh));
           }
         }
 
@@ -2127,7 +2148,22 @@
         // where a ticker should be.
         const drawKey = (item, x, y) => {
           const d = legSize * 1.2;                       // the disc's diameter
-          const cx = x + d / 2, cy = y + legSize * 0.55;
+          // Centre the disc on the glyphs, not on the line box — a fixed
+          // fraction of the font size left it 5px low against the caps.
+          //
+          // measureText reports the glyph box relative to the CURRENT
+          // textBaseline, which is the trap here: with 'top' set,
+          // actualBoundingBoxAscent comes back NEGATIVE (-3 at 40px), because
+          // the glyphs start below the top line rather than above the
+          // alphabetic one. Read as an ascent it moves the disc the wrong way
+          // and by the wrong amount. Pin the baseline first, then the glyph
+          // band is simply -ascent to +descent from y.
+          c.textBaseline = 'top';
+          c.font = '600 ' + legSize + 'px Poppins, sans-serif';
+          const tm = c.measureText(item.label);
+          const gTop = tm.actualBoundingBoxAscent != null ? -tm.actualBoundingBoxAscent : legSize * 0.08;
+          const gBot = tm.actualBoundingBoxDescent != null ? tm.actualBoundingBoxDescent : legSize * 0.78;
+          const cx = x + d / 2, cy = y + (gTop + gBot) / 2;
           if (item.mark) {
             // Clipped to a circle, because the page renders these marks with
             // border-radius:50% and several of the source files are squares —
@@ -2147,10 +2183,10 @@
             c.beginPath(); c.arc(cx, cy, legSize * 0.5, 0, Math.PI * 2); c.fill();
           }
           c.textBaseline = 'top';
-          c.fillStyle = titled ? '#000000' : '#191717';
+          c.fillStyle = hasHeader ? '#000000' : '#191717';
           c.font = '600 ' + legSize + 'px Poppins, sans-serif';
           c.fillText(item.label, x + legSize * 1.7, y);
-          const lw = c.measureText(item.label).width;
+          const lw = tm.width;
           c.fillStyle = '#70747A';
           c.font = '400 ' + legSize + 'px Poppins, sans-serif';
           c.fillText(item.value, x + legSize * 1.7 + lw + legSize * 0.7, y);
@@ -2342,7 +2378,7 @@
       const dotBoxes  = [...document.querySelectorAll('input[data-png-dots]')];
       try {
         const sv = localStorage.getItem(PNG_KEY);
-        if (sv === 'bare' || sv === 'titled') S.pngStyle = sv;
+        if (PNG_STYLES.indexOf(sv) >= 0) S.pngStyle = sv;
         const dv = localStorage.getItem(DOTS_KEY);
         if (dv !== null) S.exportDots = dv === '1';
       } catch (e) {}
@@ -2352,7 +2388,7 @@
       };
       syncExportControls();
       styleSels.forEach(el => el.addEventListener('change', () => {
-        S.pngStyle = el.value === 'titled' ? 'titled' : 'bare';
+        S.pngStyle = PNG_STYLES.indexOf(el.value) >= 0 ? el.value : 'bare';
         try { localStorage.setItem(PNG_KEY, S.pngStyle); } catch (e) {}
         syncExportControls();
       }));
@@ -2362,6 +2398,21 @@
         syncExportControls();
       }));
       document.getElementById('tvlPng').addEventListener('click', () => downloadPlot('tvlPlot', 'tvl'));
+
+      // The line as plotted, point for point. A picture of a chart cannot be
+      // checked or re-drawn; this can. Both measures ship in every row, so the
+      // file answers the USD and the units view regardless of which one was on
+      // screen when it was downloaded — and `plotted` says which that was.
+      document.getElementById('tvlCsv').addEventListener('click', () => {
+        const pts = tvlSeries(S.tvlVault, S.tvlRange).filter(p => !p.pad);
+        const unit = S.tvlUnit === 'usd' ? 'usd' : (S.tvlUnit === 'units' ? 'units' : S.tvlUnit);
+        const scope = S.tvlVault === '__all__' ? 'all-stock-vaults' : S.tvlVault;
+        downloadCsv('fusion-stocks-tvl-' + scope + '-' + S.tvlRange + 'd',
+          [['date_utc', 'unix', 'tvl_usd', 'units', 'plotted_value', 'plotted_unit']].concat(
+            pts.map(p => [new Date(p.ts * 1000).toISOString(), p.ts,
+                          p.tvl == null ? '' : p.tvl, p.units == null ? '' : p.units,
+                          S.tvlUnit === 'usd' ? p.tvl : p.units, unit])));
+      });
       document.getElementById('walPng').addEventListener('click', () => downloadPlot('walPlot', 'wallets'));
       document.getElementById('flowPng').addEventListener('click', () => downloadPlot('flowPlot', 'activity'));
       document.getElementById('retPng').addEventListener('click', () => downloadPlot('retPlot', 'returns'));
