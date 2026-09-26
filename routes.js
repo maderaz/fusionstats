@@ -204,8 +204,147 @@
       return { list, unattributed, total: list.reduce((a, b) => a + b.usd, 0) + unattributed };
     }
 
+    // Each owner's deposits, split by the route they came through, as
+    // fractions. What an exit is charged against.
+    function ownerMix(deposits) {
+      const by = {};
+      deposits.forEach(e => {
+        if (e.type !== 'deposit') return;
+        const w = lc(e.owner); if (!w) return;
+        const r = depositRoute(e);
+        const m = by[w] || (by[w] = { usd: {}, n: {} });
+        m.usd[r] = (m.usd[r] || 0) + (e.usdValue || 0);
+        m.n[r] = (m.n[r] || 0) + 1;
+      });
+      const out = {};
+      Object.entries(by).forEach(([w, m]) => {
+        // Weighted by value; by count only if every deposit was unpriced.
+        const src = Object.values(m.usd).some(v => v > 0) ? m.usd : m.n;
+        const tot = Object.values(src).reduce((a, b) => a + b, 0);
+        out[w] = {};
+        Object.entries(src).forEach(([r, v]) => { out[w][r] = v / tot; });
+      });
+      return out;
+    }
+
+    // Whose money an exit is. The owner's own deposit history first. Failing
+    // that, a protocol contract acting as itself: Zyfi's adapter deposits FOR
+    // users but withdraws AS itself, after pulling their shares, so its exits
+    // carry an owner with no deposit here at all. Filing those as
+    // unattributed split Zyfi's rebalancing in two — every dollar in on the
+    // Zyfi row, every dollar out somewhere else — and overstated Zyfi's net by
+    // $850K over thirty days on the Base USDC Lending Optimizer. The same test
+    // the deposit side uses: when the owner, or the contract that pushed the
+    // exit, is a known protocol, that protocol is the route.
+    function exitMix(mix, owner, sender) {
+      if (mix[owner]) return mix[owner];
+      const byOwner = knownProtocol(owner);
+      if (byOwner) return { [PROTO + byOwner.protocol]: 1 };
+      const bySender = sender && sender !== owner ? knownProtocol(sender) : null;
+      if (bySender) return { [PROTO + bySender.protocol]: 1 };
+      return null;
+    }
+
+    // In, out and net per route.
+    //
+    // Gross in on its own badly misleads wherever a protocol rebalances:
+    // Harvest's strategy and Zyfi's adapter both deposit and withdraw in the
+    // same transaction, so their gross runs to many times what they actually
+    // add. Net is what answers "who brought money that stayed".
+    //
+    // Deposits count where they came in. Exits are charged to the route their
+    // OWNER came in through, split across that owner's deposit history — a
+    // wallet that entered through Zyfi and left directly is Zyfi money
+    // leaving, and charging the exit to Direct would overstate Zyfi and
+    // understate Direct by the same amount. `mixDeposits` is the history that
+    // split is read from, and is usually wider than the window: an exit this
+    // week can belong to a deposit made in August. An owner with no deposit on
+    // record who is not a protocol either received shares by transfer; their
+    // exits are unattributed.
+    function flows(opts) {
+      const deposits = opts.deposits || [], withdrawals = opts.withdrawals || [];
+      const history = opts.mixDeposits || deposits;
+      const mix = ownerMix(history);
+      // Custody is a property of the route, not of the window: read it from the
+      // whole history so a route with only exits on screen still reports it.
+      const custodial = new Set(totals(history).filter(t => t.selfOwned).map(t => t.route));
+      const rows = {};
+      const row = (route) => rows[route] || (rows[route] = {
+        route, in: 0, out: 0, n: 0, exits: 0, wallets: 0, contracts: 0, selfOwned: custodial.has(route) });
+      totals(deposits).forEach(t => {
+        Object.assign(row(t.route), { in: t.usd, n: t.n, wallets: t.wallets, contracts: t.contracts });
+      });
+      let unattributedOut = 0;
+      withdrawals.forEach(e => {
+        if (e.type === 'deposit') return;
+        const usd = e.usdValue || 0;
+        const m = exitMix(mix, lc(e.owner), lc(e.sender));
+        if (!m) { unattributedOut += usd; return; }
+        Object.entries(m).forEach(([route, f]) => { const r = row(route); r.out += usd * f; r.exits += f; });
+      });
+      const list = Object.values(rows).map(r => ({ ...r, net: r.in - r.out }))
+        .sort((a, b) => b.net - a.net);
+      const tin = list.reduce((a, r) => a + r.in, 0);
+      const tout = list.reduce((a, r) => a + r.out, 0) + unattributedOut;
+      return { list, unattributedOut, in: tin, out: tout, net: tin - tout };
+    }
+
+    // The same net, per time bucket, for a chart of who drove each wave.
+    // `bucketOf(ts)` returns the bucket's start; routes come back ordered by
+    // their total net so the stack reads the same way as the table.
+    function netSeries(opts) {
+      const mix = ownerMix(opts.mixDeposits || opts.deposits || []);
+      const cells = {}, buckets = new Set(), routeNet = {};
+      const add = (b, route, v) => {
+        buckets.add(b);
+        const k = route + '|' + b;
+        cells[k] = (cells[k] || 0) + v;
+        routeNet[route] = (routeNet[route] || 0) + v;
+      };
+      (opts.deposits || []).forEach(e => {
+        if (e.type !== 'deposit' || !e.timestamp) return;
+        add(opts.bucketOf(e.timestamp), depositRoute(e), e.usdValue || 0);
+      });
+      (opts.withdrawals || []).forEach(e => {
+        if (e.type === 'deposit' || !e.timestamp) return;
+        const b = opts.bucketOf(e.timestamp), usd = e.usdValue || 0, m = exitMix(mix, lc(e.owner), lc(e.sender));
+        if (!m) { add(b, '__unattributed__', -usd); return; }
+        Object.entries(m).forEach(([route, f]) => add(b, route, -usd * f));
+      });
+      const bs = [...buckets].sort((a, b) => a - b);
+      const routes = Object.keys(routeNet).sort((a, b) => routeNet[b] - routeNet[a]);
+      const net = {};
+      routes.forEach(r => { net[r] = bs.map(b => cells[r + '|' + b] || 0); });
+      return { buckets: bs, routes, net, routeNet };
+    }
+
+    // Owners ranked by what they added over the window, net of what they took
+    // out, with the route most of their deposits came through. A wave is often
+    // one wallet, and a route total cannot show that.
+    function topNet(opts) {
+      const mix = ownerMix(opts.mixDeposits || opts.deposits || []);
+      const by = {};
+      const acc = (w) => by[w] || (by[w] = { wallet: w, in: 0, out: 0, n: 0 });
+      (opts.deposits || []).forEach(e => {
+        if (e.type !== 'deposit') return;
+        const w = lc(e.owner); if (!w) return;
+        const a = acc(w); a.in += e.usdValue || 0; a.n++;
+      });
+      (opts.withdrawals || []).forEach(e => {
+        if (e.type === 'deposit') return;
+        const w = lc(e.owner); if (!w) return;
+        acc(w).out += e.usdValue || 0;
+      });
+      return Object.values(by).map(a => {
+        const m = exitMix(mix, a.wallet, null) || {};
+        const route = Object.keys(m).sort((x, y) => m[y] - m[x])[0] || null;
+        return { ...a, net: a.in - a.out, route };
+      }).sort((a, b) => b.net - a.net).slice(0, opts.limit || 5);
+    }
+
     return { DIRECT, PROTO, identity, coverage, knownProtocol, smartAccount,
-             depositContract, depositRoute, routeInfo, totals, originOfValue };
+             depositContract, depositRoute, routeInfo, totals, originOfValue,
+             ownerMix, flows, netSeries, topNet };
   }
 
   window.FusionRoutes = { create, DIRECT, PROTO, DISPLAY_NAME, displayName, shortAddr };
