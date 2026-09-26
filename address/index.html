@@ -103,6 +103,53 @@
     .tvl-chart-export:hover { opacity: 0.85; }
     #tvlChart { width: 100%; height: 380px; }
 
+    /* Where deposits come from. Route colours are fixed per ROUTE, never per
+       rank, so tightening the window from All to 7D never repaints a route.
+       Categorical slots and their dark steps come from the validated reference
+       palette; "Other" is the de-emphasis role and is grey on purpose. Stack
+       order puts Other beside Direct, the one route every vault has — beside
+       Direct Zap's magenta it failed colour-blind separation (ΔE 2.8). */
+    .routes-card {
+      --rt-other: #9BA3AF; --rt-direct: #2a78d6; --rt-harvest: #eb6834; --rt-zyfi: #1baf7a;
+      --rt-portals: #eda100; --rt-zap: #e87ba4; --rt-account: #008300; --rt-proto: #4a3aa7;
+      --rt-grid: #EEEEF2; --rt-zero: #C9C9D2;
+    }
+    [data-theme="dark"] .routes-card {
+      --rt-other: #6A6A80; --rt-direct: #3987e5; --rt-harvest: #d95926; --rt-zyfi: #199e70;
+      --rt-portals: #c98500; --rt-zap: #d55181; --rt-account: #008300; --rt-proto: #9085e9;
+      --rt-grid: #23232F; --rt-zero: #3A3A4A;
+    }
+    .routes-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0.35rem 0 0.9rem; }
+    .routes-chip { border: 1px solid var(--stroke); border-radius: 10px; padding: 0.6rem 0.8rem; min-width: 0; }
+    .routes-chip .k { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
+    .routes-chip .v { font-size: 1.05rem; font-weight: 600; margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .routes-chip .s { font-size: 0.68rem; color: var(--text-body); margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #routesChart { width: 100%; height: 300px; }
+    .routes-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; margin: 1.1rem 0 0.4rem; }
+    .routes-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+    .routes-table th { text-align: left; font-weight: 500; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--stroke); white-space: nowrap; }
+    .routes-table td { padding: 0.5rem; border-bottom: 1px solid var(--stroke); vertical-align: middle; }
+    .routes-table tr:last-child td { border-bottom: none; }
+    .routes-table .num { text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .routes-table th.num { font-family: inherit; }
+    .routes-table tr.total td { font-weight: 600; border-top: 1px solid var(--stroke); }
+    .routes-table .pos { color: var(--green); } .routes-table .neg { color: var(--red); }
+    .routes-table .muted { color: var(--text-secondary); font-size: 0.68rem; }
+    .routes-table a { color: var(--accent); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
+    .rt-name { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; white-space: nowrap; }
+    .rt-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+    .rt-sub { display: block; font-size: 0.62rem; color: var(--text-secondary); font-weight: 400; }
+    .rt-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; min-width: 2px; }
+    .routes-note { font-size: 0.7rem; line-height: 1.55; color: var(--text-body); margin-top: 0.9rem; }
+    .routes-note p + p { margin-top: 0.4rem; }
+    .routes-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* Wide tables scroll inside their card rather than squeeze: crushed, the
+       wallet addresses broke across two lines and Net fell off the edge. */
+    #routesTable .routes-table { min-width: 720px; }
+    #routesTop .routes-table { min-width: 520px; }
+    .routes-table a, .routes-table .num { white-space: nowrap; }
+    @media (max-width: 700px) { .routes-strip { grid-template-columns: 1fr; } }
+
     /* Breakdown panels */
     .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
     .panel { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; }
@@ -256,6 +303,7 @@
   <script defer src="/track.js"></script>
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script src="/nav.js"></script>
+  <script src="/routes.js"></script>
 </head>
 <body>
   <div class="container">
@@ -371,6 +419,25 @@
         </div>
         <div id="sharePriceChart"></div>
       </div>
+      <div id="routesCard" class="tvl-chart-card routes-card" style="display:none">
+        <div class="tvl-chart-toolbar">
+          <span class="tvl-chart-title">Where deposits come from</span>
+          <div class="tvl-chart-range-group" id="routesRange">
+            <button data-range="7" type="button">7D</button>
+            <button data-range="30" type="button" class="active">30D</button>
+            <button data-range="90" type="button">90D</button>
+            <button data-range="all" type="button">All</button>
+          </div>
+          <button id="routesCsv" class="tvl-chart-export" type="button">Download CSV</button>
+        </div>
+        <div class="routes-strip" id="routesStrip"></div>
+        <div id="routesChart"></div>
+        <div class="routes-sub">By route</div>
+        <div class="routes-scroll" id="routesTable"></div>
+        <div class="routes-sub">Largest net depositors</div>
+        <div class="routes-scroll" id="routesTop"></div>
+        <div class="routes-note" id="routesNote"></div>
+      </div>
       <div class="panels" id="panels"></div>
       <div class="history-card" id="rebalanceCard" style="display:none"></div>
       <div class="history-card" id="historyCard"></div>
@@ -445,6 +512,13 @@
           window.iporAnchorTs = new Date(ipor.updatedAt || Date.now()).getTime() / 1000;
         }
       } catch {}
+
+      // Which contracts are which protocol — the input to "where deposits come
+      // from". Optional: without it every contract simply keeps its address.
+      try {
+        const ridRes = await fetch('../router-identity.json');
+        window.routerIdentity = ridRes.ok ? await ridRes.json() : {};
+      } catch { window.routerIdentity = {}; }
 
       // Load cross-chain deployment cache (produced by Gap-Fill Activity workflow).
       // Falls back to vaults.json factory data (Ethereum only, block-derived
@@ -657,6 +731,7 @@
       renderTvlChart(addr, vaultInfo, scoped);
       renderHoldersChart(addr, vaultInfo, scoped);
       renderSharePriceChart(addr, vaultInfo);
+      renderRoutes(addr, vaultInfo, scoped);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
       const panelsEl = document.getElementById('panels');
@@ -664,6 +739,368 @@
       renderHistory(scoped);
       renderRebalances(addr);
     }
+
+    // ---- Where deposits come from -----------------------------------------
+    // The route rules — what counts as Direct, Harvest, a zap, a smart account —
+    // live in /routes.js, shared with /stocks, so this page cannot drift from
+    // them. What is decided here is the reading: NET per route over a window.
+    //
+    // Gross in is the wrong headline wherever a protocol rebalances. Harvest's
+    // strategy and Zyfi's adapter both deposit and withdraw in the same
+    // transaction, so their gross runs to many times what they actually add —
+    // on the Base USDC Lending Optimizer, Harvest moved $20.9M to add $1.5M.
+    // Ranked by gross, the rebalancer always wins and the real inflow is
+    // invisible. Ranked by net, a single $840K direct deposit shows up as what
+    // it was: most of that week's wave.
+    let __routesR = null, __routesRange = '30', __routesCtx = null;
+    const ROUTES_DAY = 86400;
+    const ROUTE_SLOT = { 'Direct': 'direct', 'Harvest': 'harvest', 'Zyfi': 'zyfi', 'Portals': 'portals',
+                         'Direct Zap': 'zap', 'Smart account': 'account' };
+    // Stack order, bottom to top. Other goes first so it sits beside Direct.
+    const ROUTE_ORDER = ['other', 'direct', 'harvest', 'zyfi', 'portals', 'zap', 'account', 'proto'];
+    const escAttr = (t) => escapeHtml(t).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const routesInfo = (route) => route === '__unattributed__'
+      ? { protocol: 'Unattributed exits', kind: 'unattributed',
+          detail: 'shares received by transfer, never deposited here' }
+      : __routesR.routeInfo(route);
+    const routeSlot = (info) => (info.kind === 'unknown' || info.kind === 'unattributed')
+      ? 'other' : (ROUTE_SLOT[info.protocol] || 'proto');
+    const routeColor = (slot) => getComputedStyle(document.getElementById('routesCard'))
+      .getPropertyValue('--rt-' + slot).trim() || '#9BA3AF';
+    const cssTok = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+    function routesCutoff(range) {
+      return range === 'all' ? 0 : Math.floor(Date.now() / 1000) - Number(range) * ROUTES_DAY;
+    }
+    // Daily bars for the short windows, weekly (Monday-aligned) for the long
+    // ones — a wave is a few days wide, and 90 daily bars bury it.
+    function routesBucketOf(range) {
+      if (range === '7' || range === '30') return (ts) => Math.floor(ts / ROUTES_DAY) * ROUTES_DAY;
+      return (ts) => { const d = Math.floor(ts / ROUTES_DAY); return (d - ((d + 3) % 7)) * ROUTES_DAY; };
+    }
+
+    function renderRoutes(addr, vaultInfo, events) {
+      const card = document.getElementById('routesCard');
+      if (!vaultInfo || typeof FusionRoutes === 'undefined') { card.style.display = 'none'; __routesCtx = null; return; }
+      // Every event on the vault, including the ones flagged `synthetic`
+      // elsewhere on the site. That flag marks rebalancing legs as "not user
+      // activity", which is right for an activity feed and wrong here: the
+      // legs of a Zyfi rebalance do not cancel (+$185K in, -$214K out in one
+      // transaction), and dropping both overstated this vault's net by $718K
+      // against its on-chain share supply. Net has to reconcile to what is
+      // actually in the vault, so nothing is dropped.
+      const onVault = events.filter(e => (e.vault || '').toLowerCase() === addr && e.timestamp);
+      const deposits = onVault.filter(e => e.type === 'deposit');
+      if (!deposits.length) { card.style.display = 'none'; __routesCtx = null; return; }
+      if (!__routesR) {
+        __routesR = FusionRoutes.create({ identity: window.routerIdentity || {}, events: window.allEvents || [] });
+      }
+      __routesCtx = { addr, vaultInfo, deposits, withdrawals: onVault.filter(e => e.type !== 'deposit') };
+      card.style.display = '';
+      drawRoutes();
+    }
+
+    function drawRoutes() {
+      const c = __routesCtx; if (!c) return;
+      const R = __routesR, cut = routesCutoff(__routesRange);
+      const dep = c.deposits.filter(e => e.timestamp >= cut);
+      const wd = c.withdrawals.filter(e => e.timestamp >= cut);
+      // The owner mix that exits are charged against is read from the whole
+      // history: a withdrawal this week can belong to a deposit in August.
+      const args = { deposits: dep, withdrawals: wd, mixDeposits: c.deposits };
+      const F = R.flows(args);
+      const T = R.topNet({ ...args, limit: 5 }).filter(t => t.net > 0);
+      const S = R.netSeries({ ...args, bucketOf: routesBucketOf(__routesRange) });
+      // Protocols that move money AS themselves: withdrawing under their own
+      // address with no deposit of their own here (Zyfi's adapter). With the
+      // custodial ones (Harvest's strategy), these are the rebalancers — the
+      // routes whose gross is churn rather than inflow.
+      const depOwners = new Set(c.deposits.map(e => (e.owner || '').toLowerCase()));
+      const pulling = new Set();
+      wd.forEach(e => {
+        const o = (e.owner || '').toLowerCase(), id = R.knownProtocol(o);
+        if (id && !depOwners.has(o)) pulling.add(id.protocol);
+      });
+      const rebalances = (r) => { const i = routesInfo(r.route);
+        return i.kind === 'protocol' && (r.selfOwned || pulling.has(i.rawProtocol)); };
+      c.last = { F, T, dep, wd, pulling, rebalances };
+      renderRoutesStrip(F, T);
+      renderRoutesChart(S);
+      renderRoutesTable(F);
+      renderRoutesTop(T);
+      renderRoutesNote(F, c, dep, wd);
+    }
+
+    const RANGE_WORD = { '7': 'last 7 days', '30': 'last 30 days', '90': 'last 90 days', all: 'all time' };
+
+    function renderRoutesStrip(F, T) {
+      const win = RANGE_WORD[__routesRange];
+      const gains = F.list.filter(r => r.net > 0);
+      const added = gains.reduce((a, r) => a + r.net, 0);
+      const lead = gains[0];
+      const leadInfo = lead && routesInfo(lead.route);
+      const top = T[0];
+      const chip = (k, v, sub) => '<div class="routes-chip"><div class="k">' + k + '</div>'
+        + '<div class="v">' + v + '</div><div class="s">' + sub + '</div></div>';
+      document.getElementById('routesStrip').innerHTML =
+        chip('Net in · ' + win, fmtUsd(F.net),
+             fmtUsdPlain(F.in) + ' in · ' + fmtUsdPlain(F.out) + ' out')
+        + (lead
+            ? chip('Most added by', escapeHtml(leadInfo.protocol) + ' · ' + Math.round(lead.net / added * 100) + '%',
+                   fmtUsd(lead.net) + ' of ' + fmtUsd(added) + ' added by routes that grew')
+            : chip('Most added by', '—', 'no route added money in this window'))
+        + (top
+            ? chip('Largest single depositor',
+                   (__routesR.knownProtocol(top.wallet)
+                     ? escapeHtml(__routesR.knownProtocol(top.wallet).protocol) + ' contract'
+                     : shortAddr(top.wallet)) + ' · ' + fmtUsd(top.net),
+                   'came in via ' + escapeHtml(routesInfo(top.route || FusionRoutes.DIRECT).protocol)
+                   + ' · ' + top.n + ' deposit' + (top.n === 1 ? '' : 's'))
+            : chip('Largest single depositor', '—', 'no wallet added money in this window'));
+    }
+
+    function renderRoutesChart(S) {
+      const el = document.getElementById('routesChart');
+      if (!S.buckets.length || typeof Plotly === 'undefined') {
+        if (typeof Plotly !== 'undefined') Plotly.purge(el);
+        el.innerHTML = '<div class="routes-empty" style="padding:2rem 0;text-align:center;font-size:0.75rem;'
+          + 'color:var(--text-secondary)">No deposits or exits in this window.</div>';
+        return;
+      }
+      // Remove only our own placeholder. Wiping the element's children would
+      // take Plotly's nodes with them while its internal state survived, so
+      // the next react() would see "no change" and paint an empty box.
+      const empty = el.querySelector('.routes-empty'); if (empty) empty.remove();
+      // The chart carries identity by colour slot, so the long tail folds into
+      // Other; the table below keeps every route on its own row.
+      const bySlot = {};
+      S.routes.forEach(route => {
+        const info = routesInfo(route), slot = routeSlot(info);
+        const b = bySlot[slot] || (bySlot[slot] = { names: new Set(), y: S.buckets.map(() => 0) });
+        b.names.add(info.protocol);
+        S.net[route].forEach((v, i) => { b.y[i] += v; });
+      });
+      const x = S.buckets.map(ts => new Date(ts * 1000));
+      const surface = cssTok('--surface') || '#FFFFFF';
+      // The stack is ordered for colour adjacency; the legend is ordered for
+      // reading — largest net first, Other always last.
+      const weight = (sl) => sl === 'other' ? -Infinity : Math.abs(bySlot[sl].y.reduce((a, v) => a + v, 0));
+      const legendOrder = Object.keys(bySlot).sort((a, b) => weight(b) - weight(a));
+      const traces = ROUTE_ORDER.filter(sl => bySlot[sl]).map(sl => {
+        const b = bySlot[sl];
+        const name = sl === 'other' ? 'Other'
+          : (sl === 'proto' && b.names.size > 1) ? 'Other protocols' : [...b.names][0];
+        return { type: 'bar', name, x, y: b.y, legendrank: 1 + legendOrder.indexOf(sl),
+                 // A 2px ring in the surface colour is the gap between stacked
+                 // segments; nothing is drawn around them.
+                 marker: { color: routeColor(sl), line: { color: surface, width: 2 } },
+                 hovertemplate: '%{y:$,.0f}<extra>' + name + '</extra>' };
+      });
+      // Bars no wider than 24px — the rest of each slot is air.
+      const w = el.clientWidth || 900;
+      const slotPx = Math.max(1, (w - 70) / S.buckets.length);
+      const bargap = Math.min(0.85, Math.max(0.12, 1 - 24 / slotPx));
+      const weekly = !(__routesRange === '7' || __routesRange === '30');
+      Plotly.react(el, traces, {
+        barmode: 'relative', bargap, barcornerradius: 4,
+        margin: { l: 58, r: 10, t: 30, b: 30 },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Poppins, sans-serif', size: 11, color: cssTok('--text-body') || '#70747A' },
+        hovermode: 'x unified',
+        hoverlabel: { bgcolor: surface, bordercolor: cssTok('--stroke') || '#E5E5E5',
+                      font: { color: cssTok('--text') || '#000', size: 11 } },
+        showlegend: true,
+        legend: { orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', font: { size: 11 }, traceorder: 'normal' },
+        xaxis: { type: 'date', showgrid: false, tickfont: { size: 10 },
+                 hoverformat: weekly ? 'Week of %b %d' : '%b %d, %Y' },
+        yaxis: { tickformat: '$~s', gridcolor: routeColor('grid'), gridwidth: 1,
+                 zeroline: true, zerolinecolor: routeColor('zero'), zerolinewidth: 1, tickfont: { size: 10 } },
+      }, { displayModeBar: false, responsive: true });
+    }
+
+    // How each name was arrived at, in words. The evidence differs in strength
+    // and the table says which kind it is rather than presenting them as equal.
+    function routeEvidence(info) {
+      if (info.kind === 'direct') return 'wallet deposited for itself';
+      if (info.kind === 'unattributed') return info.detail;
+      if (info.kind === 'account') return info.detail;
+      if (info.kind === 'protocol') {
+        if (info.via === 'deployer') return info.detail + ' (Basescan attribution)';
+        return 'verified source' + (info.detail ? ' · ' + info.detail : '');
+      }
+      return info.detail || 'not yet checked';
+    }
+
+    function renderRoutesTable(F) {
+      const rows = F.list.filter(r => Math.abs(r.in) + Math.abs(r.out) > 0.005);
+      if (F.unattributedOut > 0.005) {
+        rows.push({ route: '__unattributed__', in: 0, out: F.unattributedOut, net: -F.unattributedOut,
+                    n: 0, wallets: 0, selfOwned: false });
+      }
+      rows.sort((a, b) => b.net - a.net);
+      const maxAbs = Math.max(1, ...rows.map(r => Math.abs(r.net)));
+      const body = rows.map(r => {
+        const info = routesInfo(r.route), slot = routeSlot(info);
+        const isAddr = info.kind === 'unknown';
+        const name = isAddr
+          ? '<a href="https://basescan.org/address/' + escAttr(r.route) + '" target="_blank" rel="noopener">'
+            + escapeHtml(info.protocol) + '</a>'
+          : escapeHtml(info.protocol);
+        // The churn is the story on a rebalancing route, so say it on the row.
+        // Only on a rebalancer: a zap whose users later left directly also has
+        // gross far above net, but that is people leaving, not churn.
+        const churn = __routesCtx.last.rebalances(r) && r.in > 0 && r.net > 0 && r.in / r.net >= 4
+          ? '<span class="rt-sub">moved ' + fmtUsdPlain(r.in) + ' to add ' + fmtUsd(r.net) + '</span>' : '';
+        const wallets = r.selfOwned
+          ? r.wallets + ' <span class="muted" title="Holds the position under its own address — its depositors are real but not visible here">'
+            + 'contract' + (r.wallets === 1 ? '' : 's') + '</span>'
+          : (r.wallets || '—');
+        const netCls = r.net > 0.5 ? 'pos' : r.net < -0.5 ? 'neg' : '';
+        const barW = Math.max(2, Math.round(Math.abs(r.net) / maxAbs * 70));
+        return '<tr>'
+          + '<td><span class="rt-name"><span class="rt-dot" style="background:' + routeColor(slot) + '"></span>'
+          + '<span>' + name + churn + '</span></span></td>'
+          + '<td class="muted" title="' + escAttr(info.reason || '') + '">' + escapeHtml(routeEvidence(info)) + '</td>'
+          + '<td class="num">' + (r.n || '—') + '</td>'
+          + '<td class="num">' + wallets + '</td>'
+          + '<td class="num">' + (r.in > 0.005 ? fmtUsdPlain(r.in) : '—') + '</td>'
+          + '<td class="num">' + (r.out > 0.005 ? fmtUsdPlain(r.out) : '—') + '</td>'
+          + '<td class="num ' + netCls + '">' + fmtUsd(r.net) + '</td>'
+          + '<td style="width:78px"><span class="rt-bar" style="width:' + barW + 'px;background:'
+          + (r.net >= 0 ? 'var(--green)' : 'var(--red)') + ';opacity:0.55"></span></td>'
+          + '</tr>';
+      }).join('');
+      document.getElementById('routesTable').innerHTML =
+        '<table class="routes-table"><thead><tr><th>Route</th><th>How it was identified</th>'
+        + '<th class="num">Deposits</th><th class="num">Wallets</th><th class="num">Gross in</th>'
+        + '<th class="num">Gross out</th><th class="num">Net</th><th></th></tr></thead><tbody>'
+        + body
+        + '<tr class="total"><td>Total</td><td></td><td class="num">'
+        + rows.reduce((a, r) => a + (r.n || 0), 0) + '</td><td></td>'
+        + '<td class="num">' + fmtUsdPlain(F.in) + '</td><td class="num">' + fmtUsdPlain(F.out) + '</td>'
+        + '<td class="num ' + (F.net >= 0 ? 'pos' : 'neg') + '">' + fmtUsd(F.net) + '</td><td></td></tr>'
+        + '</tbody></table>';
+    }
+
+    // A wave is often one wallet, and a route total cannot show that.
+    function renderRoutesTop(T) {
+      const el = document.getElementById('routesTop');
+      // Some protocols pull their users' shares and redeem them AS themselves
+      // (Zyfi's adapter does). Share transfers are not in the events, so a
+      // user of such a protocol shows their deposits here but not the exits
+      // made from their shares — their figure is measured before the pull,
+      // and the route row above is the reliable total. Named when it applies.
+      const pulling = __routesCtx.last.pulling;
+      if (!T.length) {
+        el.innerHTML = '<div class="muted" style="font-size:0.72rem;color:var(--text-secondary)">'
+          + 'No wallet added money on net in this window.</div>';
+        return;
+      }
+      el.innerHTML = '<table class="routes-table"><thead><tr><th>Wallet</th><th>Came in via</th>'
+        + '<th class="num">Deposits</th><th class="num">In</th><th class="num">Out</th><th class="num">Net</th>'
+        + '</tr></thead><tbody>'
+        + T.map(t => {
+            const info = routesInfo(t.route || FusionRoutes.DIRECT);
+            return '<tr><td><a href="?a=' + escAttr(t.wallet) + '" title="' + escAttr(t.wallet) + '">'
+              + shortAddr(t.wallet) + '</a></td>'
+              + '<td><span class="rt-name" style="font-weight:500"><span class="rt-dot" style="background:'
+              + routeColor(routeSlot(info)) + '"></span>' + escapeHtml(info.protocol) + '</span></td>'
+              + '<td class="num">' + t.n + '</td>'
+              + '<td class="num">' + fmtUsdPlain(t.in) + '</td>'
+              + '<td class="num">' + (t.out > 0.005 ? fmtUsdPlain(t.out) : '—') + '</td>'
+              + '<td class="num pos">' + fmtUsd(t.net) + (info.rawProtocol && pulling.has(info.rawProtocol) ? ' *' : '')
+              + '</td></tr>';
+          }).join('')
+        + '</tbody></table>'
+        + (T.some(t => { const i = routesInfo(t.route || FusionRoutes.DIRECT); return i.rawProtocol && pulling.has(i.rawProtocol); })
+            ? '<div class="routes-note" style="margin-top:0.5rem"><p>* ' + [...pulling].map(escapeHtml).join(', ')
+              + ' withdraws from its users\' positions under its own address, after moving their shares to itself. '
+              + 'Those moves are not in the events, so these figures are measured before them and can overstate what '
+              + 'the wallet still holds — the route total above already nets them out.</p></div>'
+            : '');
+    }
+
+    function renderRoutesNote(F, c, dep, wd) {
+      const R = __routesR, parts = [];
+      // 1. Why net, with this window's own churners named.
+      const churners = F.list.filter(r => c.last.rebalances(r) && r.in > 0 && r.net > 0 && r.in / r.net >= 4)
+        .map(r => escapeHtml(routesInfo(r.route).protocol) + ' moved ' + fmtUsdPlain(r.in) + ' to add ' + fmtUsd(r.net));
+      parts.push('<strong>Ranked by net</strong> — what came in through a route minus what went back out. '
+        + (churners.length
+            ? 'Gross in is misleading here: ' + churners.join('; ') + '. Rebalancers deposit and withdraw in the same '
+              + 'transaction, so their gross runs far ahead of what they actually bring.'
+            : 'Gross in is shown for context; on a route that rebalances it runs far ahead of what the route adds.'));
+      // 2. How exits are charged.
+      parts.push('An exit is charged to the route its <em>owner came in through</em>, split across that owner\'s '
+        + 'deposit history — a wallet that entered through Zyfi and left directly is Zyfi money leaving. '
+        + (F.unattributedOut > 0.005
+            ? fmtUsdPlain(F.unattributedOut) + ' left from holders with no deposit on record here; they received '
+              + 'shares by transfer, so that exit cannot be traced to a route and is shown on its own.'
+            : ''));
+      // 3. The events the rest of the site sets aside, and what that would cost.
+      const syn = dep.concat(wd).filter(e => e.synthetic);
+      if (syn.length) {
+        const synNet = syn.reduce((a, e) => a + (e.type === 'deposit' ? 1 : -1) * (e.usdValue || 0), 0);
+        parts.push(syn.length + ' of these events are flagged elsewhere on the site as rebalancing rather than '
+          + 'user activity. They are counted here: their legs do not cancel, and leaving them out would '
+          + (synNet < 0 ? 'add ' + fmtUsdPlain(-synNet) + ' of net inflow that is not in the vault.'
+                        : 'remove ' + fmtUsdPlain(synNet) + ' of net inflow that is.'));
+      }
+      // 4. What was looked for and is not here.
+      const looked = ['Portals', 'Zyfi', 'Harvest', 'Spectra', 'Enso', 'Odos', '1inch', 'ParaSwap', 'LI.FI', 'Pendle'];
+      const found = new Set(F.list.map(r => routesInfo(r.route)).filter(i => i.kind === 'protocol').map(i => i.rawProtocol));
+      const absent = looked.filter(x => !found.has(x));
+      if (absent.length) parts.push('Searched for and not found in this window: ' + absent.join(', ') + '.');
+      // 5. How far identification reached, computed rather than claimed.
+      const seen = new Set();
+      c.deposits.forEach(e => {
+        const s = (e.sender || '').toLowerCase(), o = (e.owner || '').toLowerCase();
+        if (s) seen.add(s);
+        if (o && o === s) seen.add(o);
+      });
+      const checked = [...seen].filter(a => R.identity[a]).length;
+      const chain = (c.vaultInfo.chain || '').toLowerCase();
+      parts.push(chain && chain !== 'base'
+        ? 'Contracts are identified from Basescan, and this vault is on ' + escapeHtml(chain) + ' — its depositors have '
+          + 'not been checked, so a protocol that deposits under its own address is counted as Direct here.'
+        : checked + ' of ' + seen.size + ' addresses that have deposited here have been checked against Basescan'
+          + (checked < seen.size ? '; the rest count as Direct until they are.' : '.'));
+      document.getElementById('routesNote').innerHTML = parts.map(t => '<p>' + t + '</p>').join('');
+    }
+
+    function downloadRoutesCsv() {
+      const c = __routesCtx; if (!c || !c.last) return;
+      const q = (v) => { const t = String(v == null ? '' : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+      const rows = [['route', 'identified_by', 'deposits', 'wallets', 'custodial', 'gross_in_usd', 'gross_out_usd', 'net_usd']];
+      c.last.F.list.forEach(r => {
+        const info = routesInfo(r.route);
+        rows.push([info.protocol, routeEvidence(info), r.n, r.wallets, r.selfOwned ? 'yes' : 'no',
+                   r.in.toFixed(2), r.out.toFixed(2), r.net.toFixed(2)]);
+      });
+      if (c.last.F.unattributedOut > 0.005) {
+        rows.push(['Unattributed exits', 'shares received by transfer', 0, 0, 'no', '0.00',
+                   c.last.F.unattributedOut.toFixed(2), (-c.last.F.unattributedOut).toFixed(2)]);
+      }
+      const slug = (c.vaultInfo.name || c.addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const blob = new Blob([rows.map(r => r.map(q).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = slug + '-routes-' + __routesRange + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    document.getElementById('routesRange').addEventListener('click', function (ev) {
+      const b = ev.target.closest('button[data-range]'); if (!b) return;
+      __routesRange = b.getAttribute('data-range');
+      this.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      drawRoutes();
+    });
+    document.getElementById('routesCsv').addEventListener('click', downloadRoutesCsv);
+    // Colours are theme tokens resolved to hex for Plotly, so a theme switch
+    // has to redraw — otherwise the bars keep the old theme's steps.
+    new MutationObserver(() => { if (__routesCtx) drawRoutes(); })
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
     // Per-vault TVL bar chart (Plotly, rounded corners). Anchored on the right
     // edge to vaultInfo.tvl at the ipor-vaults.json snapshot time, walked

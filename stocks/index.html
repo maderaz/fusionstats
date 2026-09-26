@@ -489,6 +489,7 @@
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script defer src="/track.js"></script>
   <script src="/nav.js"></script>
+  <script src="/routes.js"></script>
   <script>
   (function () {
     const DAY_MS = 86400000, DAY_SEC = 86400;
@@ -958,129 +959,18 @@
        do. Where a figure rests on an assumption, the assumption is stated in
        the UI rather than buried here. */
 
-    // Where a deposit came from. Two shapes, and only one of them is obvious.
-    //
-    //   sender != owner   A contract pushed the deposit on someone else's
-    //                     behalf — a zap, an aggregator, a referral wrapper.
-    //                     The sender is the route.
-    //   sender == owner   Usually a wallet depositing for itself. But it is
-    //                     also what an autocompounder looks like: Harvest's
-    //                     strategy holds the Fusion position on behalf of
-    //                     Harvest's own depositors, and deposits under its own
-    //                     address. Reading only the first shape filed the
-    //                     single largest source of stock-vault deposits under
-    //                     "Direct" — four Harvest strategies, 165 deposits.
-    //                     So when the owner is itself a known protocol
-    //                     contract, that protocol is the route.
-    //
-    // Names only where a name is established; everything else keeps its
-    // address, because "Other" hides exactly the thing worth finding out.
-    // Filled from router-identity.json, produced by tools/identify-routers.js.
-    // Each entry records HOW it was named, and the page keeps the two apart:
-    //   via 'source'    the protocol's fingerprints are in the contract's own
-    //                   verified source — its words about itself;
-    //   via 'deployer'  the contract is a bare proxy that says nothing, and the
-    //                   name comes from Basescan's attribution of who deployed
-    //                   it. Good evidence, but not the contract's own.
-    let ROUTER_ID = {};
-    let COVERAGE = {};   // what the identification sweep reached; see _meta in router-identity.json
-    const DIRECT = 'direct';
-    const knownProtocol = (addr) => {
-      const id = ROUTER_ID[addr];
-      return id && id.protocol ? id : null;
-    };
-
-    // IPOR is not a route into Fusion — IPOR *is* Fusion. Its ReferralPlasmaVault
-    // and zap contracts are the app's own deposit path, so listing them beside
-    // Harvest and Portals reads as a third party when it is the front door.
-    const DISPLAY_NAME = { IPOR: 'Direct Zap' };
-    const displayName = (p) => DISPLAY_NAME[p] || p;
-
-    // Which owners each depositing contract has ever deposited for. Built once
-    // from the events, because it is what tells a personal smart account apart
-    // from a protocol router: an account deposits only for itself and for the
-    // address that deployed it.
-    let CONTRACT_OWNERS = {};
-    function buildContractOwners() {
-      CONTRACT_OWNERS = {};
-      S.events.forEach(e => {
-        if (e.type !== 'deposit') return;
-        const sender = (e.sender || '').toLowerCase(), owner = (e.owner || '').toLowerCase();
-        if (!sender || !owner) return;
-        (CONTRACT_OWNERS[sender] = CONTRACT_OWNERS[sender] || new Set()).add(owner);
-      });
-    }
-    // An unverified contract whose deployer is one of the addresses it deposits
-    // for is that person's own wallet contract, not a route anyone else can
-    // take. Saying so is worth more than showing them eight hex characters.
-    function smartAccount(addr) {
-      const id = ROUTER_ID[addr];
-      if (!id || id.protocol || !id.creatorAddress) return null;
-      const owners = CONTRACT_OWNERS[addr];
-      if (!owners || !owners.has(id.creatorAddress)) return null;
-      return { owner: id.creatorAddress, interactsWith: id.interactsWith || [] };
-    }
-    // The contract a deposit came through, or DIRECT.
-    function depositContract(e) {
-      const sender = (e.sender || '').toLowerCase();
-      const owner = (e.owner || '').toLowerCase();
-      if (!sender || !owner) return DIRECT;
-      if (sender !== owner) return sender;
-      return knownProtocol(owner) ? owner : DIRECT;
-    }
-
-    // …and the row it belongs on. A protocol usually runs more than one
-    // contract: Harvest deploys one strategy per ticker, so attributing by
-    // contract put four rows reading "Harvest" next to each other, identical
-    // and unrankable. The question this section asks is which PROTOCOL people
-    // came through, so named contracts collapse onto their protocol and
-    // unidentified ones stay separate — merging those would be inventing a
-    // relationship we have no evidence for.
-    const PROTO = 'p:';
-    function depositRoute(e) {
-      const c = depositContract(e);
-      if (c === DIRECT) return DIRECT;
-      const id = knownProtocol(c);
-      return id ? PROTO + id.protocol : c;
-    }
-    function routeInfo(route) {
-      if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true, kind: 'direct' };
-      if (route.startsWith(PROTO)) {
-        const name = route.slice(PROTO.length);
-        // Every checked contract carrying this name, so the row can say how
-        // many there are and how each of them was established.
-        const mine = Object.values(ROUTER_ID).filter(v => v && v.protocol === name);
-        const via = mine.every(v => v.via === 'source') ? 'source'
-                  : mine.every(v => v.via === 'deployer') ? 'deployer' : 'mixed';
-        return { protocol: displayName(name), rawProtocol: name, named: true, kind: 'protocol', via,
-                 // The detail column describes a single contract. When a row
-                 // stands for several, the row itself says how many it saw —
-                 // a count taken from this range, not from the whole file.
-                 detail: via === 'deployer' ? 'proxy, deployed by ' + name
-                                            : (mine[0] && (mine[0].contractNames || [])[0]) || '',
-                 reason: (mine[0] || {}).reason, evidence: (mine[0] || {}).evidence };
-      }
-      const acct = smartAccount(route);
-      if (acct) {
-        return { protocol: 'Smart account', named: true, kind: 'account', via: 'creator',
-                 // The legend is one narrow line and ellipsises anything longer,
-                 // which ate the "· LI.FI" when the address came first. The
-                 // address is in the table; the protocol is the part worth the
-                 // width, so it wins the tiebreak.
-                 pieLabel: 'Smart account · '
-                   + (acct.interactsWith.length ? acct.interactsWith.join(', ') : shortAddr(acct.owner)),
-                 detail: 'own contract of ' + shortAddr(acct.owner)
-                   + (acct.interactsWith.length ? ' · funds arrive via ' + acct.interactsWith.join(', ') : ''),
-                 reason: 'deployed by ' + acct.owner + ', which is one of the addresses it deposits for'
-                   + (acct.interactsWith.length
-                       ? '. Its transactions go through ' + acct.interactsWith.join(', ')
-                         + ' — that is who it trades with, not what it is.' : '') };
-      }
-      const id = ROUTER_ID[route];
-      return { protocol: shortAddr(route), named: false, kind: 'unknown', contracts: 1,
-               detail: id ? (id.verified ? 'verified, no known fingerprint' : 'source not verified') : 'not yet checked',
-               reason: id ? id.reason : 'not yet checked' };
-    }
+    // Deposit attribution lives in /routes.js, shared with the vault pages, so
+    // there is one definition of "where a deposit came from" rather than one
+    // per page for each bug to be re-found in. These are thin handles on the
+    // instance built once identity and events have loaded.
+    let R = null;
+    let ROUTER_ID = {};   // the identity map, for the few reads that want it raw
+    let COVERAGE = {};    // what the identification sweep reached
+    const DIRECT = FusionRoutes.DIRECT;
+    const knownProtocol   = (a) => (R ? R.knownProtocol(a) : null);
+    const depositContract = (e) => R.depositContract(e);
+    const depositRoute    = (e) => R.depositRoute(e);
+    const routeInfo       = (route) => R.routeInfo(route);
     function routeLabel(route) { return routeInfo(route).protocol; }
     function routeIsNamed(route) { return routeInfo(route).named; }
 
@@ -1105,24 +995,9 @@
     // since left again.
     function routeTotals(range) {
       const cutoff = cutoffFor(range);
-      const by = {};
-      S.events.forEach(e => {
-        if (e.type !== 'deposit' || !e.timestamp || e.timestamp < cutoff) return;
-        if (!S.vaultSet.has((e.vault || '').toLowerCase())) return;
-        const r = depositRoute(e);
-        const t = by[r] || (by[r] = { route: r, usd: 0, n: 0, wallets: new Set(),
-                                      contracts: new Set(), selfOwned: false });
-        t.usd += e.usdValue || 0; t.n++;
-        t.contracts.add(depositContract(e));
-        const w = (e.owner || '').toLowerCase(); if (w) t.wallets.add(w);
-        // The protocol deposited under its own address, so the "wallets" on
-        // this route are its own contracts, not people. Compare against the
-        // contract, not the row it was grouped onto.
-        if (r !== DIRECT && w === depositContract(e)) t.selfOwned = true;
-      });
-      return Object.values(by)
-        .map(t => ({ ...t, wallets: t.wallets.size, contracts: t.contracts.size }))
-        .sort((a, b) => b.usd - a.usd);
+      return R.totals(S.events.filter(e =>
+        e.type === 'deposit' && e.timestamp && e.timestamp >= cutoff
+        && S.vaultSet.has((e.vault || '').toLowerCase())));
     }
 
     function routeDaily(range) {
@@ -1148,28 +1023,8 @@
     // a route that pumped money in and then left reads large in gross inflow
     // and near-zero here, which is the whole point of having both.
     function originOfValueHere() {
-      const rows = holdingsRows();
-      const grossByWallet = {};
-      S.events.forEach(e => {
-        if (e.type !== 'deposit' || !S.vaultSet.has((e.vault || '').toLowerCase())) return;
-        const w = (e.owner || '').toLowerCase(); if (!w) return;
-        const r = depositRoute(e);
-        (grossByWallet[w] = grossByWallet[w] || {})[r] = (grossByWallet[w][r] || 0) + (e.usdValue || 0);
-      });
-      const out = {};
-      let unattributed = 0;
-      rows.forEach(r => {
-        const mix = grossByWallet[r.wallet];
-        if (!mix) { unattributed += r.usd; return; }   // holds shares, never seen depositing
-        const total = Object.values(mix).reduce((a, b) => a + b, 0);
-        if (total <= 0) { unattributed += r.usd; return; }
-        Object.entries(mix).forEach(([route, usd]) => {
-          out[route] = (out[route] || 0) + r.usd * (usd / total);
-        });
-      });
-      const list = Object.entries(out).map(([route, usd]) => ({ route, usd }))
-        .sort((a, b) => b.usd - a.usd);
-      return { list, unattributed, total: list.reduce((a, b) => a + b.usd, 0) + unattributed };
+      return R.originOfValue(holdingsRows(), S.events.filter(e =>
+        e.type === 'deposit' && S.vaultSet.has((e.vault || '').toLowerCase())));
     }
 
     // Performance on PRICE PER SHARE, never on value held. Value moves the
@@ -2304,11 +2159,9 @@
                                                     get('activity-events.json'), get('router-identity.json')]);
       // Absent or stale, every router simply falls back to its address — the
       // page never depends on this file being there.
-      ROUTER_ID = rid || {};
-      // _meta records how far the identification sweep reached. It is not an
-      // address, so lift it out before anything looks a route up in here.
-      COVERAGE = ROUTER_ID._meta || {};
-      delete ROUTER_ID._meta;
+      // Absent or stale, every router falls back to its address — the page
+      // never depends on this file being there. Built into R below, once the
+      // events it learns smart accounts from have loaded.
       if (!iv) { document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; return; }
 
       S.vaults = (iv.vaults || [])
@@ -2327,9 +2180,10 @@
       if (act) {
         const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
         S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);
-        buildContractOwners();
         S.updatedAt = act.updatedAt;
       }
+      R = FusionRoutes.create({ identity: rid || {}, events: S.events });
+      ROUTER_ID = R.identity; COVERAGE = R.coverage;
       document.getElementById('updated').textContent = S.updatedAt
         ? 'Data updated ' + new Date(S.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '';
