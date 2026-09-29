@@ -1,18 +1,6 @@
 [
   {
     "level": "error",
-    "event": "collect",
-    "errors": [
-      {
-        "step": "fetchTotalLoans",
-        "message": "An unexpected error occurred."
-      }
-    ],
-    "warnings": [],
-    "timestamp": "2026-08-20T17:21:26.919Z"
-  },
-  {
-    "level": "error",
     "event": "collect_crash",
     "message": "An unexpected error occurred.",
     "stack": "Error: An unexpected error occurred.\n    at gql (/home/runner/work/fusionstats/fusionstats/collect.js:70:26)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async fetchTotalLoans (/home/runner/work/fusionstats/fusionstats/collect.js:75:16)\n    at async collect (/home/runner/work/fusionstats/fusionstats/collect.js:138:18)",
@@ -7991,5 +7979,21 @@
     "durationMs": 22111,
     "historyEntries": 224,
     "timestamp": "2026-09-28T20:55:59.430Z"
+  },
+  {
+    "level": "info",
+    "event": "collect",
+    "errors": [],
+    "warnings": [],
+    "totalLoans": 2433481265.604297,
+    "fusionBorrowed": 19796428.095553942,
+    "fusionCollateral": 23911879.969503794,
+    "sharePercent": 0.8135023834111158,
+    "activeVaults": 26,
+    "totalVaults": 157,
+    "vaultErrors": 0,
+    "durationMs": 25319,
+    "historyEntries": 224,
+    "timestamp": "2026-09-29T00:47:55.556Z"
   }
 ]
