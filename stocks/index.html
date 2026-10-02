@@ -208,6 +208,11 @@
     .breakdown td.num, .breakdown th.num { text-align:right; font-family:'JetBrains Mono',monospace; }
     .breakdown tr.total td { border-bottom:0; font-weight:600; }
     .breakdown tr.total td.num { border-top:1px solid var(--stroke); }
+    .breakdown-title { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;
+      color:var(--text-secondary); font-weight:500; margin:0 0 0.35rem 0.5rem; }
+    .breakdown td { vertical-align:middle; }
+    .unit-tag { color:var(--text-secondary); font-size:0.68rem; }
+    .breakdown td.num { white-space:nowrap; }
     .bar-cell { display:block; height:4px; border-radius:2px; background:var(--accent); opacity:0.75; }
     .holders-note { font-size:0.7rem; color:var(--text-secondary); padding:0.5rem 0 0; }
     .caveat { font-size:0.72rem; color:var(--text-secondary); margin:0.5rem 0 1.5rem; line-height:1.55; }
@@ -790,7 +795,7 @@
 
     function renderStats() {
       const tvl = S.vaults.reduce((s, v) => s + (v.tvl || 0), 0);
-      const funded = S.vaults.filter(v => (v.tvl || 0) > 0).length;
+      const funded = S.vaults.filter(v => isFunded(v.tvl)).length;
       const dep = S.events.filter(e => e.type === 'deposit');
       const wd = S.events.filter(e => e.type === 'withdraw');
       const net = dep.reduce((s, e) => s + (e.usdValue || 0), 0) - wd.reduce((s, e) => s + (e.usdValue || 0), 0);
@@ -866,30 +871,76 @@
                share: (r) => (totU ? r.units / totU : 0) };
     }
 
+    // What the TVL line is made of, vault by vault. Each row is that vault's
+    // own last point — the same point the chart sums — so the total here is the
+    // chart's final value and the headline's "Total value held", by
+    // construction rather than by coincidence. Without it the composition was
+    // invisible: a $104K vault could join or leave the total and nothing on
+    // the page said where the number came from.
+    // One threshold for "holds something", shared by the stat strip and the
+    // breakdown beneath it, so the two can never disagree about which
+    // vaults are empty.
+    const isFunded = (tvlUsd) => (tvlUsd || 0) >= 0.5;
+
+    function vaultBreakdown() {
+      const rows = [], empty = [];
+      vaultsFor(S.tvlVault).forEach(v => {
+        const pts = tvlSeries(v.address, S.tvlRange);
+        const last = pts.length ? pts[pts.length - 1] : null;
+        const tvl = last ? (last.tvl || 0) : 0, units = last ? (last.units || 0) : 0;
+        // Under fifty cents is dust, not a position — Google Carry Trade Tezos
+        // kept $0.01 after its $69 test deposit left, which derives a few
+        // millionths of a unit and read as a funded row.
+        if (!isFunded(tvl)) { empty.push(v); return; }
+        rows.push({ vault: v, tvl, units });
+      });
+      rows.sort((a, b) => b.tvl - a.tvl);
+      return { rows, empty,
+               totTvl: rows.reduce((a, r) => a + r.tvl, 0),
+               totUnits: rows.reduce((a, r) => a + r.units, 0) };
+    }
+
     function renderUnitsBreakdown() {
       const box = document.getElementById('unitsBreakdown');
-      if (S.tvlUnit !== 'units') { box.style.display = 'none'; box.innerHTML = ''; return; }
-      const { rows, totU, totUsd } = unitsBreakdown();
-
+      const { rows, empty, totTvl, totUnits } = vaultBreakdown();
       if (!rows.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      const max = Math.max(...rows.map(r => r.units));
+      // Share follows what the chart is drawing: of dollars in USD, of units in
+      // units — the same split the units export prints in its legend.
+      const byUnits = S.tvlUnit !== 'usd';
+      const shareOf = (r) => byUnits ? (totUnits ? r.units / totUnits : 0) : (totTvl ? r.tvl / totTvl : 0);
+      const max = Math.max(...rows.map(shareOf), 1e-9);
 
       box.style.display = '';
-      box.innerHTML = '<div class="breakdown"><table><thead><tr>'
-        + '<th>Ticker</th><th class="num">Units</th><th class="num">Share</th><th class="num">Value</th>'
+      box.innerHTML = '<div class="breakdown"><div class="breakdown-title">By vault</div>'
+        + '<div class="scroll"><table><thead><tr>'
+        + '<th>Vault</th><th class="num">Units</th><th class="num">TVL</th>'
+        + '<th class="num">' + (byUnits ? 'Share of units' : 'Share of TVL') + '</th>'
         + '</tr></thead><tbody>'
-        + rows.map(r =>
-            '<tr><td><strong>' + r.token + '</strong> '
-            + '<span style="color:var(--text-secondary);font-size:0.72rem">' + r.name + '</span>'
-            + '<span class="bar-cell" style="width:' + (r.units / max * 100).toFixed(1) + '%"></span></td>'
-            + '<td class="num">' + fNum(r.units, 4) + '</td>'
-            + '<td class="num">' + (totU ? (r.units / totU * 100).toFixed(1) + '%' : '—') + '</td>'
-            + '<td class="num">' + fUsd(r.usd) + '</td></tr>').join('')
-        + '<tr class="total"><td>Total <span style="color:var(--text-secondary);font-weight:400;font-size:0.72rem">'
-        + rows.length + ' tickers · units are share counts, not a like-for-like sum</span></td>'
-        + '<td class="num">' + fNum(totU, 4) + '</td><td class="num">100%</td>'
-        + '<td class="num">' + fUsd(totUsd) + '</td></tr>'
-        + '</tbody></table></div>';
+        + rows.map((r, i) =>
+            '<tr><td><span class="name-cell">' + iconFor(r.vault.token, seriesColor(i))
+            + '<span class="label"><a class="vault-link" href="' + esc(appUrl(r.vault)) + '" target="_blank"'
+            + ' rel="noopener" title="Open ' + esc(r.vault.name) + ' in the IPOR app">' + esc(r.vault.name)
+            + '<span class="ext" aria-hidden="true">↗</span></a>'
+            + '<span class="vault-sub">' + esc(companyOf(r.vault.name, r.vault.token)) + ' · '
+            + esc(tickerLabel(r.vault.token)) + '</span></span></span>'
+            + '<span class="bar-cell" style="width:' + (shareOf(r) / max * 100).toFixed(1) + '%"></span></td>'
+            + '<td class="num">' + fNum(r.units, 4) + ' <span class="unit-tag">' + esc(tickerLabel(r.vault.token))
+            + '</span></td>'
+            + '<td class="num">' + fUsd(r.tvl) + '</td>'
+            + '<td class="num">' + (shareOf(r) * 100).toFixed(1) + '%</td></tr>').join('')
+        + (rows.length < 2 ? '' : '<tr class="total"><td>Total <span style="color:var(--text-secondary);font-weight:400;font-size:0.72rem">'
+        + rows.length + ' vault' + (rows.length === 1 ? '' : 's')
+        + (byUnits ? ' · units are share counts across different equities, not a like-for-like sum' : '')
+        + '</span></td>'
+        + '<td class="num">' + (byUnits ? fNum(totUnits, 4) : '—') + '</td>'
+        + '<td class="num">' + fUsd(totTvl) + '</td><td class="num">100%</td></tr>')
+        + '</tbody></table></div>'
+        + (empty.length
+            ? '<div class="muted-note" style="margin-top:0.5rem">Also tracked, holding nothing right now: '
+              + empty.map(v => '<a class="vault-link" style="font-weight:500" href="' + esc(appUrl(v))
+                  + '" target="_blank" rel="noopener">' + esc(v.name) + '</a>').join(', ') + '.</div>'
+            : '')
+        + '</div>';
     }
 
     // ---- wallet holdings, per ticker ----
