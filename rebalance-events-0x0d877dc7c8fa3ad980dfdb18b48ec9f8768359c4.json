@@ -1,13 +1,742 @@
 {
   "vault": "0x0d877dc7c8fa3ad980dfdb18b48ec9f8768359c4",
   "chain": "base",
-  "updatedAt": "2026-10-01T08:31:15.118Z",
+  "updatedAt": "2026-10-02T08:05:44.194Z",
   "blockRange": {
     "from": 37891708,
-    "to": 52027047
+    "to": 52069485
   },
-  "txCount": 5102,
+  "txCount": 5120,
   "rebalances": [
+    {
+      "tx": "0x5fc141ec2230ae0b3433ca15d137997c8e8764d7c3a2992cae3fa600fb8291f7",
+      "block": 52068208,
+      "timestamp": 1790925763,
+      "flows": [
+        {
+          "token": "0x904af90069d4485617d795bcefb2e31e47e259cf",
+          "symbol": "harvest-IporLending_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 13.647256,
+          "usdValue": 14
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 27816.3175,
+          "usdValue": 106202.57
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106228.624367,
+          "usdValue": 106217.42
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 14.000054,
+          "usdValue": 14
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106214.626026,
+          "usdValue": 106203.42
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 44437.809249,
+          "usdValue": 106216.61
+        }
+      ]
+    },
+    {
+      "tx": "0xdd590e8e5e363ca01a9a67fb045a3e7c9a08c231b3ebc0d5c1b7b67e3bbe3ba9",
+      "block": 52064441,
+      "timestamp": 1790918229,
+      "flows": [
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 0.000499,
+          "usdValue": 0
+        }
+      ]
+    },
+    {
+      "tx": "0x967d633c1dead0d9859d742de1ec78e52233be05b9f43c937b9f394d8f4306d3",
+      "block": 52062206,
+      "timestamp": 1790913759,
+      "flows": [
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 11.00006,
+          "usdValue": 11
+        }
+      ]
+    },
+    {
+      "tx": "0x2d592b8782886e0f4d58f1ff7cc02f4e2d841d68f60eedf06084ebf60d5c396c",
+      "block": 52059972,
+      "timestamp": 1790909291,
+      "flows": [
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 0.939441,
+          "usdValue": 3.59
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 3.843006,
+          "usdValue": 3.84
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 3.587098,
+          "usdValue": 3.59
+        }
+      ]
+    },
+    {
+      "tx": "0x858200c1e75d15e44cfb0c3b89d7d6a8e4094f7de960fc2bb8165035802c2375",
+      "block": 52059208,
+      "timestamp": 1790907763,
+      "flows": [
+        {
+          "token": "0x00f281832f74d3eb391c219148ee3b7c8bb46319",
+          "symbol": "harvest-extrafi_USDC_2",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 96992.902394,
+          "usdValue": 106215.51
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106226.163319,
+          "usdValue": 106214.95
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106226.299931,
+          "usdValue": 106215.09
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 44437.950057,
+          "usdValue": 106216.95
+        }
+      ]
+    },
+    {
+      "tx": "0xfec95f6b514b82347a601bf5d18c2760074f4621ab54a8ea10de45a8d016862f",
+      "block": 52057408,
+      "timestamp": 1790904163,
+      "flows": [
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 88876.023802,
+          "usdValue": 212434.19
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106225.696675,
+          "usdValue": 106214.49
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106225.696675,
+          "usdValue": 106214.49
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 212451.505129,
+          "usdValue": 212429.09
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 27820.137776,
+          "usdValue": 106217.16
+        },
+        {
+          "token": "0x00f281832f74d3eb391c219148ee3b7c8bb46319",
+          "symbol": "harvest-extrafi_USDC_2",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 96992.902394,
+          "usdValue": 106215.51
+        }
+      ]
+    },
+    {
+      "tx": "0xddbd144f24cd8ad632522cf5dbd9a594aabcfc8a10e78f433109ca1e16f50e34",
+      "block": 52055613,
+      "timestamp": 1790900573,
+      "flows": [
+        {
+          "token": "0x00f281832f74d3eb391c219148ee3b7c8bb46319",
+          "symbol": "harvest-extrafi_USDC_2",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 116388.951786,
+          "usdValue": 127455.84
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 212450.406582,
+          "usdValue": 212427.99
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 127467.326146,
+          "usdValue": 127453.88
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 88876.023802,
+          "usdValue": 212434.19
+        }
+      ]
+    },
+    {
+      "tx": "0x62dac40cea636cc9eb6406cc901f07f4ad57474859e95cf5850bdb416ec7348d",
+      "block": 52055608,
+      "timestamp": 1790900563,
+      "flows": [
+        {
+          "token": "0x904af90069d4485617d795bcefb2e31e47e259cf",
+          "symbol": "harvest-IporLending_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 4.263627,
+          "usdValue": 4.37
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 11127.805982,
+          "usdValue": 42485.91
+        },
+        {
+          "token": "0xed5a6691a3663045c6d9f12f334fbc796ee12f45",
+          "symbol": "harvest-arcadia_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 38470.47651,
+          "usdValue": 42488.04
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 4.373645,
+          "usdValue": 4.37
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 42489.095345,
+          "usdValue": 42484.61
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 42489.618983,
+          "usdValue": 42485.14
+        }
+      ]
+    },
+    {
+      "tx": "0x0caff3adb42754acda4357066cf8465bd0c64b94eae14180c2776a81d1a72458",
+      "block": 52052008,
+      "timestamp": 1790893363,
+      "flows": [
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 11127.77571,
+          "usdValue": 42485.8
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 42488.586518,
+          "usdValue": 42484.1
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 42488.517764,
+          "usdValue": 42484.03
+        },
+        {
+          "token": "0x00f281832f74d3eb391c219148ee3b7c8bb46319",
+          "symbol": "harvest-extrafi_USDC_2",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 38796.281209,
+          "usdValue": 42485.24
+        }
+      ]
+    },
+    {
+      "tx": "0x0ef495f3c514022abf37164366f2a34fa71c5ea598bef468c7fb181ec332ff39",
+      "block": 52046613,
+      "timestamp": 1790882573,
+      "flows": [
+        {
+          "token": "0x00f281832f74d3eb391c219148ee3b7c8bb46319",
+          "symbol": "harvest-extrafi_USDC_2",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 77592.670577,
+          "usdValue": 84970.6
+        }
+      ]
+    },
+    {
+      "tx": "0x65c0e90c6f2fb90562ee3519e9b8675919437e0302e78bbdd944fdf55eb4fcf6",
+      "block": 52046608,
+      "timestamp": 1790882563,
+      "flows": [
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 21242.777667,
+          "usdValue": 21240.54
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106221.047264,
+          "usdValue": 106209.84
+        },
+        {
+          "token": "0xed5a6691a3663045c6d9f12f334fbc796ee12f45",
+          "symbol": "harvest-arcadia_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 38470.47651,
+          "usdValue": 42488.04
+        }
+      ]
+    },
+    {
+      "tx": "0x0146ad305660323ec0a85c268895e1436b53a9b57316029a1ea0888e270a736b",
+      "block": 52043008,
+      "timestamp": 1790875363,
+      "flows": [
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 44437.948498,
+          "usdValue": 106216.94
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106220.473959,
+          "usdValue": 106209.27
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106221.188148,
+          "usdValue": 106209.98
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 27819.980776,
+          "usdValue": 106216.56
+        }
+      ]
+    },
+    {
+      "tx": "0xc72cbc49e92df835003dbf4568ff32903097fc6fcea508c0f5cd0bfaa3659e19",
+      "block": 52041208,
+      "timestamp": 1790871763,
+      "flows": [
+        {
+          "token": "0x904af90069d4485617d795bcefb2e31e47e259cf",
+          "symbol": "harvest-IporLending_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 2.480157,
+          "usdValue": 2.54
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 55639.361423,
+          "usdValue": 212430.82
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 212440.05915,
+          "usdValue": 212417.64
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 2.544007,
+          "usdValue": 2.54
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 212437.519586,
+          "usdValue": 212415.1
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 88875.375892,
+          "usdValue": 212432.64
+        }
+      ]
+    },
+    {
+      "tx": "0x85a68e70fc15fd8b0417de4508ce0993eff2aaa4ab29553911e10a81d8685deb",
+      "block": 52037608,
+      "timestamp": 1790864563,
+      "flows": [
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 44437.041798,
+          "usdValue": 106214.78
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106217.406788,
+          "usdValue": 106206.2
+        }
+      ]
+    },
+    {
+      "tx": "0x3e7ff5b577cabaf45bf744da784d881815c67b145137ffb8efa79bf5058e3931",
+      "block": 52035808,
+      "timestamp": 1790860963,
+      "flows": [
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 27819.651896,
+          "usdValue": 106215.3
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106216.849797,
+          "usdValue": 106205.64
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106216.849797,
+          "usdValue": 106205.64
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 44437.041798,
+          "usdValue": 106214.78
+        }
+      ]
+    },
+    {
+      "tx": "0x6b73af8434d006e016554cb1d27f7507b54aacf94b329ecc1b3d573331a595d7",
+      "block": 52034008,
+      "timestamp": 1790857363,
+      "flows": [
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 44437.138739,
+          "usdValue": 106215.01
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106216.716149,
+          "usdValue": 106205.51
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106216.536326,
+          "usdValue": 106205.33
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 27819.774161,
+          "usdValue": 106215.77
+        }
+      ]
+    },
+    {
+      "tx": "0x92ec2557b1c44d4ee784fd016811be695c7b9e03101d618cebfe6ba331c233ed",
+      "block": 52030408,
+      "timestamp": 1790850163,
+      "flows": [
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 27819.96617,
+          "usdValue": 106216.5
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106215.446227,
+          "usdValue": 106204.24
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106216.257978,
+          "usdValue": 106205.05
+        },
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 44437.138739,
+          "usdValue": 106215.01
+        }
+      ]
+    },
+    {
+      "tx": "0x8dd52339e2b12e50b87ac846e8c5fa68d8b39f5ab601150bb60db896c2442cb3",
+      "block": 52028605,
+      "timestamp": 1790846557,
+      "flows": [
+        {
+          "token": "0xe5beacb6d013314e3601f45b3ed226ffa5f138e2",
+          "symbol": "harvest-morpho_YOG_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "out",
+          "amount": 44437.241181,
+          "usdValue": 106215.25
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "out",
+          "amount": 106215.048014,
+          "usdValue": 106203.84
+        },
+        {
+          "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "symbol": "USDC",
+          "protocol": "Stable",
+          "kind": "collateral",
+          "direction": "in",
+          "amount": 106215.146503,
+          "usdValue": 106203.94
+        },
+        {
+          "token": "0xa0200eeed8d90aa01de741daefab5f86c09d5785",
+          "symbol": "harvest-morpho_GF_USDC",
+          "protocol": "Unknown",
+          "kind": "unknown",
+          "direction": "in",
+          "amount": 27819.800727,
+          "usdValue": 106215.87
+        }
+      ]
+    },
     {
       "tx": "0xa9c407a8f180834e24a9aa16431376f9fc6b0dff6aa61577c801b86518900050",
       "block": 52025008,
