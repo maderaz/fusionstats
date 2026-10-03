@@ -1,0 +1,116 @@
+name: Rescan Block Range (add missing events)
+
+# Manual-only. Re-reads a block range for every tracked vault on one chain and
+# adds the deposits and withdrawals activity-events.json is missing. It removes
+# nothing, re-parses nothing and moves no cursor, so it is safe over ranges
+# that were scanned before.
+#
+# Use it where `node tools/audit-activity.js` reports events "missed while
+# collecting". Until 2026-10-03 the scheduled collector skipped any range an
+# endpoint refused and moved its cursors past it anyway; the events inside sit
+# behind cursors that never look back. Gap-Fill cannot reach them (it only
+# scans before a vault's first event) and Max Backfill rescans one vault at a
+# time.
+#
+# From/to take a UTC date (YYYY-MM-DD, "to" includes that day) or a block
+# number; "to" also takes "head". If the run stops early — a range no endpoint
+# will serve, or the time budget — it keeps what it found, fails, and says
+# which block to start from next time.
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Chain'
+        required: true
+        default: 'ethereum'
+        type: choice
+        options:
+          - ethereum
+          - base
+          - arbitrum
+          - avalanche
+          - unichain
+          - plasma
+      from:
+        description: 'From: date (YYYY-MM-DD) or block number'
+        required: true
+        default: '2024-10-01'
+      to:
+        description: 'To: date (YYYY-MM-DD), block number, or head'
+        required: true
+        default: '2026-09-11'
+      throttle_ms:
+        description: 'Min ms between RPC calls per endpoint'
+        required: false
+        default: '150'
+
+permissions:
+  contents: write
+
+# Every workflow that writes activity-events.json shares this group, so a
+# scheduled run never overlaps a rescan and erases what it found.
+concurrency:
+  group: event-data-writers
+  cancel-in-progress: false
+
+jobs:
+  rescan:
+    runs-on: ubuntu-latest
+    # Optional keyed endpoints, tried before the public ones (rpc-endpoints.js).
+    # Unset secrets are empty and change nothing.
+    env:
+      RPC_URL_ETHEREUM: ${{ secrets.RPC_URL_ETHEREUM }}
+      RPC_URL_BASE: ${{ secrets.RPC_URL_BASE }}
+      RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Rescan and add missing events
+        env:
+          CHAIN: ${{ inputs.chain }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+          RPC_MIN_INTERVAL_MS: ${{ inputs.throttle_ms }}
+          RESCAN_BUDGET_MS: '16200000'   # 4.5h: leaves an hour for dating, pricing and the commit
+        run: node collect-activity.js --rescan-range "$CHAIN" "$FROM" "$TO"
+
+      # Runs even when the rescan stopped early: whatever it found is kept.
+      - name: Commit & push
+        if: always()
+        env:
+          CHAIN: ${{ inputs.chain }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f activity-events.json
+          if git diff --cached --quiet; then echo "No events added"; exit 0; fi
+          MSG="Rescan $CHAIN $FROM..$TO: add missing events [skip ci]"
+          git commit -m "$MSG"
+
+          # The concurrency group keeps every other writer of this file out
+          # while the rescan runs, so on a rejected push only other files have
+          # moved: replay this file onto the remote, as collect.yml does.
+          BRANCH="${{ github.ref_name }}"
+          KEEP=$(mktemp)
+          cp activity-events.json "$KEEP"
+          for i in 1 2 3 4 5; do
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+            echo "push rejected (attempt $i) — replaying activity-events.json onto origin"
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            cp "$KEEP" activity-events.json
+            git add -f activity-events.json
+            if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
+            git commit -m "$MSG"
+            sleep $((2**i))
+          done
+          echo "::error::push still failing after retries"
+          exit 1
