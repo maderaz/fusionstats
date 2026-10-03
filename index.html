@@ -443,7 +443,7 @@
     .sym { margin-left: 1px; font-size: 12.5px; font-weight: 400; color: var(--text-3); }
     .usd-cell, .usd-value { color: var(--text-2); font-variant-numeric: tabular-nums; }
 
-    /* Direction: an arrow into the vault for a deposit, out of it for a withdrawal. */
+    /* Direction: down for a deposit (money in), up for a withdrawal (money out). */
     .badge-deposit, .badge-withdraw {
       display: inline-flex;
       align-items: center;
@@ -475,12 +475,12 @@
     .badge-deposit .dir {
       color: var(--pos);
       background: var(--pos-soft);
-      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M11.5 4.5l-7 7M4.5 6v5.5H10' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v10M4 9l4 4 4-4' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
     .badge-withdraw .dir {
       color: var(--neg);
       background: var(--neg-soft);
-      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 11.5l7-7M6 4.5h5.5V10' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 13V3M4 7l4-4 4 4' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
 
     .synth-badge {
@@ -751,6 +751,26 @@
       return n.toFixed(6);
     }
 
+    // From a $1K floor up, cents are noise. USD shows whole dollars, and a
+    // token worth under $10 a unit (USDC, USDe, DAI...) whole units. A unit
+    // worth more keeps the decimals that carry real money: two for ETH and
+    // the stocks (0.31 WETH is $600, never "0"), and BTC keeps every one it
+    // had (0.0123 WBTC is $1K). Below the floor small amounts need them all.
+    function amountText(e, whole) {
+      const n = e.assets;
+      if (!whole || n >= 1e6 || /BTC/i.test(e.symbol || '')) return formatAmount(n);
+      const unit = priceBySymbol[e.symbol] ?? (e.usdValue != null && n > 0 ? e.usdValue / n : null);
+      const digits = unit != null && unit < 10 ? 0 : 2;
+      return n.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    }
+    const usdText = (v, whole) => '$' + v.toLocaleString('en-US',
+      whole ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Token spellings a vault list gets wrong, fixed wherever they appear.
+    // IPOR lists Base's wstETH looping vault, name and token, as "WStETH".
+    const SPELLING = [[/\bWStETH\b/g, 'wstETH']];
+    const spell = (s) => (typeof s === 'string' ? SPELLING.reduce((t, [re, to]) => t.replace(re, to), s) : s);
+
     function shortAddr(a) {
       return a.slice(0, 6) + '...' + a.slice(-4);
     }
@@ -949,6 +969,8 @@
         events.forEach(e => {
           const v = vaultInfo[e.vault];
           if (v) { e.symbol = v.symbol; e.vaultName = v.name; }
+          e.symbol = spell(e.symbol);
+          e.vaultName = spell(e.vaultName);
         });
 
         // Tag synthetic events not flagged by the backend (handles older JSONs).
@@ -1155,6 +1177,7 @@
 
       let rows = '';
       let mobileRows = '';
+      const whole = (parseFloat(document.getElementById('filterAmount').value) || 0) >= 1000;
       events.forEach(e => {
         const scan = explorerFor(e.chain);
         const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
@@ -1166,14 +1189,14 @@
         // latest same-symbol price, so rows whose price feed is lagging still
         // appear with a value (and match the net-flow cards/chart).
         const estUsd = e.usdValue != null ? e.usdValue : eventUsd(e);
-        const fmtUsdAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtUsdAmt = v => usdText(v, whole);
         const estPrefix = e.usdValue == null ? '~' : '';
         const estTitle = e.usdValue == null ? ` title="estimated from latest ${sym} price — exact USD pending"` : '';
         const usd = estUsd != null ? `<span class="usd-value"${estTitle}>${estPrefix}${fmtUsdAmt(estUsd)}</span>` : '';
         const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
         const nameAttr = String(name).replace(/"/g, '&quot;');
-        const amount = `${formatAmount(e.assets)} <span class="sym">${sym}</span>`;
+        const amount = `${amountText(e, whole)} <span class="sym">${sym}</span>`;
         const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
         // Arrow in, arrow out; the word stays DEPOSIT / WITHDRAW in the text.
         const typeLink = `<a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}"><i class="dir" aria-hidden="true"></i><span class="t">${badgeText}</span></a>`;
