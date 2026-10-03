@@ -8,607 +8,683 @@
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    // Apply the saved theme before first paint so dark mode never flashes light.
+    try { if (localStorage.getItem('fusionstats_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch {}
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
       --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
+      --bg-alt: #EDEDF4;
       --surface: #FFFFFF;
       --stroke: #E5E5E5;
-      --text: #000000;
+      --stroke-light: #EFEFF3;
+      --text: #0E0E14;
       --text-body: #70747A;
       --text-secondary: #9BA3AF;
       --accent: #8429FF;
       --accent-end: #6C00FF;
       --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
+      --accent-bg: rgba(132, 41, 255, 0.08);
+      --hover: rgba(132, 41, 255, 0.035);
       --green: #16a34a;
-      --green-bg: rgba(22, 163, 74, 0.08);
+      --green-ink: #15803d;
+      --green-bg: rgba(22, 163, 74, 0.10);
       --red: #dc2626;
+      --red-ink: #c81e1e;
       --red-bg: rgba(220, 38, 38, 0.08);
+      --amber: #b45309;
+      --amber-bg: rgba(217, 119, 6, 0.10);
+      --amber-stroke: rgba(217, 119, 6, 0.28);
+      --tip-bg: #16161E;
+      --tip-fg: #FFFFFF;
+      --shadow: 0 1px 2px rgba(20, 20, 40, 0.04);
+      --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     [data-theme="dark"] {
+      color-scheme: dark;
       --bg: #0F0F14;
       --bg-alt: #1A1A24;
       --surface: #16161E;
       --stroke: #2A2A3A;
+      --stroke-light: #21212C;
       --text: #E8E8F0;
       --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
+      --text-secondary: #7A7A92;
       --accent: #A37FFF;
       --accent-end: #8429FF;
       --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
+      --accent-bg: rgba(132, 41, 255, 0.16);
+      --hover: rgba(163, 127, 255, 0.05);
       --green: #22c55e;
+      --green-ink: #4ade80;
       --green-bg: rgba(34, 197, 94, 0.12);
       --red: #ef4444;
+      --red-ink: #f87171;
       --red-bg: rgba(239, 68, 68, 0.12);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --amber-stroke: rgba(245, 158, 11, 0.30);
+      --tip-bg: #F2F2F7;
+      --tip-fg: #0F0F14;
+      --shadow: none;
     }
 
     body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 2rem;
+      line-height: 1.45;
       font-weight: 400;
-      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* Everything below sizes itself to the content column, not the window:
+       the sidebar from nav.js takes 220px on desktop and none on mobile. */
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 32px 72px;
+      container-type: inline-size;
     }
 
     .num-bold {
-      font-family: 'Source Sans 3', sans-serif;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; }
-
-    .col-num { text-align: right; white-space: nowrap; }
-    .usd-cell .usd-value { display: inline; white-space: nowrap; }
-    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-    .top-nav {
-      display: flex;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-      align-items: center;
-    }
-    .top-nav-links {
-      display: flex;
-      gap: 0.25rem;
-      flex: 1;
-      min-width: 0;
-      align-items: center;
-    }
-
-    .top-nav a {
-      font-size: 0.8rem;
+      font-family: var(--mono);
       font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.66rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
       color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
     }
 
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
+    /* ---------- Header ---------- */
+    .page-head {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px 24px;
+      margin-bottom: 20px;
     }
-
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
+    .page-head h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
     }
+    .page-head p {
+      margin-top: 4px;
+      font-size: 0.875rem;
+      color: var(--text-body);
+    }
+    .head-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 30px;
+      padding: 0 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 0.72rem;
+      color: var(--text-body);
+      white-space: nowrap;
+    }
+    #lastUpdated:empty { display: none; }
+    #lastUpdated .ago { color: var(--accent); font-weight: 500; }
+    #lastUpdated .next { color: var(--text-secondary); }
+    #lastUpdated .next::before { content: '\00b7'; margin: 0 6px; }
 
     .theme-toggle {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+      border-radius: 999px;
       border: 1px solid var(--stroke);
       background: var(--surface);
       color: var(--text-body);
+      font-size: 0.9rem;
+      line-height: 1;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
+      transition: color 0.15s, border-color 0.15s;
     }
+    .theme-toggle:hover { color: var(--accent); border-color: var(--accent); }
 
-    header { margin-bottom: 2rem; }
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    header p { color: var(--text-body); font-size: 0.875rem; }
-
-    /* Stats row */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.25rem;
-    }
-
-    /* Minimal daily flow chart */
-    .flow-chart {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 0.85rem 1rem 0.65rem;
-      margin-bottom: 1rem;
-    }
-    .flow-chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 0.5rem;
-    }
-    .flow-chart-title {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-    .flow-chart-range {
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-    }
-    .flow-chart-bars {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      height: 80px;
-      position: relative;
-    }
-    .flow-chart-bars::before {
-      content: '';
-      position: absolute;
-      left: 0; right: 0;
-      top: 50%;
-      height: 1px;
-      background: var(--stroke);
-      z-index: 0;
-    }
-    .flow-bar-slot {
-      flex: 1;
-      height: 100%;
-      position: relative;
-      z-index: 1;
-    }
-    .flow-bar {
-      position: absolute;
-      left: 0;
-      right: 0;
-      min-height: 2px;
-      border-radius: 3px;
-      transition: opacity 0.15s;
-    }
-    .flow-bar.positive {
-      background: var(--green);
-      bottom: 50%;
-    }
-    .flow-bar.negative {
-      background: var(--red);
-      top: 50%;
-    }
-    .flow-bar-slot:hover .flow-bar { opacity: 0.7; }
-    .flow-bar-slot .flow-bar-tooltip {
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.88);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      white-space: nowrap;
-      z-index: 10;
-      pointer-events: none;
-      line-height: 1.4;
-    }
-    .flow-bar-slot:hover .flow-bar-tooltip { display: block; }
-    .flow-chart-axis {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-      margin-top: 0.35rem;
-    }
-
-    .stat-card .label {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-card .value {
-      font-size: 1.5rem;
-      letter-spacing: -0.02em;
-    }
-
-    .stat-card .sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    /* Activity table */
-    .activity-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .activity-card h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th {
-      text-align: left;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--stroke);
-      font-weight: 500;
-    }
-
-    td {
-      padding: 0.65rem 1rem;
-      font-size: 0.8rem;
-      border-bottom: 1px solid var(--stroke);
-      color: var(--text-body);
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    /* Matches the badge on /tesseract: smaller, tighter, 5px radius. */
-    .badge-deposit, .badge-withdraw {
-      display: inline-block;
-      font-size: 0.64rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      padding: 2px 7px;
-      border-radius: 5px;
-      text-decoration: none;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .badge-deposit {
-      color: var(--green);
-      background: var(--green-bg);
-    }
-    .badge-deposit:hover { background: rgba(22, 163, 74, 0.18); }
-
-    .badge-withdraw {
-      color: var(--red);
-      background: var(--red-bg);
-    }
-    .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
-
-    .usd-value {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      font-weight: 400;
-    }
-
-    /* Synthetic-flow markers */
-    .synth-badge {
-      display: inline-block;
-      margin-left: 0.4rem;
-      padding: 0.05rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.6rem;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-      color: var(--warn, #d97706);
-      background: rgba(217, 119, 6, 0.10);
-      border: 1px solid rgba(217, 119, 6, 0.25);
-      cursor: help;
-      text-transform: lowercase;
-    }
-    [data-theme="dark"] .synth-badge {
-      color: #f59e0b;
-      background: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-    tr.row-synthetic td,
-    .mobile-event.row-synthetic { opacity: 0.65; }
-    tr.row-synthetic:hover td,
-    .mobile-event.row-synthetic:hover { opacity: 1; }
-
-    /* Info tooltip icon */
+    /* ---------- Info tips (one floating bubble, see script) ---------- */
     .info-tip {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       width: 14px;
       height: 14px;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      cursor: default;
-      position: relative;
-      vertical-align: middle;
-      margin-left: 2px;
-    }
-    .info-tip::after {
-      content: attr(data-tip);
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.88);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.65rem;
+      font-size: 0.72rem;
       font-weight: 400;
-      white-space: normal;
-      width: max-content;
-      max-width: 220px;
-      line-height: 1.4;
-      z-index: 20;
-      pointer-events: none;
-      text-align: center;
-    }
-    .info-tip:hover::after { display: block; }
-
-    .product-link {
-      color: var(--text-body);
-      text-decoration: none;
+      line-height: 1;
+      color: var(--text-secondary);
+      cursor: help;
+      vertical-align: middle;
+      text-transform: none;
+      letter-spacing: 0;
+      border-radius: 50%;
+      outline: none;
       transition: color 0.15s;
     }
-    .product-link:hover { color: var(--accent); text-decoration: underline; }
-
-    .vault-name {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      max-width: 160px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .addr-link {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--accent);
-      text-decoration: none;
-    }
-    .addr-link:hover { text-decoration: underline; }
-
-    .tx-link {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-    .tx-link:hover { color: var(--accent); }
-
-    .loading-msg {
-      text-align: center;
-      padding: 3rem;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-    }
-
-    .error-msg {
-      text-align: center;
-      padding: 2rem;
-      color: var(--red);
-      font-size: 0.85rem;
-    }
-
-    .data-ts {
-      text-align: center;
+    .info-tip:hover, .info-tip:focus-visible { color: var(--accent); }
+    .tip-bubble {
+      position: fixed;
+      z-index: 200;
+      max-width: 260px;
+      padding: 8px 11px;
+      border-radius: 9px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font-family: 'Poppins', -apple-system, sans-serif;
       font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-bottom: 2rem;
+      line-height: 1.5;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 0.12s, transform 0.12s;
     }
+    .tip-bubble.show { opacity: 1; transform: none; }
 
-    /* Activity filters */
-    .activity-filters {
+    /* ---------- Overview: net inflow + daily net flow ---------- */
+    .overview {
+      display: grid;
+      grid-template-columns: 236px minmax(0, 1fr);
+      margin-bottom: 16px;
+    }
+    .kpis { padding: 16px 20px 12px; }
+    .stats-row { display: grid; margin-top: 8px; }
+    .stat-card {
       display: flex;
-      gap: 0.75rem;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-      flex-wrap: wrap;
-      align-items: center;
-      row-gap: 0.6rem;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 0;
+      border-top: 1px solid var(--stroke-light);
     }
-    .filter-group {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-    /* Product filter allowed to shrink so it doesn't blow the row */
-    .filter-group:has(#filterProduct) {
-      flex-shrink: 1;
-      min-width: 0;
-    }
-    .filter-group:has(#filterProduct) select {
-      min-width: 8rem;
-      max-width: 14rem;
-    }
-    .filter-label {
-      font-size: 0.7rem;
+    .stat-card:first-child { border-top: none; }
+    .stat-card .label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-body);
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+    .stat-card .value {
+      font-size: 1.22rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+
+    .flow-chart {
+      padding: 16px 20px 12px;
+      border-left: 1px solid var(--stroke-light);
+      min-width: 0;
+    }
+    .flow-chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .flow-chart-range {
+      font-size: 0.68rem;
       color: var(--text-secondary);
-      font-weight: 500;
+    }
+    .flow-chart-bars {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      gap: 2px;
+      height: 112px;
+    }
+    .flow-chart-bars::before {                  /* zero line */
+      content: '';
+      position: absolute;
+      left: 0; right: 0; top: 50%;
+      height: 1px;
+      background: var(--stroke);
+    }
+    .flow-bar-slot {
+      position: relative;
+      flex: 1;
+      border-radius: 4px;
+      transition: background 0.12s;
+    }
+    .flow-bar-slot:hover { background: var(--hover); }
+    .flow-bar {
+      position: absolute;
+      left: 16%;
+      right: 16%;
+      min-height: 2px;
+    }
+    .flow-bar.positive { background: var(--green); bottom: 50%; border-radius: 3px 3px 1px 1px; }
+    .flow-bar.negative { background: var(--red); top: 50%; border-radius: 1px 1px 3px 3px; }
+    .flow-bar-slot .flow-bar-tooltip {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 9px;
+      border-radius: 8px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font-size: 0.68rem;
+      line-height: 1.4;
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      visibility: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+      transition: opacity 0.1s;
+    }
+    .flow-bar-tooltip strong { font-family: var(--mono); font-weight: 500; }
+    .flow-bar-slot:nth-child(-n+4) .flow-bar-tooltip { left: 0; transform: none; text-align: left; }
+    .flow-bar-slot:nth-last-child(-n+4) .flow-bar-tooltip { left: auto; right: 0; transform: none; text-align: right; }
+    .flow-bar-slot:hover .flow-bar-tooltip { opacity: 1; visibility: visible; }
+    .flow-chart-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 0.66rem;
+      color: var(--text-secondary);
+    }
+
+    /* ---------- Events ---------- */
+    .activity-card { overflow: clip; }
+    .card-head { padding: 16px 20px 0; }
+    .card-head h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .activity-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 20px 16px;
+      border-bottom: 1px solid var(--stroke);
+    }
+    .filter-group {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      height: 32px;
+      padding-left: 11px;
+      border: 1px solid var(--stroke);
+      border-radius: 9px;
+      background: var(--surface);
+      cursor: pointer;
+      min-width: 0;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .filter-group:hover { border-color: var(--text-secondary); }
+    .filter-group:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+    .filter-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.62rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-body);
       white-space: nowrap;
     }
     .activity-filters select {
+      field-sizing: content;
+      min-width: 0;
+      max-width: 15rem;
+      height: 100%;
+      padding: 0 26px 0 6px;
+      border: none;
+      background: transparent;
       font-family: inherit;
-      font-size: 0.8rem;
-      padding: 0.4rem 1.8rem 0.4rem 0.7rem;
-      background: var(--bg);
-      border: 1px solid var(--stroke);
-      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 500;
       color: var(--text);
       cursor: pointer;
       appearance: none;
       -webkit-appearance: none;
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%239BA3AF' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239BA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 0.6rem center;
+      background-position: right 10px center;
       text-overflow: ellipsis;
-    }
-    .activity-filters select:focus {
+      white-space: nowrap;
+      overflow: hidden;
       outline: none;
-      border-color: var(--accent);
     }
 
-    /* Mobile event cards (hidden on desktop by default) */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--surface);
+      text-align: left;
+      font-size: 0.62rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-body);
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--stroke);
+      white-space: nowrap;
+    }
+    td {
+      padding: 9px 12px;
+      font-size: 0.8rem;
+      color: var(--text-body);
+      border-bottom: 1px solid var(--stroke-light);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    th:first-child, td:first-child { padding-left: 20px; }
+    th:last-child, td:last-child { padding-right: 20px; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover td { background: var(--hover); }
+
+    .col-num { text-align: right; white-space: nowrap; }
+    td.col-num.num-bold { color: var(--text); font-size: 0.78rem; }
+    .sym { color: var(--text-secondary); font-weight: 400; font-size: 0.92em; }
+    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .usd-value {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--text-body);
+      white-space: nowrap;
+    }
+
+    .badge-deposit, .badge-withdraw {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 6px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .badge-deposit { color: var(--green-ink); background: var(--green-bg); }
+    .badge-deposit:hover { background: rgba(22, 163, 74, 0.2); }
+    .badge-withdraw { color: var(--red-ink); background: var(--red-bg); }
+    .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
+
+    /* Synthetic-flow markers */
+    .synth-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 18px;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 5px;
+      border: 1px solid var(--amber-stroke);
+      background: var(--amber-bg);
+      color: var(--amber);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      font-weight: 500;
+      text-transform: lowercase;
+      cursor: help;
+      vertical-align: middle;
+    }
+    tr.row-synthetic td,
+    .mobile-event.row-synthetic { opacity: 0.6; }
+    tr.row-synthetic:hover td,
+    .mobile-event.row-synthetic:hover { opacity: 1; }
+
+    /* The product column takes whatever width is left and truncates. */
+    .vault-name {
+      width: 100%;
+      max-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .product-link {
+      color: var(--text);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .product-link:hover { color: var(--accent); }
+
+    .addr-link {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .addr-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+    .debank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FF6B00;
+      color: #fff;
+      font-size: 0.56rem;
+      font-weight: 700;
+      line-height: 1;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .debank:hover { transform: scale(1.08); box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.18); }
+
+    .loading-msg {
+      padding: 56px 20px;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .loading-msg strong { color: var(--text-body); font-weight: 600; }
+    .error-msg {
+      margin-top: 16px;
+      padding: 18px 20px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--red);
+      background: var(--surface);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+    }
+    .error-msg small { color: var(--text-secondary); }
+
+    /* Event cards replace the table when the column is narrow. */
     .mobile-events { display: none; }
     .mobile-event {
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--stroke);
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 5px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--stroke-light);
     }
     .mobile-event:last-child { border-bottom: none; }
     .mobile-event-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
+      gap: 8px;
     }
-    .mobile-event-when {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-    }
+    .mobile-event-badges { display: inline-flex; align-items: center; gap: 0; min-width: 0; }
+    .mobile-event-when { font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; }
     .mobile-event-amount {
-      font-size: 1rem;
+      font-family: var(--mono);
+      font-size: 0.92rem;
       font-weight: 600;
+      letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
+      color: var(--text);
     }
     .mobile-event-usd {
-      font-size: 0.78rem;
-      color: var(--text-secondary);
-      font-weight: 400;
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--text-body);
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     .mobile-event-meta {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.72rem;
-      color: var(--text-body);
-      gap: 0.5rem;
+      gap: 10px;
+      font-size: 0.74rem;
     }
     .mobile-event-product {
       flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: var(--text-body);
     }
-    .mobile-event-user {
-      flex-shrink: 0;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
+    .mobile-event-who { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .mobile-event-user { font-size: 0.7rem; }
+    .mobile-event .debank { width: 16px; height: 16px; font-size: 0.5rem; }
+
+    @container (max-width: 900px) {
+      /* Tighter cells; a long product name wraps to a second line rather
+         than being cut to a few letters. */
+      th, td { padding-left: 9px; padding-right: 9px; }
+      th:first-child, td:first-child { padding-left: 16px; }
+      th:last-child, td:last-child { padding-right: 16px; }
+      td { font-size: 0.76rem; }
+      .vault-name { white-space: normal; }
+      .vault-name .product-link {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        line-height: 1.3;
+      }
+      .card-head { padding: 14px 16px 0; }
+      .activity-filters { padding: 12px 16px 14px; }
     }
 
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
+    @container (max-width: 820px) {
+      .overview { grid-template-columns: 200px minmax(0, 1fr); }
+      .kpis, .flow-chart { padding-left: 16px; padding-right: 16px; }
+      .stat-card .value { font-size: 1.08rem; }
+    }
 
-      /* Top nav: links scroll horizontally, theme toggle stays pinned right */
-      .col-num { text-align: right; white-space: nowrap; }
-    .usd-cell .usd-value { display: inline; white-space: nowrap; }
-    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-    .top-nav { gap: 0.5rem; }
-      .top-nav-links {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .top-nav-links::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      /* Stats row: 3 columns but narrower cards */
-      .stats-row {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 0.5rem;
-      }
-      .stat-card { padding: 0.75rem 0.7rem; }
-      .stat-card .value { font-size: 0.95rem; }
-      .stat-card .label { font-size: 0.6rem; margin-bottom: 0.35rem; }
-      .stat-card .sub { font-size: 0.62rem; }
-
-      /* Activity card header */
-      .activity-card h2 {
-        padding: 1rem 1rem;
-        font-size: 0.9rem;
-      }
-      .activity-card h2 > span {
-        float: none !important;
-        display: block;
-        text-align: left !important;
-        margin-top: 0.35rem;
-      }
-
-      /* Filters: stack on mobile, full-width selects */
-      .activity-filters {
-        padding: 0.75rem 1rem;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-      .filter-group {
-        flex: 1 1 100%;
-        min-width: 0;
-      }
-      .activity-filters select {
-        flex: 1;
-        min-width: 0;
-      }
-      .filter-label {
-        min-width: 5.5rem;
-      }
-
-      /* Swap table → cards */
+    @container (max-width: 700px) {
+      /* Table → cards */
       .activity-card table { display: none; }
       .mobile-events { display: block; }
+
+      /* Net inflow strip above the chart */
+      .overview { grid-template-columns: minmax(0, 1fr); }
+      .kpis { padding: 14px 16px 12px; border-bottom: 1px solid var(--stroke-light); }
+      .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 10px; }
+      .stat-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 0 0 0 12px;
+        border-top: none;
+        border-left: 1px solid var(--stroke-light);
+      }
+      .stat-card:first-child { padding-left: 0; border-left: none; }
+      .stat-card .label { font-size: 0.64rem; }
+      .stat-card .value { font-size: 1rem; }
+      .flow-chart { border-left: none; padding: 14px 16px 10px; }
+      .flow-chart-bars { height: 92px; gap: 1px; }
+      .flow-bar { left: 12%; right: 12%; }
+
+      /* Filters: a tidy grid, label above value */
+      .card-head { padding: 14px 16px 0; }
+      .activity-filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+        gap: 8px;
+        padding: 12px 16px 14px;
+      }
+      /* The select covers the whole pill so a tap anywhere opens it; the
+         label sits on top and lets taps through, except on its ⓘ. */
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0;
+        height: 46px;
+        padding: 7px 10px 0;
+      }
+      .filter-label { position: relative; z-index: 1; pointer-events: none; font-size: 0.58rem; }
+      .filter-label .info-tip { pointer-events: auto; }
+      .activity-filters select {
+        position: absolute;
+        inset: 0;
+        field-sizing: fixed;
+        width: 100%;
+        max-width: none;
+        height: 100%;
+        padding: 17px 26px 0 10px;
+        border-radius: 9px;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .container { padding: 8px 20px 48px; }
+    }
+    @media (max-width: 480px) {
+      .container { padding: 4px 16px 40px; }
+      .page-head { gap: 12px; margin-bottom: 16px; }
+      .page-head h1 { font-size: 1.35rem; }
+      .page-head p { font-size: 0.8rem; }
+      .page-head h1 { padding-right: 40px; }
+      .meta-pill { height: 28px; padding: 0 10px; font-size: 0.68rem; }
+      .theme-toggle { position: absolute; top: -2px; right: 0; width: 30px; height: 30px; }
     }
   </style>
   <script defer src="/track.js"></script>
@@ -616,46 +692,40 @@
 </head>
 <body>
   <div class="container">
-    <nav class="top-nav">
-      <div class="top-nav-links">
-        <a href="/" class="active">Activity</a>
-        <a href="/all-vaults">All Vaults</a>
-        <a href="/tvl">TVL</a>
-        <a href="/dominance">Dominance</a>
-        <a href="/address">Address</a>
-        <a href="/spark">Spark</a>
-        <a href="/rebalance-methodology">Rebalance Docs</a>
-        <a href="/logs">Logs</a>
-        <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
+    <header class="page-head">
+      <div>
+        <h1>Vault Activity</h1>
+        <p>Deposit &amp; withdrawal events across all Fusion vaults</p>
       </div>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
-    </nav>
-
-    <header>
-      <h1>Vault Activity</h1>
-      <p style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-        Deposit & withdrawal events across all Fusion vaults
-        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap"></span>
-      </p>
+      <div class="head-meta">
+        <span id="lastUpdated" class="meta-pill"></span>
+        <span id="vaultCount" class="meta-pill" style="display:none"></span>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
+      </div>
     </header>
 
-    <div id="flowChart" class="flow-chart" style="display:none">
-      <div class="flow-chart-header">
-        <span class="flow-chart-title">Daily net flow</span>
-        <span class="flow-chart-range">last <span id="flowRangeLabel">30d</span></span>
+    <section id="overview" class="overview card" style="display:none">
+      <div class="kpis">
+        <div class="eyebrow">Net inflow <span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></div>
+        <div id="statsRow" class="stats-row"></div>
       </div>
-      <div class="flow-chart-bars" id="flowChartBars"></div>
-      <div class="flow-chart-axis">
-        <span id="flowChartStart"></span>
-        <span id="flowChartEnd"></span>
+      <div id="flowChart" class="flow-chart" style="display:none">
+        <div class="flow-chart-header">
+          <span class="flow-chart-title eyebrow">Daily net flow</span>
+          <span class="flow-chart-range">last <span id="flowRangeLabel">30d</span></span>
+        </div>
+        <div class="flow-chart-bars" id="flowChartBars"></div>
+        <div class="flow-chart-axis">
+          <span id="flowChartStart"></span>
+          <span id="flowChartEnd"></span>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <div id="statsRow" class="stats-row" style="display:none"></div>
-
-    <div class="activity-card">
-      <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.4;text-align:right;"></span></h2>
+    <section class="activity-card card">
+      <div class="card-head">
+        <h2>Recent Deposits &amp; Withdrawals</h2>
+      </div>
       <div class="activity-filters">
         <label class="filter-group">
           <span class="filter-label">Min amount</span>
@@ -688,7 +758,7 @@
         </label>
         <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
           <span class="filter-label">Stocks
-            <span class="info-tip" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
+            <span class="info-tip" tabindex="0" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
           </span>
           <select id="filterStocks">
             <option value="" selected>All vaults</option>
@@ -698,7 +768,7 @@
         </label>
         <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
           <span class="filter-label">Synthetic
-            <span class="info-tip" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
+            <span class="info-tip" tabindex="0" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
           </span>
           <select id="filterSynthetic">
             <option value="hide" selected>Hide</option>
@@ -710,7 +780,7 @@
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
-    </div>
+    </section>
 
     <div id="errorContent" style="display:none"></div>
   </div>
@@ -737,6 +807,21 @@
       return a.slice(0, 6) + '...' + a.slice(-4);
     }
 
+    // Block explorer per chain, for the tx and wallet links. Events stored
+    // before chains were tagged carry no chain; they are all Ethereum.
+    const EXPLORERS = {
+      ethereum: 'https://etherscan.io',
+      arbitrum: 'https://arbiscan.io',
+      base: 'https://basescan.org',
+      unichain: 'https://uniscan.xyz',
+      plasma: 'https://plasmascan.to',
+      avalanche: 'https://snowtrace.io',
+      tac: 'https://explorer.tac.build',
+      ink: 'https://explorer.inkonchain.com',
+      katana: 'https://explorer.katanarpc.com',
+    };
+    const explorerFor = (chain) => EXPLORERS[chain || 'ethereum'] || EXPLORERS.ethereum;
+
     function timeAgo(ts) {
       const diff = Math.floor((Date.now() / 1000) - ts);
       if (diff < 60) return diff + 's ago';
@@ -748,6 +833,7 @@
     // Filter state (persisted in localStorage)
     let allEvents = [];
     let lastUpdatedAt = null;
+    let updatedLabelTimer = null;
     const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
@@ -960,8 +1046,8 @@
         if (vaultCount > 0) {
           const floor = data.minTvlUsd != null ? data.minTvlUsd : 50;
           const floorLabel = floor >= 1000 ? `$${floor / 1000}K` : `$${floor}`;
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
-          vaultCountEl.style.display = 'inline-block';
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" tabindex="0" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
+          vaultCountEl.style.display = '';
         }
 
         allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -1020,22 +1106,23 @@
       return sign + '$' + abs.toFixed(2);
     }
 
+    // Net inflow per window. The "Net inflow" heading and its explanation sit
+    // once above the three values (see #overview).
     function renderStats(s) {
       const row = document.getElementById('statsRow');
-      row.style.display = 'grid';
 
       function flowCard(label, val) {
         const color = val >= 0 ? 'var(--green)' : 'var(--red)';
         return `<div class="stat-card">
           <div class="label">${label}</div>
           <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
-          <div class="sub">net inflow <span class="info-tip" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></div>
         </div>`;
       }
 
       row.innerHTML = flowCard('24h', s.net24h)
         + flowCard('7d', s.net7d)
         + flowCard('30d', s.net30d);
+      document.getElementById('overview').style.display = '';
     }
 
     function renderFlowChart(events, days = 30) {
@@ -1119,6 +1206,7 @@
       let rows = '';
       let mobileRows = '';
       events.forEach(e => {
+        const scan = explorerFor(e.chain);
         const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
         const badgeClass = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
         const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
@@ -1134,30 +1222,30 @@
         const usd = estUsd != null ? `<span class="usd-value"${estTitle}>${estPrefix}${fmtUsdAmt(estUsd)}</span>` : '';
         const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
+        const nameAttr = String(name).replace(/"/g, '&quot;');
+        const amount = `${formatAmount(e.assets)} <span class="sym">${sym}</span>`;
+        const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>${synthBadge}</td>
-          <td class="num-bold col-num">${formatAmount(e.assets)} ${sym}</td>
+          <td><a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>${synthBadge}</td>
+          <td class="num-bold col-num">${amount}</td>
           <td class="col-num usd-cell">${usd || '—'}</td>
-          <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link">${name}</a></td>
-          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
-          <td><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.6rem;font-weight:700;text-decoration:none;line-height:1">B</a></td>
+          <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link" title="${nameAttr}">${name}</a></td>
+          <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
+          <td>${debank}</td>
         </tr>`;
         mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
           <div class="mobile-event-top">
-            <span style="display:inline-flex;align-items:center;gap:0.35rem">
-              <a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>
-              ${synthBadge}
-            </span>
+            <span class="mobile-event-badges"><a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a> ${synthBadge}</span>
             <span class="mobile-event-when">${time}</span>
           </div>
           <div class="mobile-event-top">
-            <span class="mobile-event-amount">${formatAmount(e.assets)} ${sym}</span>
+            <span class="mobile-event-amount">${amount}</span>
             <span class="mobile-event-usd">${usdMobile}</span>
           </div>
           <div class="mobile-event-meta">
-            <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${name}">${name}</a>
-            <span style="display:flex;align-items:center;gap:4px;flex-shrink:0"><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.5rem;font-weight:700;text-decoration:none;line-height:1">B</a></span>
+            <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>
+            <span class="mobile-event-who"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>${debank}</span>
           </div>
         </div>`;
       });
@@ -1178,7 +1266,8 @@
         <div class="mobile-events">${mobileRows}</div>
       `;
 
-      // Show last updated in header
+      // Show last updated in the header. This runs on every filter change and
+      // every reload, so it keeps a single timer rather than adding one each time.
       if (updatedAt) {
         const el = document.getElementById('lastUpdated');
         const updatedMs = new Date(updatedAt).getTime();
@@ -1187,11 +1276,12 @@
           const agoText = agoMin < 1 ? 'just now' : agoMin + ' min ago';
           const nextMin = Math.max(0, 20 - agoMin);
           const nextText = nextMin <= 0 ? 'any moment now' : `in ~${nextMin} min`;
-          el.innerHTML = `updated <span style="color:var(--accent);font-weight:500;">${agoText}</span>`
-            + `<br><span style="font-size:0.6rem;">next update ${nextText}</span>`;
+          el.innerHTML = `updated <span class="ago">${agoText}</span>`
+            + `<span class="next">next update ${nextText}</span>`;
         }
         refreshUpdatedLabel();
-        setInterval(refreshUpdatedLabel, 60000);
+        clearInterval(updatedLabelTimer);
+        updatedLabelTimer = setInterval(refreshUpdatedLabel, 60000);
       }
     }
 
@@ -1268,6 +1358,62 @@
     if (!localStorage.getItem(LAST_SEEN_KEY)) {
       localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
     }
+
+    // One floating bubble serves every ⓘ. Positioned against the window, so a
+    // card edge or the screen edge never cuts an explanation off.
+    (function infoTips() {
+      const bubble = document.createElement('div');
+      bubble.className = 'tip-bubble';
+      bubble.setAttribute('role', 'tooltip');
+      document.body.appendChild(bubble);
+      let current = null;
+      function show(el) {
+        current = el;
+        bubble.textContent = el.getAttribute('data-tip');
+        bubble.style.left = '0px';
+        bubble.style.top = '0px';
+        const r = el.getBoundingClientRect();
+        const b = bubble.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const left = Math.min(Math.max(8, r.left + r.width / 2 - b.width / 2), vw - b.width - 8);
+        const top = r.top - b.height - 8 >= 8 ? r.top - b.height - 8 : r.bottom + 8;
+        bubble.style.left = left + 'px';
+        bubble.style.top = top + 'px';
+        bubble.classList.add('show');
+      }
+      function hide() {
+        current = null;
+        bubble.classList.remove('show');
+      }
+      const tipOf = (t) => (t && t.closest ? t.closest('.info-tip[data-tip]') : null);
+      // Hover is for a mouse only: a lifted finger counts as leaving, which
+      // would close the bubble the moment a tap opened it.
+      document.addEventListener('pointerover', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const el = tipOf(e.target);
+        if (el) { if (el !== current) show(el); } else if (current) hide();
+      });
+      document.addEventListener('focusin', (e) => { const el = tipOf(e.target); if (el) show(el); });
+      document.addEventListener('focusout', (e) => { if (tipOf(e.target)) hide(); });
+      // Tap on touch screens. Inside a filter label a tap would also open the
+      // select; the tip is what was asked for.
+      document.addEventListener('click', (e) => {
+        const el = tipOf(e.target);
+        if (el) { e.preventDefault(); show(el); } else if (current) hide();
+      });
+      window.addEventListener('scroll', () => { if (current) hide(); }, { passive: true });
+    })();
+
+    // A click anywhere on a filter pill opens its list, not only on the value.
+    document.querySelectorAll('.filter-group').forEach((group) => {
+      const select = group.querySelector('select');
+      group.addEventListener('click', (e) => {
+        if (e.target === select || e.target.closest('.info-tip')) return;
+        e.preventDefault();
+        select.focus();
+        try { select.showPicker(); } catch {}
+      });
+    });
 
     // Filter change handlers
     document.getElementById('filterAmount').addEventListener('change', applyFilters);
