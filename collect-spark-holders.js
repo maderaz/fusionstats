@@ -22,12 +22,17 @@ const DEPLOY_BLOCK = 17210000; // SparkLend launch, May 2023
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
-const RPCS = [
+const { rpcEndpoints } = require('./rpc-endpoints.js');
+
+// Ethereum only. Measured 2026-10-03: the endpoints this list used to lead
+// with had stopped serving eth_getLogs (see collect-activity.js).
+const RPCS = rpcEndpoints('ethereum', [
+  'https://gateway.tenderly.co/public/mainnet',
+  'https://ethereum.public.blockpi.network/v1/rpc/public',
+  'https://rpc.mevblocker.io',
   'https://ethereum-rpc.publicnode.com',
-  'https://rpc.ankr.com/eth',
   'https://eth.drpc.org',
-  'https://eth.llamarpc.com',
-];
+]);
 
 const VAULT_ADDRESS = '0xb8a451107a9f87fde481d4d686247d6e43ed715e';
 

@@ -12,12 +12,17 @@ const path = require('path');
 
 const OUTPUT_FILE = path.join(__dirname, 'vaults.json');
 
-const RPCS = [
+const { rpcEndpoints } = require('./rpc-endpoints.js');
+
+// Ethereum only. Measured 2026-10-03: the endpoints this list used to lead
+// with had stopped serving eth_getLogs (see collect-activity.js).
+const RPCS = rpcEndpoints('ethereum', [
+  'https://gateway.tenderly.co/public/mainnet',
+  'https://ethereum.public.blockpi.network/v1/rpc/public',
+  'https://rpc.mevblocker.io',
   'https://ethereum-rpc.publicnode.com',
   'https://eth.drpc.org',
-  'https://eth.llamarpc.com',
-  'https://cloudflare-eth.com',
-];
+]);
 
 const FACTORY_ADDRESS = '0xcd05909C4A1F8E501e4ED554cEF4Ed5E48D9b852';
 // keccak256("FusionInstanceCreated(uint256,uint256,string,string,uint8,address,string,uint8,address,address,address,address)")
@@ -135,32 +140,41 @@ function parseFusionInstanceCreated(log) {
   };
 }
 
+// Returns the logs and how far the scan actually got. A range no endpoint will
+// serve stops it there: it used to be skipped and lastBlock moved to the head
+// regardless, so a vault deployed inside the skipped range was never seen.
 async function scanLogs(fromBlock, toBlock) {
   const allLogs = [];
 
   async function scan(from, to) {
     try {
-      const logs = await rpcCall('eth_getLogs', [{
+      return await rpcCall('eth_getLogs', [{
         address: FACTORY_ADDRESS,
         topics: [FUSION_INSTANCE_CREATED_TOPIC],
         fromBlock: '0x' + from.toString(16),
         toBlock: '0x' + to.toString(16),
       }]);
-      allLogs.push(...logs);
     } catch (e) {
-      if (to - from <= 5000) return;
+      if (to - from <= 5000) { const err = new Error('range unservable'); err.range = [from, to]; err.reason = e.message; throw err; }
       const mid = from + Math.floor((to - from) / 2);
-      await scan(from, mid);
-      await scan(mid + 1, to);
+      return (await scan(from, mid)).concat(await scan(mid + 1, to));
     }
   }
 
   const CHUNK = 50000;
+  let reachedBlock = fromBlock - 1;
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
-    await scan(start, end);
+    try {
+      allLogs.push(...await scan(start, end));
+    } catch (e) {
+      if (e.message !== 'range unservable') throw e;
+      console.log(`::error::factory scan: no endpoint will serve blocks ${e.range[0]}-${e.range[1]} (${e.reason}) — stopped at ${reachedBlock}`);
+      break;
+    }
+    reachedBlock = end;
   }
-  return allLogs;
+  return { logs: allLogs, reachedBlock };
 }
 
 async function main() {
@@ -184,7 +198,7 @@ async function main() {
     return;
   }
 
-  const logs = await scanLogs(fromBlock, currentBlock);
+  const { logs, reachedBlock } = await scanLogs(fromBlock, currentBlock);
   console.log(`Found ${logs.length} FusionInstanceCreated events`);
 
   const newVaults = logs.map(log => {
@@ -226,7 +240,8 @@ async function main() {
   }
 
   data.vaults = [...existing.values()].sort((a, b) => a.index - b.index);
-  data.lastBlock = currentBlock;
+  // Only as far as was actually read; a stall resumes from here next run.
+  if (reachedBlock >= fromBlock) data.lastBlock = reachedBlock;
   data.updatedAt = new Date().toISOString();
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2) + '\n');

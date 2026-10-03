@@ -24,12 +24,17 @@ const path = require('path');
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 // Per-chain RPCs (mirrors collect-activity.js)
+const { rpcEndpoints } = require('./rpc-endpoints.js');
+
 const CHAIN_RPCS = {
   ethereum: [
+    // Measured 2026-10-03: every endpoint this list used to lead with had
+    // stopped serving eth_getLogs (see collect-activity.js). These agree.
+    'https://gateway.tenderly.co/public/mainnet',
+    'https://ethereum.public.blockpi.network/v1/rpc/public',
+    'https://rpc.mevblocker.io',
     'https://ethereum-rpc.publicnode.com',
     'https://eth.drpc.org',
-    'https://eth.llamarpc.com',
-    'https://cloudflare-eth.com',
   ],
   base: [
     'https://base-rpc.publicnode.com',
@@ -88,7 +93,7 @@ const RPC_MIN_INTERVAL_MS = parseInt(process.env.RPC_MIN_INTERVAL_MS || '150', 1
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function rpcCall(chain, method, params) {
-  const rpcs = CHAIN_RPCS[chain];
+  const rpcs = rpcEndpoints(chain, CHAIN_RPCS[chain]);
   if (!rpcs) throw new Error(`No RPCs for chain ${chain}`);
   const active = activeRpcByChain[chain] || 0;
   const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
