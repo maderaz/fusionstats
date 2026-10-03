@@ -47,12 +47,17 @@ const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 
 // Per-chain RPC endpoints — mirrors collect-activity.js. Public, no-auth only.
+const { rpcEndpoints } = require('./rpc-endpoints.js');
+
 const CHAIN_RPCS = {
   ethereum: [
+    // Measured 2026-10-03: every endpoint this list used to lead with had
+    // stopped serving eth_getLogs (see collect-activity.js). These agree.
+    'https://gateway.tenderly.co/public/mainnet',
+    'https://ethereum.public.blockpi.network/v1/rpc/public',
+    'https://rpc.mevblocker.io',
     'https://ethereum-rpc.publicnode.com',
     'https://eth.drpc.org',
-    'https://eth.llamarpc.com',
-    'https://cloudflare-eth.com',
   ],
   base: [
     'https://base-rpc.publicnode.com',
@@ -129,7 +134,7 @@ function parseArgs() {
 }
 
 function rpcFactory(chain) {
-  const eps = CHAIN_RPCS[chain];
+  const eps = rpcEndpoints(chain, CHAIN_RPCS[chain]);
   if (!eps || !eps.length) throw new Error(`no RPCs configured for chain ${chain}`);
   let active = 0;
   let id = 0;
@@ -181,9 +186,15 @@ async function scanRange(rpc, addr, from, to, out) {
     const logs = await getLogs(rpc, addr, from, to);
     for (const lg of logs) out.push(lg);
   } catch (e) {
+    // A range no endpoint will serve stops the scan. It used to be skipped
+    // with a log line and the scan carried on — but balances are replayed
+    // transfer by transfer, so one dropped range makes every balance after it
+    // wrong, and the resume point moved past it so no later run ever looked.
     if (to - from <= 1000) {
-      console.log(`  skipping ${from}-${to}: ${e.message}`);
-      return;
+      const err = new Error('range unservable');
+      err.range = [from, to];
+      err.reason = e.message;
+      throw err;
     }
     const mid = from + Math.floor((to - from) / 2);
     await scanRange(rpc, addr, from, mid, out);
@@ -266,7 +277,17 @@ async function buildHolderSeries(rpc, vault, fromBlock, toBlock, chunkSize, opts
     const to = Math.min(toBlock, from + chunkSize - 1);
     const start = Date.now();
     const logs = [];
-    await scanRange(rpc, vault, from, to, logs);
+    try {
+      await scanRange(rpc, vault, from, to, logs);
+    } catch (e) {
+      if (e.message !== 'range unservable') throw e;
+      // Stop at the last chunk read in full. This chunk's partial logs are not
+      // replayed, so balances stay exactly right up to lastSuccessfulBlock,
+      // and the next run resumes here instead of past the hole.
+      console.log(`\n::error::${vault}: no endpoint will serve blocks ${e.range[0]}-${e.range[1]} (${e.reason}) — `
+        + `stopped at ${lastSuccessfulBlock}; the next run resumes there`);
+      break;
+    }
     const segments = [];
     try {
       const [bFrom, bTo] = await Promise.all([getBlock(rpc, from), getBlock(rpc, to)]);
@@ -382,7 +403,8 @@ async function scanVault(vault, args, persistedState, checkpoint) {
       await checkpoint(packResult(vault, deployBlock, s.lastBlock, s));
     },
   });
-  return packResult(vault, deployBlock, head, snap);
+  // How far the scan really got — the head only if nothing stopped it.
+  return packResult(vault, deployBlock, snap.lastBlock, snap);
 }
 
 // Split the scan snapshot into the public output (frontend reads this) and

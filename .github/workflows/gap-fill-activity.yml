@@ -30,9 +30,25 @@ on:
 permissions:
   contents: write
 
+# Every workflow that writes activity-events.json or the rebalance files
+# shares this group (the deep backfills write both). Without
+# it a scheduled run and a backfill overlap — a backfill takes hours — and
+# whichever pushes second replays its own copy of the file over the other's,
+# silently discarding the events the first one found. Queued, never cancelled
+# mid-run: a run that is writing must finish.
+concurrency:
+  group: event-data-writers
+  cancel-in-progress: false
+
 jobs:
   gap-fill:
     runs-on: ubuntu-latest
+    # Optional keyed endpoints, tried before the public ones (rpc-endpoints.js).
+    # Unset secrets are empty and change nothing.
+    env:
+      RPC_URL_ETHEREUM: ${{ secrets.RPC_URL_ETHEREUM }}
+      RPC_URL_BASE: ${{ secrets.RPC_URL_BASE }}
+      RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4

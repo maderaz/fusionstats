@@ -17,6 +17,14 @@ on:
       min-tvl:
         description: 'Override minimum TVL floor in USD (default 1000)'
         required: false
+      force:
+        # Balances are replayed transfer by transfer, so a range that was
+        # skipped leaves every later balance wrong and resuming cannot fix it.
+        # This rebuilds from deployment.
+        description: 'Rebuild from deployment instead of resuming (after a skipped range)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -24,6 +32,12 @@ permissions:
 jobs:
   collect:
     runs-on: ubuntu-latest
+    # Optional keyed endpoints, tried before the public ones (rpc-endpoints.js).
+    # Unset secrets are empty and change nothing.
+    env:
+      RPC_URL_ETHEREUM: ${{ secrets.RPC_URL_ETHEREUM }}
+      RPC_URL_BASE: ${{ secrets.RPC_URL_BASE }}
+      RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
     # Generous outer cap — per-vault budget inside the collector keeps any
     # single chain from running away. Full fleet sweep currently ~30-90 min.
     timeout-minutes: 290
@@ -40,6 +54,7 @@ jobs:
           if [ -n "${{ github.event.inputs.vault }}" ]; then ARGS="$ARGS --vault=${{ github.event.inputs.vault }}"; fi
           if [ -n "${{ github.event.inputs.chain }}" ]; then ARGS="$ARGS --chain=${{ github.event.inputs.chain }}"; fi
           if [ -n "${{ github.event.inputs['min-tvl'] }}" ]; then ARGS="$ARGS --min-tvl=${{ github.event.inputs['min-tvl'] }}"; fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
           node collect-vault-holders.js $ARGS
 
       - name: Commit & push data files
