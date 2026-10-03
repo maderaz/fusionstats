@@ -11,13 +11,15 @@
 
 const RAW = 'https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/';
 const RPCS = {
-  ethereum: ['https://ethereum-rpc.publicnode.com', 'https://cloudflare-eth.com',
-             'https://eth.drpc.org', 'https://eth.llamarpc.com',
-             // candidates not in production yet
-             'https://rpc.ankr.com/eth', 'https://1rpc.io/eth', 'https://eth.merkle.io',
-             'https://ethereum.blockpi.network/v1/rpc/public'],
-  plasma: ['https://evm-rpc.plasma.io/api', 'https://rpc.plasma.to', 'https://plasma.drpc.org',
-           'https://plasma-rpc.publicnode.com'],
+  // round 2: every configured endpoint refused getLogs; look wider
+  ethereum: ['https://eth.rpc.blxrbdn.com', 'https://rpc.mevblocker.io', 'https://eth-mainnet.public.blastapi.io',
+             'https://ethereum.public.blockpi.network/v1/rpc/public', 'https://rpc.payload.de',
+             'https://eth.api.onfinality.io/public', 'https://endpoints.omniatech.io/v1/eth/mainnet/public',
+             'https://eth1.lava.build', 'https://ethereum-mainnet.gateway.tatum.io', 'https://rpc.flashbots.net',
+             'https://gateway.tenderly.co/public/mainnet', 'https://eth-pokt.nodies.app', 'https://rpc.eth.gateway.fm',
+             'https://eth.meowrpc.com', 'https://eth.blockrazor.xyz', 'https://rpc.therpc.io/ethereum',
+             'https://ethereum.rpc.subquery.network/public', 'https://eth.drpc.org'],
+  plasma: ['https://rpc.plasma.to'],
 };
 const TOPICS = [['0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7',
                  '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db']];
@@ -59,8 +61,16 @@ async function rpc(url, method, params, timeoutMs = 15000) {
     }
   }
   console.log('\n=== plasma: which endpoints answer at all ===');
+  const pl = (iv.vaults || []).filter(v => v.chain === 'plasma' && tracked.has(v.address.toLowerCase())).map(v => v.address.toLowerCase());
   for (const url of RPCS.plasma) {
     const r = await rpc(url, 'eth_blockNumber', []);
     console.log(`   ${url.padEnd(42)} ${r.err ? 'ERR ' + r.err : 'block ' + parseInt(r.result, 16)} (${r.ms}ms)`);
+    if (r.err) continue;
+    const head = parseInt(r.result, 16);
+    for (const span of [10000, 2000]) {
+      const g = await rpc(url, 'eth_getLogs', [{ address: pl, topics: TOPICS,
+        fromBlock: '0x' + (head - span + 1).toString(16), toBlock: '0x' + head.toString(16) }]);
+      console.log(`      getLogs ${pl.length} vaults x ${span}: ${g.ms}ms ${g.err ? 'ERR ' + g.err : g.result.length + ' logs'}`);
+    }
   }
 })().catch(e => { console.error('Fatal:', e); process.exit(1); });
