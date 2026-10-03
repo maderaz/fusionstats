@@ -8,6 +8,14 @@ on:
 permissions:
   contents: write
 
+# Shares its group with every workflow writing activity-events.json or the
+# rebalance files: the deep backfills write the same rebalance files, and two
+# overlapping runs each replay their own copy over the other's on push,
+# silently discarding what the first one found. Queued, never cancelled mid-run.
+concurrency:
+  group: event-data-writers
+  cancel-in-progress: false
+
 jobs:
   rebalances:
     runs-on: ubuntu-latest
