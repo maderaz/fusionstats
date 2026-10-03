@@ -59,11 +59,20 @@ jobs:
         continue-on-error: true
         run: node collect-activity.js
 
+      # What the Activity page opens with: the last five weeks of events plus
+      # what it needs from all history (tools/build-activity-recent.js), so a
+      # visit no longer downloads every event ever collected. Rebuilt from
+      # whatever activity-events.json now holds and committed with it.
+      - name: Build the Activity page's recent cache
+        continue-on-error: true
+        run: node tools/build-activity-recent.js
+
       - name: Commit & push data files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f history.json logs.json activity-events.json
+          [ -f activity-recent.json ] && git add -f activity-recent.json || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest
