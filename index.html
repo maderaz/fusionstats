@@ -8,709 +8,727 @@
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Apply the saved theme before first paint so dark mode never flashes light.
+    try { if (localStorage.getItem('fusionstats_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch {}
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
+      --bg: #FFFFFF;
+      --bg-subtle: #F7F7F8;
+      --bg-hover: #F5F5F7;
+      --line: #EDEDF0;
+      --line-strong: #E2E2E7;
+      --text: #0B0B0F;
+      --text-2: #5E5E6B;
+      --text-3: #9A9AA6;
       --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16a34a;
-      --green-bg: rgba(22, 163, 74, 0.08);
-      --red: #dc2626;
-      --red-bg: rgba(220, 38, 38, 0.08);
+      --accent-bg: rgba(132, 41, 255, 0.08);
+      --pos: #16A34A;
+      --pos-bar: #22C55E;
+      --pos-soft: rgba(34, 197, 94, 0.13);
+      --neg: #DC2626;
+      --neg-bar: #EF4444;
+      --neg-soft: rgba(239, 68, 68, 0.11);
+      --amber: #B45309;
+      --amber-soft: rgba(217, 119, 6, 0.10);
+      --tip-bg: #111116;
+      --tip-fg: #FFFFFF;
+      --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      /* Names the shared sidebar (nav.js) reads. */
+      --surface: var(--bg);
+      --stroke: var(--line);
+      --text-body: var(--text-2);
+      --text-secondary: var(--text-3);
     }
 
     [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
+      color-scheme: dark;
+      --bg: #0A0A0C;
+      --bg-subtle: #131317;
+      --bg-hover: #141419;
+      --line: #1E1E24;
+      --line-strong: #2A2A32;
+      --text: #F4F4F6;
+      --text-2: #A3A3AE;
+      --text-3: #70707C;
       --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --green: #22c55e;
-      --green-bg: rgba(34, 197, 94, 0.12);
-      --red: #ef4444;
-      --red-bg: rgba(239, 68, 68, 0.12);
+      --accent-bg: rgba(163, 127, 255, 0.14);
+      --pos: #22C55E;
+      --pos-bar: #22C55E;
+      --pos-soft: rgba(34, 197, 94, 0.15);
+      --neg: #EF4444;
+      --neg-bar: #EF4444;
+      --neg-soft: rgba(239, 68, 68, 0.15);
+      --amber: #F59E0B;
+      --amber-soft: rgba(245, 158, 11, 0.12);
+      --tip-bg: #F4F4F6;
+      --tip-fg: #0A0A0C;
     }
 
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-      transition: background 0.3s, color 0.3s;
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.2s, color 0.2s;
+    }
+    a { color: inherit; }
+    .num-bold { font-variant-numeric: tabular-nums; }
+
+    /* Everything sizes to the content column, not the window: nav.js's
+       sidebar takes 220px on desktop and none on a phone. */
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 44px 48px 96px;
+      container-type: inline-size;
     }
 
-    .num-bold {
-      font-family: 'Source Sans 3', sans-serif;
+    /* ---------- Masthead ---------- */
+    .masthead {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px 32px;
+      padding-bottom: 28px;
+    }
+    .masthead h1 {
+      font-size: 32px;
+      line-height: 1.1;
       font-weight: 600;
-      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.035em;
     }
-
-    .container { max-width: 960px; margin: 0 auto; }
-
-    .col-num { text-align: right; white-space: nowrap; }
-    .usd-cell .usd-value { display: inline; white-space: nowrap; }
-    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-    .top-nav {
+    .lede { margin-top: 8px; font-size: 15px; color: var(--text-2); }
+    .mast-meta {
       display: flex;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      font-size: 13px;
+      color: var(--text-2);
     }
-    .top-nav-links {
-      display: flex;
-      gap: 0.25rem;
-      flex: 1;
-      min-width: 0;
+    #lastUpdated { display: inline-block; }
+    #lastUpdated:empty { display: none; }
+    #lastUpdated::first-letter { text-transform: uppercase; }
+    #lastUpdated .ago { color: var(--text); font-weight: 500; }
+    #lastUpdated .next { color: var(--text-3); }
+    #lastUpdated .next::before { content: '\00b7'; margin: 0 7px; color: var(--text-3); }
+    #vaultCount {
+      display: inline-flex;
       align-items: center;
+      gap: 5px;
+      padding-left: 14px;
+      border-left: 1px solid var(--line-strong);
     }
-
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
-    }
-
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-
     .theme-toggle {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
+      display: inline-grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--bg);
+      color: var(--text-2);
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .theme-toggle:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
+    .theme-toggle svg { width: 15px; height: 15px; }
+    .theme-toggle .sun, [data-theme="dark"] .theme-toggle .moon { display: none; }
+    [data-theme="dark"] .theme-toggle .sun { display: block; }
+
+    /* ---------- Info tips: one floating bubble (see script) ---------- */
+    .info-tip {
+      display: inline-block;
       flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      font-size: 0;                 /* the ⓘ stays in the text; the icon is drawn */
+      vertical-align: -2px;
+      color: var(--text-3);
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.4' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M8 7.3v3.9' stroke='%23000' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='5' r='.9'/%3E%3C/svg%3E") center / contain no-repeat;
+              mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.4' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M8 7.3v3.9' stroke='%23000' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='5' r='.9'/%3E%3C/svg%3E") center / contain no-repeat;
+      cursor: help;
+      outline: none;
+      transition: color 0.15s;
     }
+    .info-tip:hover, .info-tip:focus-visible { color: var(--text); }
+    .tip-bubble {
+      position: fixed;
+      z-index: 200;
+      max-width: 270px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 0.12s, transform 0.12s;
+    }
+    .tip-bubble.show { opacity: 1; transform: none; }
 
-    header { margin-bottom: 2rem; }
-    header h1 {
-      font-size: 1.5rem;
+    .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
       font-weight: 500;
-      letter-spacing: -0.02em;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--text-2);
     }
-    header p { color: var(--text-body); font-size: 0.875rem; }
 
-    /* Stats row */
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .shimmer, #statsRow:empty, .flow-chart-bars:empty::after {
+      background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--line) 50%, var(--bg-subtle) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite;
+    }
+
+    /* ---------- Overview: net inflow, then the daily chart ---------- */
+    .overview { padding: 32px 0 40px; border-top: 1px solid var(--line); }
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 18px;
+    }
+    #statsRow:empty { display: block; height: 70px; border-radius: 12px; }
+    .stat-card { padding: 0 28px; border-left: 1px solid var(--line); min-width: 0; }
+    .stat-card:first-child { padding-left: 0; border-left: none; }
+    .stat-card .label { color: var(--text-3); }
+    .stat-card .value {
+      margin-top: 6px;
+      font-size: clamp(20px, 4cqi, 40px);
+      line-height: 1.05;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+      white-space: nowrap;
     }
 
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.25rem;
-    }
-
-    /* Minimal daily flow chart */
-    .flow-chart {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 0.85rem 1rem 0.65rem;
-      margin-bottom: 1rem;
-    }
+    .flow-chart { margin-top: 40px; }
     .flow-chart-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 0.5rem;
+      margin-bottom: 14px;
     }
-    .flow-chart-title {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-    .flow-chart-range {
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-    }
+    .flow-chart-range { font-size: 12.5px; color: var(--text-3); }
     .flow-chart-bars {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      height: 80px;
       position: relative;
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      height: 150px;
     }
     .flow-chart-bars::before {
       content: '';
       position: absolute;
-      left: 0; right: 0;
-      top: 50%;
+      left: 0; right: 0; top: 50%;
       height: 1px;
-      background: var(--stroke);
-      z-index: 0;
+      background: var(--line-strong);
     }
-    .flow-bar-slot {
-      flex: 1;
-      height: 100%;
-      position: relative;
-      z-index: 1;
+    .flow-chart-bars:empty::after {
+      content: '';
+      position: absolute;
+      inset: 24% 0;
+      border-radius: 12px;
     }
+    .flow-bar-slot { position: relative; flex: 1; border-radius: 7px; transition: background 0.12s; }
+    .flow-bar-slot:hover { background: var(--bg-subtle); }
     .flow-bar {
       position: absolute;
-      left: 0;
-      right: 0;
+      left: 20%;
+      right: 20%;
       min-height: 2px;
-      border-radius: 3px;
       transition: opacity 0.15s;
     }
-    .flow-bar.positive {
-      background: var(--green);
-      bottom: 50%;
-    }
-    .flow-bar.negative {
-      background: var(--red);
-      top: 50%;
-    }
-    .flow-bar-slot:hover .flow-bar { opacity: 0.7; }
+    .flow-bar.positive { bottom: 50%; background: var(--pos-bar); border-radius: 4px 4px 1px 1px; }
+    .flow-bar.negative { top: 50%; background: var(--neg-bar); border-radius: 1px 1px 4px 4px; }
+    .flow-chart-bars:hover .flow-bar { opacity: 0.4; }
+    .flow-chart-bars .flow-bar-slot:hover .flow-bar { opacity: 1; }
     .flow-bar-slot .flow-bar-tooltip {
-      display: none;
       position: absolute;
-      bottom: calc(100% + 6px);
+      bottom: calc(100% + 8px);
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.88);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      white-space: nowrap;
-      z-index: 10;
-      pointer-events: none;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font-size: 12px;
       line-height: 1.4;
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      visibility: hidden;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+      transition: opacity 0.1s;
     }
-    .flow-bar-slot:hover .flow-bar-tooltip { display: block; }
+    .flow-bar-tooltip strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .flow-bar-slot:nth-child(-n+4) .flow-bar-tooltip { left: 0; transform: none; text-align: left; }
+    .flow-bar-slot:nth-last-child(-n+4) .flow-bar-tooltip { left: auto; right: 0; transform: none; text-align: right; }
+    .flow-bar-slot:hover .flow-bar-tooltip { opacity: 1; visibility: visible; }
     .flow-chart-axis {
       display: flex;
       justify-content: space-between;
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-      margin-top: 0.35rem;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-3);
     }
 
-    .stat-card .label {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
+    /* ---------- Feed ---------- */
+    .feed { padding-top: 32px; border-top: 1px solid var(--line); }
+    .feed-title h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+
+    /* The filters stay in reach while the list scrolls; the column headings
+       stick right under them (--tools-h is measured by the script). */
+    .feed-tools {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 14px 0;
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      -webkit-backdrop-filter: saturate(1.6) blur(14px);
+              backdrop-filter: saturate(1.6) blur(14px);
     }
 
-    .stat-card .value {
-      font-size: 1.5rem;
-      letter-spacing: -0.02em;
+    .activity-filters {
+      flex: 1 1 560px;
+      display: flex;
+      min-width: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: var(--bg);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
     }
-
-    .stat-card .sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    /* Activity table */
-    .activity-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .activity-card h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th {
-      text-align: left;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--stroke);
-      font-weight: 500;
-    }
-
-    td {
-      padding: 0.65rem 1rem;
-      font-size: 0.8rem;
-      border-bottom: 1px solid var(--stroke);
-      color: var(--text-body);
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    /* Matches the badge on /tesseract: smaller, tighter, 5px radius. */
-    .badge-deposit, .badge-withdraw {
-      display: inline-block;
-      font-size: 0.64rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      padding: 2px 7px;
-      border-radius: 5px;
-      text-decoration: none;
+    /* Each segment is one <label>: its select covers the whole segment so a
+       click anywhere opens it; the label text sits on top and lets clicks
+       through, except on its ⓘ. */
+    .filter-group {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      height: 54px;
+      padding: 9px 14px 0;
+      border-left: 1px solid var(--line);
       cursor: pointer;
+      transition: background 0.15s;
+    }
+    .filter-group:first-child { border-left: none; border-radius: 13px 0 0 13px; }
+    .filter-group:last-child { border-radius: 0 13px 13px 0; }
+    /* Shares of the bar, sized so every value but the rare "— no events
+       yet" chain labels fits without truncating. */
+    .filter-group:has(#filterAmount) { flex-grow: 0.95; }
+    .filter-group:has(#filterProduct) { flex-grow: 1.1; }
+    .filter-group:has(#filterChain) { flex-grow: 1.3; }
+    .filter-group:has(#filterStocks) { flex-grow: 1.3; }
+    .filter-group:has(#filterSynthetic) { flex-grow: 1.25; }
+    .filter-group:hover, .filter-group:focus-within { background: var(--bg-subtle); }
+    .filter-label {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .filter-label .info-tip { pointer-events: auto; }
+    .activity-filters select {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 21px 28px 0 14px;
+      border: none;
+      border-radius: inherit;
+      background: transparent;
+      font: 500 14px var(--sans);
+      color: var(--text);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+              appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%239A9AA6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+    }
+    .activity-filters select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+
+    .seg {
+      display: inline-flex;
+      flex-shrink: 0;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg-subtle);
+    }
+    .seg button {
+      height: 46px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      font: 500 13.5px var(--sans);
+      color: var(--text-2);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .seg button:hover { color: var(--text); }
+    .seg button.on {
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line);
+    }
+    .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+    /* Table: text lines up with the page edge, rows highlight a little wider. */
+    #activityContent table {
+      width: calc(100% + 24px);
+      margin: 0 -12px;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    th {
+      position: sticky;
+      top: var(--tools-h, 0px);
+      z-index: 2;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-3);
       white-space: nowrap;
     }
-
-    .badge-deposit {
-      color: var(--green);
-      background: var(--green-bg);
+    td {
+      height: 46px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--text);
+      white-space: nowrap;
+      vertical-align: middle;
     }
-    .badge-deposit:hover { background: rgba(22, 163, 74, 0.18); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr td { transition: background 0.1s; }
+    tbody tr:hover td { background: var(--bg-hover); }
+    td:first-child { color: var(--text-2); }
+    .col-num { text-align: right; }
+    td.col-num.num-bold { font-weight: 500; }
+    .sym { margin-left: 1px; font-size: 12.5px; font-weight: 400; color: var(--text-3); }
+    .usd-cell, .usd-value { color: var(--text-2); font-variant-numeric: tabular-nums; }
 
-    .badge-withdraw {
-      color: var(--red);
-      background: var(--red-bg);
-    }
-    .badge-withdraw:hover { background: rgba(220, 38, 38, 0.18); }
-
-    .usd-value {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      font-weight: 400;
-    }
-
-    /* Synthetic-flow markers */
-    .synth-badge {
-      display: inline-block;
-      margin-left: 0.4rem;
-      padding: 0.05rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.6rem;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-      color: var(--warn, #d97706);
-      background: rgba(217, 119, 6, 0.10);
-      border: 1px solid rgba(217, 119, 6, 0.25);
-      cursor: help;
-      text-transform: lowercase;
-    }
-    [data-theme="dark"] .synth-badge {
-      color: #f59e0b;
-      background: rgba(245, 158, 11, 0.12);
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-    tr.row-synthetic td,
-    .mobile-event.row-synthetic { opacity: 0.65; }
-    tr.row-synthetic:hover td,
-    .mobile-event.row-synthetic:hover { opacity: 1; }
-
-    /* Info tooltip icon */
-    .info-tip {
+    /* Direction: an arrow into the vault for a deposit, out of it for a withdrawal. */
+    .badge-deposit, .badge-withdraw {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      width: 14px;
-      height: 14px;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      cursor: default;
-      position: relative;
+      gap: 10px;
+      font-weight: 500;
+      color: var(--text);
+      text-decoration: none;
       vertical-align: middle;
-      margin-left: 2px;
     }
-    .info-tip::after {
-      content: attr(data-tip);
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.88);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 0.65rem;
-      font-weight: 400;
-      white-space: normal;
-      width: max-content;
-      max-width: 220px;
-      line-height: 1.4;
-      z-index: 20;
-      pointer-events: none;
-      text-align: center;
+    .badge-deposit .t, .badge-withdraw .t { display: inline-block; text-transform: lowercase; }
+    .badge-deposit .t::first-letter, .badge-withdraw .t::first-letter { text-transform: uppercase; }
+    .badge-deposit:hover .t, .badge-withdraw:hover .t { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--text-3); }
+    .dir {
+      display: inline-grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
     }
-    .info-tip:hover::after { display: block; }
+    .dir::before {
+      content: '';
+      width: 12px;
+      height: 12px;
+      background: currentColor;
+      -webkit-mask: var(--arrow) center / contain no-repeat;
+              mask: var(--arrow) center / contain no-repeat;
+    }
+    .badge-deposit .dir {
+      color: var(--pos);
+      background: var(--pos-soft);
+      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M11.5 4.5l-7 7M4.5 6v5.5H10' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+    .badge-withdraw .dir {
+      color: var(--neg);
+      background: var(--neg-soft);
+      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 11.5l7-7M6 4.5h5.5V10' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
 
-    .product-link {
-      color: var(--text-body);
+    .synth-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      margin-left: 8px;
+      padding: 0 7px;
+      border-radius: 6px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font: 500 11px var(--mono);
+      vertical-align: middle;
+      cursor: help;
+    }
+    tr.row-synthetic td, .mobile-event.row-synthetic { opacity: 0.6; }
+    tr.row-synthetic:hover td, .mobile-event.row-synthetic:hover { opacity: 1; }
+
+    /* The product column takes the width that is left and truncates. */
+    .vault-name { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .product-link { color: var(--text); text-decoration: none; transition: color 0.15s; }
+    .product-link:hover { color: var(--accent); }
+    .addr-link {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--text-2);
       text-decoration: none;
       transition: color 0.15s;
     }
-    .product-link:hover { color: var(--accent); text-decoration: underline; }
-
-    .vault-name {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      max-width: 160px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .addr-link {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--accent);
+    .addr-link:hover { color: var(--accent); }
+    .col-profile { text-align: center; }
+    th:last-child { text-align: center; }
+    .debank {
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 107, 0, 0.11);
+      color: #FF6B00;
+      font: 700 10px var(--sans);
       text-decoration: none;
+      transition: background 0.15s, color 0.15s;
     }
-    .addr-link:hover { text-decoration: underline; }
+    .debank:hover { background: #FF6B00; color: #FFF; }
 
-    .tx-link {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-    .tx-link:hover { color: var(--accent); }
-
-    .loading-msg {
-      text-align: center;
-      padding: 3rem;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-    }
-
+    .loading-msg { padding: 72px 20px; text-align: center; font-size: 14px; color: var(--text-3); }
+    .loading-msg strong { color: var(--text); font-weight: 600; }
     .error-msg {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 12px;
+      background: var(--neg-soft);
       text-align: center;
-      padding: 2rem;
-      color: var(--red);
-      font-size: 0.85rem;
+      font-size: 14px;
+      color: var(--neg);
     }
+    .error-msg small { color: var(--text-2); }
 
-    .data-ts {
-      text-align: center;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-bottom: 2rem;
-    }
-
-    /* Activity filters */
-    .activity-filters {
-      display: flex;
-      gap: 0.75rem;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-      flex-wrap: wrap;
-      align-items: center;
-      row-gap: 0.6rem;
-    }
-    .filter-group {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-    /* Product filter allowed to shrink so it doesn't blow the row */
-    .filter-group:has(#filterProduct) {
-      flex-shrink: 1;
-      min-width: 0;
-    }
-    .filter-group:has(#filterProduct) select {
-      min-width: 8rem;
-      max-width: 14rem;
-    }
-    .filter-label {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-secondary);
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    .activity-filters select {
-      font-family: inherit;
-      font-size: 0.8rem;
-      padding: 0.4rem 1.8rem 0.4rem 0.7rem;
-      background: var(--bg);
-      border: 1px solid var(--stroke);
-      border-radius: 6px;
-      color: var(--text);
-      cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%239BA3AF' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 0.6rem center;
-      text-overflow: ellipsis;
-    }
-    .activity-filters select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-
-    /* Mobile event cards (hidden on desktop by default) */
+    /* Phone list: what happened and how much, then where, then who and when. */
     .mobile-events { display: none; }
     .mobile-event {
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--stroke);
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+      position: relative;
+      display: grid;
+      gap: 3px;
+      padding: 14px 0 14px 50px;
+      border-bottom: 1px solid var(--line);
     }
     .mobile-event:last-child { border-bottom: none; }
-    .mobile-event-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .mobile-event-when {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-    }
+    .mobile-event .dir { position: absolute; left: 0; top: 16px; width: 36px; height: 36px; }
+    .mobile-event .dir::before { width: 15px; height: 15px; }
+    .mob-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+    .mobile-event-badges { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
     .mobile-event-amount {
-      font-size: 1rem;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 500;
       font-variant-numeric: tabular-nums;
-    }
-    .mobile-event-usd {
-      font-size: 0.78rem;
-      color: var(--text-secondary);
-      font-weight: 400;
-      font-variant-numeric: tabular-nums;
-    }
-    .mobile-event-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.72rem;
-      color: var(--text-body);
-      gap: 0.5rem;
+      white-space: nowrap;
     }
     .mobile-event-product {
       flex: 1;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 13.5px;
+      color: var(--text-2);
     }
-    .mobile-event-user {
-      flex-shrink: 0;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
+    .mobile-event-usd { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-event-who { display: inline-flex; align-items: center; gap: 8px; }
+    .mobile-event-user { font-size: 12px; color: var(--text-3); }
+    .mobile-event .debank { width: 18px; height: 18px; font-size: 9px; }
+    .mobile-event-when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+
+    @container (max-width: 900px) {
+      .stat-card { padding: 0 20px; }
+      td, th { padding-left: 10px; padding-right: 10px; }
+      .badge-deposit, .badge-withdraw { gap: 8px; }
     }
 
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
+    /* Too narrow for the switch beside the filter bar: both go full width. */
+    @container (max-width: 860px) {
+      .activity-filters { flex-basis: 100%; }
+      .seg { width: 100%; }
+      .seg button { flex: 1; height: 38px; }
+    }
 
-      /* Top nav: links scroll horizontally, theme toggle stays pinned right */
-      .col-num { text-align: right; white-space: nowrap; }
-    .usd-cell .usd-value { display: inline; white-space: nowrap; }
-    .usd-cell { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-    .top-nav { gap: 0.5rem; }
-      .top-nav-links {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .top-nav-links::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      /* Stats row: 3 columns but narrower cards */
-      .stats-row {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 0.5rem;
-      }
-      .stat-card { padding: 0.75rem 0.7rem; }
-      .stat-card .value { font-size: 0.95rem; }
-      .stat-card .label { font-size: 0.6rem; margin-bottom: 0.35rem; }
-      .stat-card .sub { font-size: 0.62rem; }
-
-      /* Activity card header */
-      .activity-card h2 {
-        padding: 1rem 1rem;
-        font-size: 0.9rem;
-      }
-      .activity-card h2 > span {
-        float: none !important;
-        display: block;
-        text-align: left !important;
-        margin-top: 0.35rem;
-      }
-
-      /* Filters: stack on mobile, full-width selects */
-      .activity-filters {
-        padding: 0.75rem 1rem;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-      .filter-group {
-        flex: 1 1 100%;
-        min-width: 0;
-      }
-      .activity-filters select {
-        flex: 1;
-        min-width: 0;
-      }
-      .filter-label {
-        min-width: 5.5rem;
-      }
-
-      /* Swap table → cards */
-      .activity-card table { display: none; }
+    @container (max-width: 700px) {
+      #activityContent table { display: none; }
       .mobile-events { display: block; }
+
+      .overview { padding: 24px 0 30px; }
+      .stats-row { margin-top: 14px; }
+      .stat-card { padding: 0 12px; }
+      .stat-card .value { font-size: clamp(18px, 6cqi, 30px); letter-spacing: -0.035em; }
+      .flow-chart { margin-top: 28px; }
+      .flow-chart-bars { height: 108px; gap: 2px; }
+      .flow-bar { left: 14%; right: 14%; }
+
+      .feed { padding-top: 26px; }
+      .feed-tools { gap: 10px; }
+      .activity-filters {
+        flex-basis: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        overflow: clip;
+      }
+      .filter-group { height: 52px; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
+      .filter-group:nth-child(-n+2) { border-top: none; }
+      .filter-group:nth-child(2n) { border-left: 1px solid var(--line); }
+      .filter-group:last-child:nth-child(odd) { grid-column: span 2; }
+    }
+
+    @media (max-width: 1200px) { .page { padding: 36px 32px 80px; } }
+    /* nav.js puts a fixed menu button top-left below 900px: nothing sticks there. */
+    @media (max-width: 900px) {
+      .page { padding: 12px 24px 64px; }
+      .feed-tools, th { position: static; }
+      .feed-tools { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    }
+    @media (max-width: 480px) {
+      .page { padding: 6px 16px 48px; }
+      .masthead { gap: 12px; padding-bottom: 22px; }
+      .masthead h1 { font-size: 26px; padding-right: 44px; }
+      .lede { font-size: 14px; }
+      .mast-meta { font-size: 12.5px; }
+      #vaultCount { padding-left: 0; border-left: none; }
+      .theme-toggle { position: absolute; top: 0; right: 0; }
     }
   </style>
   <script defer src="/track.js"></script>
   <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <div class="top-nav-links">
-        <a href="/" class="active">Activity</a>
-        <a href="/all-vaults">All Vaults</a>
-        <a href="/tvl">TVL</a>
-        <a href="/dominance">Dominance</a>
-        <a href="/address">Address</a>
-        <a href="/spark">Spark</a>
-        <a href="/rebalance-methodology">Rebalance Docs</a>
-        <a href="/logs">Logs</a>
-        <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
+  <div class="page">
+    <header class="masthead">
+      <div>
+        <h1>Vault Activity</h1>
+        <p class="lede">Deposit &amp; withdrawal events across all Fusion vaults</p>
       </div>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
-    </nav>
-
-    <header>
-      <h1>Vault Activity</h1>
-      <p style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-        Deposit & withdrawal events across all Fusion vaults
-        <span id="vaultCount" style="display:none;font-size:0.7rem;background:var(--surface);border:1px solid var(--stroke);border-radius:6px;padding:0.15rem 0.5rem;color:var(--text-secondary);white-space:nowrap"></span>
-      </p>
+      <div class="mast-meta">
+        <span id="lastUpdated"></span>
+        <span id="vaultCount" style="display:none"></span>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
+          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
+        </button>
+      </div>
     </header>
 
-    <div id="flowChart" class="flow-chart" style="display:none">
-      <div class="flow-chart-header">
-        <span class="flow-chart-title">Daily net flow</span>
-        <span class="flow-chart-range">last <span id="flowRangeLabel">30d</span></span>
+    <section id="overview" class="overview">
+      <span class="label">Net inflow <span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
+      <div id="statsRow" class="stats-row"></div>
+      <div id="flowChart" class="flow-chart">
+        <div class="flow-chart-header">
+          <span class="flow-chart-title label">Daily net flow</span>
+          <span class="flow-chart-range">last <span id="flowRangeLabel">30d</span></span>
+        </div>
+        <div class="flow-chart-bars" id="flowChartBars"></div>
+        <div class="flow-chart-axis">
+          <span id="flowChartStart"></span>
+          <span id="flowChartEnd"></span>
+        </div>
       </div>
-      <div class="flow-chart-bars" id="flowChartBars"></div>
-      <div class="flow-chart-axis">
-        <span id="flowChartStart"></span>
-        <span id="flowChartEnd"></span>
-      </div>
-    </div>
+    </section>
 
-    <div id="statsRow" class="stats-row" style="display:none"></div>
-
-    <div class="activity-card">
-      <h2>Recent Deposits & Withdrawals <span id="lastUpdated" style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary);line-height:1.4;text-align:right;"></span></h2>
-      <div class="activity-filters">
-        <label class="filter-group">
-          <span class="filter-label">Min amount</span>
-          <select id="filterAmount">
-            <option value="0">All</option>
-            <option value="1000" selected>≥ $1K</option>
-            <option value="10000">≥ $10K</option>
-            <option value="100000">≥ $100K</option>
-          </select>
-        </label>
-        <label class="filter-group">
-          <span class="filter-label">Type</span>
-          <select id="filterType">
-            <option value="">All</option>
-            <option value="deposit">Deposits</option>
-            <option value="withdraw">Withdrawals</option>
-          </select>
-        </label>
-        <label class="filter-group">
-          <span class="filter-label">Product</span>
-          <select id="filterProduct">
-            <option value="">All products</option>
-          </select>
-        </label>
-        <label class="filter-group">
-          <span class="filter-label">Chain</span>
-          <select id="filterChain">
-            <option value="">All chains</option>
-          </select>
-        </label>
-        <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
-          <span class="filter-label">Stocks
-            <span class="info-tip" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
-          </span>
-          <select id="filterStocks">
-            <option value="" selected>All vaults</option>
-            <option value="only">Stocks only</option>
-            <option value="exclude">Exclude stocks</option>
-          </select>
-        </label>
-        <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
-          <span class="filter-label">Synthetic
-            <span class="info-tip" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
-          </span>
-          <select id="filterSynthetic">
-            <option value="hide" selected>Hide</option>
-            <option value="show">Show</option>
-            <option value="only">Only synthetic</option>
-          </select>
-        </label>
+    <section class="feed activity-card">
+      <div class="feed-title"><h2>Recent Deposits &amp; Withdrawals</h2></div>
+      <div class="feed-tools">
+        <div class="activity-filters">
+          <label class="filter-group">
+            <span class="filter-label">Min amount</span>
+            <select id="filterAmount">
+              <option value="0">All</option>
+              <option value="1000" selected>≥ $1K</option>
+              <option value="10000">≥ $10K</option>
+              <option value="100000">≥ $100K</option>
+            </select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Product</span>
+            <select id="filterProduct">
+              <option value="">All products</option>
+            </select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Chain</span>
+            <select id="filterChain">
+              <option value="">All chains</option>
+            </select>
+          </label>
+          <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
+            <span class="filter-label">Stocks
+              <span class="info-tip" tabindex="0" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
+            </span>
+            <select id="filterStocks">
+              <option value="" selected>All vaults</option>
+              <option value="only">Stocks only</option>
+              <option value="exclude">Exclude stocks</option>
+            </select>
+          </label>
+          <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
+            <span class="filter-label">Synthetic
+              <span class="info-tip" tabindex="0" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
+            </span>
+            <select id="filterSynthetic">
+              <option value="hide" selected>Hide</option>
+              <option value="show">Show</option>
+              <option value="only">Only synthetic</option>
+            </select>
+          </label>
+        </div>
+        <!-- Type is a segmented control; this select stays the one source of truth. -->
+        <div class="seg" id="typeSeg" role="group" aria-label="Type">
+          <button type="button" data-type="" class="on" aria-pressed="true">All</button>
+          <button type="button" data-type="deposit" aria-pressed="false">Deposits</button>
+          <button type="button" data-type="withdraw" aria-pressed="false">Withdrawals</button>
+        </div>
+        <select id="filterType" hidden aria-hidden="true" tabindex="-1">
+          <option value="">All</option>
+          <option value="deposit">Deposits</option>
+          <option value="withdraw">Withdrawals</option>
+        </select>
       </div>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
       </div>
-    </div>
+    </section>
 
     <div id="errorContent" style="display:none"></div>
   </div>
@@ -737,6 +755,21 @@
       return a.slice(0, 6) + '...' + a.slice(-4);
     }
 
+    // Block explorer per chain, for the tx and wallet links. Events stored
+    // before chains were tagged carry no chain; they are all Ethereum.
+    const EXPLORERS = {
+      ethereum: 'https://etherscan.io',
+      arbitrum: 'https://arbiscan.io',
+      base: 'https://basescan.org',
+      unichain: 'https://uniscan.xyz',
+      plasma: 'https://plasmascan.to',
+      avalanche: 'https://snowtrace.io',
+      tac: 'https://explorer.tac.build',
+      ink: 'https://explorer.inkonchain.com',
+      katana: 'https://explorer.katanarpc.com',
+    };
+    const explorerFor = (chain) => EXPLORERS[chain || 'ethereum'] || EXPLORERS.ethereum;
+
     function timeAgo(ts) {
       const diff = Math.floor((Date.now() / 1000) - ts);
       if (diff < 60) return diff + 's ago';
@@ -748,6 +781,7 @@
     // Filter state (persisted in localStorage)
     let allEvents = [];
     let lastUpdatedAt = null;
+    let updatedLabelTimer = null;
     const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
@@ -960,8 +994,8 @@
         if (vaultCount > 0) {
           const floor = data.minTvlUsd != null ? data.minTvlUsd : 50;
           const floorLabel = floor >= 1000 ? `$${floor / 1000}K` : `$${floor}`;
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
-          vaultCountEl.style.display = 'inline-block';
+          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" tabindex="0" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
+          vaultCountEl.style.display = '';
         }
 
         allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -1008,6 +1042,7 @@
         status.style.display = 'none';
         const errDiv = document.getElementById('errorContent');
         errDiv.style.display = 'block';
+        document.getElementById('overview').style.display = 'none';
         errDiv.innerHTML = `<div class="error-msg">Failed to load activity data: ${err.message}<br><small>The collector may not have run yet</small></div>`;
       }
     }
@@ -1020,22 +1055,24 @@
       return sign + '$' + abs.toFixed(2);
     }
 
+    // Net inflow per window. The "Net inflow" heading and its explanation sit
+    // once above the three values (see #overview); until this runs the row
+    // shows a loading shimmer.
     function renderStats(s) {
       const row = document.getElementById('statsRow');
-      row.style.display = 'grid';
 
       function flowCard(label, val) {
-        const color = val >= 0 ? 'var(--green)' : 'var(--red)';
+        const color = val >= 0 ? 'var(--pos)' : 'var(--neg)';
         return `<div class="stat-card">
           <div class="label">${label}</div>
           <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
-          <div class="sub">net inflow <span class="info-tip" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></div>
         </div>`;
       }
 
       row.innerHTML = flowCard('24h', s.net24h)
         + flowCard('7d', s.net7d)
         + flowCard('30d', s.net30d);
+      document.getElementById('overview').style.display = '';
     }
 
     function renderFlowChart(events, days = 30) {
@@ -1043,7 +1080,7 @@
       const bars = document.getElementById('flowChartBars');
       // Drop synthetic flow so flashloan-loop bars don't dwarf real activity.
       events = events.filter(e => !e.synthetic);
-      if (!events.length) return;
+      if (!events.length) { chart.style.display = 'none'; return; }
 
       const now = Date.now();
       const today = Math.floor(now / 86400000);
@@ -1119,6 +1156,7 @@
       let rows = '';
       let mobileRows = '';
       events.forEach(e => {
+        const scan = explorerFor(e.chain);
         const time = e.timestamp ? timeAgo(e.timestamp) : `#${e.block}`;
         const badgeClass = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
         const badgeText = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
@@ -1134,30 +1172,32 @@
         const usd = estUsd != null ? `<span class="usd-value"${estTitle}>${estPrefix}${fmtUsdAmt(estUsd)}</span>` : '';
         const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
+        const nameAttr = String(name).replace(/"/g, '&quot;');
+        const amount = `${formatAmount(e.assets)} <span class="sym">${sym}</span>`;
+        const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
+        // Arrow in, arrow out; the word stays DEPOSIT / WITHDRAW in the text.
+        const typeLink = `<a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}"><i class="dir" aria-hidden="true"></i><span class="t">${badgeText}</span></a>`;
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>${synthBadge}</td>
-          <td class="num-bold col-num">${formatAmount(e.assets)} ${sym}</td>
+          <td>${typeLink}${synthBadge}</td>
+          <td class="num-bold col-num">${amount}</td>
           <td class="col-num usd-cell">${usd || '—'}</td>
-          <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link">${name}</a></td>
-          <td><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
-          <td><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.6rem;font-weight:700;text-decoration:none;line-height:1">B</a></td>
+          <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link" title="${nameAttr}">${name}</a></td>
+          <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
+          <td class="col-profile">${debank}</td>
         </tr>`;
         mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
-          <div class="mobile-event-top">
-            <span style="display:inline-flex;align-items:center;gap:0.35rem">
-              <a href="https://etherscan.io/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}">${badgeText}</a>
-              ${synthBadge}
-            </span>
-            <span class="mobile-event-when">${time}</span>
+          <div class="mob-row">
+            <span class="mobile-event-badges">${typeLink} ${synthBadge}</span>
+            <span class="mobile-event-amount">${amount}</span>
           </div>
-          <div class="mobile-event-top">
-            <span class="mobile-event-amount">${formatAmount(e.assets)} ${sym}</span>
+          <div class="mob-row">
+            <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>
             <span class="mobile-event-usd">${usdMobile}</span>
           </div>
-          <div class="mobile-event-meta">
-            <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${name}">${name}</a>
-            <span style="display:flex;align-items:center;gap:4px;flex-shrink:0"><a href="https://etherscan.io/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a><a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#FF6B00;color:#fff;font-size:0.5rem;font-weight:700;text-decoration:none;line-height:1">B</a></span>
+          <div class="mob-row">
+            <span class="mobile-event-who"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>${debank}</span>
+            <span class="mobile-event-when">${time}</span>
           </div>
         </div>`;
       });
@@ -1171,14 +1211,15 @@
             <th class="col-num">USD</th>
             <th>Product</th>
             <th>User</th>
-            <th>Profile</th>
+            <th class="col-profile">Profile</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
         <div class="mobile-events">${mobileRows}</div>
       `;
 
-      // Show last updated in header
+      // Show last updated in the header. This runs on every filter change and
+      // every reload, so it keeps a single timer rather than adding one each time.
       if (updatedAt) {
         const el = document.getElementById('lastUpdated');
         const updatedMs = new Date(updatedAt).getTime();
@@ -1187,11 +1228,12 @@
           const agoText = agoMin < 1 ? 'just now' : agoMin + ' min ago';
           const nextMin = Math.max(0, 20 - agoMin);
           const nextText = nextMin <= 0 ? 'any moment now' : `in ~${nextMin} min`;
-          el.innerHTML = `updated <span style="color:var(--accent);font-weight:500;">${agoText}</span>`
-            + `<br><span style="font-size:0.6rem;">next update ${nextText}</span>`;
+          el.innerHTML = `updated <span class="ago">${agoText}</span>`
+            + `<span class="next">next update ${nextText}</span>`;
         }
         refreshUpdatedLabel();
-        setInterval(refreshUpdatedLabel, 60000);
+        clearInterval(updatedLabelTimer);
+        updatedLabelTimer = setInterval(refreshUpdatedLabel, 60000);
       }
     }
 
@@ -1268,6 +1310,82 @@
     if (!localStorage.getItem(LAST_SEEN_KEY)) {
       localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
     }
+
+    // One floating bubble serves every ⓘ. Positioned against the window, so a
+    // card edge or the screen edge never cuts an explanation off.
+    (function infoTips() {
+      const bubble = document.createElement('div');
+      bubble.className = 'tip-bubble';
+      bubble.setAttribute('role', 'tooltip');
+      document.body.appendChild(bubble);
+      let current = null;
+      function show(el) {
+        current = el;
+        bubble.textContent = el.getAttribute('data-tip');
+        bubble.style.left = '0px';
+        bubble.style.top = '0px';
+        const r = el.getBoundingClientRect();
+        const b = bubble.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const left = Math.min(Math.max(8, r.left + r.width / 2 - b.width / 2), vw - b.width - 8);
+        const top = r.top - b.height - 8 >= 8 ? r.top - b.height - 8 : r.bottom + 8;
+        bubble.style.left = left + 'px';
+        bubble.style.top = top + 'px';
+        bubble.classList.add('show');
+      }
+      function hide() {
+        current = null;
+        bubble.classList.remove('show');
+      }
+      const tipOf = (t) => (t && t.closest ? t.closest('.info-tip[data-tip]') : null);
+      // Hover is for a mouse only: a lifted finger counts as leaving, which
+      // would close the bubble the moment a tap opened it.
+      document.addEventListener('pointerover', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const el = tipOf(e.target);
+        if (el) { if (el !== current) show(el); } else if (current) hide();
+      });
+      document.addEventListener('focusin', (e) => { const el = tipOf(e.target); if (el) show(el); });
+      document.addEventListener('focusout', (e) => { if (tipOf(e.target)) hide(); });
+      // Tap on touch screens. Inside a filter label a tap would also open the
+      // select; the tip is what was asked for.
+      document.addEventListener('click', (e) => {
+        const el = tipOf(e.target);
+        if (el) { e.preventDefault(); show(el); } else if (current) hide();
+      });
+      window.addEventListener('scroll', () => { if (current) hide(); }, { passive: true });
+    })();
+
+    // Type is a segmented control. The hidden select stays the one source of
+    // truth: the buttons write to it, and it repaints the buttons whenever it
+    // changes, whoever changed it.
+    (function typeSwitch() {
+      const select = document.getElementById('filterType');
+      const seg = document.getElementById('typeSeg');
+      seg.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-type]');
+        if (!b || select.value === b.dataset.type) return;
+        select.value = b.dataset.type;
+        select.dispatchEvent(new Event('change'));
+      });
+      select.addEventListener('change', () => {
+        seg.querySelectorAll('button[data-type]').forEach((b) => {
+          const on = b.dataset.type === select.value;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', String(on));
+        });
+      });
+    })();
+
+    // The filter bar sticks while the list scrolls; the column headings stick
+    // right under it, at its measured height.
+    (function stickyOffset() {
+      const feed = document.querySelector('.feed');
+      const tools = document.querySelector('.feed-tools');
+      const set = () => feed.style.setProperty('--tools-h', tools.offsetHeight + 'px');
+      set();
+      if (window.ResizeObserver) new ResizeObserver(set).observe(tools);
+    })();
 
     // Filter change handlers
     document.getElementById('filterAmount').addEventListener('change', applyFilters);
