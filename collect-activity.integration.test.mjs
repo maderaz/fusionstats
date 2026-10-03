@@ -167,10 +167,15 @@ globalThis.fetch = async (url, init) => {
 `);
 }
 
-function run(dir, env = {}) {
-  return execFileSync(process.execPath, ['--require', './stub.cjs', 'collect-activity.js'], {
+function run(dir, env = {}, args = []) {
+  return execFileSync(process.execPath, ['--require', './stub.cjs', 'collect-activity.js', ...args], {
     cwd: dir, encoding: 'utf8', env: { ...process.env, ...env }, timeout: 240000,
   });
+}
+// Like run(), for a command expected to fail: returns its exit status and output.
+function runStatus(dir, env = {}, args = []) {
+  try { return { status: 0, out: run(dir, env, args) }; }
+  catch (e) { return { status: e.status, out: String(e.stdout || '') + String(e.stderr || '') }; }
 }
 
 function state(dir) {
@@ -300,6 +305,103 @@ console.log('\nScenario 4 — a range the endpoint refuses: stop before it, neve
   const r2 = state(dir);
   check('once readable, the deposit inside the range is collected', r2.blocks.includes(inside), r2.blocks.join(','));
   check('and the scan carries on to the head', r2.cursorA === HEAD && r2.cursorB === HEAD, `A=${r2.cursorA} B=${r2.cursorB}`);
+}
+
+// ---------------------------------------------------------------- scenario 5
+// The repair for what scenario 4 used to lose. Before that fix a refused range
+// was skipped and the cursor moved past it, so the events inside sit behind a
+// cursor that will never look again. --rescan-range must add exactly those,
+// keep every stored event as it was, and leave the cursors alone — and when
+// part of the range is itself refused, keep what it read and say where to
+// start again.
+console.log('\nScenario 5 — rescan a range behind the cursor: add what is missing, remove and move nothing');
+{
+  const lo = HEAD - 20000, hi = HEAD - 5000;
+  const stored  = { block: lo + 1000,  vault: VAULT_A, kind: 'deposit'  };   // already in the file
+  const lost1   = { block: lo + 6000,  vault: VAULT_A, kind: 'deposit'  };   // skipped by the old collector
+  const lost2   = { block: lo + 12000, vault: VAULT_B, kind: 'withdraw' };
+  const outside = { block: hi + 2000,  vault: VAULT_B, kind: 'deposit'  };   // beyond the range asked for
+  const events = [stored, lost1, lost2, outside];
+  const setup = (dir) => {
+    writeFixtures(dir, { [VAULT_A]: HEAD, [VAULT_B]: HEAD });
+    writeStub(dir, { msPerGetLogs: 0, events });
+    // Store `stored` as the collector would have (the stub names a log's tx
+    // after its block and its position in the response), plus a marker that
+    // only survives if the rescan leaves the stored copy alone.
+    const f = path.join(dir, 'activity-events.json');
+    const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+    d.events.push({ type: 'deposit', vault: VAULT_A, symbol: 'FAKE', chain: 'base', assets: 1, shares: 1, owner: '0xabc',
+      sender: '0xabc', tx: '0xtx' + stored.block + '_0', block: stored.block, logIdx: 0, timestamp: 1757001234,
+      usdValue: 1, marker: 'stored copy' });
+    fs.writeFileSync(f, JSON.stringify(d, null, 2));
+    return d.events.length;
+  };
+  const full = (dir) => JSON.parse(fs.readFileSync(path.join(dir, 'activity-events.json'), 'utf8'));
+
+  const dir = path.join(WORK, 'run-rescan');
+  const before = setup(dir);
+  run(dir, {}, ['--rescan-range', 'base', String(lo), String(hi)]);
+  const s5 = state(dir), d5 = full(dir);
+  check('the two events behind the cursor are added', s5.blocks.includes(lost1.block) && s5.blocks.includes(lost2.block), s5.blocks.join(','));
+  check('they are added with timestamps', s5.undated === 0, `${s5.undated} undated`);
+  check('nothing outside the range is added', !s5.blocks.includes(outside.block), s5.blocks.join(','));
+  const copies = d5.events.filter(e => e.block === stored.block);
+  check('the stored event is kept exactly as it was, once', copies.length === 1 && copies[0].marker === 'stored copy', JSON.stringify(copies));
+  check('nothing is removed', d5.events.length === before + 2, `${before} -> ${d5.events.length}`);
+  check('no cursor moves', s5.cursorA === HEAD && s5.cursorB === HEAD, `A=${s5.cursorA} B=${s5.cursorB}`);
+  run(dir, {}, ['--rescan-range', 'base', String(lo), String(hi)]);
+  check('running it again adds nothing', full(dir).events.length === before + 2, `${full(dir).events.length}`);
+
+  // Part of the range refused: keep what was read, fail, say where to resume.
+  const dir2 = path.join(WORK, 'run-rescan-refused');
+  const before2 = setup(dir2);
+  const BAD_LO = lo + 9000, BAD_HI = lo + 9300;
+  const r = runStatus(dir2, { FAIL_LO: String(BAD_LO), FAIL_HI: String(BAD_HI) }, ['--rescan-range', 'base', String(lo), String(hi)]);
+  const resume = Number((r.out.match(/run again from (\d+)/) || [])[1]);
+  const p1 = state(dir2);
+  check('a refused range fails the rescan', r.status !== 0, `exit ${r.status}`);
+  check('what was read before it is kept', p1.blocks.includes(lost1.block) && !p1.blocks.includes(lost2.block), p1.blocks.join(','));
+  check('it says where to start again, before the refused blocks', resume > lo && resume <= BAD_LO, `resume at ${resume}`);
+  run(dir2, {}, ['--rescan-range', 'base', String(resume), String(hi)]);
+  const p2 = state(dir2);
+  check('resuming there adds the rest', p2.blocks.includes(lost2.block) && full(dir2).events.length === before2 + 2, p2.blocks.join(','));
+
+  // Dates: the stub's block N is at 1757000000 + (N - START) * 2 seconds.
+  const dir3 = path.join(WORK, 'run-rescan-dates');
+  setup(dir3);
+  const tsOf = (n) => 1757000000 + (n - START) * 2;
+  const day = new Date(tsOf(lost1.block) * 1000).toISOString().slice(0, 10);
+  const midnight = Date.parse(day + 'T00:00:00Z') / 1000;
+  const expectFrom = START + Math.ceil((midnight - 1757000000) / 2);
+  const out3 = run(dir3, {}, ['--rescan-range', 'base', day, 'head']);
+  const m = out3.match(/blocks (\d+) → (\d+)/);
+  check('a date resolves to the first block of that day (UTC), "head" to the head',
+    m && Number(m[1]) === expectFrom && Number(m[2]) === HEAD, m ? `${m[1]} → ${m[2]}, expected ${expectFrom} → ${HEAD}` : out3.slice(-300));
+}
+
+// ---------------------------------------------------------------- scenario 6
+// Max Backfill (--rescan-vault) replaces a vault's stored events with freshly
+// parsed ones. It used to delete all of them before reading anything, so a
+// rescan that stalled part-way dropped every event past the stall for good —
+// the cursor was already beyond them. Only what was re-read may be replaced.
+console.log('\nScenario 6 — a force rescan that stalls keeps every stored event it did not re-read');
+{
+  const dir = path.join(WORK, 'run-force-stall');
+  const early = { block: HEAD - 19000, vault: VAULT_A, kind: 'deposit'  };
+  const late  = { block: HEAD - 4000,  vault: VAULT_A, kind: 'withdraw' };
+  writeFixtures(dir, { [VAULT_A]: HEAD, [VAULT_B]: HEAD });
+  writeStub(dir, { msPerGetLogs: 0, events: [early, late] });
+  const f = path.join(dir, 'activity-events.json');
+  const d = JSON.parse(fs.readFileSync(f, 'utf8'));
+  for (const e of [early, late]) d.events.push({ type: e.kind, vault: VAULT_A, symbol: 'FAKE', chain: 'base', assets: 1, shares: 1,
+    owner: '0xabc', sender: '0xabc', tx: '0xtx' + e.block + '_0', block: e.block, logIdx: 0, timestamp: 1757001234, usdValue: 1, marker: 'stored copy' });
+  fs.writeFileSync(f, JSON.stringify(d, null, 2));
+  runStatus(dir, { FAIL_LO: String(HEAD - 10000), FAIL_HI: String(HEAD - 9700) }, ['--rescan-vault', VAULT_A, 'base']);
+  const after = JSON.parse(fs.readFileSync(f, 'utf8')).events.filter(e => e.vault === VAULT_A);
+  const lateCopies = after.filter(e => e.block === late.block);
+  check('the event past the stall survives', lateCopies.length === 1 && lateCopies[0].marker === 'stored copy', JSON.stringify(lateCopies));
+  const earlyCopies = after.filter(e => e.block === early.block);
+  check('the event before the stall is re-read and replaced, once', earlyCopies.length === 1 && !earlyCopies[0].marker, JSON.stringify(earlyCopies));
 }
 
 console.log(failures ? `\n${failures} FAILURES\n` : '\nAll checks passed\n');

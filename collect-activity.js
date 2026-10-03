@@ -933,16 +933,13 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
   const existingFrom = data.lastBlock?.[`${vault}:from`];
   const existingTo   = data.lastBlock?.[vault];
   if (forceFullRange) {
+    // The vault's stored events are replaced, but only over the blocks this
+    // rescan actually re-reads (see below). Otherwise the tx+logIdx dedup keeps
+    // the first-seen copy (typically the old, possibly mis-parsed one) and the
+    // rescan accomplishes nothing for already-seen txs. They used to be purged
+    // up front, all of them: a rescan that stalled part-way then dropped every
+    // event past the stall for good, with the cursor already beyond them.
     ranges.push({ from: startBlock, to: currentBlock, label: 'force-full' });
-    // Purge existing events for this vault before re-scanning. Otherwise the
-    // tx+logIdx dedup keeps the first-seen copy (typically the old, possibly
-    // mis-parsed one), so freshly re-parsed events would be discarded and the
-    // rescan accomplishes nothing for already-seen txs. Safe — the rescan
-    // covers the full [deployment, current] range, so every dropped event will
-    // be re-added with correct decimals.
-    const before = data.events.length;
-    data.events = data.events.filter(e => e.vault !== vault);
-    console.log(`  force-full: purged ${before - data.events.length} existing events for ${vault}`);
   } else if (existingTo && existingFrom) {
     if (startBlock < existingFrom) ranges.push({ from: startBlock, to: existingFrom - 1, label: 'backward' });
     if (existingTo + 1 <= currentBlock) ranges.push({ from: existingTo + 1, to: currentBlock, label: 'forward' });
@@ -997,6 +994,11 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
     });
 
     await enrichWithPrices(newEvents);
+    if (r.label === 'force-full' && r.reached >= r.from) {
+      const before = data.events.length;
+      data.events = data.events.filter(e => !(e.vault === vault && e.block >= r.from && e.block <= r.reached));
+      console.log(`    replaced ${before - data.events.length} stored events in blocks ${r.from}-${r.reached}`);
+    }
     data.events.push(...newEvents);
     console.log(`    +${newEvents.length} events`);
   }
@@ -1037,6 +1039,138 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
   console.log(`\nWrote ${data.events.length} total events to ${OUTPUT_FILE}`);
+}
+
+// --rescan-range <chain> <from> <to>
+//
+// Re-reads [from, to] for every tracked vault on one chain and ADDS the
+// Deposit and Withdraw events the file does not already hold. Nothing is
+// removed or re-parsed and no cursor moves, so it is safe over ranges that
+// were scanned before — which is the point. Until 2026-10-03 the scheduled
+// collector skipped any range an endpoint refused and moved the cursor past
+// it anyway, so the events it lost sit behind cursors that will never look
+// again. tools/audit-activity.js shows where the history stops adding up.
+//
+// `from` and `to` are block numbers or UTC dates (YYYY-MM-DD, `to` inclusive
+// of that day, or "head"). Address groups and chunking are the scheduled
+// collector's own. It stops — and says where — at a range no endpoint will
+// serve or when its time budget runs out; running it again from there is safe
+// because events dedupe by tx+logIdx.
+const RESCAN_BUDGET_MS = Number(process.env.RESCAN_BUDGET_MS || 5 * 60 * 60 * 1000);
+
+// The first block at or after unix time `ts`, by binary search (~25 calls).
+async function firstBlockAtOrAfter(chain, ts, head) {
+  let lo = 1, hi = head;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await getBlockTimestamp(chain, mid) < ts) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+
+async function resolveRangeEnd(chain, arg, head, isEnd) {
+  const a = String(arg ?? '').trim();
+  if (isEnd && (a === '' || a === 'head')) return head;
+  if (/^\d+$/.test(a)) return Math.min(Number(a), head);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(a)) throw new Error(`"${a}" is neither a block number nor a YYYY-MM-DD date`);
+  const ts = Date.parse(a + 'T00:00:00Z') / 1000 + (isEnd ? 86400 : 0);
+  if (ts > await getBlockTimestamp(chain, head)) return head;
+  const b = await firstBlockAtOrAfter(chain, ts, head);
+  return isEnd ? b - 1 : b;
+}
+
+async function rescanRange(chain, fromArg, toArg) {
+  if (!CHAIN_RPCS[chain]) throw new Error(`unknown chain "${chain}"`);
+  // The file must already exist: this adds to it, it never starts one.
+  const data = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8'));
+  await ensureDecimalsCache(loadVaults(), { deadlineMs: 60_000 });
+  const VAULTS = loadVaults();
+  const vaults = VAULTS.filter(v => v.chain === chain);
+  if (!vaults.length) throw new Error(`no tracked vaults on ${chain}`);
+
+  const head = await getBlockNumber(chain);
+  const from = await resolveRangeEnd(chain, fromArg, head, false);
+  const to = await resolveRangeEnd(chain, toArg, head, true);
+  if (!(from <= to)) throw new Error(`empty range: ${fromArg} (${from}) to ${toArg} (${to})`);
+
+  const byAddr = Object.fromEntries(vaults.map(v => [v.address, v]));
+  const perReq = CHAIN_ADDR_BATCH[chain] || CHAIN_ADDR_BATCH._default;
+  const addrs = vaults.map(v => v.address);
+  const groups = [];
+  for (let i = 0; i < addrs.length; i += perReq) groups.push(addrs.slice(i, i + perReq));
+  console.log(`\n=== RESCAN ${chain}: blocks ${from} → ${to} (${(to - from + 1).toLocaleString()} blocks), `
+    + `${addrs.length} vaults in ${groups.length} group(s) ===`);
+
+  const t0 = Date.now();
+  const scanned = await scanLogs(chain, groups, [DEPOSIT_TOPIC, WITHDRAW_TOPIC], from, to, Date.now() + RESCAN_BUDGET_MS);
+  console.log(`  read ${from} → ${scanned.reachedBlock} in ${Math.round((Date.now() - t0) / 1000)}s: ${scanned.logs.length} logs`);
+
+  const have = new Set(data.events.map(e => e.tx + ':' + e.logIdx));
+  const missing = [];
+  for (const log of scanned.logs) {
+    const vault = byAddr[log.address.toLowerCase()];
+    if (!vault) continue;
+    const ev = log.topics[0] === DEPOSIT_TOPIC ? parseDepositLog(log, vault) : parseWithdrawLog(log, vault);
+    const key = ev.tx + ':' + ev.logIdx;
+    if (!have.has(key)) { have.add(key); missing.push(ev); }
+  }
+  console.log(`  ${missing.length} of them not in the file`);
+
+  // Date them. One retry for a block that fails; whatever still has no
+  // timestamp is left out rather than stored undated, and a rerun adds it.
+  const blocks = [...new Set(missing.map(e => e.block))].sort((a, b) => a - b);
+  const tsMap = {};
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const todo = blocks.filter(b => !tsMap[b]);
+    for (let i = 0; i < todo.length; i += 10) {
+      const batch = todo.slice(i, i + 10);
+      const got = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+      got.forEach((ts, j) => { if (ts) tsMap[batch[j]] = ts; });
+    }
+  }
+  const added = missing.filter(e => tsMap[e.block]);
+  const undated = missing.length - added.length;
+  for (const e of added) {
+    e.timestamp = tsMap[e.block];
+    e.assets = Math.round(e.assets * 1e6) / 1e6;
+    e.shares = Math.round(e.shares * 1e6) / 1e6;
+  }
+  await enrichWithPrices(added);
+
+  if (added.length) {
+    data.events.push(...added);
+    data.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || b.block - a.block || b.logIdx - a.logIdx);
+    tagSyntheticEvents(data.events, VAULTS);
+    // updatedAt, lastBlock and chainHealth describe the scheduled collection
+    // and stay as they are: this adds history, it does not collect the head.
+    fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
+  }
+
+  // What was added, per vault, largest first.
+  const per = {};
+  for (const e of added) {
+    const r = per[e.vault] || (per[e.vault] = { name: byAddr[e.vault].name, d: 0, w: 0, usd: 0 });
+    if (e.type === 'deposit') r.d++; else r.w++;
+    r.usd += (e.type === 'deposit' ? 1 : -1) * (e.usdValue || 0);
+  }
+  const rows = Object.values(per).sort((a, b) => Math.abs(b.usd) - Math.abs(a.usd));
+  const usd = (n) => (n < 0 ? '-' : '+') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+  const lines = [`### Rescan ${chain}, blocks ${from}–${scanned.reachedBlock}: ${added.length} events added`, '',
+    '| vault | deposits | withdrawals | net USD |', '|---|---:|---:|---:|',
+    ...rows.map(r => `| ${r.name} | ${r.d} | ${r.w} | ${usd(r.usd)} |`)];
+  if (undated) lines.push('', `${undated} event(s) found but left out: no timestamp could be read for their block. Run again to add them.`);
+  console.log('\n' + lines.join('\n'));
+  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+
+  if (scanned.stalled) {
+    console.log(`::error::no endpoint will serve blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} `
+      + `(${scanned.stalled.reason}). Read up to ${scanned.reachedBlock}; run again from ${scanned.reachedBlock + 1}.`);
+    process.exitCode = 1;
+  } else if (scanned.reachedBlock < to) {
+    console.log(`::error::time budget ran out at block ${scanned.reachedBlock} of ${to}; run again from ${scanned.reachedBlock + 1}.`);
+    process.exitCode = 1;
+  }
+  return { from, to, reached: scanned.reachedBlock, added: added.length, undated };
 }
 
 // Refresh vault-deployments.json with deployment block + timestamp for every
@@ -1520,6 +1654,18 @@ async function main() {
       console.log(`Deployment block from cache: ${deployBlock} (${cache.deployments[vault].deployedAt || 'no timestamp'})`);
     }
     await deepestScanVault(vault, chain, deployBlock, { forceFullRange: true });
+    return;
+  }
+
+  // --rescan-range <chain> <from> <to>   (see rescanRange)
+  if (args[0] === '--rescan-range') {
+    try {
+      await rescanRange(args[1], args[2], args[3]);
+    } catch (e) {
+      console.error(`rescan failed: ${e.message}`);
+      console.error('Usage: node collect-activity.js --rescan-range <chain> <from: block|YYYY-MM-DD> <to: block|YYYY-MM-DD|head>');
+      process.exit(1);
+    }
     return;
   }
 

@@ -13,6 +13,16 @@
 // Chains below the TVL floor are reported but never fail the run: a chain
 // with only dust on it should not page anyone.
 //
+// A verdict only counts if THIS run wrote it. If the activity step crashed,
+// hit its timeout, or never ran the current code, the file still holds the
+// last good run's verdicts, or none at all, and a check that read those
+// passed a run that collected nothing. On 2026-10-03 a re-run of an older
+// scheduled run did exactly that: GitHub re-runs reuse the original commit,
+// so the fixed collector never ran and nothing said so. So: no verdict from
+// this run fails the job, and so does a chain that held money and has had no
+// verdict for a day. (A chain the run's time budget skipped once is shown
+// but does not fail.)
+//
 //   node tools/check-collection-health.js
 //   HEALTH_TVL_FLOOR=10000 MAX_BEHIND_HOURS=24 node tools/check-collection-health.js
 
@@ -22,15 +32,38 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const TVL_FLOOR = Number(process.env.HEALTH_TVL_FLOOR || 10_000);
 const MAX_BEHIND_HOURS = Number(process.env.MAX_BEHIND_HOURS || 24);
+// The collector runs minutes before this check; anything older is another run's.
+const THIS_RUN_MINUTES = Number(process.env.THIS_RUN_MINUTES || 90);
 
-function evaluate(chainHealth, tvlByChain) {
-  const rows = Object.entries(chainHealth || {}).map(([chain, h]) => {
+// One row per chain that has either a verdict or tracked money. Rows the
+// collector did not write this run come back as status 'unreported'.
+function evaluate(chainHealth, tvlByChain, now = Date.now()) {
+  const verdicts = chainHealth || {};
+  const ageHours = (h) => {
+    const t = h && Date.parse(h.checkedAt);
+    return Number.isFinite(t) ? (now - t) / 3.6e6 : Infinity;
+  };
+  const fresh = (h) => ageHours(h) * 60 <= THIS_RUN_MINUTES;
+  const collectorReported = Object.values(verdicts).some(fresh);
+  const chains = new Set([...Object.keys(verdicts), ...Object.keys(tvlByChain)]);
+  const rows = [...chains].map((chain) => {
+    const h = verdicts[chain];
     const tvl = tvlByChain[chain] || 0;
     const matters = tvl >= TVL_FLOOR;
+    if (!h || !fresh(h)) {
+      const age = ageHours(h);
+      return {
+        chain, tvl, matters, ...(h || {}),
+        status: 'unreported',
+        reason: !h ? 'never reported' : `no verdict this run — last one ${Math.round(age)}h old`,
+        failing: matters && (!collectorReported || !h || age > MAX_BEHIND_HOURS),
+      };
+    }
     const failing = matters && (h.status === 'stalled' || h.status === 'unreachable'
       || (h.status === 'behind' && (h.lagHours || 0) > MAX_BEHIND_HOURS));
     return { chain, tvl, matters, failing, ...h };
   });
+  rows.collectorReported = collectorReported;
   return rows.sort((a, b) => b.tvl - a.tvl);
 }
 
@@ -66,9 +99,12 @@ function main() {
   } catch (e) { audit = `\n\n(audit unavailable: ${e.message})`; }
 
   const failing = rows.filter(r => r.failing);
-  const head = failing.length
-    ? `## ❌ ${failing.length} chain${failing.length === 1 ? '' : 's'} not being collected`
-    : '## ✅ Every chain with real TVL is being collected';
+  const head = !rows.collectorReported
+    ? '## ❌ The activity collector did not report this run\n\nIt crashed, hit its time limit, or this is an older '
+      + 'commit being re-run (GitHub re-runs reuse the original commit; use **Run workflow** to run the current code).'
+    : failing.length
+      ? `## ❌ ${failing.length} chain${failing.length === 1 ? '' : 's'} not being collected`
+      : '## ✅ Every chain with real TVL is being collected';
   const md = `${head}\n\n${lines.join('\n')}${audit}\n`;
   console.log(md);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
