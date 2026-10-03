@@ -1,5 +1,5 @@
-# TEMPORARY — measures eth_getLogs behaviour so collector params can be chosen
-# from data rather than guessed. Read-only, pushes nothing. Delete when done.
+# TEMPORARY — replays production's failing eth_getLogs requests from Actions,
+# where the endpoints are reachable. Read-only, pushes nothing. Delete when done.
 name: TMP getLogs probe
 
 on:
@@ -12,12 +12,10 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
-      - name: Ethereum
-        run: node tools/getlogs-probe.js ethereum
-      - name: Base (the chain that works — for contrast)
-        run: node tools/getlogs-probe.js base
+      - name: Replay production's Ethereum requests, and check Plasma endpoints
+        run: node tools/getlogs-probe.js
