@@ -12,7 +12,7 @@
 // Each case below is one of the ways that went wrong.
 
 const assert = require('assert');
-const { nextCursors } = require('./collect-activity.js');
+const { nextCursors, chainHealth, HEALTHY_LAG_HOURS } = require('./collect-activity.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -112,6 +112,48 @@ test('re-running a stalled scan is idempotent', () => {
     });
   }
   assert.strictEqual(cursors[A], 51088890);
+});
+
+console.log('\nchainHealth');
+
+// Both outages were printed as warnings every run, in a step that could not
+// fail, under a page reading "updated 2 minutes ago". Health is recorded so a
+// workflow and a page can act on it.
+test('a chain at the head is ok', () => {
+  const h = chainHealth({ chain: 'base', head: 1000, cursors: [1000, 999], progressed: true });
+  assert.strictEqual(h.status, 'ok');
+  assert.strictEqual(h.lagBlocks, 1);
+});
+
+test('the slowest vault sets the lag, because a block is covered only once every vault is', () => {
+  const h = chainHealth({ chain: 'ethereum', head: 26113324, cursors: [26113324, 25953295], progressed: true });
+  assert.strictEqual(h.cursor, 25953295);
+  assert.strictEqual(h.lagBlocks, 160029);
+  assert.ok(h.lagHours > 500, `${h.lagHours}h`);
+});
+
+// The Ethereum freeze, verbatim: three weeks behind and no progress this run.
+test('far behind with no progress is stalled', () => {
+  const h = chainHealth({ chain: 'ethereum', head: 26113324, cursors: [25953295], progressed: false });
+  assert.strictEqual(h.status, 'stalled');
+});
+
+test('far behind but moving is behind, not stalled', () => {
+  const h = chainHealth({ chain: 'ethereum', head: 26113324, cursors: [25953295], progressed: true });
+  assert.strictEqual(h.status, 'behind');
+});
+
+test(`within ${HEALTHY_LAG_HOURS}h of the head is ok even on a run that moved nothing`, () => {
+  // 7,200 Ethereum blocks a day: 1,000 blocks is ~3.3h.
+  const h = chainHealth({ chain: 'ethereum', head: 101000, cursors: [100000], progressed: false });
+  assert.strictEqual(h.status, 'ok');
+});
+
+// Plasma: the only endpoint stopped resolving and the chain was never scanned.
+test('no endpoint answering is unreachable, with the reason', () => {
+  const h = chainHealth({ chain: 'plasma', unreachable: true, reason: 'All RPCs failed for plasma:eth_blockNumber' });
+  assert.strictEqual(h.status, 'unreachable');
+  assert.ok(/plasma/.test(h.reason));
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

@@ -50,12 +50,22 @@ const NEW_VAULT_BACKFILL = {
 //             drpc 400, llamarpc 403 throughout
 // The known-good endpoint now leads; the dead ones stay as last-resort
 // redundancy in case they recover, where they cost nothing.
+const { rpcEndpoints } = require('./rpc-endpoints.js');
+
 const CHAIN_RPCS = {
+  // Measured 2026-10-03 from GitHub Actions with production's own requests.
+  // Every endpoint this list used to hold had stopped serving eth_getLogs —
+  // publicnode 403, drpc 400, llamarpc 403, cloudflare gone — which froze all
+  // 69 Ethereum vaults from Sep 10. These three return identical results
+  // for the same requests. publicnode and drpc stay last: they still answer
+  // eth_call and eth_blockNumber, and a list that has nothing left to fall
+  // back to is worse than one that falls back slowly.
   ethereum: [
+    'https://gateway.tenderly.co/public/mainnet',
+    'https://ethereum.public.blockpi.network/v1/rpc/public',
+    'https://rpc.mevblocker.io',
     'https://ethereum-rpc.publicnode.com',
-    'https://cloudflare-eth.com',
     'https://eth.drpc.org',
-    'https://eth.llamarpc.com',
   ],
   base: [
     'https://mainnet.base.org',
@@ -69,8 +79,9 @@ const CHAIN_RPCS = {
     'https://arb1.arbitrum.io/rpc',
     'https://arbitrum.llamarpc.com',
   ],
+  // evm-rpc.plasma.io stopped resolving; Plasma had never been scanned.
   plasma: [
-    'https://evm-rpc.plasma.io/api',
+    'https://rpc.plasma.to',
   ],
   avalanche: [
     'https://avalanche-c-chain-rpc.publicnode.com',
@@ -263,7 +274,7 @@ const RPC_MIN_INTERVAL_MS = parseInt(process.env.RPC_MIN_INTERVAL_MS || '0', 10)
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 async function rpcCall(chain, method, params) {
-  const rpcs = CHAIN_RPCS[chain];
+  const rpcs = rpcEndpoints(chain, CHAIN_RPCS[chain]);
   if (!rpcs) throw new Error(`No RPCs for chain ${chain}`);
   const active = activeRpcByChain[chain] || 0;
   const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
@@ -575,6 +586,31 @@ async function enrichWithPrices(events) {
 //   - it never passes a block whose events we could not date, because an
 //     undated event is invisible downstream — banking that block would turn a
 //     retryable gap into a permanent one
+// How far behind the chain head a chain's collection is, in words a page and
+// a workflow can both act on. The slowest vault sets it: a block is only
+// covered once every tracked vault on the chain has been asked about it.
+//
+//   ok           within a few hours of the head
+//   behind       further back, but this run moved forward
+//   stalled      further back, and this run moved nothing
+//   unreachable  no endpoint would even report the head
+//
+// Recorded rather than only logged because both earlier outages logged the
+// problem every run — Base for five days, Ethereum for three weeks — in a
+// step that could not fail, under a page that said "updated 2 minutes ago".
+const HEALTHY_LAG_HOURS = 6;
+function chainHealth({ chain, head, cursors, progressed, unreachable = false, reason = null, now = Date.now() }) {
+  if (unreachable) return { status: 'unreachable', head: null, cursor: null, lagBlocks: null, lagHours: null,
+                            reason, checkedAt: new Date(now).toISOString() };
+  const known = cursors.filter(c => typeof c === 'number' && c > 0);
+  const cursor = known.length ? Math.min(...known) : null;
+  const lagBlocks = cursor == null ? null : Math.max(0, head - cursor);
+  const bpd = BLOCKS_PER_DAY[chain] || BLOCKS_PER_DAY._default;
+  const lagHours = lagBlocks == null ? null : Math.round(lagBlocks / bpd * 24 * 10) / 10;
+  const status = lagHours == null || lagHours <= HEALTHY_LAG_HOURS ? 'ok' : progressed ? 'behind' : 'stalled';
+  return { status, head, cursor, lagBlocks, lagHours, reason, checkedAt: new Date(now).toISOString() };
+}
+
 function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undatedBlocks = [] }) {
   let progress = reachedBlock;
   if (undatedBlocks.length > 0) progress = Math.min(progress, Math.min(...undatedBlocks) - 1);
@@ -592,41 +628,77 @@ function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undat
 // range. That matters for more than speed: scanning them separately meant the
 // first topic could eat the whole deadline and the second never ran, leaving
 // `reachedBlock` at fromBlock-1 and the cursor permanently stuck.
-async function scanLogs(chain, addresses, topic, fromBlock, toBlock, deadline) {
-  const allLogs = [];
-  const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
-  let reachedBlock = fromBlock - 1;
+// The smallest range worth splitting further. Below it a refusal is the
+// endpoint's, not the range's size, and splitting only burns the deadline.
+const MIN_SPLIT_BLOCKS = 500;
 
-  async function scan(from, to) {
+// Scan [fromBlock, toBlock] for logs from every address group.
+//
+// `groups` is a list of address lists, each sized to what the endpoint will
+// serve (a flat address list is one group). They are scanned CHUNK BY CHUNK —
+// every group for one chunk, then the next chunk — never one group over the
+// whole range and then the next. Scanned that way, the first group spent the
+// entire deadline, the others never started and reported no progress, and the
+// chain's progress, which is the worst of them, stayed at fromBlock - 1 on
+// every run. That froze Ethereum for three weeks, the same shape as the Base
+// outage before it. Now a deadline stops at the end of the last chunk every
+// group finished, and that is exactly how far the cursor can safely go.
+//
+// A range no endpoint will serve STOPS the scan. It used to be split down to
+// 500 blocks and then skipped as though it had succeeded, moving the cursor
+// past blocks nobody had read — deposits lost with no trace in any log. Now
+// the scan stops before it, says where, and the next run tries again.
+async function scanLogs(chain, groupsOrAddresses, topic, fromBlock, toBlock, deadline) {
+  const groups = Array.isArray(groupsOrAddresses[0]) ? groupsOrAddresses : [groupsOrAddresses];
+  const CHUNK = CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default;
+  const allLogs = [];
+  let reachedBlock = fromBlock - 1;
+  let stalled = null;
+
+  async function scan(addresses, from, to) {
     if (Date.now() > deadline) throw new Error('chain timeout');
     try {
-      const logs = await rpcCall(chain, 'eth_getLogs', [{
+      return await rpcCall(chain, 'eth_getLogs', [{
         address: addresses,
         topics: [topic],
         fromBlock: '0x' + from.toString(16),
         toBlock: '0x' + to.toString(16),
       }]);
-      allLogs.push(...logs);
     } catch (e) {
       if (e.message === 'chain timeout') throw e;
-      if (to - from <= 500) return; // give up on tiny ranges
+      if (to - from < MIN_SPLIT_BLOCKS) {
+        const err = new Error('range unservable');
+        err.range = [from, to];
+        err.reason = e.message;
+        throw err;
+      }
       const mid = from + Math.floor((to - from) / 2);
-      await scan(from, mid);
-      await scan(mid + 1, to);
+      const left = await scan(addresses, from, mid);
+      const right = await scan(addresses, mid + 1, to);
+      return left.concat(right);
     }
   }
 
+  chunks:
   for (let start = fromBlock; start <= toBlock; start += CHUNK) {
     const end = Math.min(start + CHUNK - 1, toBlock);
-    try {
-      await scan(start, end);
-      reachedBlock = end;
-    } catch (e) {
-      if (e.message === 'chain timeout') { break; }
-      throw e;
+    const chunkLogs = [];
+    for (const group of groups) {
+      try {
+        chunkLogs.push(...await scan(group, start, end));
+      } catch (e) {
+        if (e.message === 'chain timeout') break chunks;
+        if (e.message === 'range unservable') { stalled = { range: e.range, reason: e.reason }; break chunks; }
+        throw e;
+      }
     }
+    // Only now has every vault been asked about every block in this chunk.
+    // Logs from a chunk left unfinished are dropped and re-read next run —
+    // events dedupe by tx+logIdx, so re-reading is safe and losing is not.
+    allLogs.push(...chunkLogs);
+    reachedBlock = end;
   }
-  return { logs: allLogs, reachedBlock };
+  return { logs: allLogs, reachedBlock, stalled };
 }
 
 function parseDepositLog(log, vault) {
@@ -892,6 +964,15 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
     const dep = await scanLogs(chain, [vault], DEPOSIT_TOPIC, r.from, r.to, DEADLINE_NEVER);
     const wd  = await scanLogs(chain, [vault], WITHDRAW_TOPIC, r.from, r.to, DEADLINE_NEVER);
     console.log(`    ${dep.logs.length} deposit + ${wd.logs.length} withdraw logs (${Math.round((Date.now() - t0)/1000)}s)`);
+    // How far BOTH topics were actually read. A stall used to be skipped and
+    // the coverage markers below then claimed the whole range regardless, so
+    // re-running a backfill never even retried what it had dropped.
+    r.reached = Math.min(dep.reachedBlock, wd.reachedBlock);
+    const stall = dep.stalled || wd.stalled;
+    if (stall) {
+      console.log(`::error::${vault}: no endpoint will serve blocks ${stall.range[0]}-${stall.range[1]} (${stall.reason}); `
+        + `${r.label} range read only to ${r.reached} and left unclaimed so a rerun retries it`);
+    }
 
     const newEvents = [];
     for (const log of dep.logs)  newEvents.push(parseDepositLog(log, vaultMeta));
@@ -920,12 +1001,23 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
     console.log(`    +${newEvents.length} events`);
   }
 
-  // Update coverage markers
+  // Update coverage markers — only for what was actually read. Coverage is
+  // one contiguous [from, to] span, so a backward range counts only if it was
+  // read right up to the old start, and a forward range extends `to` only as
+  // far as it got.
   if (!data.lastBlock) data.lastBlock = {};
-  const newFrom = Math.min(startBlock, data.lastBlock[`${vault}:from`] ?? Infinity);
-  const newTo   = Math.max(currentBlock, data.lastBlock[vault] ?? 0);
-  data.lastBlock[`${vault}:from`] = newFrom;
-  data.lastBlock[vault] = newTo;
+  const done = (r) => r.reached >= r.to;
+  let newFrom = data.lastBlock[`${vault}:from`] ?? Infinity;
+  let newTo   = data.lastBlock[vault] ?? 0;
+  for (const r of ranges) {
+    if (r.label === 'backward') { if (done(r)) newFrom = Math.min(newFrom, r.from); continue; }
+    // full / force-full / forward start from a known point and run upward.
+    if (r.reached < r.from) continue;                 // read nothing: claim nothing
+    if (r.label !== 'forward') newFrom = Math.min(newFrom, r.from);
+    newTo = Math.max(newTo, r.reached);
+  }
+  if (isFinite(newFrom)) data.lastBlock[`${vault}:from`] = newFrom;
+  if (newTo > 0) data.lastBlock[vault] = newTo;
 
   // Dedup events by tx + logIdx, sort newest first
   const seen = new Set();
@@ -1537,7 +1629,7 @@ async function main() {
   });
 
   for (const [chain, chainVaults] of Object.entries(byChain)) {
-    if (!CHAIN_RPCS[chain]) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
+    if (!rpcEndpoints(chain, CHAIN_RPCS[chain]).length) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
     if (budgetLeft() <= 0) {
       console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (run budget spent; it keeps its cursor and resumes next run)`);
       continue;
@@ -1549,6 +1641,8 @@ async function main() {
       console.log(`\n=== ${chain.toUpperCase()} === (block ${currentBlock}, ${chainVaults.length} vaults)`);
     } catch (e) {
       console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (RPC error: ${e.message})`);
+      console.log(`::error::${chain}: no endpoint answered eth_blockNumber — this chain is not being collected at all`);
+      (data.chainHealth = data.chainHealth || {})[chain] = chainHealth({ chain, unreachable: true, reason: e.message });
       continue;
     }
 
@@ -1564,6 +1658,8 @@ async function main() {
 
     if (vaultsToScan.length === 0) {
       console.log(`  All vaults up to date`);
+      (data.chainHealth = data.chainHealth || {})[chain] = chainHealth({ chain, head: currentBlock, progressed: true,
+        cursors: chainVaults.map(v => data.lastBlock[v.address]) });
       continue;
     }
 
@@ -1572,6 +1668,7 @@ async function main() {
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
     // Whichever runs out first: this chain's slice, or the run as a whole.
+    let chainProgressed = false, chainStall = null;
     const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
     const deadline = Date.now() + chainMs;
     console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(chainMs/1000)}s)...`);
@@ -1585,24 +1682,21 @@ async function main() {
       const groups = [];
       for (let i = 0; i < allAddresses.length; i += perReq) groups.push(allAddresses.slice(i, i + perReq));
 
-      const logs = [];
-      let progressBlock = Infinity;
-      for (const group of groups) {
-        const r = await scanLogs(chain, group, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
-                                 earliestFrom, currentBlock, deadline);
-        logs.push(...r.logs);
-        progressBlock = Math.min(progressBlock, r.reachedBlock);
+      const scanned = await scanLogs(chain, groups, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
+                                     earliestFrom, currentBlock, deadline);
+      const logs = scanned.logs;
+      const progressBlock = scanned.reachedBlock;
+      if (groups.length > 1) console.log(`  (${groups.length} address groups of up to ${perReq}, scanned chunk by chunk)`);
+      if (scanned.stalled) {
+        console.log(`::error::${chain}: no endpoint will serve blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]}`
+          + ` (${scanned.stalled.reason}) — stopped there rather than skip it; next run retries`);
       }
-      if (!isFinite(progressBlock)) progressBlock = earliestFrom - 1;
-      if (groups.length > 1) console.log(`  (${groups.length} address groups of up to ${perReq})`);
 
       const depositLogs  = logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
       const withdrawLogs = logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
 
       console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
-      if (progressBlock < earliestFrom) {
-        console.log(`  ::warning::${chain} made NO progress this run (${currentBlock - earliestFrom + 1} blocks behind) — the range is too big for the deadline`);
-      }
+
 
       const addrIdx = new Map(vaultsToScan.map(v => [v.vault.address, v]));
       const newEvents = [];
@@ -1670,8 +1764,19 @@ async function main() {
         undatedBlocks,
       });
       Object.assign(data.lastBlock, advanced);
+      chainProgressed = progressBlock >= earliestFrom;
+      chainStall = scanned.stalled ? `blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} refused: ${scanned.stalled.reason}` : null;
     } catch (e) {
       console.log(`  ${chain} batch scan failed: ${e.message}`);
+      chainStall = e.message;
+    }
+
+    const health = chainHealth({ chain, head: currentBlock, progressed: chainProgressed, reason: chainStall,
+                                 cursors: chainVaults.map(v => data.lastBlock[v.address]) });
+    (data.chainHealth = data.chainHealth || {})[chain] = health;
+    if (health.status === 'stalled' || health.status === 'behind') {
+      console.log(`::error::${chain} collection is ${health.lagHours}h behind the chain head (${health.lagBlocks} blocks)`
+        + (health.status === 'stalled' ? ' and made no progress this run' : '') + (chainStall ? ` — ${chainStall}` : ''));
     }
 
     // Persist after each chain so partial progress is saved even if later chains hang
@@ -1736,4 +1841,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { nextCursors };
+module.exports = { nextCursors, chainHealth, HEALTHY_LAG_HOURS };
