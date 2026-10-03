@@ -33,6 +33,12 @@ permissions:
 jobs:
   gap-fill:
     runs-on: ubuntu-latest
+    # Optional keyed endpoints, tried before the public ones (rpc-endpoints.js).
+    # Unset secrets are empty and change nothing.
+    env:
+      RPC_URL_ETHEREUM: ${{ secrets.RPC_URL_ETHEREUM }}
+      RPC_URL_BASE: ${{ secrets.RPC_URL_BASE }}
+      RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
