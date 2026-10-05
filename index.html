@@ -439,9 +439,10 @@
     tbody tr:hover td { background: var(--bg-hover); }
     td:first-child { color: var(--text-2); }
     .col-num { text-align: right; }
-    td.col-num.num-bold { font-weight: 500; }
+    /* USD is the common denominator across tokens: bold. The token amount is detail. */
+    td.amount-cell { color: var(--text-2); font-weight: 400; }
     .sym { margin-left: 1px; font-size: 12.5px; font-weight: 400; color: var(--text-3); }
-    .usd-cell, .usd-value { color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .usd-cell, .usd-value { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
     /* Direction: down for a deposit (money in), up for a withdrawal (money out). */
     .badge-deposit, .badge-withdraw {
@@ -614,12 +615,7 @@
     .mobile-event .dir::before { width: 15px; height: 15px; }
     .mob-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
     .mobile-event-badges { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
-    .mobile-event-amount {
-      font-size: 15px;
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
+    .mobile-event-amount { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .mobile-event-product {
       flex: 1;
       min-width: 0;
@@ -629,7 +625,7 @@
       font-size: 13.5px;
       color: var(--text-2);
     }
-    .mobile-event-usd { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-event-usd { font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .mobile-event-who { display: inline-flex; align-items: center; gap: 8px; }
     .mobile-event-user { font-size: 12px; color: var(--text-3); }
     .mobile-event .debank { width: 18px; height: 18px; font-size: 9px; }
@@ -1398,8 +1394,8 @@
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
           <td>${typeLink}${synthBadge}</td>
-          <td class="num-bold col-num">${amount}</td>
           <td class="col-num usd-cell">${usd || '—'}</td>
+          <td class="num-bold col-num amount-cell">${amount}</td>
           <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link" title="${nameAttr}">${name}</a></td>
           <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td class="col-profile">${debank}</td>
@@ -1407,11 +1403,11 @@
         mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
           <div class="mob-row">
             <span class="mobile-event-badges">${typeLink} ${synthBadge}</span>
-            <span class="mobile-event-amount">${amount}</span>
+            <span class="mobile-event-usd">${usdMobile}</span>
           </div>
           <div class="mob-row">
             <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>
-            <span class="mobile-event-usd">${usdMobile}</span>
+            <span class="mobile-event-amount">${amount}</span>
           </div>
           <div class="mob-row">
             <span class="mobile-event-who"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>${debank}</span>
@@ -1425,8 +1421,8 @@
           <thead><tr>
             <th>When</th>
             <th>Type</th>
-            <th class="col-num">Amount</th>
             <th class="col-num">USD</th>
+            <th class="col-num">Amount</th>
             <th>Product</th>
             <th>User</th>
             <th class="col-profile">Profile</th>
