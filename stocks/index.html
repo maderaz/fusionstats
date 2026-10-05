@@ -9,223 +9,274 @@
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Geist for the page; Poppins stays because the charts and PNG exports draw in it. -->
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script>
+    // This page keeps its own theme choice (see applyTheme): apply it before first paint.
+    try { if (localStorage.getItem('fusionstats_stocks_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+  </script>
   <style>
-    :root {
-      --tint-strong: rgba(25,23,23,.13);
-      --bg:#FFFFFF; --surface:#FFFFFF; --stroke:#E5E5E5; --stroke-light:#F0F0F0;
-      --text:#000000; --text-body:#70747A; --text-secondary:#9BA3AF;
-      --accent:#8429FF; --accent-end:#6C00FF; --accent-bg:rgba(132,41,255,0.10);
-      --green:#16A34A; --red:#DC2626;
-    }
-    /* Every colour above is a token, so dark is a re-point rather than a
-       restyle. Explicit choice only — the page does not follow the OS, because
-       an export taken in one theme should not change under someone else. */
-    :root[data-theme="dark"] {
-      --tint-strong: rgba(255,255,255,.14);
-      --bg:#0E0E11; --surface:#16161A; --stroke:#2A2A31; --stroke-light:#1F1F25;
-      --text:#F5F5F7; --text-body:#A0A4AC; --text-secondary:#7A7F88;
-      --accent:#A56BFF; --accent-end:#8429FF; --accent-bg:rgba(165,107,255,0.16);
-      --green:#3DD68C; --red:#FF6B6B;
-    }
+    * { margin: 0; padding: 0; }
+    :root { --tint-strong: rgba(25, 23, 23, .13); }
+    :root[data-theme="dark"] { --tint-strong: rgba(255, 255, 255, .14); }
+    /* Explicit choice only — the page does not follow the OS, because an export
+       taken in one theme should not change under someone else. */
 
-    /* ---- panels ---- */
-    .two-up { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:1rem; }
-    /* The donut is a summary; the table is the detail. Give the table the room
-       and let the donut sit beside it rather than stacking a tall chart above
-       a tall table. */
-    /* The donut used to sit in a 32% sidebar beside the table, which left both
-       cramped: a 260px pie with a one-per-line legend, and a wide table
-       squeezed into what was left. They answer the same question at different
-       resolutions, so they now stack — ranking first, then the shape of it. */
-    .route-pie-block { margin:1.75rem 0 0; padding:1.5rem 0 0; border-top:1px solid var(--border); }
-    .plot-pie { height:360px; max-width:620px; margin:0 auto; }
-    .container[data-layout="compact"] .plot-pie,
-    .container[data-layout="fourthree"] .plot-pie,
-    .container[data-layout="widescreen"] .plot-pie { aspect-ratio:auto; height:360px; }
-    /* Full width means the legend reads in columns rather than one tall list. */
-    .pie-legend { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-      gap:0.45rem 1.75rem; margin:1.1rem auto 0; max-width:940px; }
-    .pie-legend .row { display:flex; align-items:center; gap:0.5rem; font-size:0.74rem; }
-    .pie-legend .row .label { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .pie-legend .row .val { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-                            color:var(--text-body); flex:0 0 auto; }
-    .pie-legend .row .pct { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;
-                            flex:0 0 3.2rem; text-align:right; }
-    @media (max-width:900px) { .two-up { grid-template-columns:1fr; } }
-    .panel-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin-bottom:0.6rem; }
-    .panel-head-actions { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
-    .sub-title { font-size:0.82rem; font-weight:600; letter-spacing:-0.005em; }
-    .sub-note {
-      display: block; font-size: 0.65rem; line-height: 1.1; margin-top: 0.1rem;
-      color: var(--text-secondary); letter-spacing: 0.02em; white-space: nowrap;
+    #updated:empty { display: none; }
+
+    /* ---------- Figures: as Activity's net inflow ---------- */
+    /* Fixed columns per width, so a divider only ever falls between two figures. */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      row-gap: 24px;
+      padding: 28px 0 32px;
     }
-    .muted-note { font-weight:400; font-size:0.72rem; color:var(--text-secondary); line-height:1.55; }
-
-    /* Card header: title left, actions hard right — one rhythm everywhere. */
-    .card-head {
-      display:flex; align-items:center; justify-content:space-between;
-      gap:1rem; flex-wrap:wrap; margin-bottom:0.85rem;
+    #concStats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .stat { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
+    .stat:first-child { padding-left: 0; border-left: none; }
+    .stat .k { font-size: 13px; font-weight: 500; color: var(--text-3); }
+    .stat .v {
+      margin-top: 6px;
+      font-size: clamp(20px, 2.4cqi, 28px);
+      line-height: 1.15;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
     }
-    .card-actions { display:flex; gap:0.4rem; align-items:center; margin-left:auto; }
+    #concStats { padding: 4px 0 20px; }
 
-    /* ---- a share bar that lives in its own cell, rather than a tinted band
-           smeared behind the whole row ---- */
-    .share-cell { display:flex; align-items:center; gap:0.5rem; justify-content:flex-end; }
-    .share-track {
-      flex:0 0 58px; height:5px; border-radius:999px;
-      background:var(--stroke-light); overflow:hidden;
+    /* ---------- Sections: no boxes, a hairline between ---------- */
+    .chart-card { padding: 32px 0 12px; border-top: 1px solid var(--line); }
+    .chart-section-title { margin-bottom: 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+    .card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .card-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .panel-head-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .sub-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .sub-note { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.2; color: var(--text-3); white-space: nowrap; }
+    .muted-note { font-size: 12.5px; font-weight: 400; line-height: 1.6; color: var(--text-3); }
+    .chart-note, .holders-note { padding: 10px 0 4px; font-size: 12.5px; color: var(--text-3); }
+    .caveat { margin: 8px 0 24px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.6; color: var(--text-3); }
+
+    /* ---------- Toolbars: compact pills, the chosen one filled ---------- */
+    .chart-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+    .chart-toolbar .group { display: flex; align-items: center; gap: 4px; }
+    .chart-toolbar .group-label { margin-right: 4px; font-size: 11.5px; font-weight: 500; color: var(--text-3); }
+    .chart-toolbar button, .chart-toolbar select, .flip button {
+      height: 30px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text-2);
+      font: 500 13px var(--sans);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
     }
-    .share-fill { display:block; height:100%; border-radius:999px; background:var(--accent); }
-    .share-pct { font-family:'JetBrains Mono',monospace; font-size:0.75rem; min-width:3.1rem; text-align:right; }
-
-    /* ---- a colour that ties a row to its series, as the legend does ---- */
-    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:0.5rem;
-           vertical-align:middle; flex:0 0 8px; }
-    /* The mark and its fallback dot occupy the same slot; only one shows. */
-    .tok-badge { display:inline-flex; align-items:center; flex:0 0 auto; }
-    .tok-badge img { width:18px; height:18px; border-radius:50%; margin-right:0.5rem;
-                     background:var(--stroke-light); object-fit:contain; }
-    .tok-badge .dot { display:none; }
-    .tok-badge.no-icon img { display:none; }
-    .tok-badge.no-icon .dot { display:inline-block; }
-    /* Inline marks sit with the ticker text in the holdings badges. */
-    .tok-inline { width:14px; height:14px; border-radius:50%; margin-right:0.3rem;
-                  vertical-align:-2px; object-fit:contain; }
-    .name-cell { display:flex; align-items:center; min-width:0; }
-    .name-cell > span.label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-
-    /* ---- tabular figures so columns line up down the page ---- */
-    .data-table td.num, .data-table th.num { font-variant-numeric:tabular-nums; }
-    .data-table tbody tr:last-child td { border-bottom:0; }
-    .data-table.tight td { padding:0.45rem 0.6rem; }
-    .pos { color:var(--green); } .neg { color:var(--red); }
-
-    .missing {
-      font-size:0.78rem; color:var(--text-body); background:var(--stroke-light);
-      border:1px dashed var(--stroke); border-radius:10px; padding:0.85rem 1rem; line-height:1.55;
+    .chart-toolbar select {
+      padding-right: 28px;
+      -webkit-appearance: none;
+              appearance: none;
+      background: var(--bg) var(--ui-chevron) no-repeat right 10px center;
+      color: var(--text);
     }
-    .plot .missing { margin:1.5rem 0; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family:'Poppins',-apple-system,BlinkMacSystemFont,sans-serif;
-      background:var(--bg); color:var(--text); padding:1.5rem; line-height:1.5;
+    .chart-toolbar button:hover, .chart-toolbar select:hover { color: var(--text); border-color: var(--line-strong); background-color: var(--bg-subtle); }
+    .chart-toolbar button.active { background: var(--text); border-color: var(--text); color: var(--bg); }
+    .chart-toolbar button:focus-visible, .chart-toolbar select:focus-visible, .flip button:focus-visible, .action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* Downloads: quiet, so the data stays the loudest thing on the page. Both
+       selectors on purpose: inside a toolbar the generic button rule above
+       out-specifies a bare .action-btn. */
+    .action-btn, .chart-toolbar .action-btn {
+      height: 30px;
+      padding: 0 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font: 500 13px var(--sans);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .container { max-width: 1240px; margin: 0 auto; }
-    h1 { font-size:1.6rem; font-weight:600; letter-spacing:-0.02em; }
-    .page-sub { color:var(--text-body); font-size:0.85rem; margin-top:0.35rem; max-width:60rem; }
-    .updated { font-size:0.72rem; color:var(--text-secondary); margin-top:0.5rem; }
+    .action-btn:hover, .chart-toolbar .action-btn:hover { background: var(--bg-subtle); border-color: var(--text-3); color: var(--text); }
+    .chart-hint { margin-left: auto; font-size: 12.5px; color: var(--text-3); }
 
-    .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:0.75rem; margin:1.25rem 0; }
-    .stat { border:1px solid var(--stroke); border-radius:12px; padding:0.85rem 1rem; }
-    .stat .k { font-size:0.63rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-secondary); font-weight:600; }
-    .stat .v { font-family:'JetBrains Mono',monospace; font-size:1.15rem; font-weight:500; margin-top:0.3rem; }
+    /* Two-way switches (Gross in / Still here, Flows / Holders): Activity's segmented control. */
+    .flip { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-subtle); }
+    .flip button { height: 28px; border: none; border-radius: 8px; background: transparent; }
+    .flip button:hover { color: var(--text); }
+    .flip button.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
 
-    .chart-card { background:var(--surface); border:1px solid var(--stroke); border-radius:12px; padding:1rem 1rem 0.5rem; margin-bottom:1rem; }
-    .chart-section-title { font-weight:600; font-size:0.95rem; letter-spacing:-0.01em; margin-bottom:0.6rem; }
-    .chart-toolbar { display:flex; gap:0.6rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; }
-    .chart-toolbar .group { display:flex; gap:0.25rem; align-items:center; }
-    .chart-toolbar .group-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-secondary); margin-right:0.35rem; }
-    .chart-toolbar button, .chart-toolbar select {
-      font-family:inherit; font-size:0.72rem; padding:0.35rem 0.7rem;
-      border:1px solid var(--stroke); background:var(--surface); color:var(--text-body);
-      border-radius:6px; cursor:pointer; transition:all 0.15s;
-    }
-    .chart-toolbar button:hover, .chart-toolbar select:hover { color:var(--accent); border-color:var(--accent); }
-    .chart-toolbar button.active { color:var(--accent); background:var(--accent-bg); border-color:var(--accent); }
-    /* Both selectors on purpose: inside a toolbar, the generic
-       `.chart-toolbar button` rule out-specifies a bare `.action-btn` and the
-       fill is lost. */
-    .action-btn,
-    .chart-toolbar .action-btn {
-      font-family:inherit; cursor:pointer;
-      font-size:0.72rem; padding:0.35rem 0.85rem; border:1px solid var(--accent);
-      background:var(--accent); color:#fff; border-radius:7px; font-weight:500; transition:opacity 0.15s;
-    }
-    .action-btn:hover,
-    .chart-toolbar .action-btn:hover { opacity:0.85; color:#fff; border-color:var(--accent); }
-    .chart-hint { font-size:0.7rem; color:var(--text-secondary); margin-left:auto; }
-
-    /* Plot surface: fixed height, dotted background, no border. Matches /tvl. */
+    /* ---------- Plots ---------- */
+    /* Fixed height, dotted surface, no border. Matches /tvl. */
     .plot {
-      width:100%; height:340px;
-      background-image:radial-gradient(circle,var(--tint-strong) 1px,transparent 1.4px);
-      background-size:14px 14px;
-      background-position:0 100%;   /* bottom-anchored so dots don't slide on switch */
+      width: 100%;
+      height: 340px;
+      background-image: radial-gradient(circle, var(--tint-strong) 1px, transparent 1.4px);
+      background-size: 14px 14px;
+      background-position: 0 100%;   /* bottom-anchored so dots don't slide on switch */
     }
     .container[data-layout="compact"] .chart-card,
     .container[data-layout="fourthree"] .chart-card,
-    .container[data-layout="widescreen"] .chart-card { margin-left:auto; margin-right:auto; }
-    .container[data-layout="compact"] .chart-card { max-width:480px; }
-    .container[data-layout="fourthree"] .chart-card { max-width:680px; }
-    .container[data-layout="widescreen"] .chart-card { max-width:960px; }
+    .container[data-layout="widescreen"] .chart-card { margin-left: auto; margin-right: auto; }
+    .container[data-layout="compact"] .chart-card { max-width: 480px; }
+    .container[data-layout="fourthree"] .chart-card { max-width: 680px; }
+    .container[data-layout="widescreen"] .chart-card { max-width: 960px; }
     /* height:auto must be reset alongside aspect-ratio or the base height wins */
     .container[data-layout="compact"] .plot,
     .container[data-layout="fourthree"] .plot,
-    .container[data-layout="widescreen"] .plot { height:auto; }
-    .container[data-layout="compact"] .plot { aspect-ratio:1/1; }
-    .container[data-layout="fourthree"] .plot { aspect-ratio:4/3; }
-    .container[data-layout="widescreen"] .plot { aspect-ratio:16/9; }
-    @media (max-width:640px){ .plot { height:240px; } }
-    /* Declared after .plot's own small-screen height, not with the other
-       .plot-pie rules: same specificity, so source order decides. */
-    @media (max-width:640px){ .plot-pie { height:300px; } }
+    .container[data-layout="widescreen"] .plot { height: auto; }
+    .container[data-layout="compact"] .plot { aspect-ratio: 1 / 1; }
+    .container[data-layout="fourthree"] .plot { aspect-ratio: 4 / 3; }
+    .container[data-layout="widescreen"] .plot { aspect-ratio: 16 / 9; }
 
-    .data-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
-    .data-table th { text-align:left; font-size:0.63rem; text-transform:uppercase; letter-spacing:0.06em;
-      color:var(--text-secondary); font-weight:600; padding:0.5rem 0.6rem; border-bottom:1px solid var(--stroke); }
-    .data-table td { padding:0.55rem 0.6rem; border-bottom:1px solid var(--stroke-light); }
-    .data-table td.num, .data-table th.num { text-align:right; font-family:'JetBrains Mono',monospace; }
-    .data-table tbody tr:hover td { background:rgba(132,41,255,0.04); }
-    .badge { display:inline-block; font-size:0.62rem; font-weight:600; padding:2px 7px; border-radius:5px; }
-    .badge.dep { background:rgba(22,163,74,.12); color:var(--green); }
-    .badge.wd  { background:rgba(220,38,38,.10); color:var(--red); }
-    .addr { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--accent); text-decoration:none; }
-    .addr:hover { text-decoration:underline; }
-    .vault-link { color:var(--text); font-weight:600; text-decoration:none; }
-    .vault-link:hover { color:var(--accent); }
-    .vault-link .ext { color:var(--accent); font-weight:500; margin-left:0.2rem; font-size:0.85em; }
-    .vault-sub { display:block; font-size:0.66rem; color:var(--text-secondary); font-weight:400; margin-top:0.05rem; }
-    .ticker { font-weight:600; }
-    .scroll { overflow-x:auto; }
-    .loading { color:var(--text-secondary); font-size:0.8rem; padding:2rem; text-align:center; }
-    .more { text-align:center; padding:0.75rem 0; }
-    .chart-note { font-size:0.7rem; color:var(--text-secondary); padding:0.55rem 0 0.15rem; }
-    .debank { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
-      border-radius:50%; background:#FF6B00; color:#fff; font-size:0.58rem; font-weight:700;
-      text-decoration:none; line-height:1; margin-left:0.4rem; vertical-align:middle; }
-    .debank:hover { opacity:0.85; }
-    .wallet-cell { display:flex; align-items:center; }
-    .flip { display:inline-flex; border:1px solid var(--stroke); border-radius:999px; overflow:hidden; }
-    .flip button { font-family:inherit; font-size:0.68rem; font-weight:500; padding:0.3rem 0.8rem;
-      border:0; background:var(--surface); color:var(--text-body); cursor:pointer; }
-    .flip button.active { background:var(--accent); color:#fff; }
-    .breakdown { border-top:1px solid var(--stroke-light); margin-top:0.35rem; padding-top:0.65rem; }
-    .breakdown table { width:100%; border-collapse:collapse; font-size:0.78rem; }
-    .breakdown th { text-align:left; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;
-      color:var(--text-secondary); font-weight:600; padding:0.35rem 0.5rem; border-bottom:1px solid var(--stroke); }
-    .breakdown td { padding:0.4rem 0.5rem; border-bottom:1px solid var(--stroke-light); }
-    .breakdown td.num, .breakdown th.num { text-align:right; font-family:'JetBrains Mono',monospace; }
-    .breakdown tr.total td { border-bottom:0; font-weight:600; }
-    .breakdown tr.total td.num { border-top:1px solid var(--stroke); }
-    .breakdown-title { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;
-      color:var(--text-secondary); font-weight:500; margin:0 0 0.35rem 0.5rem; }
-    .breakdown td { vertical-align:middle; }
-    .unit-tag { color:var(--text-secondary); font-size:0.68rem; }
-    .breakdown td.num { white-space:nowrap; }
-    .bar-cell { display:block; height:4px; border-radius:2px; background:var(--accent); opacity:0.75; }
-    .holders-note { font-size:0.7rem; color:var(--text-secondary); padding:0.5rem 0 0; }
-    .caveat { font-size:0.72rem; color:var(--text-secondary); margin:0.5rem 0 1.5rem; line-height:1.55; }
+    /* The ranking first, then the shape of it: they stack. */
+    .route-pie-block { margin: 28px 0 0; padding: 24px 0 0; border-top: 1px solid var(--line); }
+    .plot-pie { height: 360px; max-width: 620px; margin: 0 auto; }
+    .container[data-layout="compact"] .plot-pie,
+    .container[data-layout="fourthree"] .plot-pie,
+    .container[data-layout="widescreen"] .plot-pie { aspect-ratio: auto; height: 360px; }
+    .pie-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px 28px; max-width: 940px; margin: 18px auto 0; }
+    .pie-legend .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .pie-legend .row .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pie-legend .row .val { flex: 0 0 auto; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .pie-legend .row .pct { flex: 0 0 3.4rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 8px; }
+    /* A table wider than its column scrolls inside it, never the page. */
+    .two-up > div { min-width: 0; overflow-x: auto; }
+
+    /* ---------- Tables: Activity's headings and rows ---------- */
+    .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+    .data-table th {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 12px; font-weight: 500; color: var(--text-3);
+      white-space: nowrap;
+    }
+    .data-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .data-table th:first-child, .data-table td:first-child { padding-left: 0; }
+    .data-table th:last-child, .data-table td:last-child { padding-right: 0; }
+    .data-table td.num, .data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .data-table tbody tr:last-child td { border-bottom: none; }
+    .data-table tbody tr td { transition: background 0.1s; }
+    .data-table tbody tr:hover td { background: var(--bg-hover); }
+    .data-table.tight td { padding-top: 7px; padding-bottom: 7px; }
+    /* The feed: USD is the common denominator, so it is the bold figure. */
+    #feedBody td:nth-child(4) { font-weight: 600; }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+
+    .badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+    .badge.dep { background: var(--pos-soft); color: var(--pos); }
+    .badge.wd  { background: var(--neg-soft); color: var(--neg); }
+    .addr { font: 12.5px var(--mono); color: var(--text-2); text-decoration: none; transition: color 0.15s; }
+    .addr:hover { color: var(--accent); }
+    .vault-link { color: var(--text); font-weight: 500; text-decoration: none; transition: color 0.15s; }
+    .vault-link:hover { color: var(--accent); }
+    .vault-link .ext { margin-left: 3px; font-size: 0.85em; font-weight: 500; color: var(--accent); }
+    .vault-sub { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--text-3); }
+    .ticker { font-weight: 600; }
+    .wallet-cell { display: flex; align-items: center; }
+    .debank {
+      display: inline-grid; place-items: center;
+      width: 20px; height: 20px; margin-left: 8px;
+      border-radius: 50%;
+      background: rgba(255, 107, 0, 0.11);
+      color: #FF6B00;
+      font: 700 9.5px var(--sans);
+      line-height: 1;
+      text-decoration: none;
+      vertical-align: middle;
+      transition: background 0.15s, color 0.15s;
+    }
+    .debank:hover { background: #FF6B00; color: #FFF; }
+    .loading { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--text-3); }
+    .more { padding: 14px 0; text-align: center; }
+
+    /* A share bar in its own cell rather than a band smeared behind the row. */
+    .share-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .share-track { flex: 0 0 58px; height: 5px; overflow: hidden; border-radius: 999px; background: var(--bg-subtle); }
+    .share-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+    .share-pct { min-width: 3.1rem; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+    /* A colour that ties a row to its series, as the legend does. */
+    .dot { display: inline-block; flex: 0 0 8px; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; vertical-align: middle; }
+    /* The mark and its fallback dot occupy the same slot; only one shows. */
+    .tok-badge { display: inline-flex; align-items: center; flex: 0 0 auto; }
+    .tok-badge img { width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: var(--bg-subtle); object-fit: contain; }
+    .tok-badge .dot { display: none; }
+    .tok-badge.no-icon img { display: none; }
+    .tok-badge.no-icon .dot { display: inline-block; }
+    .tok-inline { width: 14px; height: 14px; margin-right: 5px; border-radius: 50%; vertical-align: -2px; object-fit: contain; }
+    .name-cell { display: flex; align-items: center; min-width: 0; }
+    .name-cell > span.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .missing {
+      padding: 14px 16px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 12px;
+      background: var(--bg-subtle);
+      font-size: 13px; line-height: 1.6; color: var(--text-2);
+    }
+    .plot .missing { margin: 24px 0; }
+
+    .breakdown { margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .breakdown table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+    .breakdown th { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .breakdown td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .breakdown th:first-child, .breakdown td:first-child { padding-left: 0; }
+    .breakdown th:last-child, .breakdown td:last-child { padding-right: 0; }
+    .breakdown td.num, .breakdown th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .breakdown tr.total td { border-bottom: none; font-weight: 600; }
+    .breakdown tr.total td.num { border-top: 1px solid var(--line-strong); }
+    .breakdown-title { margin: 0 0 6px; font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .unit-tag { font-size: 12px; color: var(--text-3); }
+    .bar-cell { display: block; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.75; }
+
+    @container (max-width: 900px) {
+      .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .stat-row .stat:nth-child(3n + 1) { padding-left: 0; border-left: none; }
+      #concStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #concStats .stat { padding-left: 20px; border-left: 1px solid var(--line); }
+      #concStats .stat:nth-child(odd) { padding-left: 0; border-left: none; }
+    }
+    @container (max-width: 560px) {
+      .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat-row .stat { padding-left: 20px; border-left: 1px solid var(--line); }
+      .stat-row .stat:nth-child(odd) { padding-left: 0; border-left: none; }
+    }
+    @media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .plot { height: 240px; }
+      .plot-pie { height: 300px; }   /* after .plot's own small-screen height: same specificity, order decides */
+      .chart-hint { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
-  <div class="container" data-layout="wide">
+  <div class="container ui-page" data-layout="wide">
+    <header class="ui-masthead">
+      <div>
     <h1>Stocks</h1>
-    <p class="page-sub">
+    <p class="ui-lede">
       Fusion vaults backed by <strong>tokenised equities</strong>. Vaults are identified by their underlying
       token address rather than by name, so a new stock vault appears here automatically.
     </p>
-    <div class="updated" id="updated"></div>
+    <div class="ui-status" id="updated"></div>
+      </div>
+      <div class="ui-meta">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
+          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
+        </button>
+      </div>
+    </header>
 
     <div class="stat-row" id="stats"></div>
 
@@ -2410,6 +2461,13 @@
             b.classList.toggle('active', b.getAttribute('data-theme-set') === t));
         }
       } catch (e) {}
+      // The masthead toggle presses the toolbar's Light / Dark buttons, so the
+      // two stay in step and the charts repaint exactly as they do from there.
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        const btn = document.querySelector('#tvlToolbar button[data-theme-set="' + next + '"]');
+        if (btn) btn.click();
+      });
 
       // ---- CSV for every new dataset ----
       document.getElementById('flowCsv').addEventListener('click', () => {
