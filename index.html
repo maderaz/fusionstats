@@ -123,6 +123,47 @@
     #lastUpdated .ago { color: var(--text); font-weight: 500; }
     #lastUpdated .next { color: var(--text-3); }
     #lastUpdated .next::before { content: '\00b7'; margin: 0 7px; color: var(--text-3); }
+    /* With "Refresh" on offer the guess at the next scheduled run is noise. */
+    .mast-meta.can-refresh #lastUpdated .next { display: none; }
+
+    /* "Updated …" and its Refresh button travel together when the row wraps. */
+    .updated { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+    .updated:has(#lastUpdated:empty):has(.refresh[hidden]) { display: none; }
+
+    /* Refresh: starts a collector run now (api/refresh.js). Hidden until the
+       endpoint answers that it is set up. */
+    .refresh {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 102px;             /* Refresh, Updating… and Up to date: one width, so "Updated …" stays put */
+      height: 28px;
+      padding: 0 10px 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text-2);
+      font: 500 12.5px var(--sans);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+    .refresh[hidden] { display: none; }
+    .refresh:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
+    .refresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .refresh svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .refresh .ic-done { display: none; }
+    .refresh[data-state="busy"] { color: var(--accent); background: var(--accent-bg); border-color: transparent; cursor: progress; }
+    .refresh[data-state="busy"] .ic-refresh { animation: refresh-spin 1s linear infinite; }
+    .refresh[data-state="done"] { color: var(--pos); }
+    .refresh[data-state="done"] .ic-refresh { display: none; }
+    .refresh[data-state="done"] .ic-done { display: block; }
+    .refresh[data-state="fail"] { color: var(--amber); }
+    @keyframes refresh-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .refresh[data-state="busy"] .ic-refresh { animation-duration: 3s; }
+    }
     #vaultCount {
       display: inline-flex;
       align-items: center;
@@ -707,7 +748,14 @@
         <p class="lede">Deposit &amp; withdrawal events across all Fusion vaults</p>
       </div>
       <div class="mast-meta">
-        <span id="lastUpdated"></span>
+        <span class="updated">
+          <span id="lastUpdated"></span>
+          <button type="button" class="refresh" id="refreshBtn" data-state="idle" hidden>
+            <svg class="ic-refresh" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.25 8a5.25 5.25 0 1 1-1.54-3.71"/><path d="M13.4 2.4v2.9h-2.9"/></svg>
+            <svg class="ic-done" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.4l2.9 2.9 6.1-6.6"/></svg>
+            <span class="refresh-text" aria-live="polite">Refresh</span>
+          </button>
+        </span>
         <span id="vaultCount" style="display:none"></span>
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
           <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
@@ -1095,12 +1143,22 @@
       return { data: await res.json(), recent: false };
     }
 
-    async function loadActivity({ full = wantFullHistory } = {}) {
+    // `poll`: a background check for new data. It re-renders only when the
+    // data changed, and a failure leaves the page as it is. Resolves true when
+    // it rendered new data.
+    async function loadActivity({ full = wantFullHistory, poll = false } = {}) {
       const status = document.getElementById('loadingMsg');
 
       try {
-        if (status) status.textContent = 'Loading activity data...';
+        if (status && !poll) status.textContent = 'Loading activity data...';
+        // With the full history on screen, ask the small file whether
+        // anything changed before parsing 19 MB again.
+        if (poll && full) {
+          const res = await fetch('activity-recent.json');
+          if (res.ok && (await res.json()).updatedAt === lastUpdatedAt) return false;
+        }
         const { data, recent } = await fetchActivity(full);
+        if (poll && data.updatedAt === lastUpdatedAt) return false;
         const complete = !recent || data.total === (data.events || []).length;
 
         const events = data.events || [];
@@ -1238,9 +1296,11 @@
         renderFlowChart(events, 30);
         applyFilters({ resetPage: false });
         checkForFireEvents(events);
+        return true;
 
       } catch (err) {
         console.error('Error:', err);
+        if (poll && allEvents.length) return false;
         // Older events failed to load, but the recent ones are on screen:
         // keep them, and say so where the next page would have been.
         if (full && allEvents.length) {
@@ -1442,7 +1502,9 @@
         const updatedMs = new Date(updatedAt).getTime();
         function refreshUpdatedLabel() {
           const agoMin = Math.floor((Date.now() - updatedMs) / 60000);
-          const agoText = agoMin < 1 ? 'just now' : agoMin + ' min ago';
+          const agoText = agoMin < 1 ? 'just now'
+            : agoMin < 60 ? agoMin + ' min ago'
+            : Math.floor(agoMin / 60) + ' h' + (agoMin % 60 ? ' ' + (agoMin % 60) + ' min' : '') + ' ago';
           const nextMin = Math.max(0, 20 - agoMin);
           const nextText = nextMin <= 0 ? 'any moment now' : `in ~${nextMin} min`;
           el.innerHTML = `updated <span class="ago">${agoText}</span>`
@@ -1528,9 +1590,10 @@
       localStorage.setItem(LAST_SEEN_KEY, String(Math.floor(Date.now() / 1000)));
     }
 
-    // One floating bubble serves every ⓘ. Positioned against the window, so a
-    // card edge or the screen edge never cuts an explanation off.
-    (function infoTips() {
+    // One floating bubble serves every ⓘ, and the Refresh button. Positioned
+    // against the window, so a card edge or the screen edge never cuts an
+    // explanation off.
+    const tips = (function infoTips() {
       const bubble = document.createElement('div');
       bubble.className = 'tip-bubble';
       bubble.setAttribute('role', 'tooltip');
@@ -1554,7 +1617,7 @@
         current = null;
         bubble.classList.remove('show');
       }
-      const tipOf = (t) => (t && t.closest ? t.closest('.info-tip[data-tip]') : null);
+      const tipOf = (t) => (t && t.closest ? t.closest('.info-tip[data-tip], .refresh[data-tip]') : null);
       // Hover is for a mouse only: a lifted finger counts as leaving, which
       // would close the bubble the moment a tap opened it.
       document.addEventListener('pointerover', (e) => {
@@ -1562,15 +1625,22 @@
         const el = tipOf(e.target);
         if (el) { if (el !== current) show(el); } else if (current) hide();
       });
-      document.addEventListener('focusin', (e) => { const el = tipOf(e.target); if (el) show(el); });
+      // A button tapped or clicked takes focus too; its tip is for the keyboard.
+      document.addEventListener('focusin', (e) => {
+        const el = tipOf(e.target);
+        if (el && (el.classList.contains('info-tip') || el.matches(':focus-visible'))) show(el);
+      });
       document.addEventListener('focusout', (e) => { if (tipOf(e.target)) hide(); });
       // Tap on touch screens. Inside a filter label a tap would also open the
-      // select; the tip is what was asked for.
+      // select; the tip is what was asked for. A button's tap is the button's.
       document.addEventListener('click', (e) => {
         const el = tipOf(e.target);
-        if (el) { e.preventDefault(); show(el); } else if (current) hide();
+        if (el && el.classList.contains('info-tip')) { e.preventDefault(); show(el); }
+        else if (current && el !== current) hide();
       });
       window.addEventListener('scroll', () => { if (current) hide(); }, { passive: true });
+      // A tip whose text changed while it is open: show the new text.
+      return { update(el) { if (current === el) show(el); } };
     })();
 
     // Type is a segmented control. The hidden select stays the one source of
@@ -1619,11 +1689,125 @@
       if (e.target.closest('.pg-retry')) { olderLoadFailed = false; applyFilters({ resetPage: false }); }
     });
 
-    loadActivity();
+    // --- Refresh now ---
+    // GitHub starts the scheduled collector only every few hours, however often
+    // collect.yml asks. /api/refresh starts a run on request (api/refresh.js):
+    // the Refresh button asks it, and so does the page by itself when the data
+    // it shows is over an hour old. The endpoint starts at most one run per
+    // cooldown, whoever asks. Hidden until the endpoint answers that it is set
+    // up, so a static host never shows it.
+    const refreshNow = (function () {
+      const AUTO_AFTER_MIN = 60;           // data older than this starts a run on its own
+      const AUTO_EVERY_MIN = 30;           // ...at most this often from one open tab
+      const POLL_MS = 20 * 1000;
+      const RUN_TIMEOUT_MS = 15 * 60000;   // a run takes ~2 min; queued behind a backfill, hours
+      const DATA_TIMEOUT_MS = 5 * 60000;   // the CDN serves a commit within ~2 min of it
+      const btn = document.getElementById('refreshBtn');
+      const text = btn.querySelector('.refresh-text');
+      const TIPS = {
+        idle: 'Collect the newest events now. Takes about 3 minutes.',
+        busy: 'Collecting new events. The list updates by itself when they land.',
+      };
+      let enabled = false;
+      let busy = false;
+      let lastAutoAt = 0;
+
+      function setState(state, label, tip) {
+        btn.dataset.state = state;
+        text.textContent = label;
+        btn.setAttribute('data-tip', tip || TIPS[state] || label);
+        btn.setAttribute('aria-busy', String(state === 'busy'));
+        tips.update(btn);
+      }
+      const idle = () => setState('idle', 'Refresh');
+      // A result shown for a few seconds, then back to Refresh.
+      function settle(state, label, tip) {
+        setState(state, label, tip);
+        setTimeout(() => { if (!busy && btn.dataset.state === state) idle(); }, 5000);
+      }
+
+      async function api(method) {
+        const res = await fetch('/api/refresh', { method, cache: 'no-store' });
+        if (!(res.headers.get('content-type') || '').includes('application/json')) throw new Error('no endpoint');
+        return res.json();
+      }
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const ageMin = () => (lastUpdatedAt ? (Date.now() - Date.parse(lastUpdatedAt)) / 60000 : Infinity);
+
+      // Wait for the run to finish, then for its data to reach the page.
+      async function watch(sinceMs) {
+        busy = true;
+        setState('busy', 'Updating…');
+        const before = lastUpdatedAt;
+        const t0 = Date.now();
+        let doneAt = 0;
+        while (Date.now() - t0 < RUN_TIMEOUT_MS && lastUpdatedAt === before) {
+          await sleep(POLL_MS);
+          if (lastUpdatedAt !== before) break;      // the 5-minute reload got there first
+          let running = false;
+          try { running = !!(await api('GET')).running; } catch {}
+          // A run started moments ago may not be listed yet.
+          if (running || Date.now() - sinceMs < 45000) { doneAt = 0; continue; }
+          doneAt = doneAt || Date.now();
+          await loadActivity({ poll: true });
+          if (Date.now() - doneAt > DATA_TIMEOUT_MS) break;   // the run left no new data
+        }
+        busy = false;
+        if (lastUpdatedAt !== before) settle('done', 'Up to date');
+        else idle();
+      }
+
+      async function start({ auto = false } = {}) {
+        if (busy) return;
+        busy = true;
+        setState('busy', 'Updating…');
+        let r = null;
+        try { r = await api('POST'); } catch {}
+        const state = r && r.state;
+        if (state === 'started') return watch(Date.now());
+        if (state === 'running') return watch(Date.parse(r.since) || Date.now());
+        if (state === 'recent') {
+          // A run started within the cooldown: wait for its data unless it is here.
+          const ranAt = Date.parse(r.lastRunAt);
+          if (!(lastUpdatedAt && Date.parse(lastUpdatedAt) >= ranAt)) return watch(ranAt || Date.now());
+          busy = false;
+          return settle('done', 'Up to date', `Just collected. Next refresh in ${r.retryInMin} min.`);
+        }
+        busy = false;
+        if (auto) return idle();
+        settle('fail', 'Try again later', `Couldn't start an update right now${r && r.error ? ` (${r.error})` : ''}.`);
+      }
+
+      // Old data starts a run on its own, but only in a tab someone is looking at.
+      function maybeAuto() {
+        if (!enabled || busy || document.visibilityState !== 'visible') return;
+        if (ageMin() < AUTO_AFTER_MIN || Date.now() - lastAutoAt < AUTO_EVERY_MIN * 60000) return;
+        lastAutoAt = Date.now();
+        start({ auto: true });
+      }
+
+      async function init() {
+        let status = null;
+        try { status = await api('GET'); } catch {}
+        if (!status || status.configured !== true) return;
+        enabled = true;
+        btn.hidden = false;
+        btn.closest('.mast-meta').classList.add('can-refresh');
+        idle();
+        btn.addEventListener('click', () => start());
+        document.addEventListener('visibilitychange', maybeAuto);
+        if (status.running) watch(Date.parse(status.runningSince) || Date.now());
+        else maybeAuto();
+      }
+
+      return { init, maybeAuto };
+    })();
+
+    loadActivity().then(() => refreshNow.init());
 
     // Re-fetch every 5 minutes to detect new events while tab is open — the
     // full history only if this visit already needed it.
-    setInterval(() => loadActivity(), 5 * 60 * 1000);
+    setInterval(() => loadActivity().then(refreshNow.maybeAuto), 5 * 60 * 1000);
   </script>
 </body>
 </html>

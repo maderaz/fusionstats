@@ -8,8 +8,14 @@ on:
     # runs and 160-200 min "min ago" staleness on the frontend). Each run
     # is ~45-90s and idempotent — scheduling more often shrinks the worst
     # tail without piling up concurrent work.
+    #
+    # Even so, GitHub starts it only 6-7 times a day (late Sep - early Oct
+    # 2026: one fire in ~45, every 3-4 hours). Runs started on request are
+    # not dropped, so fresher data comes from there: api/refresh.js starts
+    # one when the Activity page's Refresh button is pressed, or when the
+    # page is opened on data over an hour old.
     - cron: '*/5 * * * *'
-  workflow_dispatch:       # manual trigger from GitHub UI
+  workflow_dispatch:       # manual trigger from GitHub UI, and api/refresh.js
 
 permissions:
   contents: write
