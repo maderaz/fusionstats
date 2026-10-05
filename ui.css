@@ -1,0 +1,207 @@
+/* ui.css — the Fusion Stats look, as the Activity page has it.
+ *
+ * Shared by Monitor, Switchers, Dust Tracker and Stocks. The Activity page
+ * carries the same values inline; change them in both places.
+ *
+ * Tokens first. Older pages, their chart code and nav.js read names like
+ * --surface, --stroke and --text-body; those are mapped onto the new tokens
+ * below, so a rule written against them picks up this palette unchanged.
+ */
+
+:root {
+  --bg: #FFFFFF;
+  --bg-subtle: #F7F7F8;
+  --bg-hover: #F5F5F7;
+  --line: #EDEDF0;
+  --line-strong: #E2E2E7;
+  --text: #0B0B0F;
+  --text-2: #5E5E6B;
+  --text-3: #9A9AA6;
+  --accent: #8429FF;
+  --accent-bg: rgba(132, 41, 255, 0.08);
+  --pos: #16A34A;
+  --pos-bar: #22C55E;
+  --pos-soft: rgba(34, 197, 94, 0.13);
+  --neg: #DC2626;
+  --neg-bar: #EF4444;
+  --neg-soft: rgba(239, 68, 68, 0.11);
+  --amber: #B45309;
+  --amber-soft: rgba(217, 119, 6, 0.10);
+  --tip-bg: #111116;
+  --tip-fg: #FFFFFF;
+  --sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* The ⓘ icon, drawn rather than typed so it looks the same in every font. */
+  --ui-i-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.4' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M8 7.3v3.9' stroke='%23000' stroke-width='1.4' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='5' r='.9'/%3E%3C/svg%3E");
+  --ui-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='%239A9AA6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  /* Older names. */
+  --surface: var(--bg);
+  --bg-alt: var(--bg-subtle);
+  --stroke: var(--line);
+  --stroke-light: var(--line);
+  --border: var(--line);
+  --text-body: var(--text-2);
+  --text-secondary: var(--text-3);
+  --green: var(--pos);
+  --green-bg: var(--pos-soft);
+  --red: var(--neg);
+  --red-bg: var(--neg-soft);
+  --accent-end: #6C00FF;
+  --accent-light: #A37FFF;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A0A0C;
+  --bg-subtle: #131317;
+  --bg-hover: #141419;
+  --line: #1E1E24;
+  --line-strong: #2A2A32;
+  --text: #F4F4F6;
+  --text-2: #A3A3AE;
+  --text-3: #70707C;
+  --accent: #A37FFF;
+  --accent-bg: rgba(163, 127, 255, 0.14);
+  --pos: #22C55E;
+  --pos-bar: #22C55E;
+  --pos-soft: rgba(34, 197, 94, 0.15);
+  --neg: #EF4444;
+  --neg-bar: #EF4444;
+  --neg-soft: rgba(239, 68, 68, 0.15);
+  --amber: #F59E0B;
+  --amber-soft: rgba(245, 158, 11, 0.12);
+  --tip-bg: #F4F4F6;
+  --tip-fg: #0A0A0C;
+  --accent-end: #8429FF;
+  --accent-light: #B89AFF;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Sizes to the content column, not the window: nav.js's sidebar takes 220px
+   on desktop and none on a phone. */
+.ui-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 44px 48px 96px;
+  container-type: inline-size;
+}
+
+/* ---------- Masthead: title, what the page shows, data status ---------- */
+.ui-masthead {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.ui-masthead h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--text);
+}
+.ui-lede { margin: 8px 0 0; max-width: 720px; font-size: 15px; color: var(--text-2); }
+.ui-lede b, .ui-lede strong { color: var(--text); font-weight: 600; }
+.ui-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.ui-status b { color: var(--text-2); font-weight: 500; }
+.ui-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.theme-toggle:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
+.theme-toggle svg { width: 15px; height: 15px; }
+.theme-toggle .sun, :root[data-theme="dark"] .theme-toggle .moon { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: block; }
+
+/* A quiet button that sits beside the theme toggle. */
+.ui-ghost {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  color: var(--text-2);
+  font: 500 13px var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.ui-ghost:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
+
+/* A section after the masthead: hairline above, room around. */
+.ui-section { padding: 32px 0; border-top: 1px solid var(--line); }
+.ui-masthead + .ui-section { border-top: none; }   /* the masthead already draws that line */
+.ui-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.ui-section-title .ui-count { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
+
+@keyframes ui-shimmer { to { background-position: -200% 0; } }
+
+@media (max-width: 1200px) { .ui-page { padding: 36px 32px 80px; } }
+@media (max-width: 900px) { .ui-page { padding: 12px 24px 64px; } }
+@media (max-width: 480px) {
+  .ui-page { padding: 6px 16px 48px; }
+  .ui-masthead { gap: 12px; padding-bottom: 22px; }
+  .ui-masthead h1 { font-size: 26px; }
+  .ui-lede { font-size: 14px; }
+  .ui-status, .ui-meta { font-size: 12.5px; }
+  /* The theme toggle takes the top-right corner, as on Activity. */
+  .ui-masthead h1 { padding-right: 44px; }
+  .ui-masthead .theme-toggle { position: absolute; top: 0; right: 0; }
+}

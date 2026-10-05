@@ -8,190 +8,242 @@
   <script src="/nav.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script>
+    // The saved theme, before first paint.
+    try { if (localStorage.getItem('fusionstats_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+  </script>
   <style>
-    :root {
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --stroke-light: #F0F0F0;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16A34A;
-      --red: #DC2626;
-      --amber: #D97706;
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Poppins', -apple-system, sans-serif;
-      color: var(--text);
-      background: #F8F9FB;
-      margin: 0;
-    }
-    .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
-    header h1 {
-      font-size: 1.5rem; font-weight: 700; color: var(--accent);
-      margin: 0 0 0.25rem;
-      letter-spacing: -0.02em;
-    }
-    header p { color: var(--text-body); font-size: 0.85rem; margin: 0 0 1.5rem; }
-
+    /* ---------- Filters: one bar, label over value, as on Activity ---------- */
     .toolbar {
-      display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;
-      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      padding: 24px 0 18px;
     }
+    .filterbar {
+      display: flex;
+      flex: 0 1 640px;
+      min-width: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: var(--bg);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
+    }
+    /* The select covers its segment, so a click anywhere opens it. */
     .toolbar label.field {
-      display: inline-flex; flex-direction: column; gap: 0.2rem;
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      height: 54px;
+      padding: 9px 14px 0;
+      border-left: 1px solid var(--line);
+      cursor: pointer;
+      transition: background 0.15s;
     }
+    .toolbar label.field:first-child { border-left: none; border-radius: 13px 0 0 13px; flex-grow: 1.9; }
+    .toolbar label.field:last-child { border-radius: 0 13px 13px 0; }
+    .toolbar label.field:hover, .toolbar label.field:focus-within { background: var(--bg-subtle); }
     .toolbar .field-label {
-      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--text-secondary);
+      position: relative;
+      z-index: 1;
+      display: block;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      white-space: nowrap;
+      pointer-events: none;
     }
     .toolbar select {
-      font-family: inherit; font-size: 0.78rem;
-      padding: 0.35rem 1.6rem 0.35rem 0.6rem;
-      border: 1px solid var(--stroke);
-      background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%2370747A' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 0.55rem center;
-      background-size: 10px;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 21px 28px 0 14px;
+      border: none;
+      border-radius: inherit;
+      background: transparent var(--ui-chevron) no-repeat right 12px center;
+      font: 500 14px var(--sans);
       color: var(--text);
-      border-radius: 6px; cursor: pointer;
-      appearance: none; -webkit-appearance: none;
-      min-width: 130px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+              appearance: none;
     }
-    .toolbar select:hover { border-color: var(--accent); }
-    .toolbar select:focus { outline: 2px solid var(--accent-bg); outline-offset: -1px; border-color: var(--accent); }
-    .stat-pill { font-size: 0.7rem; color: var(--text-secondary); margin-left: auto; align-self: flex-end; padding-bottom: 0.35rem; }
+    .toolbar select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+    .stat-pill { margin-left: auto; font-size: 13px; color: var(--text-3); }
 
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      overflow: hidden;
-    }
+    /* ---------- Table: text on the page edge, rows highlight a little wider ---------- */
     .table-scroll {
-      /* Allow horizontal scroll on narrow screens instead of cramming the Δ
-         column off the visible edge. min-width keeps columns comfortable. */
+      margin: 0 -12px;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
-    table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.78rem; }
+    table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+    }
     thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
       text-align: left;
-      font-size: 0.6rem; font-weight: 500;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--text-secondary);
-      padding: 0.55rem 0.75rem;
-      background: #FAFAFB;
-      border-bottom: 1px solid var(--stroke);
-      position: sticky; top: 0;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-3);
+      white-space: nowrap;
     }
     thead th.num { text-align: right; }
-    thead th .tip {
-      display: inline-block; margin-left: 0.25rem;
-      width: 12px; height: 12px; line-height: 12px; text-align: center;
-      border-radius: 50%; border: 1px solid var(--text-secondary);
-      font-size: 0.55rem; color: var(--text-secondary);
-      cursor: help; vertical-align: middle;
-      text-transform: none; font-weight: 600;
-    }
-    thead th .tip:hover { color: var(--accent); border-color: var(--accent); }
-    thead th.sortable { cursor: pointer; user-select: none; }
-    thead th.sortable:hover { color: var(--accent); background: var(--accent-bg); }
-    thead th .sort-arrow {
-      display: inline-block; margin-left: 0.25rem;
-      font-size: 0.65rem; color: var(--text-secondary);
-      opacity: 0.4; vertical-align: middle;
-    }
-    thead th.sort-active { color: var(--accent); }
+    thead th.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
+    thead th.sortable:hover, thead th.sort-active { color: var(--text); }
+    thead th .sort-arrow { margin-left: 4px; font-size: 11px; opacity: 0.35; }
     thead th.sort-active .sort-arrow { opacity: 1; color: var(--accent); }
+    thead th .tip {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      margin-left: 5px;
+      vertical-align: -2px;
+      overflow: hidden;            /* so its baseline is its bottom edge and it sits on the text line */
+      font-size: 0;
+      color: var(--text-3);
+      background: currentColor;
+      -webkit-mask: var(--ui-i-mask) center / contain no-repeat;
+              mask: var(--ui-i-mask) center / contain no-repeat;
+      cursor: help;
+      transition: color 0.15s;
+    }
+    thead th .tip:hover { color: var(--text); }
     tbody td {
-      padding: 0.35rem 0.75rem;             /* narrow rows */
-      border-bottom: 1px solid var(--stroke-light);
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
       vertical-align: middle;
+      color: var(--text);
     }
-    tbody tr:hover { background: #F8F9FB; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr td { transition: background 0.1s; }
+    tbody tr:hover td { background: var(--bg-hover); }
+
     .vault-name {
-      font-weight: 500; color: var(--text);
-      max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 340px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
     }
-    .vault-name a { color: inherit; text-decoration: none; }
-    .vault-name a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-    .vault-name .sub {
-      display: block;
-      font-size: 0.65rem; color: var(--text-secondary);
-      font-weight: 400; letter-spacing: 0.01em;
-      margin-top: 1px;
-    }
-    .vault-name .sub .sym { text-transform: uppercase; letter-spacing: 0.04em; }
-    .vault-name .sub .sep { margin: 0 0.3rem; opacity: 0.6; }
+    .vault-name a { color: inherit; text-decoration: none; transition: color 0.15s; }
+    .vault-name a:hover { color: var(--accent); }
+    .vault-name .sub { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--text-3); }
+    .vault-name .sub .sep { margin: 0 6px; opacity: 0.6; }
     .vault-name .sub .tvl { font-variant-numeric: tabular-nums; }
-    .vault-name .sub .app-cta {
-      color: var(--accent); text-decoration: none; font-weight: 500;
-    }
-    .vault-name .sub .app-cta:hover { text-decoration: underline; text-underline-offset: 2px; }
+    .vault-name .sub .app-cta { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .vault-name .sub .app-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
+
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .pct { font-weight: 600; }
-    .pct.pos { color: var(--green); }
-    .pct.neg { color: var(--red); }
-    .pct.flag { background: rgba(220,38,38,0.08); padding: 0.1rem 0.35rem; border-radius: 4px; }
+    .pct.pos { color: var(--pos); }
+    .pct.neg { color: var(--neg); }
+    .pct.flag { background: var(--neg-soft); }
+    tbody tr:hover td.pct.flag { background: var(--neg-soft); }
     .dflag {
-      font-size: 0.66rem; font-weight: 600; color: var(--amber);
-      background: rgba(217,119,6,0.10); padding: 0.1rem 0.4rem; border-radius: 4px;
-      cursor: help; white-space: nowrap;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: help;
     }
     .dflag-inline { color: var(--amber); cursor: help; }
     .px-cell { white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .px-from { color: var(--text-secondary); }
-    .px-arrow { margin: 0 0.3rem; color: var(--text-secondary); opacity: 0.7; }
+    .px-from { color: var(--text-3); }
+    .px-arrow { margin: 0 5px; color: var(--text-3); }
     .px-to { color: var(--text); font-weight: 600; }
     .px-from[data-tip], .px-to[data-tip] { cursor: help; }
     .px-from[data-tip]:hover, .px-to[data-tip]:hover {
       text-decoration: underline dotted;
-      text-decoration-color: var(--text-secondary);
-      text-underline-offset: 2px;
+      text-decoration-color: var(--text-3);
+      text-underline-offset: 3px;
     }
-    /* Click/tap tooltip popover (native title doesn't work on touch) */
+    /* One bubble for every explanation (native titles don't show on touch). */
     .tip-pop {
-      position: fixed; z-index: 200; max-width: 280px;
-      background: #1a1a24; color: #f0f0f5;
-      font-size: 0.72rem; font-weight: 400; line-height: 1.45;
-      text-transform: none; letter-spacing: normal;
-      padding: 0.6rem 0.75rem; border-radius: 8px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+      position: fixed;
+      z-index: 200;
       display: none;
+      max-width: 280px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
     }
     .tip-pop.show { display: block; }
-    .spark-cell { width: 130px; padding: 0.15rem 0.5rem; }
+    .spark-cell { width: 136px; padding-top: 4px; padding-bottom: 4px; }
     .spark { display: block; width: 120px; height: 28px; }
     .spark .line { fill: none; stroke-width: 1.5; }
-    .spark .dot { stroke: white; stroke-width: 1; }   /* trend-colored fill set inline */
-    .na { color: var(--text-secondary); font-style: italic; }
-    .loading { padding: 3rem; text-align: center; color: var(--text-secondary); }
-    .err { padding: 1.5rem; color: var(--red); font-size: 0.85rem; }
+    .spark .dot { stroke: var(--bg); stroke-width: 1; }
+    .na { color: var(--text-3); }
+    .loading { padding: 64px 20px; text-align: center; color: var(--text-3); }
+    .err { padding: 20px; color: var(--neg); font-size: 14px; }
+
     .footnote {
-      margin-top: 1rem; font-size: 0.7rem; color: var(--text-secondary);
-      line-height: 1.5;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--text-3);
     }
-    /* Mobile: keep readable type and rely on table-scroll for overflow.
-       The table's min-width ensures the Δ column stays usable when scrolled. */
-    @media (max-width: 640px) {
-      .container { padding: 1rem 0.75rem; }
-      .vault-name { max-width: 200px; }
-      .toolbar select { font-size: 0.85rem; padding: 0.45rem 1.6rem 0.45rem 0.7rem; }
-      .stat-pill { margin-left: 0; width: 100%; }
+    .footnote strong { color: var(--text-2); font-weight: 600; }
+    .footnote code {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: var(--bg-subtle);
+      color: var(--text-2);
+      font: 11.5px var(--mono);
+    }
+
+    /* Wide enough for the whole table: let the headings stick to the window. */
+    @container (min-width: 760px) { .table-scroll { overflow: visible; } }
+    @media (max-width: 900px) { thead th { position: static; } }
+    @container (max-width: 640px) {
+      .filterbar { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; overflow: clip; }
+      .toolbar label.field { border-left: none; border-radius: 0; }
+      .toolbar label.field:first-child { grid-column: span 2; border-bottom: 1px solid var(--line); }
+      .toolbar label.field:last-child { border-left: 1px solid var(--line); }
+      .stat-pill { margin-left: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Share-Price Monitor</h1>
-      <p>Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Default-sorted by <strong>Deviation</strong> — the gap between the advertised FE APY and the realized sharePrice APY (the on-chain truth) — so vaults whose front-end rate drifts from reality surface first. Click any column header to re-sort.</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Share-Price Monitor</h1>
+        <p class="ui-lede">Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Default-sorted by <strong>Deviation</strong> — the gap between the advertised FE APY and the realized sharePrice APY (the on-chain truth) — so vaults whose front-end rate drifts from reality surface first. Click any column header to re-sort.</p>
+      </div>
+      <div class="ui-meta">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
+          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
+        </button>
+      </div>
     </header>
 
     <div class="toolbar">
+      <div class="filterbar">
       <label class="field">
         <span class="field-label">Sort by</span>
         <select id="sortSel">
@@ -219,6 +271,7 @@
         <span class="field-label">Chain</span>
         <select id="chainSel"><option value="">All</option></select>
       </label>
+      </div>
       <span class="stat-pill" id="statPill"></span>
     </div>
 
@@ -710,6 +763,14 @@
       }
     }
     load();
+
+    // Theme: the shared convention, localStorage 'fusionstats_theme'.
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+      if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      try { localStorage.setItem('fusionstats_theme', dark ? 'dark' : ''); } catch (e) {}
+    });
 
     // Hover tooltips for the (i) markers. Native `title` doesn't appear on
     // touch devices, so we drive a visible popover ourselves. Desktop: show on
