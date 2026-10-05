@@ -10,19 +10,21 @@
 (function () {
   // The pages, in three groups: the key pages, the insights that support
   // them, and tools. A group's label is its heading; the key pages need none.
+  // A folding group starts closed and remembers being opened; on one of its
+  // own pages it is open, so the current page always shows.
   const GROUPS = [
     { pages: [
       { href: '/',                      label: 'Activity',       icon: 'activity' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New' },
-      { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
     ] },
     { label: 'Insights', pages: [
-      { href: '/switchers',             label: 'Switchers',      icon: 'switchers', badge: 'New' },
-      { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust', badge: 'New' },
+      { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
+      { href: '/switchers',             label: 'Switchers',      icon: 'switchers' },
+      { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust' },
       { href: '/dominance',             label: 'Dominance',      icon: 'dominance' },
     ] },
-    { label: 'Tools', pages: [
-      { href: '/monitor',               label: 'Monitor',        icon: 'monitor', badge: 'New' },
+    { label: 'Tools', folds: true, pages: [
+      { href: '/monitor',               label: 'Monitor',        icon: 'monitor' },
       { href: '/tvl',                   label: 'TVL',            icon: 'tvl' },
       { href: '/address',               label: 'Address',        icon: 'address' },
       { href: '/spark',                 label: 'Spark',          icon: 'spark' },
@@ -179,6 +181,30 @@
     .fnav-links a:hover .fnav-ic .a,
     .fnav-links a.active .fnav-ic,
     .fnav-links a.active .fnav-ic .a { color: var(--accent, #8429FF); }
+    /* A folding group: its heading opens and closes it. */
+    .fnav-fold-toggle {
+      display: flex; align-items: center; gap: 4px;
+      width: 100%; margin: -4px 0 0; padding-top: 4px;
+      border: 0; border-radius: 6px; background: none;
+      text-align: left; cursor: pointer;
+      transition: color 0.12s;
+    }
+    .fnav-fold-toggle:hover { color: var(--text-body, #70747A); }
+    .fnav-fold-toggle:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 0; }
+    .fnav-chev {
+      width: 12px; height: 12px; flex-shrink: 0;
+      fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+      transition: transform 0.2s ease;
+    }
+    .fnav-fold.collapsed .fnav-chev { transform: rotate(-90deg); }
+    .fnav-fold-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; }
+    .fnav-fold-body > div { display: flex; flex-direction: column; gap: 1px; min-height: 0; overflow: hidden; }
+    .fnav-fold.collapsed .fnav-fold-body { grid-template-rows: 0fr; }
+    /* Closed links leave the tab order once the fold has shut. */
+    .fnav-fold.collapsed .fnav-fold-body > div { visibility: hidden; transition: visibility 0s 0.22s; }
+    @media (prefers-reduced-motion: reduce) {
+      .fnav-fold-body, .fnav-chev { transition: none; }
+    }
     .fnav-badge {
       margin-left: auto;
       padding: 2px 6px;
@@ -243,6 +269,8 @@
       .fnav-links { padding: 4px 10px 24px; }
       .fnav-links a { height: 44px; gap: 12px; font-size: 15px; }   /* thumb-sized */
       .fnav-ic { width: 18px; height: 18px; }
+      .fnav-fold-toggle { margin: -12px 0 -4px; padding: 12px 10px 10px; font-size: 12.5px; }
+      .fnav-chev { width: 14px; height: 14px; }
     }
   `;
 
@@ -251,10 +279,23 @@
     const here = isActive(p.href) ? ' class="active" aria-current="page"' : '';
     return `<a href="${p.href}"${here}>${icon(p.icon)}<span class="fnav-label">${p.label}</span>${badge}</a>`;
   };
+  const CHEVRON = '<svg class="fnav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>';
+  const foldKey = (g) => 'fusionstats_nav_' + g.label.toLowerCase();
+  const startsOpen = (g) => {
+    if (g.pages.some(p => isActive(p.href))) return true;
+    try { return localStorage.getItem(foldKey(g)) === 'open'; } catch { return false; }
+  };
   const links = GROUPS.map((g, i) => {
-    const head = g.label ? `<div class="fnav-group-label" id="fnav-g${i}">${g.label}</div>` : '';
-    const named = g.label ? ` role="group" aria-labelledby="fnav-g${i}"` : '';
-    return `<div class="fnav-group"${named}>${head}${g.pages.map(link).join('')}</div>`;
+    const items = g.pages.map(link).join('');
+    if (!g.label) return `<div class="fnav-group">${items}</div>`;
+    if (!g.folds) {
+      return `<div class="fnav-group" role="group" aria-labelledby="fnav-g${i}">`
+        + `<div class="fnav-group-label" id="fnav-g${i}">${g.label}</div>${items}</div>`;
+    }
+    const open = startsOpen(g);
+    return `<div class="fnav-group fnav-fold${open ? '' : ' collapsed'}" data-key="${foldKey(g)}">`
+      + `<button type="button" class="fnav-group-label fnav-fold-toggle" id="fnav-g${i}" aria-expanded="${open}" aria-controls="fnav-g${i}-list">${g.label}${CHEVRON}</button>`
+      + `<div class="fnav-fold-body" id="fnav-g${i}-list" role="group" aria-labelledby="fnav-g${i}"><div>${items}</div></div></div>`;
   }).join('');
 
   const inject = () => {
@@ -299,6 +340,16 @@
       document.documentElement.style.overflow = v ? 'hidden' : '';   // the page stays put behind it
     };
     burger.addEventListener('click', () => open(!aside.classList.contains('open')));
+    // Folding groups: open or close, remember it, and bring an opened group into view.
+    aside.querySelectorAll('.fnav-fold-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const fold = btn.closest('.fnav-fold');
+        const isOpen = !fold.classList.toggle('collapsed');
+        btn.setAttribute('aria-expanded', String(isOpen));
+        try { localStorage.setItem(fold.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
+        if (isOpen) setTimeout(() => fold.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 240);
+      });
+    });
     scrim.addEventListener('click', () => open(false));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && aside.classList.contains('open')) open(false); });
   };
