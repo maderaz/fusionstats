@@ -34,14 +34,15 @@
   const SIDEBAR_W = 220;
   const TOPBAR_H = 56;
 
-  // Two rings fused, the overlap lit: "Fusion". White on the brand gradient.
+  // The Fusion logo as IPOR publishes it (ipor.io/brand), then "Stats". The
+  // published file has black text; in dark mode the white-text version is
+  // used, or — if ipor.io has none — the same logo drawn in white.
+  const LOGO_SRC = 'https://ipor.io/brand/full-logo/fusion-full-logo-black-text.svg';
+  const LOGO_DARK_SRC = 'https://ipor.io/brand/full-logo/fusion-full-logo-white-text.svg';
   const LOGO = `
-    <span class="fnav-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none">
-      <circle cx="7.4" cy="10" r="4.6" stroke="#fff" stroke-width="1.8"/>
-      <circle cx="12.6" cy="10" r="4.6" stroke="#fff" stroke-width="1.8" stroke-opacity=".6"/>
-      <path d="M10 6.2a4.6 4.6 0 0 1 0 7.6a4.6 4.6 0 0 1 0-7.6z" fill="#fff"/>
-    </svg></span>
-    <span class="fnav-word">Fusion <b>Stats</b></span>`;
+    <img class="fnav-logo fnav-logo-light" src="${LOGO_SRC}" alt="Fusion" height="24" decoding="async">
+    <img class="fnav-logo fnav-logo-dark" src="${LOGO_DARK_SRC}" alt="Fusion" height="24" decoding="async" onerror="this.remove()">
+    <span class="fnav-word">Stats</span>`;
   const css = `
     nav.top-nav { display: none !important; }      /* hide legacy per-page nav */
     body { margin: 0; }
@@ -72,19 +73,26 @@
       color: var(--text, #000);
       text-decoration: none;
     }
-    .fnav-mark {
-      display: grid; place-items: center; flex-shrink: 0;
-      width: 30px; height: 30px; border-radius: 9px;
-      background: linear-gradient(135deg, #A06BFF 0%, #7A1FFF 55%, #5B00E0 100%);
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12), 0 1px 2px rgba(91,0,224,0.25);
+    /* The logo keeps its own proportions; a very wide file is fitted, not cut. */
+    .fnav-logo {
+      display: block; flex-shrink: 0;
+      height: 24px; width: auto; max-width: 140px;
+      object-fit: contain; object-position: left center;
     }
-    .fnav-mark svg { width: 20px; height: 20px; }
+    .fnav-logo-dark { display: none; }
+    [data-theme="dark"] .fnav-logo-light { display: none; }
+    [data-theme="dark"] .fnav-logo-dark { display: block; }
+    [data-theme="dark"] .fnav-brand:not(:has(.fnav-logo-dark)) .fnav-logo-light {
+      display: block; filter: brightness(0) invert(1);
+    }
     .fnav-word {
+      padding-left: 10px;
+      border-left: 1px solid var(--stroke, #e5e5e5);
       font-family: Poppins, -apple-system, sans-serif;
-      font-weight: 700; font-size: 1.05rem; letter-spacing: -0.02em;
+      font-weight: 600; font-size: 0.98rem; line-height: 18px; letter-spacing: -0.01em;
+      color: var(--text-body, #70747A);
       white-space: nowrap;
     }
-    .fnav-word b { font-weight: 600; color: var(--accent, #8429FF); }
     .fnav-links { display: flex; flex-direction: column; }
     .fnav-links a {
       font-family: Poppins, -apple-system, sans-serif;
@@ -127,10 +135,9 @@
               backdrop-filter: saturate(1.6) blur(14px);
       border-bottom: 1px solid var(--stroke, #e5e5e5);
     }
-    .fnav-topbar .fnav-brand { padding: 0; gap: 9px; }
-    .fnav-topbar .fnav-mark { width: 28px; height: 28px; border-radius: 8px; }
-    .fnav-topbar .fnav-mark svg { width: 18px; height: 18px; }
-    .fnav-topbar .fnav-word { font-size: 1rem; }
+    .fnav-topbar .fnav-brand { padding: 0; gap: 10px; }
+    .fnav-topbar .fnav-logo { height: 22px; }
+    .fnav-topbar .fnav-word { font-size: 0.95rem; }
     .fnav-hamburger {
       display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
       width: 40px; height: 40px; padding: 0;
