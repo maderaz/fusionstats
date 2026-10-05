@@ -77,6 +77,7 @@
   --accent-light: #B89AFF;
 }
 
+*, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -109,6 +110,9 @@ body {
   padding-bottom: 28px;
   border-bottom: 1px solid var(--line);
 }
+/* Text takes the room; status and controls stay right, even when they wrap. */
+.ui-masthead > :first-child { flex: 1 1 520px; min-width: 0; }
+.ui-masthead > .ui-meta { margin-left: auto; }
 .ui-masthead h1 {
   margin: 0;
   font-size: 32px;
