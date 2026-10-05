@@ -473,6 +473,9 @@
         <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
         <button id="downloadTotalPng43" class="action-btn" type="button">Download 4:3</button>
         <button id="downloadTotalPngSquare" class="action-btn" type="button">Download 1:1</button>
+        <button id="downloadTotalCsv" class="action-btn" type="button"
+                title="The bars as numbers — the selected range at the chart's cadence (weekly on 180d, 1y and All)">
+          Download datapoints (.csv)</button>
       </div>
       <div id="totalTvlChart"><div class="loading">Loading data…</div></div>
     </div>
@@ -712,7 +715,8 @@
       for (const p of pts) {
         const key = Math.floor(p.day / bucketDays) * bucketDays;
         const cur = buckets.get(key);
-        if (!cur || p.day > cur.day) buckets.set(key, { day: key, tvl: p.tvl });
+        // A bucket shows its last day's TVL; asOf records which day that was.
+        if (!cur || p.day > cur.asOf) buckets.set(key, { day: key, tvl: p.tvl, asOf: p.day });
       }
       return [...buckets.values()].sort((a, b) => a.day - b.day);
     }
@@ -1017,10 +1021,12 @@
       return { trace, layout };
     }
 
-    // Square (1:1) figure for social export — honours the visible x-window,
-    // down-samples to ~24 bars, sets an explicit bar width (date-axis bars
-    // otherwise default to the smallest gap and render hair-thin), and uses
-    // large axis fonts so labels stay legible at 1080×1080.
+    // 4:3 and 1:1 figures for export — the same bars as the chart on screen,
+    // at its cadence (weekly on 180d, 1y and All), within the visible x-window.
+    // They used to be re-bucketed to ~24 bars, which turned the weekly chart
+    // into roughly monthly bars. Sets an explicit bar width (date-axis bars
+    // otherwise default to the smallest gap and render hair-thin) and large
+    // axis fonts so labels stay legible at 1080 px.
     function totalTvlSquareFigure(range, visibleDays) {
       let pts = totalTvlSeries(range);
       if (visibleDays && visibleDays.length === 2) {
@@ -1028,13 +1034,7 @@
         const f = pts.filter(p => p.day >= lo && p.day <= hi);
         if (f.length) pts = f;
       }
-      const TARGET_BARS = 24;
-      let bucketDays = 1;
-      if (pts.length > TARGET_BARS) {
-        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
-        bucketDays = Math.ceil(spanDays / TARGET_BARS);
-        pts = bucketize(pts, bucketDays);
-      }
+      const bucketDays = bucketDaysFor(range);
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: pts.map(p => p.tvl),
@@ -1130,6 +1130,31 @@
           'yaxis.minor.showgrid': false,
         });
       }
+    }
+
+    // The total chart's bars as numbers: the selected range at the chart's own
+    // cadence (weekly on 180d, 1y and All; every 3 days on 90d; daily on 30d).
+    // Each bar is the total TVL on the last day with data in its period, so
+    // the row says which day that was.
+    function downloadTotalCsv() {
+      const pts = totalTvlSeries(curTotalRange);
+      if (!pts.length) return;
+      const bDays = bucketDaysFor(curTotalRange);
+      const cadence = bDays === 7 ? 'weekly' : bDays === 1 ? 'daily' : `${bDays}-day`;
+      const iso = (d) => new Date(d * DAY_MS).toISOString().slice(0, 10);
+      const lines = ['period_start,tvl_as_of,total_tvl_usd'];
+      for (const p of pts) lines.push(`${iso(p.day)},${iso(p.asOf != null ? p.asOf : p.day)},${p.tvl.toFixed(2)}`);
+      const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0, 10);
+      const range = curTotalRange === 'all' ? 'all' : `${curTotalRange}d`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fusion-total-tvl-${cadence}-${range}-${stamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     function downloadBaseCsv() {
@@ -1382,6 +1407,7 @@
       document.getElementById('downloadTotalPng').addEventListener('click', () => downloadTotalPng('wide'));
       document.getElementById('downloadTotalPng43').addEventListener('click', () => downloadTotalPng('43'));
       document.getElementById('downloadTotalPngSquare').addEventListener('click', () => downloadTotalPng('square'));
+      document.getElementById('downloadTotalCsv').addEventListener('click', downloadTotalCsv);
     }
 
     (async function () {
