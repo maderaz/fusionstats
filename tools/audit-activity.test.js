@@ -89,30 +89,67 @@ test('fee drift is judged against the size the vault has been, not what is left'
 
 console.log('\nhealth check');
 
-const health = (status, lagHours) => ({ status, lagHours, head: 1, cursor: 1, lagBlocks: 1, checkedAt: 'x' });
+const NOW = Date.parse('2026-10-03T20:00:00Z');
+// A verdict the collector wrote `minutesAgo` before the check ran.
+const health = (status, lagHours, minutesAgo = 2) => ({ status, lagHours, head: 1, cursor: 1, lagBlocks: 1,
+                                                        checkedAt: new Date(NOW - minutesAgo * 60_000).toISOString() });
+const check = (verdicts, tvl) => evaluate(verdicts, tvl, NOW);
 
 test('a stalled chain holding real money fails the run', () => {
-  const rows = evaluate({ ethereum: health('stalled', 520) }, { ethereum: 36_500_000 });
+  const rows = check({ ethereum: health('stalled', 520) }, { ethereum: 36_500_000 });
   assert.ok(rows[0].failing);
 });
 
 test('an unreachable chain holding real money fails the run', () => {
-  const rows = evaluate({ ethereum: health('unreachable', null) }, { ethereum: 50_000 });
+  const rows = check({ ethereum: health('unreachable', null) }, { ethereum: 50_000 });
   assert.ok(rows[0].failing);
 });
 
 test('a chain with only dust on it is reported but never fails the run', () => {
-  const rows = evaluate({ plasma: health('unreachable', null) }, { plasma: 120 });
+  const rows = check({ plasma: health('unreachable', null) }, { plasma: 120 });
   assert.ok(!rows[0].failing);
 });
 
 test('catching up for a while is fine; catching up for days is not', () => {
-  assert.ok(!evaluate({ base: health('behind', 9) }, { base: 4e7 })[0].failing);
-  assert.ok(evaluate({ base: health('behind', 40) }, { base: 4e7 })[0].failing);
+  assert.ok(!check({ base: health('behind', 9) }, { base: 4e7 })[0].failing);
+  assert.ok(check({ base: health('behind', 40) }, { base: 4e7 })[0].failing);
 });
 
 test('a healthy chain never fails the run', () => {
-  assert.ok(!evaluate({ base: health('ok', 0.2) }, { base: 4e7 })[0].failing);
+  assert.ok(!check({ base: health('ok', 0.2) }, { base: 4e7 })[0].failing);
+});
+
+// 2026-10-03: an older scheduled run was re-run from the Actions page. GitHub
+// re-ran its original commit, from before chain verdicts existed, so the
+// file had none — and an empty list of chains has nothing failing in it.
+test('a run whose collector wrote no verdicts at all fails', () => {
+  const rows = check(undefined, { ethereum: 36_500_000, base: 4e7 });
+  assert.strictEqual(rows.length, 2, 'every chain holding money gets a row');
+  assert.ok(rows.every(r => r.failing && r.status === 'unreported'), JSON.stringify(rows));
+});
+
+// A crashed or timed-out collector leaves the previous run's verdicts in the
+// file. Read as current, a three-week freeze would keep reporting "ok".
+test("an earlier run's verdicts do not pass for this run's", () => {
+  const rows = check({ ethereum: health('ok', 0.1, 5 * 60), base: health('ok', 0.1, 5 * 60) },
+                     { ethereum: 36_500_000, base: 4e7 });
+  assert.strictEqual(rows.length, 2);
+  assert.ok(rows.every(r => r.failing), JSON.stringify(rows));
+});
+
+test('a chain the time budget skipped once is shown, but fails only after a day', () => {
+  const tvl = { ethereum: 36_500_000, base: 4e7 };
+  const once = check({ base: health('ok', 0.1), ethereum: health('ok', 0.1, 5 * 60) }, tvl);
+  const eth = once.find(r => r.chain === 'ethereum');
+  assert.strictEqual(eth.status, 'unreported');
+  assert.ok(!eth.failing);
+  const day = check({ base: health('ok', 0.1), ethereum: health('ok', 0.1, 30 * 60) }, tvl);
+  assert.ok(day.find(r => r.chain === 'ethereum').failing);
+});
+
+test('a chain holding money that never reported fails', () => {
+  const rows = check({ base: health('ok', 0.1) }, { base: 4e7, ethereum: 36_500_000 });
+  assert.ok(rows.find(r => r.chain === 'ethereum').failing);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);
