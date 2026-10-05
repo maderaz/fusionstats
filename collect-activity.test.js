@@ -12,7 +12,7 @@
 // Each case below is one of the ways that went wrong.
 
 const assert = require('assert');
-const { nextCursors, chainHealth, HEALTHY_LAG_HOURS } = require('./collect-activity.js');
+const { nextCursors, chainHealth, scanCohorts, HEALTHY_LAG_HOURS } = require('./collect-activity.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -154,6 +154,29 @@ test('no endpoint answering is unreachable, with the reason', () => {
   const h = chainHealth({ chain: 'plasma', unreachable: true, reason: 'All RPCs failed for plasma:eth_blockNumber' });
   assert.strictEqual(h.status, 'unreachable');
   assert.ok(/plasma/.test(h.reason));
+});
+
+console.log('\nscanCohorts');
+
+const at = (addr, fromBlock) => ({ vault: { address: addr }, fromBlock });
+const names = (cohorts) => cohorts.map(c => c.map(v => v.vault.address));
+
+test('vaults at the same cursor are one pass', () => {
+  assert.deepStrictEqual(names(scanCohorts([at(A, 100), at(B, 100)], 2000)), [[A, B]]);
+});
+
+test('a vault within one chunk of the rest stays with them', () => {
+  assert.deepStrictEqual(names(scanCohorts([at(A, 52206926), at(B, 52205000)], 2000)), [[A, B]]);
+});
+
+// Oct 5: two new Base vaults 48h back held 28 current ones still.
+test('vaults far behind get their own pass, after the current ones', () => {
+  const out = scanCohorts([at(C, 52133980), at(A, 52206926), at(B, 52206926)], 2000);
+  assert.deepStrictEqual(names(out), [[A, B], [C]]);
+});
+
+test('nothing to scan is no passes', () => {
+  assert.deepStrictEqual(scanCohorts([], 2000), []);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

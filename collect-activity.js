@@ -278,6 +278,7 @@ async function rpcCall(chain, method, params) {
   if (!rpcs) throw new Error(`No RPCs for chain ${chain}`);
   const active = activeRpcByChain[chain] || 0;
   const order = [active, ...rpcs.map((_, i) => i).filter(i => i !== active)];
+  const why = [];
   for (const idx of order) {
     const url = rpcs[idx];
     if (RPC_MIN_INTERVAL_MS > 0) {
@@ -299,10 +300,11 @@ async function rpcCall(chain, method, params) {
       activeRpcByChain[chain] = idx;
       return json.result;
     } catch (e) {
-      // suppress verbose per-RPC errors
+      // Kept short and URL-free: a keyed endpoint's URL carries its key.
+      why.push(String(e.message || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 60));
     }
   }
-  throw new Error(`All RPCs failed for ${chain}:${method}`);
+  throw new Error(`All RPCs failed for ${chain}:${method} (${why.join('; ')})`);
 }
 
 async function getBlockNumber(chain) {
@@ -611,6 +613,21 @@ function chainHealth({ chain, head, cursors, progressed, unreachable = false, re
   return { status, head, cursor, lagBlocks, lagHours, reason, checkedAt: new Date(now).toISOString() };
 }
 
+// Split the vaults a chain scan covers into those that are current and those
+// far behind them (more than `gap` blocks behind the most advanced), each to
+// be scanned as its own pass, current first. Scanned as one, the chain started
+// from the laggard's block: every vault re-read the laggard's window on every
+// run, and a range only the laggard needed, once refused, held every vault on
+// the chain still. On Oct 5 two Base vaults worth $738 between them, 48h back,
+// kept $41M of Base vaults from moving.
+function scanCohorts(vaultsToScan, gap) {
+  if (vaultsToScan.length === 0) return [];
+  const newest = Math.max(...vaultsToScan.map(v => v.fromBlock));
+  const current = vaultsToScan.filter(v => v.fromBlock > newest - gap);
+  const behind = vaultsToScan.filter(v => v.fromBlock <= newest - gap);
+  return behind.length ? [current, behind] : [current];
+}
+
 function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undatedBlocks = [] }) {
   let progress = reachedBlock;
   if (undatedBlocks.length > 0) progress = Math.min(progress, Math.min(...undatedBlocks) - 1);
@@ -631,6 +648,10 @@ function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undat
 // The smallest range worth splitting further. Below it a refusal is the
 // endpoint's, not the range's size, and splitting only burns the deadline.
 const MIN_SPLIT_BLOCKS = 500;
+// Pauses before a range that small is retried. A burst of rate limiting
+// refuses every endpoint within milliseconds and is gone seconds later; on
+// Oct 5 one such burst stopped Base for a whole run.
+const LEAF_RETRY_PAUSES_MS = [2_000, 6_000];
 
 // Scan [fromBlock, toBlock] for logs from every address group.
 //
@@ -655,7 +676,7 @@ async function scanLogs(chain, groupsOrAddresses, topic, fromBlock, toBlock, dea
   let reachedBlock = fromBlock - 1;
   let stalled = null;
 
-  async function scan(addresses, from, to) {
+  async function scan(addresses, from, to, attempt = 0) {
     if (Date.now() > deadline) throw new Error('chain timeout');
     try {
       return await rpcCall(chain, 'eth_getLogs', [{
@@ -667,6 +688,11 @@ async function scanLogs(chain, groupsOrAddresses, topic, fromBlock, toBlock, dea
     } catch (e) {
       if (e.message === 'chain timeout') throw e;
       if (to - from < MIN_SPLIT_BLOCKS) {
+        const pause = LEAF_RETRY_PAUSES_MS[attempt];
+        if (pause != null && Date.now() + pause < deadline) {
+          await sleep(pause);
+          return scan(addresses, from, to, attempt + 1);
+        }
         const err = new Error('range unservable');
         err.range = [from, to];
         err.reason = e.message;
@@ -1757,14 +1783,13 @@ async function main() {
   const writeReserve = Math.min(WRITE_RESERVE_MS, Math.floor(RUN_BUDGET_MS * 0.15));
   const budgetLeft = () => runDeadline - Date.now() - writeReserve;
 
-  // Reset lastBlock for vaults with 0 events (need deeper backfill)
-  const eventVaults = new Set(data.events.map(e => e.vault));
-  for (const vault of VAULTS) {
-    if (data.lastBlock[vault.address] && !eventVaults.has(vault.address)) {
-      console.log(`${vault.name}: resetting lastBlock (0 events, needs deeper backfill)`);
-      delete data.lastBlock[vault.address];
-    }
-  }
+  // A vault with no events keeps its cursor. Wiping it every run (meant to
+  // force a "deeper backfill") never went deeper than NEW_VAULT_BACKFILL: it
+  // made every run re-read the last 48h of every chain that had one such vault
+  // — 24 of them, 86,400 Base blocks a run — and that rescan is what a burst
+  // of refusals froze on (see the cohorts below). History before a vault's
+  // first scan is the gap-fill job's work (--gap-fill), which finds it from
+  // the vault's deployment block, cursor or not.
 
   // Group vaults by chain
   const byChain = {};
@@ -1809,112 +1834,118 @@ async function main() {
       continue;
     }
 
-    const earliestFrom = Math.min(...vaultsToScan.map(v => v.fromBlock));
-    const allAddresses = vaultsToScan.map(v => v.vault.address);
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
     // Whichever runs out first: this chain's slice, or the run as a whole.
     let chainProgressed = false, chainStall = null;
     const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
     const deadline = Date.now() + chainMs;
-    console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round(chainMs/1000)}s)...`);
 
-    try {
-      // Split the address list so no request exceeds what the endpoint will
-      // serve. Each group is scanned over the same range and reports its own
-      // reached block; the chain's progress is the WORST of them, because a
-      // block is only covered once every vault has been asked about it.
-      const perReq = CHAIN_ADDR_BATCH[chain] || CHAIN_ADDR_BATCH._default;
-      const groups = [];
-      for (let i = 0; i < allAddresses.length; i += perReq) groups.push(allAddresses.slice(i, i + perReq));
+    // One pass for the vaults that are current, then one for any far behind
+    // them (scanCohorts). Current first, so a range only the laggards need can
+    // neither hold the others back nor eat their time.
+    for (const cohort of scanCohorts(vaultsToScan, CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default)) {
+      const earliestFrom = Math.min(...cohort.map(v => v.fromBlock));
+      const allAddresses = cohort.map(v => v.vault.address);
+      console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round((deadline - Date.now()) / 1000)}s)...`);
 
-      const scanned = await scanLogs(chain, groups, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
-                                     earliestFrom, currentBlock, deadline);
-      const logs = scanned.logs;
-      const progressBlock = scanned.reachedBlock;
-      if (groups.length > 1) console.log(`  (${groups.length} address groups of up to ${perReq}, scanned chunk by chunk)`);
-      if (scanned.stalled) {
-        console.log(`::error::${chain}: no endpoint will serve blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]}`
-          + ` (${scanned.stalled.reason}) — stopped there rather than skip it; next run retries`);
-      }
+      try {
+        // Split the address list so no request exceeds what the endpoint will
+        // serve. Each group is scanned over the same range and reports its own
+        // reached block; the chain's progress is the WORST of them, because a
+        // block is only covered once every vault has been asked about it.
+        const perReq = CHAIN_ADDR_BATCH[chain] || CHAIN_ADDR_BATCH._default;
+        const groups = [];
+        for (let i = 0; i < allAddresses.length; i += perReq) groups.push(allAddresses.slice(i, i + perReq));
 
-      const depositLogs  = logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
-      const withdrawLogs = logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
+        const scanned = await scanLogs(chain, groups, [DEPOSIT_TOPIC, WITHDRAW_TOPIC],
+                                       earliestFrom, currentBlock, deadline);
+        const logs = scanned.logs;
+        const progressBlock = scanned.reachedBlock;
+        if (groups.length > 1) console.log(`  (${groups.length} address groups of up to ${perReq}, scanned chunk by chunk)`);
+        if (scanned.stalled) {
+          console.log(`::error::${chain}: no endpoint will serve blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]}`
+            + ` (${scanned.stalled.reason}) — stopped there rather than skip it; next run retries`);
+        }
 
-      console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
+        const depositLogs  = logs.filter(l => l.topics[0] === DEPOSIT_TOPIC);
+        const withdrawLogs = logs.filter(l => l.topics[0] === WITHDRAW_TOPIC);
+
+        console.log(`  ${depositLogs.length} deposit logs, ${withdrawLogs.length} withdraw logs (reached block ${progressBlock}/${currentBlock})`);
 
 
-      const addrIdx = new Map(vaultsToScan.map(v => [v.vault.address, v]));
-      const newEvents = [];
-      const parseInto = (logs, parser) => {
-        for (const log of logs) {
-          const addr = log.address.toLowerCase();
-          const vault = vaultMap[addr];
-          if (!vault) continue;
-          const entry = addrIdx.get(addr);
-          if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
-            newEvents.push(parser(log, vault));
+        const addrIdx = new Map(cohort.map(v => [v.vault.address, v]));
+        const newEvents = [];
+        const parseInto = (logs, parser) => {
+          for (const log of logs) {
+            const addr = log.address.toLowerCase();
+            const vault = vaultMap[addr];
+            if (!vault) continue;
+            const entry = addrIdx.get(addr);
+            if (entry && parseInt(log.blockNumber, 16) >= entry.fromBlock) {
+              newEvents.push(parser(log, vault));
+            }
+          }
+        };
+        parseInto(depositLogs, parseDepositLog);
+        parseInto(withdrawLogs, parseWithdrawLog);
+
+        // Oldest blocks first: whatever we manage to date lets the cursor move
+        // that far, instead of dating the newest and advancing nothing.
+        const uniqueBlocks = [...new Set(newEvents.map(e => e.block))].sort((a, b) => a - b);
+        const tsMap = {};
+        if (uniqueBlocks.length > 0) {
+          const tsDeadline = Date.now() + Math.max(5_000, Math.min(TIMESTAMP_BUDGET_MS, budgetLeft()));
+          console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
+          for (let i = 0; i < uniqueBlocks.length; i += 10) {
+            if (Date.now() > tsDeadline) {
+              console.log(`  (timestamp fetch cut short at ${i}/${uniqueBlocks.length} — the rest retry next run)`);
+              break;
+            }
+            const batch = uniqueBlocks.slice(i, i + 10);
+            const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
+            results.forEach((ts, j) => { if (ts) tsMap[batch[j]] = ts; });
           }
         }
-      };
-      parseInto(depositLogs, parseDepositLog);
-      parseInto(withdrawLogs, parseWithdrawLog);
 
-      // Oldest blocks first: whatever we manage to date lets the cursor move
-      // that far, instead of dating the newest and advancing nothing.
-      const uniqueBlocks = [...new Set(newEvents.map(e => e.block))].sort((a, b) => a - b);
-      const tsMap = {};
-      if (uniqueBlocks.length > 0) {
-        const tsDeadline = Date.now() + Math.max(5_000, Math.min(TIMESTAMP_BUDGET_MS, budgetLeft()));
-        console.log(`  Fetching timestamps for ${uniqueBlocks.length} blocks...`);
-        for (let i = 0; i < uniqueBlocks.length; i += 10) {
-          if (Date.now() > tsDeadline) {
-            console.log(`  (timestamp fetch cut short at ${i}/${uniqueBlocks.length} — the rest retry next run)`);
-            break;
-          }
-          const batch = uniqueBlocks.slice(i, i + 10);
-          const results = await Promise.all(batch.map(b => getBlockTimestamp(chain, b).catch(() => 0)));
-          results.forEach((ts, j) => { if (ts) tsMap[batch[j]] = ts; });
+        // An undated event is unusable downstream — it cannot be filtered by
+        // timeframe, sorted, or priced. Drop it and hold the cursor below its
+        // block so the next run finds it again, rather than banking a gap.
+        const undated = newEvents.filter(e => !tsMap[e.block]);
+        const undatedBlocks = [...new Set(undated.map(e => e.block))];
+        if (undated.length > 0) {
+          console.log(`  ${undated.length} events had no timestamp — cursor held below block ${Math.min(...undatedBlocks)} so they are re-scanned`);
         }
+        const newEventsDated = newEvents.filter(e => tsMap[e.block]);
+        newEventsDated.forEach(e => { e.timestamp = tsMap[e.block]; });
+
+        newEventsTotal += newEventsDated.length;
+
+        newEventsDated.forEach(e => {
+          e.assets = Math.round(e.assets * 1e6) / 1e6;
+          e.shares = Math.round(e.shares * 1e6) / 1e6;
+        });
+
+        await enrichWithPrices(newEventsDated);
+        data.events.push(...newEventsDated);
+
+        // The old rule compared stopBlock against the batch's earliest fromBlock,
+        // so one vault lagging behind the rest could both stall every cursor and
+        // — had it advanced — rewind the healthy ones by millions of blocks.
+        const advanced = nextCursors({
+          addresses: cohort.map(v => v.vault.address),
+          prevCursors: data.lastBlock,
+          reachedBlock: progressBlock,
+          currentBlock,
+          undatedBlocks,
+        });
+        Object.assign(data.lastBlock, advanced);
+        chainProgressed = chainProgressed || progressBlock >= earliestFrom;
+        if (scanned.stalled) chainStall = chainStall || `blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} refused: ${scanned.stalled.reason}`;
+      } catch (e) {
+        console.log(`  ${chain} batch scan failed: ${e.message}`);
+        chainStall = chainStall || e.message;
       }
-
-      // An undated event is unusable downstream — it cannot be filtered by
-      // timeframe, sorted, or priced. Drop it and hold the cursor below its
-      // block so the next run finds it again, rather than banking a gap.
-      const undated = newEvents.filter(e => !tsMap[e.block]);
-      const undatedBlocks = [...new Set(undated.map(e => e.block))];
-      if (undated.length > 0) {
-        console.log(`  ${undated.length} events had no timestamp — cursor held below block ${Math.min(...undatedBlocks)} so they are re-scanned`);
-      }
-      const newEventsDated = newEvents.filter(e => tsMap[e.block]);
-      newEventsDated.forEach(e => { e.timestamp = tsMap[e.block]; });
-
-      newEventsTotal += newEventsDated.length;
-
-      newEventsDated.forEach(e => {
-        e.assets = Math.round(e.assets * 1e6) / 1e6;
-        e.shares = Math.round(e.shares * 1e6) / 1e6;
-      });
-
-      await enrichWithPrices(newEventsDated);
-      data.events.push(...newEventsDated);
-
-      // The old rule compared stopBlock against the batch's earliest fromBlock,
-      // so one vault lagging behind the rest could both stall every cursor and
-      // — had it advanced — rewind the healthy ones by millions of blocks.
-      const advanced = nextCursors({
-        addresses: vaultsToScan.map(v => v.vault.address),
-        prevCursors: data.lastBlock,
-        reachedBlock: progressBlock,
-        currentBlock,
-        undatedBlocks,
-      });
-      Object.assign(data.lastBlock, advanced);
-      chainProgressed = progressBlock >= earliestFrom;
-      chainStall = scanned.stalled ? `blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} refused: ${scanned.stalled.reason}` : null;
-    } catch (e) {
-      console.log(`  ${chain} batch scan failed: ${e.message}`);
-      chainStall = e.message;
     }
 
     const health = chainHealth({ chain, head: currentBlock, progressed: chainProgressed, reason: chainStall,
@@ -1987,4 +2018,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { nextCursors, chainHealth, HEALTHY_LAG_HOURS };
+module.exports = { nextCursors, chainHealth, scanCohorts, HEALTHY_LAG_HOURS };
