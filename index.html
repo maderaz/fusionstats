@@ -439,9 +439,10 @@
     tbody tr:hover td { background: var(--bg-hover); }
     td:first-child { color: var(--text-2); }
     .col-num { text-align: right; }
-    td.col-num.num-bold { font-weight: 500; }
+    /* USD is the common denominator across tokens: bold. The token amount is detail. */
+    td.amount-cell { color: var(--text-2); font-weight: 400; }
     .sym { margin-left: 1px; font-size: 12.5px; font-weight: 400; color: var(--text-3); }
-    .usd-cell, .usd-value { color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .usd-cell, .usd-value { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
     /* Direction: down for a deposit (money in), up for a withdrawal (money out). */
     .badge-deposit, .badge-withdraw {
@@ -540,6 +541,66 @@
     }
     .error-msg small { color: var(--text-2); }
 
+    /* ---------- Pager ---------- */
+    #activityContent { scroll-margin-top: calc(var(--tools-h, 0px) + 8px); }
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 4px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    .pg-range { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .pg-ctrls { display: flex; align-items: center; gap: 6px; }
+    .pg-nums { display: flex; align-items: center; gap: 6px; }
+    .pg-step, .pg-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 34px;
+      min-width: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--bg);
+      color: var(--text);
+      font: 500 13px var(--sans);
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .pg-num { padding: 0 10px; }
+    .pg-num.on { background: var(--text); border-color: var(--text); color: var(--bg); cursor: default; }
+    .pg-step:hover:not(:disabled), .pg-num:hover:not(.on) { background: var(--bg-subtle); border-color: var(--line-strong); }
+    .pg-step:disabled { opacity: 0.4; cursor: default; }
+    .pg-step:focus-visible, .pg-num:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .pg-step::before, .pg-step.next::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      background: currentColor;
+      -webkit-mask: var(--chev) center / contain no-repeat;
+              mask: var(--chev) center / contain no-repeat;
+    }
+    .pg-step { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10 3.5L5.5 8l4.5 4.5' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .pg-step.next { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3.5L10.5 8 6 12.5' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .pg-step.next::before { display: none; }
+    .pg-gap { padding: 0 2px; color: var(--text-3); }
+    .pg-of { display: none; }
+    .pg-note { padding: 14px 0 4px; text-align: center; font-size: 13px; color: var(--text-3); }
+    .pg-retry {
+      border: none;
+      background: none;
+      color: var(--accent);
+      font: 500 13px var(--sans);
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     /* Phone list: what happened and how much, then where, then who and when. */
     .mobile-events { display: none; }
     .mobile-event {
@@ -554,12 +615,7 @@
     .mobile-event .dir::before { width: 15px; height: 15px; }
     .mob-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
     .mobile-event-badges { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
-    .mobile-event-amount {
-      font-size: 15px;
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
+    .mobile-event-amount { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .mobile-event-product {
       flex: 1;
       min-width: 0;
@@ -569,7 +625,7 @@
       font-size: 13.5px;
       color: var(--text-2);
     }
-    .mobile-event-usd { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-event-usd { font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .mobile-event-who { display: inline-flex; align-items: center; gap: 8px; }
     .mobile-event-user { font-size: 12px; color: var(--text-3); }
     .mobile-event .debank { width: 18px; height: 18px; font-size: 9px; }
@@ -591,6 +647,14 @@
     @container (max-width: 700px) {
       #activityContent table { display: none; }
       .mobile-events { display: block; }
+
+      /* Pager: the range above, then Prev · Page n of N · Next, thumb-sized. */
+      .pager { flex-direction: column; align-items: stretch; gap: 12px; padding-top: 16px; }
+      .pg-range { text-align: center; }
+      .pg-nums { display: none; }
+      .pg-of { display: block; flex: 1; text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+      .pg-ctrls { gap: 10px; }
+      .pg-step { height: 44px; padding: 0 16px; font-size: 14px; border-radius: 12px; }
 
       .overview { padding: 24px 0 30px; }
       .stats-row { margin-top: 14px; }
@@ -618,6 +682,7 @@
     /* nav.js puts a fixed menu button top-left below 900px: nothing sticks there. */
     @media (max-width: 900px) {
       .page { padding: 12px 24px 64px; }
+      #activityContent { scroll-margin-top: 72px; }
       .feed-tools, th { position: static; }
       .feed-tools { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
     }
@@ -802,6 +867,20 @@
     let allEvents = [];
     let lastUpdatedAt = null;
     let updatedLabelTimer = null;
+
+    // The page opens from activity-recent.json — the last five weeks of events
+    // plus what the page needs from all history (tools/build-activity-recent.js)
+    // — instead of the full 19 MB file. Everything shown is exact down to its
+    // `coveredFrom`; a page or filter that reaches further back fetches the
+    // full history once and carries on.
+    const PAGE_SIZE = 10;
+    let currentPage = 1;
+    let recentMeta = null;          // set while only the recent cache is loaded
+    let historyComplete = false;
+    let wantFullHistory = false;
+    let fullHistoryLoading = null;
+    let olderLoadFailed = false;
+    let vaultInfo = {};
     const FILTER_AMOUNT_KEY = 'fusionstats_filter_amount';
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
@@ -872,7 +951,8 @@
       return STOCK_ASSET_RE.test((e.underlyingToken || '').toLowerCase());
     }
 
-    function applyFilters() {
+    function applyFilters({ resetPage = true } = {}) {
+      if (resetPage) currentPage = 1;
       const minAmount = parseFloat(document.getElementById('filterAmount').value) || 0;
       const product = document.getElementById('filterProduct').value;
       const type = document.getElementById('filterType').value;
@@ -899,13 +979,78 @@
         if (product && e.vaultName !== product) return false;
         return true;
       });
-      renderTable(filtered.slice(0, 500), lastUpdatedAt);
+      // Older matches may exist beyond the recent cache: if this page isn't
+      // full, fetch the whole history and render again. Meanwhile show what
+      // there is.
+      const needOlder = !historyComplete && filtered.length < currentPage * PAGE_SIZE;
+      const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+      if (historyComplete && currentPage > pages) currentPage = pages;
+      const start = (currentPage - 1) * PAGE_SIZE;
+      renderTable(filtered.slice(start, start + PAGE_SIZE), lastUpdatedAt,
+                  { total: filtered.length, start, loadingOlder: needOlder && !olderLoadFailed });
+      if (needOlder && !olderLoadFailed) loadFullHistory();
+    }
+
+    function loadFullHistory() {
+      if (historyComplete) return Promise.resolve();
+      if (!fullHistoryLoading) {
+        wantFullHistory = true;
+        fullHistoryLoading = loadActivity({ full: true }).finally(() => { fullHistoryLoading = null; });
+      }
+      return fullHistoryLoading;
+    }
+
+    function goToPage(n) {
+      currentPage = Math.max(1, n);
+      applyFilters({ resetPage: false });
+      // On a phone ten cards run past the screen: bring the first one back.
+      const content = document.getElementById('activityContent');
+      const clear = parseFloat(getComputedStyle(content).scrollMarginTop) || 0;
+      if (content.getBoundingClientRect().top < clear) content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Pages: a window around the current one, plus the first and the last.
+    // With only the recent cache loaded the count runs back to its start
+    // date, and says so; Next past the last page fetches older events.
+    function pagerHtml({ total, start }) {
+      const end = Math.min(start + PAGE_SIZE, total);
+      const last = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      const hasNext = historyComplete ? currentPage < last : true;
+      const nums = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, last])]
+        .filter(n => n >= 1 && n <= last).sort((a, b) => a - b);
+      let list = '', prev = 0;
+      for (const n of nums) {
+        if (n - prev > 1) list += '<span class="pg-gap">…</span>';
+        list += `<button type="button" class="pg-num${n === currentPage ? ' on' : ''}" data-page="${n}"${n === currentPage ? ' aria-current="page"' : ''}>${n}</button>`;
+        prev = n;
+      }
+      const since = recentMeta
+        ? ' since ' + new Date(recentMeta.coveredFrom * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+        : '';
+      const fmt = (n) => n.toLocaleString('en-US');
+      const range = total ? `${fmt(start + 1)}–${fmt(end)} of ${fmt(total)}${since}` : '';
+      const pageOf = `Page ${fmt(currentPage)} of ${fmt(last)}`;
+      return `<nav class="pager" aria-label="Pages">
+        <span class="pg-range">${range}</span>
+        <div class="pg-ctrls">
+          <button type="button" class="pg-step" data-page="${currentPage - 1}"${currentPage > 1 ? '' : ' disabled'} aria-label="Previous page"><span class="pg-word">Prev</span></button>
+          <span class="pg-nums">${list}</span>
+          <span class="pg-of">${pageOf}</span>
+          <button type="button" class="pg-step next" data-page="${currentPage + 1}"${hasNext ? '' : ' disabled'} aria-label="Next page"><span class="pg-word">Next</span></button>
+        </div>
+      </nav>`;
     }
 
     function populateProductFilter() {
       const select = document.getElementById('filterProduct');
       const current = select.value;
-      const names = [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
+      // With only the recent cache, every vault that has ever had an event, as
+      // the full list would name it.
+      const names = recentMeta
+        ? [...new Set(Object.entries(recentMeta.eventVaults)
+            .flatMap(([addr, stored]) => (vaultInfo[addr] ? [vaultInfo[addr].name] : stored))
+            .map(spell).filter(Boolean))].sort()
+        : [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
       select.innerHTML = '<option value="">All products</option>'
         + names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
       const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
@@ -917,9 +1062,12 @@
 
     function populateChainFilter() {
       const select = document.getElementById('filterChain');
+      // Rebuilt on every load — the 5-minute refresh, and the full history
+      // fetched for a filter — so keep whatever chain is chosen.
+      const current = select.value;
       // All chains from tracked vaults
       const allChains = [...new Set(trackedVaults.map(v => v.chain || 'ethereum'))].sort();
-      chainsWithEvents = new Set(allEvents.map(e => e.chain || 'ethereum'));
+      chainsWithEvents = new Set(recentMeta ? recentMeta.eventChains : allEvents.map(e => e.chain || 'ethereum'));
       select.innerHTML = '<option value="">All chains</option>'
         + allChains.map(c => {
           const hasEvents = chainsWithEvents.has(c);
@@ -927,16 +1075,33 @@
           const label = hasEvents ? `${c} (${count})` : `${c} (${count}) — no events yet`;
           return `<option value="${c}">${label}</option>`;
         }).join('');
+      if (current && allChains.includes(current)) select.value = current;
     }
 
-    async function loadActivity() {
+    // The recent cache if it still covers the 30-day figures; else, or when
+    // asked, the full file.
+    async function fetchActivity(full) {
+      if (!full) {
+        try {
+          const res = await fetch('activity-recent.json');
+          if (res.ok) {
+            const r = await res.json();
+            if (Array.isArray(r.events) && r.coveredFrom <= Date.now() / 1000 - 30 * 86400 - 3600) return { data: r, recent: true };
+          }
+        } catch {}
+      }
+      const res = await fetch('activity-events.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status} — run collect-activity.js first`);
+      return { data: await res.json(), recent: false };
+    }
+
+    async function loadActivity({ full = wantFullHistory } = {}) {
       const status = document.getElementById('loadingMsg');
 
       try {
-        status.textContent = 'Loading activity data...';
-        const res = await fetch('activity-events.json');
-        if (!res.ok) throw new Error(`HTTP ${res.status} — run collect-activity.js first`);
-        const data = await res.json();
+        if (status) status.textContent = 'Loading activity data...';
+        const { data, recent } = await fetchActivity(full);
+        const complete = !recent || data.total === (data.events || []).length;
 
         const events = data.events || [];
 
@@ -964,7 +1129,7 @@
             });
           }
         } catch {}
-        const vaultInfo = {};
+        vaultInfo = {};
         trackedVaults.forEach(v => { vaultInfo[v.address] = v; });
         events.forEach(e => {
           const v = vaultInfo[e.vault];
@@ -977,8 +1142,20 @@
         reclassifySyntheticFallback(events, vaultInfo);
 
         // Build the shared most-recent-by-time price lookup before anything
-        // that values events (cards, chart, table all read it).
-        buildPriceLookup(events);
+        // that values events (cards, chart, table all read it). The recent
+        // cache carries it ready-made from all history, keyed by the symbol
+        // as assigned above but before spelling: merge after spelling.
+        if (recent && data.prices) {
+          const best = {};
+          for (const [sym, [ts, price]] of Object.entries(data.prices)) {
+            const s = spell(sym);
+            if (!best[s] || ts > best[s].ts) best[s] = { ts, price };
+          }
+          priceBySymbol = {};
+          for (const s in best) priceBySymbol[s] = best[s].price;
+        } else {
+          buildPriceLookup(events);
+        }
 
         // Net inflows (deposits - withdrawals) in USD — synthetic excluded so
         // a flashloan-loop bot can't make 24h flow look like a $50M inflow.
@@ -1022,6 +1199,9 @@
 
         allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         lastUpdatedAt = data.updatedAt;
+        recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, eventChains: data.eventChains || [], coveredFrom: data.coveredFrom };
+        historyComplete = complete;
+        olderLoadFailed = false;
         populateProductFilter();
         populateChainFilter();
 
@@ -1056,12 +1236,19 @@
 
         renderStats({ net24h, net7d, net30d });
         renderFlowChart(events, 30);
-        applyFilters();
+        applyFilters({ resetPage: false });
         checkForFireEvents(events);
 
       } catch (err) {
         console.error('Error:', err);
-        status.style.display = 'none';
+        // Older events failed to load, but the recent ones are on screen:
+        // keep them, and say so where the next page would have been.
+        if (full && allEvents.length) {
+          olderLoadFailed = true;
+          applyFilters({ resetPage: false });
+          return;
+        }
+        if (status) status.style.display = 'none';
         const errDiv = document.getElementById('errorContent');
         errDiv.style.display = 'block';
         document.getElementById('overview').style.display = 'none';
@@ -1155,8 +1342,12 @@
       chart.style.display = 'block';
     }
 
-    function renderTable(events, updatedAt) {
+    function renderTable(events, updatedAt, pg = { total: events.length, start: 0 }) {
       const content = document.getElementById('activityContent');
+      if (!events.length && pg.loadingOlder) {
+        content.innerHTML = '<div class="loading-msg">Loading older events…</div>';
+        return;
+      }
       if (!events.length) {
         const chainSel = document.getElementById('filterChain').value;
         const chainEvents = chainSel ? allEvents.filter(e => (e.chain || 'ethereum') === chainSel) : allEvents;
@@ -1203,8 +1394,8 @@
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
           <td>${typeLink}${synthBadge}</td>
-          <td class="num-bold col-num">${amount}</td>
           <td class="col-num usd-cell">${usd || '—'}</td>
+          <td class="num-bold col-num amount-cell">${amount}</td>
           <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link" title="${nameAttr}">${name}</a></td>
           <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td class="col-profile">${debank}</td>
@@ -1212,11 +1403,11 @@
         mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
           <div class="mob-row">
             <span class="mobile-event-badges">${typeLink} ${synthBadge}</span>
-            <span class="mobile-event-amount">${amount}</span>
+            <span class="mobile-event-usd">${usdMobile}</span>
           </div>
           <div class="mob-row">
             <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>
-            <span class="mobile-event-usd">${usdMobile}</span>
+            <span class="mobile-event-amount">${amount}</span>
           </div>
           <div class="mob-row">
             <span class="mobile-event-who"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>${debank}</span>
@@ -1230,8 +1421,8 @@
           <thead><tr>
             <th>When</th>
             <th>Type</th>
-            <th class="col-num">Amount</th>
             <th class="col-num">USD</th>
+            <th class="col-num">Amount</th>
             <th>Product</th>
             <th>User</th>
             <th class="col-profile">Profile</th>
@@ -1239,6 +1430,9 @@
           <tbody>${rows}</tbody>
         </table>
         <div class="mobile-events">${mobileRows}</div>
+        ${pg.loadingOlder ? '<div class="pg-note">Loading older events…</div>' : ''}
+        ${olderLoadFailed ? '<div class="pg-note">Older events could not be loaded. <button type="button" class="pg-retry">Try again</button></div>' : ''}
+        ${pagerHtml(pg)}
       `;
 
       // Show last updated in the header. This runs on every filter change and
@@ -1411,17 +1605,25 @@
     })();
 
     // Filter change handlers
-    document.getElementById('filterAmount').addEventListener('change', applyFilters);
-    document.getElementById('filterType').addEventListener('change', applyFilters);
-    document.getElementById('filterChain').addEventListener('change', applyFilters);
-    document.getElementById('filterProduct').addEventListener('change', applyFilters);
-    document.getElementById('filterSynthetic').addEventListener('change', applyFilters);
-    document.getElementById('filterStocks').addEventListener('change', applyFilters);
+    document.getElementById('filterAmount').addEventListener('change', () => applyFilters());
+    document.getElementById('filterType').addEventListener('change', () => applyFilters());
+    document.getElementById('filterChain').addEventListener('change', () => applyFilters());
+    document.getElementById('filterProduct').addEventListener('change', () => applyFilters());
+    document.getElementById('filterSynthetic').addEventListener('change', () => applyFilters());
+    document.getElementById('filterStocks').addEventListener('change', () => applyFilters());
+
+    // Pager and retry, delegated: the list is re-rendered on every change.
+    document.getElementById('activityContent').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-page]');
+      if (b && !b.disabled) { goToPage(Number(b.dataset.page)); return; }
+      if (e.target.closest('.pg-retry')) { olderLoadFailed = false; applyFilters({ resetPage: false }); }
+    });
 
     loadActivity();
 
-    // Re-fetch every 5 minutes to detect new events while tab is open
-    setInterval(loadActivity, 5 * 60 * 1000);
+    // Re-fetch every 5 minutes to detect new events while tab is open — the
+    // full history only if this visit already needed it.
+    setInterval(() => loadActivity(), 5 * 60 * 1000);
   </script>
 </body>
 </html>
