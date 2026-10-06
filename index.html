@@ -191,7 +191,7 @@
     .info-tip:hover, .info-tip:focus-visible { color: var(--text); }
     .tip-bubble {
       position: fixed;
-      z-index: 200;
+      z-index: 1100;
       max-width: 270px;
       padding: 9px 12px;
       border-radius: 10px;
@@ -401,8 +401,6 @@
     .filter-group:has(#filterAmount) { flex-grow: 0.95; }
     .filter-group:has(#filterProduct) { flex-grow: 1.1; }
     .filter-group:has(#filterChain) { flex-grow: 1.3; }
-    .filter-group:has(#filterStocks) { flex-grow: 1.3; }
-    .filter-group:has(#filterSynthetic) { flex-grow: 1.25; }
     .filter-group:hover, .filter-group:focus-within { background: var(--bg-subtle); }
     .filter-label {
       position: relative;
@@ -442,6 +440,153 @@
       background-position: right 12px center;
     }
     .activity-filters .fs-trigger { display: flex; align-items: center; }
+    /* Stocks and Synthetic: one button at the end of the bar, a count on it
+       when either is set off its default (see moreFilters). */
+    .filter-group.filter-more { flex: 0 0 auto; padding: 0; }
+    .more-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 100%;
+      padding: 0 18px 0 16px;
+      border: none;
+      border-radius: inherit;
+      background: transparent;
+      font: 500 14px var(--sans);
+      color: var(--text-2);
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .more-btn:hover, .more-btn[aria-expanded="true"], .more-btn.set { color: var(--text); }
+    .more-btn:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+    .more-ic { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; }
+    .more-btn.set .more-ic { stroke: var(--accent); }
+    .more-count {
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      box-sizing: border-box;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font: 600 11px/18px var(--sans);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .more-count[hidden] { display: none; }
+
+    /* The More panel: under its button, or a sheet from the bottom on a
+       phone, as the dropdowns are. Moved to <body> by the script. */
+    .more-pop {
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 300px;
+      max-width: calc(100vw - 16px);
+      padding: 14px;
+      box-sizing: border-box;
+      background: var(--bg);
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      box-shadow: 0 18px 44px rgba(16, 16, 24, 0.14), 0 2px 6px rgba(16, 16, 24, 0.06);
+      font-family: var(--sans);
+      color: var(--text);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px) scale(0.985);
+      transform-origin: top right;
+      transition: opacity 0.13s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.16s;
+    }
+    .more-pop.up { transform-origin: bottom right; transform: translateY(4px) scale(0.985); }
+    .more-pop.open { opacity: 1; visibility: visible; transform: none; transition: opacity 0.13s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s; }
+    [data-theme="dark"] .more-pop { box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.02); }
+    .more-head { display: none; }
+    .more-sec + .more-sec { margin-top: 14px; }
+    .more-k { display: flex; align-items: center; gap: 5px; margin-bottom: 7px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+    .more-seg { display: flex; width: 100%; box-sizing: border-box; }
+    .more-seg button { flex: 1 1 0; min-width: 0; height: 34px; padding: 0 8px; font-size: 13px; }
+    .more-reset {
+      display: block;
+      margin: 14px 0 0 auto;
+      padding: 0;
+      border: none;
+      background: none;
+      font: 500 12.5px var(--sans);
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .more-reset[hidden] { display: none; }
+    .more-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    .more-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(10, 10, 14, 0.36);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    }
+    .more-scrim.open { opacity: 1; visibility: visible; transition: opacity 0.22s ease, visibility 0s; }
+    .more-pop.sheet {
+      left: 0;
+      right: 0;
+      top: auto;
+      bottom: 0;
+      width: auto;
+      max-width: none;
+      padding: 0 16px calc(18px + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -18px 48px rgba(10, 10, 14, 0.18);
+      opacity: 1;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 0.3s;
+    }
+    .more-pop.sheet.open { transform: none; transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s; }
+    .more-pop.sheet.dragging { transition: none; }
+    .more-pop.sheet .more-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 0 14px 4px;
+      touch-action: none;
+    }
+    .more-pop.sheet .more-head::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      width: 38px;
+      height: 5px;
+      margin-left: -19px;
+      border-radius: 999px;
+      background: var(--line-strong);
+    }
+    .more-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+    .more-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: var(--bg-subtle);
+      color: var(--text-2);
+      cursor: pointer;
+    }
+    .more-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    .more-pop.sheet .more-k { font-size: 13px; }
+    .more-pop.sheet .more-seg button { height: 42px; font-size: 14.5px; }
+    .more-pop.sheet .more-reset { margin-top: 16px; font-size: 14px; }
+    @media (prefers-reduced-motion: reduce) {
+      .more-pop, .more-pop.open, .more-pop.sheet, .more-pop.sheet.open, .more-scrim { transition: none; }
+    }
     .activity-filters select:focus-visible, .activity-filters .fs-trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 
     .seg {
@@ -747,21 +892,26 @@
 
       .feed { padding-top: 26px; }
       .feed-tools { gap: 10px; }
-      /* Five filters in two rows of three cells, not three rows of two. */
+      /* Min amount, Product, Chain and the More button: one row. */
       .activity-filters {
         flex-basis: 100%;
         display: grid;
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
+        grid-template-columns: minmax(0, 86fr) minmax(0, 114fr) minmax(0, 114fr) 44px;
         overflow: clip;
       }
-      .filter-group { height: 48px; padding: 8px 10px 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: 0; }
-      .filter-group:nth-child(-n+3) { border-top: none; }
-      .filter-group:nth-child(3n+1) { border-left: none; }
-      .filter-group:nth-child(4) { grid-column: span 2; }
+      .filter-group { height: 48px; padding: 8px 9px 0; border-radius: 0; }
+      .more-btn { justify-content: center; width: 100%; padding: 0; }
+      .more-txt { display: none; }
+      .more-count { position: absolute; top: 5px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; line-height: 16px; }
+      .more-btn.set .more-ic { transform: translate(-2px, 2px); }
       .filter-label { font-size: 11px; gap: 4px; }
-      .activity-filters select, .activity-filters .fs-trigger { padding: 19px 24px 0 10px; font-size: 13.5px; background-position: right 8px center; }
+      .activity-filters select, .activity-filters .fs-trigger { padding: 19px 18px 0 9px; font-size: 13px; background-position: right 6px center; background-size: 10px 10px; }
+      .activity-filters .fs-face { gap: 5px; }
+      .activity-filters .fs-trigger .fs-ic { width: 15px; height: 15px; }
       .seg button { height: 36px; }
     }
+
+    @container (max-width: 345px) { .activity-filters .fs-trigger .fs-all { display: none; } }
 
     @media (max-width: 1200px) { .page { padding: 36px 32px 80px; } }
     /* Words for the narrow layout only (.m-show) and the wide one only
@@ -853,7 +1003,7 @@
           <label class="filter-group">
             <span class="filter-label">Product</span>
             <select id="filterProduct" data-fs>
-              <option value="">All products</option>
+              <option value="" data-glyph="all">All vaults</option>
             </select>
           </label>
           <label class="filter-group">
@@ -862,26 +1012,14 @@
               <option value="" data-glyph="all">All chains</option>
             </select>
           </label>
-          <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
-            <span class="filter-label">Stocks
-              <span class="info-tip" tabindex="0" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
-            </span>
-            <select id="filterStocks" data-fs>
-              <option value="" selected>All vaults</option>
-              <option value="only">Stocks only</option>
-              <option value="exclude">Exclude stocks</option>
-            </select>
-          </label>
-          <label class="filter-group" title="Atomic round-trips, flashloan-loops and recurring keepers are hidden by default. Enable to inspect synthetic flow.">
-            <span class="filter-label">Synthetic
-              <span class="info-tip" tabindex="0" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
-            </span>
-            <select id="filterSynthetic" data-fs>
-              <option value="hide" selected>Hide</option>
-              <option value="show">Show</option>
-              <option value="only">Only synthetic</option>
-            </select>
-          </label>
+          <!-- Stocks and Synthetic, behind one button (see moreFilters). -->
+          <div class="filter-group filter-more">
+            <button type="button" class="more-btn" id="moreBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="morePanel" aria-label="More filters">
+              <svg class="more-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5h6M13.5 5h-.5M2.5 11h.5M7.5 11h6"/><circle cx="10.5" cy="5" r="2"/><circle cx="5" cy="11" r="2"/></svg>
+              <span class="more-txt">More</span>
+              <span class="more-count" id="moreCount" hidden></span>
+            </button>
+          </div>
         </div>
         <!-- Type is a segmented control; this select stays the one source of truth. -->
         <div class="seg" id="typeSeg" role="group" aria-label="Type">
@@ -894,6 +1032,43 @@
           <option value="deposit">Deposits</option>
           <option value="withdraw">Withdrawals</option>
         </select>
+        <!-- The More panel's settings; as with Type, these selects stay the
+             one source of truth. -->
+        <select id="filterStocks" hidden aria-hidden="true" tabindex="-1">
+          <option value="" selected>All vaults</option>
+          <option value="only">Stocks only</option>
+          <option value="exclude">Exclude stocks</option>
+        </select>
+        <select id="filterSynthetic" hidden aria-hidden="true" tabindex="-1">
+          <option value="hide" selected>Hide</option>
+          <option value="show">Show</option>
+          <option value="only">Only synthetic</option>
+        </select>
+      </div>
+      <div class="more-pop" id="morePanel" role="dialog" aria-label="More filters">
+        <div class="more-head"><span class="more-title">More filters</span>
+          <button type="button" class="more-close" aria-label="Close"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+        <div class="more-sec">
+          <div class="more-k">Stocks
+            <span class="info-tip" tabindex="0" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
+          </div>
+          <div class="seg more-seg" data-for="filterStocks" role="group" aria-label="Stocks">
+            <button type="button" data-v="">Include</button>
+            <button type="button" data-v="only">Only</button>
+            <button type="button" data-v="exclude">Exclude</button>
+          </div>
+        </div>
+        <div class="more-sec">
+          <div class="more-k">Synthetic flow
+            <span class="info-tip" tabindex="0" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Hidden by default.">&#9432;</span>
+          </div>
+          <div class="seg more-seg" data-for="filterSynthetic" role="group" aria-label="Synthetic flow">
+            <button type="button" data-v="hide">Hide</button>
+            <button type="button" data-v="show">Show</button>
+            <button type="button" data-v="only">Only</button>
+          </div>
+        </div>
+        <button type="button" class="more-reset" hidden>Reset to defaults</button>
       </div>
       <div id="activityContent">
         <div class="loading-msg" id="loadingMsg">Fetching on-chain events...</div>
@@ -1059,6 +1234,7 @@
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
       localStorage.setItem(FILTER_SYNTHETIC_KEY, syntheticMode);
+      paintMore();
 
       const filtered = allEvents.filter(e => {
         if (stocksMode === 'only' && !isStockEvent(e)) return false;
@@ -1165,7 +1341,7 @@
       });
       iporVaults.forEach(v => give(v.name, v.token));
       const q = (t) => String(t).replace(/"/g, '&quot;');
-      select.innerHTML = '<option value="" data-glyph="all">All products</option>'
+      select.innerHTML = '<option value="" data-glyph="all">All vaults</option>'
         + names.map(n => `<option value="${q(n)}" data-token="${q(tokenOf[n] || n)}">${n}</option>`).join('');
       const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
       if (stored && names.includes(stored)) select.value = stored;
@@ -1879,6 +2055,168 @@
           b.setAttribute('aria-pressed', String(on));
         });
       });
+    })();
+
+    // Stocks and Synthetic sit behind one button at the end of the filter bar:
+    // a small panel under it (a sheet from the bottom on a phone) with each as
+    // a segmented control. As with Type, the hidden selects stay the one
+    // source of truth: the buttons write to them, and paintMore() repaints
+    // from them after every filter, whoever set them (a stored choice, a
+    // ?stocks= link).
+    const MORE_DEFAULTS = { filterStocks: '', filterSynthetic: 'hide' };
+    function paintMore() {
+      const btn = document.getElementById('moreBtn');
+      const panel = document.getElementById('morePanel');
+      if (!btn || !panel) return;
+      let n = 0;
+      const set = [];
+      panel.querySelectorAll('.more-seg').forEach((seg) => {
+        const sel = document.getElementById(seg.dataset.for);
+        const off = sel.value !== MORE_DEFAULTS[sel.id];
+        if (off) n++;
+        seg.querySelectorAll('button[data-v]').forEach((b) => {
+          const on = b.dataset.v === sel.value;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-pressed', String(on));
+          if (on && off) set.push(`${seg.getAttribute('aria-label')}: ${b.textContent.trim()}`);
+        });
+      });
+      const count = document.getElementById('moreCount');
+      count.textContent = n ? String(n) : '';
+      count.hidden = !n;
+      btn.classList.toggle('set', n > 0);
+      btn.setAttribute('aria-label', n ? `More filters (${set.join(', ')})` : 'More filters');
+      if (n) btn.title = set.join(' · '); else btn.removeAttribute('title');
+      panel.querySelector('.more-reset').hidden = !n;
+    }
+
+    (function moreFilters() {
+      const btn = document.getElementById('moreBtn');
+      const cell = btn.closest('.filter-more');
+      const pop = document.getElementById('morePanel');
+      const scrim = document.createElement('div');
+      scrim.className = 'more-scrim';
+      document.body.append(scrim, pop);
+      const sheetMq = window.matchMedia('(max-width: 560px)');
+      let isOpen = false, locked = false;
+
+      // Under the button, right edges aligned, or above it when there is more
+      // room there; follows the page as it scrolls, and closes once the
+      // button has left the screen.
+      function place() {
+        if (!isOpen) return;
+        if (pop.classList.contains('sheet')) { pop.style.left = pop.style.top = pop.style.bottom = ''; return; }
+        const r = cell.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+        if (r.bottom < 0 || r.top > vh) { close(false); return; }
+        const w = pop.offsetWidth, h = pop.offsetHeight;
+        const down = vh - r.bottom - 12 >= h || vh - r.bottom >= r.top;
+        pop.style.left = Math.round(Math.max(8, Math.min(r.right - w, vw - w - 8))) + 'px';
+        pop.style.top = down ? Math.round(r.bottom + 6) + 'px' : 'auto';
+        pop.style.bottom = down ? 'auto' : Math.round(vh - r.top + 6) + 'px';
+        pop.classList.toggle('up', !down);
+      }
+      let queued = false;
+      const schedule = () => {
+        if (!isOpen || queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; place(); });
+      };
+
+      function open() {
+        if (window.FusionSelect) FusionSelect.close();
+        isOpen = true;
+        const sheet = sheetMq.matches;
+        pop.classList.toggle('sheet', sheet);
+        paintMore();
+        place();
+        pop.classList.add('open');
+        scrim.classList.toggle('open', sheet);
+        if (sheet) { locked = true; document.documentElement.style.overflow = 'hidden'; }
+        btn.setAttribute('aria-expanded', 'true');
+        const first = pop.querySelector('.more-seg button.on') || pop.querySelector('.more-seg button');
+        if (first) first.focus({ preventScroll: true });
+      }
+      function close(refocus) {
+        if (!isOpen) return;
+        isOpen = false;
+        pop.classList.remove('open');
+        scrim.classList.remove('open');
+        pop.style.transform = '';
+        if (locked) { document.documentElement.style.overflow = ''; locked = false; }
+        btn.setAttribute('aria-expanded', 'false');
+        if (refocus || pop.contains(document.activeElement)) btn.focus({ preventScroll: true });
+      }
+
+      btn.addEventListener('click', () => (isOpen ? close(true) : open()));
+      pop.addEventListener('click', (e) => {
+        const b = e.target.closest('.more-seg button[data-v]');
+        if (b) {
+          const sel = document.getElementById(b.closest('.more-seg').dataset.for);
+          if (sel.value !== b.dataset.v) { sel.value = b.dataset.v; sel.dispatchEvent(new Event('change')); }
+          paintMore();
+          return;
+        }
+        if (e.target.closest('.more-reset')) {
+          let changed = null;
+          for (const [id, v] of Object.entries(MORE_DEFAULTS)) {
+            const s = document.getElementById(id);
+            if (s.value !== v) { s.value = v; changed = s; }
+          }
+          if (changed) changed.dispatchEvent(new Event('change'));
+          paintMore();
+          const first = pop.querySelector('.more-seg button.on');
+          if (first) first.focus({ preventScroll: true });
+          return;
+        }
+        if (e.target.closest('.more-close')) close(true);
+      });
+      // A click elsewhere closes the panel (the phone's sheet closes on its
+      // scrim), as does Escape, or the keyboard leaving it.
+      document.addEventListener('pointerdown', (e) => {
+        if (!isOpen || pop.classList.contains('sheet')) return;
+        if (pop.contains(e.target) || cell.contains(e.target)) return;
+        if (e.target.closest && e.target.closest('.tip-bubble')) return;
+        close(false);
+      }, true);
+      scrim.addEventListener('click', () => close(false));
+      document.addEventListener('keydown', (e) => {
+        if (isOpen && e.key === 'Escape') { e.preventDefault(); close(true); }
+      });
+      pop.addEventListener('focusout', (e) => {
+        const to = e.relatedTarget;
+        if (isOpen && to && !pop.contains(to) && !cell.contains(to)) close(false);
+      });
+      document.addEventListener('scroll', schedule, { capture: true, passive: true });
+      window.addEventListener('resize', schedule);
+      if (sheetMq.addEventListener) sheetMq.addEventListener('change', () => close(false));
+
+      // The phone's sheet follows a finger down from its header, and goes if
+      // let go far or fast enough.
+      const head = pop.querySelector('.more-head');
+      let y0 = null, dy = 0, t0 = 0;
+      head.addEventListener('touchstart', (e) => {
+        if (!isOpen || !pop.classList.contains('sheet') || e.touches.length !== 1) return;
+        y0 = e.touches[0].clientY; dy = 0; t0 = Date.now();
+      }, { passive: true });
+      head.addEventListener('touchmove', (e) => {
+        if (y0 == null) return;
+        dy = Math.max(0, e.touches[0].clientY - y0);
+        pop.classList.add('dragging');
+        pop.style.transform = `translateY(${dy}px)`;
+        if (e.cancelable) e.preventDefault();
+      }, { passive: false });
+      const end = () => {
+        if (y0 == null) return;
+        y0 = null;
+        pop.classList.remove('dragging');
+        if (dy > 70 || (dy > 24 && dy / Math.max(1, Date.now() - t0) > 0.5)) close(false);
+        else pop.style.transform = '';
+      };
+      head.addEventListener('touchend', end);
+      head.addEventListener('touchcancel', end);
+
+      paintMore();
     })();
 
     // The filter bar sticks while the list scrolls; the column headings stick
