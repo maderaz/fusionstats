@@ -215,6 +215,23 @@
     drawn.forEach(pth => { pth.style.filter = drawn.length <= 3 ? 'drop-shadow(4px 6px 14px ' + alpha(pth.style.stroke, 0.35) + ')' : ''; });
     // A zoom (desktop) changes what is on screen.
     if (!gd.__framed && gd.on) { gd.__framed = true; gd.on('plotly_relayout', () => frame(gd)); }
+    // Plotly redraws to fit only when the window changes size. A box that
+    // changes on its own (the sidebar arriving after a chart is drawn, a
+    // phone turned) would leave the plot and its dates at the old width, past
+    // the edge: redraw to the box, then place the dates again.
+    if (!gd.__sized && window.ResizeObserver && window.Plotly && Plotly.Plots) {
+      gd.__sized = true;
+      let w = gd.clientWidth, queued = false;
+      new ResizeObserver(() => {
+        if (queued || !gd._fullLayout || Math.abs(gd.clientWidth - w) < 1) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          w = gd.clientWidth;
+          Promise.resolve(Plotly.Plots.resize(gd)).then(() => frame(gd)).catch(() => {});
+        });
+      }).observe(gd);
+    }
   }
 
   // The dates, under their own x, 'gap' below the plot. The first and the last
