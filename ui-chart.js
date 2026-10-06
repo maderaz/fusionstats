@@ -3,7 +3,8 @@
 // On a phone a chart's axis labels took a third of its width and a fifth of
 // its height: the plot itself was left a third of the box. FusionChart.fit()
 // gives the box back to the plot there: the y labels sit inside the plot on
-// faint gridlines, the x labels are small and few, and the margins are gone.
+// faint gridlines, the x labels inside along its foot, small and few, and the
+// margins are gone.
 // Exact values are what the hover is for.
 //
 //   layout = FusionChart.fit(layout)    a copy of layout, fitted to the screen
@@ -29,17 +30,23 @@
     if (!compact() || !Object.keys(out).some(k => /^[xy]axis\d*$/.test(k))) return out;
     const grid = cssVar('--line', 'rgba(127, 127, 127, 0.16)');
     const muted = cssVar('--text-3', cssVar('--text-secondary', '#9A9AA6'));
-    out.margin = { l: 0, r: 0, t: 8, b: 22, pad: 0 };
+    // Both axes' labels inside the plot: the box is all chart.
+    out.margin = { l: 0, r: 0, t: 8, b: 0, pad: 0 };
     const small = (f) => Object.assign({}, f, { size: 10, color: muted });
     for (const k of Object.keys(out)) {
       if (!/^xaxis\d*$/.test(k)) continue;
-      Object.assign(out[k], { automargin: false, ticks: '', ticklen: 0, nticks: 4, tickfont: small(out[k].tickfont) });
+      Object.assign(out[k], {
+        automargin: false, ticks: '', ticklen: 0, nticks: 4,
+        ticklabelposition: 'inside', showline: false, tickfont: small(out[k].tickfont),
+      });
     }
     for (const k of Object.keys(out)) {
       if (!/^yaxis\d*$/.test(k)) continue;
       Object.assign(out[k], {
-        automargin: false, ticks: '', ticklen: 0, nticks: 4,
-        ticklabelposition: 'inside', showline: false, zeroline: false,
+        automargin: false, ticks: '', ticklen: 0, nticks: 6,
+        // 'allow': with the x labels inside too, Plotly's overflow check
+        // hides every y label though they sit well inside the plot.
+        ticklabelposition: 'inside', ticklabeloverflow: 'allow', showline: false, zeroline: false,
         showgrid: true, gridcolor: grid, griddash: 'dot', gridwidth: 1,
         tickfont: small(out[k].tickfont),
       });
