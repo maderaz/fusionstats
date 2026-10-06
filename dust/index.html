@@ -345,7 +345,7 @@
         layout.annotations.push({ xref: 'x', yref: 'paper', x: at, y: 1, xanchor: 'right', yanchor: 'top', showarrow: false, text: 'Base App listing · Jul 9',
           font: { color: '#fff', size: 10.5 }, bgcolor: BASE_BLUE, borderpad: 3 });
       }
-      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout), CONFIG);
+      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout, [trace]), CONFIG);
       FusionChart.glide(el, (pts) => {
         const b = list[pts[0].pointIndex != null ? pts[0].pointIndex : pts[0].pointNumber];
         if (!b) return '';

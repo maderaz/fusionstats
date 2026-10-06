@@ -604,7 +604,8 @@
       el.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
       const layout = layoutFor(pts, false);
       el.__wideLayout = layout;
-      await Plotly.react(el, tracesFor(shown), FusionChart.fit(layout), CONFIG);
+      const traces = tracesFor(shown);
+      await Plotly.react(el, traces, FusionChart.fit(layout, traces), CONFIG);
       FusionChart.glide(el, describe);
     }
     function downloadChartCsv() {

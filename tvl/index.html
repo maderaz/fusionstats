@@ -349,7 +349,7 @@
       const gd = document.getElementById(id);
       gd.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
       gd.__wideLayout = layout;
-      return Plotly.react(gd, traces, FusionChart.fit(layout), CONFIG).then(() => FusionChart.glide(gd, describe));
+      return Plotly.react(gd, traces, FusionChart.fit(layout, traces), CONFIG).then(() => FusionChart.glide(gd, describe));
     }
 
     // ---- Figures: total, then the three biggest networks ----
