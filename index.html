@@ -397,8 +397,7 @@
     }
     .filter-group:first-child { border-left: none; border-radius: 13px 0 0 13px; }
     .filter-group:last-child { border-radius: 0 13px 13px 0; }
-    /* Shares of the bar, sized so every value but the rare "— no events
-       yet" chain labels fits without truncating. */
+    /* Shares of the bar, sized so every value fits without truncating. */
     .filter-group:has(#filterAmount) { flex-grow: 0.95; }
     .filter-group:has(#filterProduct) { flex-grow: 1.1; }
     .filter-group:has(#filterChain) { flex-grow: 1.3; }
@@ -1173,7 +1172,6 @@
     }
 
     let trackedVaults = [];
-    let chainsWithEvents = new Set();
 
     function populateChainFilter() {
       const select = document.getElementById('filterChain');
@@ -1182,18 +1180,15 @@
       const current = select.value;
       // All chains from tracked vaults
       const allChains = [...new Set(trackedVaults.map(v => v.chain || 'ethereum'))].sort();
-      chainsWithEvents = new Set(recentMeta ? recentMeta.eventChains : allEvents.map(e => e.chain || 'ethereum'));
       // Each network by name, with its mark (fusion-select.js) and how many
       // tracked vaults it has.
       const nameOf = (c) => (window.FusionSelect ? FusionSelect.chainName(c) : c);
       select.innerHTML = '<option value="" data-glyph="all">All chains</option>'
         + allChains.map(c => {
-          const hasEvents = chainsWithEvents.has(c);
           const count = trackedVaults.filter(v => (v.chain || 'ethereum') === c).length;
           const name = nameOf(c);
-          const label = hasEvents ? `${name} (${count})` : `${name} (${count}) — no events yet`;
-          const note = `${count} vault${count === 1 ? '' : 's'}${hasEvents ? '' : ' · no events yet'}`;
-          return `<option value="${c}" data-chain="${c}" data-label="${name}" data-note="${note}">${label}</option>`;
+          const note = `${count} vault${count === 1 ? '' : 's'}`;
+          return `<option value="${c}" data-chain="${c}" data-label="${name}" data-note="${note}">${name} (${count})</option>`;
         }).join('');
       if (current && allChains.includes(current)) select.value = current;
     }
@@ -1393,7 +1388,7 @@
         lastUpdatedAt = data.updatedAt;
         lastIporAt = ipor && ipor.updatedAt;
         if (ipor) lastIpor = ipor;
-        recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, eventChains: data.eventChains || [], coveredFrom: data.coveredFrom };
+        recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, coveredFrom: data.coveredFrom };
         historyComplete = complete;
         olderLoadFailed = false;
         populateProductFilter();
