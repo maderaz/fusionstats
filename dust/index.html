@@ -15,7 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
   <!-- Plotly draws the chart and nothing else: it loads alongside the page. -->
-  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
   <script src="/nav.js"></script>
   <style>
     .ui-figure .v.accent { color: var(--accent); }
@@ -287,10 +287,14 @@
 
     // ---- chart ----
     const plotlyReady = new Promise((resolve, reject) => {
-      if (window.Plotly) return resolve();
+      const failed = () => reject(new Error('the chart library (cdn.plot.ly) did not load'));
+      const settle = () => (window.Plotly ? resolve() : failed());
       const tag = document.getElementById('plotlyJs');
-      tag.addEventListener('load', () => resolve());
-      tag.addEventListener('error', () => reject(new Error('the chart library (cdn.plot.ly) did not load')));
+      // Its load or error fires once, perhaps before this runs: the tag keeps
+      // the outcome (onload/onerror) for a late reader.
+      if (window.Plotly || !tag || tag.dataset.state) return settle();
+      tag.addEventListener('load', settle);
+      tag.addEventListener('error', failed);
     });
     const CONFIG = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false, showTips: false };
     function buckets(dust) {
