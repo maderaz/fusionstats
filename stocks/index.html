@@ -893,6 +893,16 @@
       const first = pts[0].ts;
       const lead = [];
       for (let i = n; i > 0; i--) { const r = { ts: first - i * step, pad: true }; r[key] = null; lead.push(r); }
+      // A series that begins inside the window rises from zero, one step
+      // before its first reading, instead of starting in mid-air. One cut off
+      // by the window's left edge does not: it was not zero there.
+      if (pts.startsInside) {
+        const z = lead[lead.length - 1];
+        delete z.pad;
+        z[key] = 0;
+        if (key === 'tvl') z.units = 0;
+        z.anchor = true;
+      }
       return lead.concat(pts);
     }
     const vaultsFor = (sel) => sel === '__all__' ? S.vaults : S.vaults.filter(v => v.address === sel);
@@ -1096,6 +1106,10 @@
 
       const buckets = Object.keys(allBuckets).map(Number).sort((a, b) => a - b);
       const carry = {}, out = [];
+      // Whether the chosen vaults' first snapshot falls inside the window:
+      // then the line starts here and withLead anchors it at zero.
+      out.startsInside = buckets.length > 0 && buckets[0] * step >= cutoff && cutoff > 0
+        || (buckets.length > 0 && range === 'all');
       buckets.forEach(bk => {
         let usd = 0, units = 0;
         chosen.forEach(v => {
@@ -1191,7 +1205,7 @@
 
       const chosen = vaultsFor(S.tvlVault);
       const liveTvl = chosen.reduce((a, v) => a + (v.tvl || 0), 0);
-      const real = pts.filter(p => !p.pad);
+      const real = pts.filter(p => !p.pad && !p.anchor);
       const lastTs = real[real.length - 1].ts;
       const lastVal = real[real.length - 1].tvl;
       const note = document.getElementById('tvlNote');
@@ -2232,7 +2246,7 @@
     // The figures behind the headline, taken from the same series the chart
     // plots so the words and the picture can never disagree.
     function tvlLatest() {
-      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange).filter(p => !p.pad);
+      const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange).filter(p => !p.pad && !p.anchor);
       if (!pts.length) return null;
       const last = pts[pts.length - 1];
       return { usd: last.tvl || 0, units: last.units || 0 };
