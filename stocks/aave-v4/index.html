@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['aave-v4.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aave V4 Data — Fusion Stats</title>
+  <meta name="description" content="What Fusion's stock vaults supply to Aave V4's tokenised-stock markets on Base: by day, by market, and what the idle stock would add.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
+  <script src="/nav.js"></script>
+  <style>
+    .ui-figure .v.green { color: var(--pos); }
+    .chart-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .ui-chart { margin: 0 -4px; }
+    /* The markets in the chart: icon, colour and what Fusion has in each. */
+    .key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; font-size: 13px; color: var(--text-2); }
+    .key[hidden] { display: none; }
+    .key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .key i { width: 9px; height: 9px; border-radius: 50%; }
+    .key b { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+    .mk { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; color: var(--text); }
+    .mk img { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+    .key img { width: 16px; height: 16px; border-radius: 50%; }
+    .ui-table td.n, .ui-table th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ui-table td.dim { color: var(--text-3); }
+    .ui-table tr.total td { font-weight: 600; border-bottom: none; }
+    .ui-table tr.total td:first-child { color: var(--text); }
+    .note { margin: 16px 0 0; max-width: 780px; font-size: 14px; line-height: 1.6; color: var(--text-2); }
+    .note b { font-weight: 600; color: var(--text); }
+    /* A scenario: today against the stock all supplied. */
+    .scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px 40px; }
+    .scen h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .scen .ui-table th:first-child, .scen .ui-table td:first-child { white-space: normal; }
+    .scen .fits { margin: 10px 0 0; font-size: 13px; color: var(--text-3); }
+    .sm { display: none; }
+    .empty-state { padding: 48px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
+    @container (max-width: 700px) {
+      .ui-section .ui-toolbar .ui-seg { width: 100%; }
+      .ui-table { font-size: 13px; }
+      .ui-table td, .ui-table th { padding-left: 8px; padding-right: 8px; }
+      .mk img { width: 18px; height: 18px; }
+      .mk { gap: 7px; }
+      .lg { display: none; }
+      .sm { display: inline; }
+      #markets td, #markets th { padding-left: 5px; padding-right: 5px; font-size: 12.5px; }
+      .scen { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+  <script defer src="/track.js"></script>
+</head>
+<body>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Aave V4 Data</h1>
+        <p class="ui-lede">What Fusion's stock vaults supply to Aave V4's tokenised-stock markets on Base.</p>
+      </div>
+      <div class="ui-meta"><span id="status"></span></div>
+    </header>
+
+    <div id="body">
+      <div class="ui-figures" style="--n:4" id="figures">
+        <div class="ui-figure"><div class="k">Fusion supplied</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Share of Aave V4 stocks</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">USDC borrowed</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Idle in the vaults</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      </div>
+
+      <section class="ui-section" id="chartSec">
+        <div class="ui-head">
+          <h2>Supplied to Aave V4</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-k">Image size</div>
+              <div class="ui-seg" id="pngSize">
+                <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="43">4:3</button><button type="button" data-v="square">1:1</button>
+              </div>
+              <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="pngBtn">Download PNG</button>
+                <button type="button" class="ui-btn" id="csvBtn" title="A row a day: each market's Fusion supply and reserve size, in tokens and dollars">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
+          <div class="ui-seg" id="view" role="group" aria-label="View">
+            <button type="button" data-v="total" class="on">Total</button>
+            <button type="button" data-v="markets">By market</button>
+          </div>
+          <div class="ui-seg" id="range" role="group" aria-label="Range">
+            <button type="button" data-v="30">30d</button>
+            <button type="button" data-v="90">90d</button>
+            <button type="button" data-v="all" class="on">All</button>
+          </div>
+        </div>
+        <div class="key" id="key" hidden></div>
+        <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+        <p class="chart-note" id="chartNote"></p>
+      </section>
+
+      <section class="ui-section">
+        <div class="ui-head"><h2>Markets</h2></div>
+        <div class="ui-table-wrap">
+          <table class="ui-table" id="markets">
+            <thead><tr><th>Market</th><th class="n"><span class="lg">Aave V4 total</span><span class="sm">Aave</span></th><th class="n"><span class="lg">Fusion supplied</span><span class="sm">Fusion</span></th><th class="n"><span class="lg">Fusion share</span><span class="sm">Share</span></th><th class="n"><span class="lg">Fusion USDC debt</span><span class="sm">Debt</span></th></tr></thead>
+            <tbody><tr class="ui-loading-row"><td colspan="5"></td></tr></tbody>
+          </table>
+        </div>
+        <p class="note" id="idleNote" hidden></p>
+      </section>
+
+      <section class="ui-section" id="scenSec" hidden>
+        <div class="ui-head"><h2>If the idle stock went in</h2></div>
+        <div class="scen" id="scen"></div>
+      </section>
+
+      <details class="ui-more">
+        <summary>Methodology</summary>
+        <div>Read on-chain from the Aave V4 spoke the stock vaults use on Base (<code>0x1790…7b8d</code>, their AAVE_V4 market's substrate), by <code>collect-aave-v4.js</code> every six hours. <b>Aave V4 total</b> is everything supplied to a reserve (<code>getReserveSuppliedAssets</code>); <b>Fusion supplied</b> is the sum over Fusion's stock vaults (<code>getUserSuppliedAssets</code>); <b>Fusion USDC debt</b> is what those vaults owe at the spoke's USDC reserve (<code>getUserTotalDebt</code>), shown against the stock each vault holds. Prices are the spoke's own oracle's (<code>getReservePrice</code>). <b>Idle</b> is stock sitting in the vaults themselves (<code>balanceOf</code>), counted nowhere above. The deposit cap is the hub's <code>addCap</code> for this spoke. The chart is a reading a day, at each day's last block, priced that day.</div>
+      </details>
+    </div>
+  </div>
+
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script>
+  (function () {
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const cssVar = (n, f) => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim() || f;
+    const usd = (v) => {
+      if (v == null || !isFinite(v)) return '—';
+      const a = Math.abs(v);
+      return a >= 1e9 ? '$' + (v / 1e9).toFixed(2) + 'B' : a >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : a >= 1e3 ? '$' + (v / 1e3).toFixed(1) + 'K' : '$' + v.toFixed(0);
+    };
+    const tok = (v, d = 2) => Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const pct = (v) => (v == null || !isFinite(v) ? '—' : (v * 100).toFixed(v > 0 && v < 0.001 ? 2 : 1) + '%');
+    const icon = (sym) => (window.FusionSelect && FusionSelect.tokenIcon ? FusionSelect.tokenIcon(sym) : null);
+    const DAY = 864e5;
+    // The chart palette (ui.css --chart-1…5), then two quiet ones.
+    const colors = () => [1, 2, 3, 4, 5].map(i => cssVar('--chart-' + i, '#8429FF')).concat(['#94A3B8', '#CBD5E1']);
+
+    let data = null, view = 'total', range = 'all', size = 'wide';
+
+    // ---- The numbers -------------------------------------------------------
+    const val = (m, k) => (m[k] || 0) * (m.price || 0);
+    function totals(markets) {
+      const s = (f) => markets.reduce((a, m) => a + f(m), 0);
+      return { aave: s(m => val(m, 'supplied')), fusion: s(m => val(m, 'fusion')), debt: s(m => m.debt || 0), idle: s(m => val(m, 'idle')) };
+    }
+    // A day's value per market: its own price that day, or the nearest one known.
+    function series() {
+      const h = (data.history || []).slice().sort((a, b) => a.d - b.d);
+      const last = {};
+      data.markets.forEach(m => { last[m.symbol] = m.price; });
+      const known = {};
+      const days = h.map(x => {
+        const row = { d: x.d, by: {} };
+        for (const m of data.markets) {
+          const p = x.m && x.m[m.symbol];
+          if (p && p[2] != null) known[m.symbol] = p[2];
+          const price = (p && p[2] != null) ? p[2] : (known[m.symbol] != null ? known[m.symbol] : last[m.symbol] || 0);
+          row.by[m.symbol] = { fusion: p ? (p[0] || 0) : 0, total: p ? (p[1] || 0) : 0, price, usd: p ? (p[0] || 0) * price : 0, totalUsd: p ? (p[1] || 0) * price : 0 };
+        }
+        row.usd = Object.values(row.by).reduce((a, b) => a + b.usd, 0);
+        return row;
+      });
+      if (range === 'all' || !days.length) return days;
+      const from = days[days.length - 1].d - parseInt(range, 10);
+      return days.filter(x => x.d > from);
+    }
+    // The markets with Fusion in them at any point of the history, biggest now first.
+    function shownMarkets(days) {
+      return data.markets.filter(m => days.some(x => x.by[m.symbol].fusion > 0) || m.fusion > 0)
+        .sort((a, b) => val(b, 'fusion') - val(a, 'fusion'));
+    }
+
+    // ---- Chart -------------------------------------------------------------
+    const CONFIG = { displayModeBar: false, responsive: true, doubleClick: false, scrollZoom: false, showTips: false };
+    function figure(forExport) {
+      const days = series();
+      const x = days.map(r => new Date(r.d * DAY).toISOString().slice(0, 10));
+      const palette = colors();
+      const shown = shownMarkets(days);
+      const accent = cssVar('--accent', '#8429FF');
+      const traces = view === 'total'
+        ? [{ type: 'scatter', mode: 'lines', name: 'Fusion supplied', x, y: days.map(r => r.usd), line: { color: accent, width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)' }]
+        : shown.map((m, i) => ({ type: 'bar', name: m.symbol, x, y: days.map(r => r.by[m.symbol].usd), marker: { color: palette[i % palette.length], line: { width: 0 } } }));
+      const ink = forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B');
+      const layout = {
+        autosize: true,
+        margin: { l: 70, r: 20, t: 20, b: 50 },
+        plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: ink, size: 12 },
+        xaxis: { type: 'date', showgrid: false, tickformat: '%b %d', ticks: 'outside', ticklen: 6, tickcolor: 'rgba(0,0,0,0)', showline: false, nticks: 6 },
+        yaxis: { tickformat: '$,.2~s', rangemode: 'tozero', showgrid: true, gridcolor: forExport ? '#E5E5EA' : cssVar('--line', '#EEE'), griddash: '4px,8px', zeroline: false, ticks: 'outside', ticklen: 8, tickcolor: 'rgba(0,0,0,0)' },
+        barmode: 'stack', bargap: 0.35, barcornerradius: 4, showlegend: false,
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
+      };
+      return { traces, layout, days, shown, palette };
+    }
+    function describe(pts) {
+      const head = FusionChart.when(pts[0].x);
+      if (view === 'total') return head + '<div class="hv-big">' + usd(pts[0].y) + '</div>';
+      const rows = pts.filter(p => p.y > 0).sort((a, b) => b.y - a.y);
+      const sum = pts.reduce((a, p) => a + (p.y || 0), 0);
+      return head + rows.map(p => FusionChart.row(p.data.marker.color, p.data.name, usd(p.y))).join('')
+        + FusionChart.row('', 'Total', usd(sum));
+    }
+    const plotlyReady = new Promise((resolve, reject) => {
+      const tag = $('plotlyJs');
+      const settle = () => (window.Plotly ? resolve() : reject(new Error('no Plotly')));
+      if (window.Plotly || !tag || tag.dataset.state) return settle();
+      tag.addEventListener('load', settle);
+      tag.addEventListener('error', () => reject(new Error('no Plotly')));
+    });
+    async function draw() {
+      const gd = $('chart');
+      const f = figure(false);
+      // The key: each market's icon, colour, and what Fusion has in it now.
+      const key = $('key');
+      key.hidden = view === 'total';
+      key.innerHTML = view === 'total' ? '' : f.shown.map((m, i) => {
+        const src = icon(m.symbol);
+        return '<span><i style="background:' + f.palette[i % f.palette.length] + '"></i>' + (src ? '<img src="' + esc(src) + '" alt="">' : '')
+          + esc(m.symbol) + ' <b>' + usd(val(m, 'fusion')) + '</b></span>';
+      }).join('');
+      if (!f.days.length) { gd.innerHTML = '<div class="ui-empty">No history yet.</div>'; return; }
+      try { await plotlyReady; } catch { gd.innerHTML = '<div class="ui-empty">The chart library (cdn.plot.ly) did not load.</div>'; return; }
+      gd.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
+      const traces = view === 'total' ? FusionChart.soft(f.traces) : f.traces;
+      await Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(f.layout, f.traces), CONFIG);
+      FusionChart.glide(gd, describe);
+      const first = f.days[0], lastDay = f.days[f.days.length - 1];
+      $('chartNote').textContent = f.days.length + ' daily readings, '
+        + new Date(first.d * DAY).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' to '
+        + new Date(lastDay.d * DAY).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+        + (data.history.length < 14 ? '. The history is still being filled in, a few weeks a run.' : '.');
+    }
+
+    // ---- Exports -----------------------------------------------------------
+    const SHAPES = { '43': [680, 510], square: [480, 480] };
+    async function png() {
+      await plotlyReady;
+      const gd = $('chart');
+      const f = figure(true);
+      const shape = SHAPES[size];
+      const w = shape ? shape[0] : gd.clientWidth, h = shape ? shape[1] : gd.clientHeight;
+      const traces = view === 'total' ? FusionChart.soft(f.traces) : f.traces;
+      await FusionChart.png({ data: FusionChart.quiet(traces), layout: f.layout }, { width: w, height: h, dots: $('pngDots').checked,
+        filename: 'fusion-aave-v4-' + view + '-' + range + '-' + new Date().toISOString().slice(0, 10) + '.png' });
+    }
+    function csv() {
+      const days = series();
+      const ms = data.markets;
+      const rows = [['date', ...ms.flatMap(m => [m.symbol + ' fusion supplied', m.symbol + ' fusion supplied usd', m.symbol + ' reserve', m.symbol + ' reserve usd', m.symbol + ' price']), 'fusion supplied usd']];
+      days.forEach(r => rows.push([new Date(r.d * DAY).toISOString().slice(0, 10),
+        ...ms.flatMap(m => { const b = r.by[m.symbol]; return [b.fusion, b.usd.toFixed(2), b.total, b.totalUsd.toFixed(2), b.price]; }), r.usd.toFixed(2)]));
+      UI.csv('fusion-aave-v4-' + range + '-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+    }
+
+    // ---- Figures, table, notes, scenario ------------------------------------
+    function render() {
+      const ms = data.markets;
+      const t = totals(ms);
+      const figs = document.querySelectorAll('#figures .ui-figure');
+      const set = (i, v, s, cls) => { figs[i].querySelector('.v').textContent = v; figs[i].querySelector('.v').className = 'v' + (cls ? ' ' + cls : ''); figs[i].querySelector('.s').textContent = s; };
+      const live = ms.filter(m => m.fusion > 0).length;
+      set(0, usd(t.fusion), 'in ' + live + ' of ' + ms.length + ' markets', 'green');
+      set(1, pct(t.aave ? t.fusion / t.aave : null), 'of ' + usd(t.aave) + ' in Aave V4 stocks');
+      set(2, usd(t.debt), t.fusion ? 'against ' + usd(t.fusion) + ' of stock' : 'none');
+      set(3, usd(t.idle), t.idle ? 'not counted above' : 'none');
+
+      // Biggest reserve first, as Aave lists them by size.
+      const rows = ms.slice().sort((a, b) => val(b, 'supplied') - val(a, 'supplied'));
+      $('markets').querySelector('tbody').innerHTML = rows.map(m => {
+        const src = icon(m.symbol);
+        const share = val(m, 'supplied') ? val(m, 'fusion') / val(m, 'supplied') : null;
+        const none = !(m.fusion > 0);
+        return '<tr><td><span class="mk">' + (src ? '<img src="' + esc(src) + '" alt="">' : '') + esc(m.symbol) + '</span></td>'
+          + '<td class="n">' + usd(val(m, 'supplied')) + '</td>'
+          + '<td class="n' + (none ? ' dim' : '') + '">' + (none ? 'none' : usd(val(m, 'fusion'))) + '</td>'
+          + '<td class="n' + (none ? ' dim' : '') + '">' + (none ? '0%' : pct(share)) + '</td>'
+          + '<td class="n' + (m.debt > 0 ? '' : ' dim') + '">' + (m.debt > 0 ? usd(m.debt) : 'none') + '</td></tr>';
+      }).join('') + '<tr class="total"><td>Total</td><td class="n">' + usd(t.aave) + '</td><td class="n">' + usd(t.fusion) + '</td><td class="n">'
+        + pct(t.aave ? t.fusion / t.aave : null) + '</td><td class="n">' + usd(t.debt) + '</td></tr>';
+
+      // Idle stock worth mentioning: a thousand dollars or more, market by market.
+      const idle = ms.filter(m => val(m, 'idle') >= 1000).sort((a, b) => val(b, 'idle') - val(a, 'idle'));
+      const note = $('idleNote');
+      note.hidden = !idle.length;
+      note.innerHTML = idle.map(m => {
+        const vs = m.vaults.filter(v => v.idle > 0).sort((a, b) => b.idle - a.idle);
+        return 'About <b>' + usd(val(m, 'idle')) + '</b> of Fusion’s ' + esc(m.symbol) + ' sits idle and is not counted above: '
+          + tok(m.idle) + ' ' + esc(m.symbol) + (vs.length > 1 ? ', ' + vs.map((v, i) => (i === vs.length - 1 ? 'and ' : '') + tok(v.idle) + ' in the ' + esc(v.name) + ' vault').join(vs.length > 2 ? ', ' : ' ') : ' in the ' + esc(vs[0].name) + ' vault') + '.';
+      }).join('<br>');
+
+      // The scenario: each idle market's stock all supplied, everything else as today.
+      const sec = $('scenSec');
+      sec.hidden = !idle.length;
+      if (!idle.length) return;
+      const row = (k, a, b) => '<tr><td>' + k + '</td><td class="n">' + a + '</td><td class="n">' + b + '</td></tr>';
+      const table = (rows) => '<div class="ui-table-wrap"><table class="ui-table"><thead><tr><th></th><th class="n">Today</th><th class="n">After full deployment</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      let addUsd = 0;
+      const cards = idle.map(m => {
+        const room = m.cap == null ? Infinity : Math.max(0, m.cap - m.supplied);
+        const add = Math.min(m.idle, room);
+        addUsd += add * (m.price || 0);
+        const after = { supplied: m.supplied + add, fusion: m.fusion + add };
+        const both = (n) => tok(n, n >= 100 ? 0 : 1) + ' ' + esc(m.symbol) + ' · ' + usd(n * (m.price || 0));
+        let rows = row(esc(m.symbol) + ' reserve size', both(m.supplied), both(after.supplied))
+          + row('Fusion ' + esc(m.symbol) + ' supplied', both(m.fusion), both(after.fusion))
+          + row('Fusion share of ' + esc(m.symbol), pct(m.supplied ? m.fusion / m.supplied : null), pct(after.fusion / after.supplied));
+        if (m.cap != null) rows += row(esc(m.symbol) + ' deposit cap used (' + tok(m.cap, 0) + ')', pct(m.supplied / m.cap), pct(after.supplied / m.cap));
+        const fits = m.cap == null ? 'The reserve has no deposit cap, so the full amount fits.'
+          : add >= m.idle ? 'The cap has room, so the full amount fits.'
+          : 'The cap leaves room for ' + tok(add) + ' ' + esc(m.symbol) + ' of the ' + tok(m.idle) + ': that is what is counted.';
+        return '<div><h3>All of Fusion’s idle ' + esc(m.symbol) + ' supplied</h3>' + table(rows) + '<p class="fits">' + fits + '</p></div>';
+      });
+      const share = '<div><h3>Our share of Aave V4’s tokenised-stock TVL</h3>' + table(
+        row('Aave V4 tokenised-stock TVL', usd(t.aave), usd(t.aave + addUsd))
+        + row('Fusion contribution', usd(t.fusion), usd(t.fusion + addUsd))
+        + row('Fusion share', pct(t.aave ? t.fusion / t.aave : null), pct((t.fusion + addUsd) / (t.aave + addUsd)))) + '</div>';
+      $('scen').innerHTML = cards.join('') + share;
+    }
+
+    function status() {
+      const ts = Date.parse(data.updatedAt) / 1000;
+      $('status').innerHTML = 'Updated <span class="ago">' + (window.UI ? UI.ago(ts) : data.updatedAt) + '</span>';
+    }
+
+    // ---- Controls ----------------------------------------------------------
+    function seg(id, on) {
+      const el = $(id);
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-v]');
+        if (!b) return;
+        el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+        on(b.dataset.v);
+      });
+    }
+    seg('view', (v) => { view = v; draw(); });
+    seg('range', (v) => { range = v; draw(); });
+    seg('pngSize', (v) => { size = v; });
+    $('pngBtn').addEventListener('click', png);
+    $('csvBtn').addEventListener('click', csv);
+    window.addEventListener('fusion:theme', () => { if (data) draw(); });
+    FusionChart.onChange(() => { if (data) draw(); });
+
+    fetch('/aave-v4.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
+      if (!j || !Array.isArray(j.markets) || !j.markets.length) {
+        $('body').innerHTML = '<div class="empty-state">No Aave V4 data yet. It is read on-chain by the <b>Collect Aave V4</b> workflow, every six hours; '
+          + 'the first run fills this page.</div>';
+        return;
+      }
+      data = j;
+      status();
+      setInterval(status, 60000);
+      render();
+      draw();
+    });
+  })();
+  </script>
+</body>
+</html>
