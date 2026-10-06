@@ -97,6 +97,14 @@ jobs:
         continue-on-error: true
         run: node tools/build-tvl-daily.js
 
+      # What the Switchers page matches: the events of the wallets that have
+      # both deposited and withdrawn, in two vaults or more, ~150 KB over the
+      # wire instead of every event (tools/build-switch-events.js), and their
+      # transaction hashes in a file of their own, fetched after it draws.
+      - name: Build the Switchers page's events
+        continue-on-error: true
+        run: node tools/build-switch-events.js
+
       - name: Commit & push data files
         run: |
           git config user.name "github-actions[bot]"
@@ -106,6 +114,8 @@ jobs:
           [ -f activity-recent-tx.json ] && git add -f activity-recent-tx.json || true
           [ -f stocks-data.json ] && git add -f stocks-data.json || true
           [ -f tvl-daily.json ] && git add -f tvl-daily.json || true
+          [ -f switch-events.json ] && git add -f switch-events.json || true
+          [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest

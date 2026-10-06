@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['switch-events.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Switchers — Fusion Stats</title>
@@ -9,133 +11,23 @@
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%94%81</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
   <script src="/nav.js"></script>
-  <script>
-  </script>
   <style>
-    * { margin: 0; padding: 0; }
-    a { color: inherit; text-decoration: none; }
-    .num { font-variant-numeric: tabular-nums; }
-    .datanote .dot { display: none; }
+    .ui-figure .v.accent { color: var(--accent); }
+    /* Three short figures: one row on a phone too. */
+    @container (max-width: 700px) {
+      .ui-figures.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ui-figures.three .ui-figure { padding: 4px 0 4px 14px; border-top: none; border-left: 1px solid var(--line); }
+      .ui-figures.three .ui-figure:first-child { padding-left: 0; border-left: none; }
+      .ui-figures.three .ui-figure .v { font-size: clamp(19px, 6cqi, 26px); }
+    }
 
-    /* ---------- Controls ---------- */
-    .controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 20px; padding: 24px 0 26px; }
-    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-    .field > label { font-size: 11.5px; font-weight: 500; color: var(--text-2); }
-
-    .combo { position: relative; width: 340px; max-width: 100%; }
-    .combo input {
-      width: 100%;
-      height: 46px;
-      padding: 0 38px 0 14px;
-      border: 1px solid var(--line-strong);
-      border-radius: 12px;
-      background: var(--bg);
-      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
-      color: var(--text);
-      font: 500 14px var(--sans);
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .combo input::placeholder { color: var(--text-3); font-weight: 400; }
-    .combo input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
-    .combo .car {
-      position: absolute; right: 12px; top: 50%; width: 12px; height: 12px;
-      transform: translateY(-50%);
-      font-size: 0;
-      background: var(--ui-chevron) center / contain no-repeat;
-      pointer-events: none;
-    }
-    .combo .list {
-      position: absolute; z-index: 30; top: 52px; left: 0; right: 0;
-      display: none;
-      max-height: 340px; overflow-y: auto;
-      padding: 4px;
-      border: 1px solid var(--line-strong);
-      border-radius: 12px;
-      background: var(--bg);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
-    }
-    .combo.open .list { display: block; }
-    .combo .opt {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      padding: 9px 10px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .combo .opt:hover, .combo .opt.hi { background: var(--bg-subtle); }
-    .combo .opt .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; }
-    .combo .opt .meta { flex: none; display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-3); }
-    .combo .opt .cnt { color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
-
-    /* Segmented, as Activity's Deposits / Withdrawals switch. */
-    .seg {
-      display: inline-flex;
-      padding: 3px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--bg-subtle);
-    }
-    .seg button {
-      height: 38px;
-      padding: 0 14px;
-      border: none;
-      border-radius: 9px;
-      background: transparent;
-      color: var(--text-2);
-      font: 500 13.5px var(--sans);
-      white-space: nowrap;
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
-    }
-    .seg button:hover { color: var(--text); }
-    .seg button.on { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
-    .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-    /* ---------- Figures: as Activity's net inflow ---------- */
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      padding: 28px 0 32px;
-      border-top: 1px solid var(--line);
-    }
-    .card { min-width: 0; padding: 0 24px; border-left: 1px solid var(--line); }
-    .card:first-child { padding-left: 0; border-left: none; }
-    .card .k { font-size: 13px; font-weight: 500; color: var(--text-3); }
-    .card .v {
-      margin-top: 6px;
-      font-size: clamp(22px, 3.2cqi, 34px);
-      line-height: 1.1;
-      font-weight: 600;
-      letter-spacing: -0.035em;
-      font-variant-numeric: tabular-nums;
-      overflow-wrap: anywhere;
-    }
-    .card .v.accent { color: var(--accent); }
-    .card .sv { margin-top: 6px; font-size: 13px; color: var(--text-2); }
-
-    /* ---------- Came from + the matches ---------- */
-    .grid {
-      display: grid;
-      grid-template-columns: 250px minmax(0, 1fr);
-      gap: 32px;
-      padding-top: 28px;
-      border-top: 1px solid var(--line);
-      align-items: start;
-    }
-    .panel { min-width: 0; }
-    .panel > .h {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
-      margin-bottom: 10px;
-      font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text);
-    }
-    .panel > .h .cnt { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); font-variant-numeric: tabular-nums; }
-
-    .src-row { padding: 10px 10px; margin: 0 -10px; border-radius: 10px; transition: background 0.1s; }
-    .src-row + .src-row { margin-top: 2px; }
-    .src-row:hover { background: var(--bg-hover); }
+    /* ---------- Came from, beside the switch-ins ---------- */
+    .split { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 40px; align-items: start; }
+    .src-row { padding: 10px 0; }
+    .src-row + .src-row { border-top: 1px solid var(--line); }
     .src-row .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 7px; }
     .src-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; }
     .src-row .usd { flex: none; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -143,391 +35,344 @@
     .src-row .bar > span { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
     .src-row .n { margin-top: 5px; font-size: 12px; color: var(--text-3); }
 
-    /* Table: text on the column edge, rows highlight a little wider. */
-    .tscroll { margin: 0 -12px; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
-    thead th {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      font-size: 12px; font-weight: 500; color: var(--text-3);
-      white-space: nowrap;
-    }
-    thead th.r { text-align: right; }
-    .th-i {
-      display: inline-block;
-      width: 13px; height: 13px;
-      margin-left: 4px;
-      vertical-align: -2px;
-      overflow: hidden;
-      font-size: 0; font-style: normal;
-      color: var(--text-3);
-      background: currentColor;
-      -webkit-mask: var(--ui-i-mask) center / contain no-repeat;
-              mask: var(--ui-i-mask) center / contain no-repeat;
-      cursor: help;
-      outline: none;
-      transition: color 0.15s;
-    }
-    .th-i:hover, .th-i:focus-visible { color: var(--text); }
-    .uk-tip {
-      position: fixed; z-index: 9999;
-      max-width: 270px;
-      padding: 9px 12px;
-      border-radius: 10px;
-      background: var(--tip-bg);
-      color: var(--tip-fg);
-      font: 400 12.5px/1.5 var(--sans);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(3px);
-      transition: opacity 0.12s, transform 0.12s;
-    }
-    .uk-tip.show { opacity: 1; transform: none; }
-    tbody td {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px;
-      vertical-align: middle;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    /* Seven columns in the right-hand column: tighter cells, the outer edges kept. */
-    thead th, tbody td { padding-left: 8px; padding-right: 8px; }
-    thead th:first-child, tbody td:first-child { padding-left: 12px; }
-    thead th:last-child, tbody td:last-child { padding-right: 12px; }
-    tbody tr td { transition: background 0.1s; }
-    tbody tr:hover td { background: var(--bg-hover); }
-    td:first-child { color: var(--text-2); }
-    .addr { font: 12px var(--mono); color: var(--text-2); transition: color 0.15s; }
-    a.addr:hover { color: var(--accent); }
-    /* USD is the common denominator: bold. The token amount is detail. */
-    .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
-    .amt.tok { font-size: 12px; font-weight: 400; color: var(--text-3); }
-    .from { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .from .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chip { flex: none; padding: 1px 7px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-2); font-size: 11px; text-transform: capitalize; }
-    .gap { font-size: 13px; color: var(--text-2); }
-    .r { text-align: right; }
+    /* ---------- Switch-ins: a table on a desktop, two lines on a phone ---------- */
+    .slist { --cols: 74px 112px 96px minmax(0, 1fr) 58px 80px 92px; }
+    .shead, .srow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 12px; }
+    .shead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .shead .r, .srow .r { justify-self: end; text-align: right; }
+    .srow { min-height: 56px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .srow > * { min-width: 0; }
+    .srow .when { color: var(--text-2); white-space: nowrap; }
+    .srow a { color: inherit; text-decoration: none; }
+    .srow .addr { font: 12px var(--mono); color: var(--text-2); }
+    .srow a.addr:hover { color: var(--accent); }
+    .srow .amt { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .srow .tok { display: block; font-size: 12px; font-weight: 400; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .srow .from { display: flex; align-items: center; gap: 7px; }
+    .srow .from .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .srow .from .ui-chain > span:last-child { display: none; }   /* the network's mark; its name is in the title */
+    .srow .gap { font-size: 13px; color: var(--text-2); white-space: nowrap; }
     .ratio { padding: 1px 7px; border-radius: 6px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
     .ratio.hi { color: var(--pos); background: var(--pos-soft); }
     .ratio.mid { color: var(--amber); background: var(--amber-soft); }
-    .txs { white-space: nowrap; }
+    .srow .txs { white-space: nowrap; }
     .txlink {
-      margin-left: 3px;
-      padding: 1px 5px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      font: 500 11px var(--sans);
-      text-decoration: none;
+      margin-left: 3px; padding: 1px 6px;
+      border: 1px solid var(--line); border-radius: 6px;
+      font: 500 11.5px var(--sans); text-decoration: none;
       transition: border-color 0.15s, background 0.15s;
     }
     .txlink.in { color: var(--pos); }
     .txlink.out { color: var(--neg); }
-    .txlink:hover { border-color: currentColor; background: var(--bg-subtle); }
-    .empty { padding: 52px 20px; text-align: center; color: var(--text-3); }
+    a.txlink:hover { border-color: currentColor; background: var(--bg-subtle); }
+    span.txlink { opacity: 0.4; }
+    .srow .meta { display: none; }
+    .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
     .empty b { color: var(--text); font-weight: 600; }
 
-    @container (max-width: 860px) {
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; }
-      .card:nth-child(odd) { padding-left: 0; border-left: none; }
-      .grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    @container (max-width: 980px) {
+      .split { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+      .split > .ui-section:first-child { padding-bottom: 8px; }
     }
-    /* Narrow: the table scrolls sideways rather than squeezing every column to "…". */
-    @container (max-width: 760px) {
-      .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      table { min-width: 720px; }
-    }
-    @container (max-width: 480px) {
-      .combo { width: 100%; }
-      .field { width: 100%; }
-      .seg { width: 100%; }
-      .seg button { flex: 1; padding: 0 8px; }
+    @container (max-width: 700px) {
+      .split > .ui-section { padding: 22px 0; }
+      .shead { display: none; }
+      .srow {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "amt from when" "meta meta txs";
+        row-gap: 5px; column-gap: 10px;
+        min-height: 0; padding: 12px 0;
+      }
+      .srow .amt { grid-area: amt; font-size: 15px; }
+      .srow .tok, .srow .wallet, .srow .gap, .srow .match { display: none; }
+      .srow .from { grid-area: from; font-size: 13.5px; color: var(--text-2); }
+      .srow .when { grid-area: when; font-size: 12.5px; color: var(--text-3); }
+      .srow .meta { grid-area: meta; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
+      .srow .meta .addr { font-size: 11.5px; }
+      .srow .txs { grid-area: txs; }
     }
   </style>
+  <script defer src="/track.js"></script>
 </head>
 <body>
-
   <div class="ui-page">
     <header class="ui-masthead">
       <div>
         <h1>Switchers</h1>
-        <p class="ui-lede">Wallets that reallocate capital <b>from one Fusion vault into another</b> — deposits funded by a similar-size withdrawal from a different Fusion vault, i.e. users chasing a better rate. Pick a destination vault below.</p>
-        <div class="ui-status datanote">
-          <span class="dot"></span>
-          <span>Across all Fusion vault deposit/withdrawal events · synthetic (wrapper &amp; rebalance) flows excluded · matched by wallet + similar USD size.</span>
-          <span id="updated"></span>
-        </div>
+        <p class="ui-lede">Wallets that move capital <b>from one Fusion vault into another</b>: a deposit funded by a similar-size withdrawal from a different vault, chasing a better rate.</p>
+        <div class="ui-status" id="status">Loading…</div>
       </div>
     </header>
 
-    <div class="controls">
-      <div class="field" style="flex:none;">
-        <label>Destination vault</label>
-        <div class="combo" id="combo">
-          <input type="text" id="vaultInput" placeholder="Search a vault…" autocomplete="off" spellcheck="false">
-          <span class="car">▾</span>
-          <div class="list" id="vaultList"></div>
+    <section class="ui-section">
+      <div class="ui-toolbar">
+        <div class="ui-filters" style="--cols: 2">
+          <label class="ui-filter wide full">
+            <span class="ui-filter-label">Into vault</span>
+            <select id="vault" data-fs><option value="">Loading…</option></select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Moved within <span class="ui-tip" tabindex="0" data-tip="The longest time allowed between the withdrawal from the other vault and the deposit into this one.">ⓘ</span></span>
+            <select id="window" data-fs>
+              <option value="86400">1 day</option>
+              <option value="604800">7 days</option>
+              <option value="2592000">30 days</option>
+              <option value="0" selected>Ever</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Amount match <span class="ui-tip" tabindex="0" data-tip="How close in USD the withdrawal and the deposit must be: the smaller over the larger.">ⓘ</span></span>
+            <select id="ratio" data-fs>
+              <option value="0.7" selected>Similar ±30%</option>
+              <option value="0.5">Loose ±50%</option>
+              <option value="0">Any</option>
+            </select>
+          </label>
         </div>
       </div>
-      <div class="field">
-        <label>Reallocated within</label>
-        <div class="seg" id="segWindow">
-          <button data-w="86400">1 day</button>
-          <button data-w="604800">7 days</button>
-          <button data-w="2592000">30 days</button>
-          <button data-w="0" class="on">Ever</button>
-        </div>
+
+      <div class="ui-figures three" style="--n:3; border-bottom: none; padding-bottom: 8px">
+        <div class="ui-figure"><div class="k">Switched in</div><div class="v accent" id="fUsd"></div></div>
+        <div class="ui-figure"><div class="k">Wallets</div><div class="v" id="fWallets"></div></div>
+        <div class="ui-figure"><div class="k">Switch-ins</div><div class="v" id="fCount"></div></div>
       </div>
-      <div class="field">
-        <label>Amount match</label>
-        <div class="seg sm" id="segRatio">
-          <button data-r="0.7" class="on">Similar ±30%</button>
-          <button data-r="0.5">Loose ±50%</button>
-          <button data-r="0">Any</button>
+    </section>
+
+    <div class="split">
+      <section class="ui-section">
+        <div class="ui-head"><h2>Came from<span class="ui-count" id="srcCnt"></span></h2></div>
+        <div id="sources"></div>
+      </section>
+      <section class="ui-section">
+        <div class="ui-head"><h2>Switch-ins</h2></div>
+        <div class="slist">
+          <div class="shead"><span>When</span><span>Wallet</span><span class="r">In</span><span>From vault</span><span>Gap</span><span class="r">Match</span><span class="r">Txs</span></div>
+          <div id="rows"><div class="empty">Loading…</div></div>
         </div>
-      </div>
+        <div id="pager"></div>
+      </section>
     </div>
 
-    <div class="cards" id="cards"></div>
-
-    <div class="grid">
-      <div class="panel">
-        <div class="h">Came from <span class="cnt" id="srcCnt"></span></div>
-        <div class="src" id="sources"></div>
-      </div>
-      <div class="panel">
-        <div class="h">Switch-in deposits <span class="cnt" id="rowsCnt"></span></div>
-        <div class="tscroll">
-          <table>
-            <thead><tr>
-              <th style="width:10%">When <i class="th-i" tabindex="0" data-tip="When the deposit into this vault happened.">i</i></th>
-              <th style="width:15%">Wallet <i class="th-i" tabindex="0" data-tip="The wallet (vault position owner) that reallocated. Links to its block explorer.">i</i></th>
-              <th class="r" style="width:15%">In <i class="th-i" tabindex="0" data-tip="USD value deposited into this vault (token amount shown below).">i</i></th>
-              <th style="width:24%">From vault <i class="th-i" tabindex="0" data-tip="The other Fusion vault this wallet withdrew from, with its chain.">i</i></th>
-              <th style="width:9%">Gap <i class="th-i" tabindex="0" data-tip="Time between the withdrawal (out) and this deposit (in).">i</i></th>
-              <th class="r" style="width:12%">Match <i class="th-i" tabindex="0" data-tip="How close the withdrawn USD size is to the deposit. 100% = identical amounts.">i</i></th>
-              <th class="r" style="width:15%">Txs <i class="th-i" tabindex="0" data-tip="Verify on-chain: green in = deposit tx (this vault / chain); red out = the source withdrawal tx (other vault / its chain).">i</i></th>
-            </tr></thead>
-            <tbody id="rows"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <details class="ui-more">
+      <summary>How a switch is matched</summary>
+      <div>Every Fusion vault deposit and withdrawal is read, leaving out synthetic flows (wrappers and rebalances). For each wallet, each deposit is paired with one earlier withdrawal from a <b>different</b> vault, by the same wallet: the closest in size within the amount match, then the most recent, and each withdrawal funds one deposit at most. <b>In</b> is the deposit's USD value; <b>Match</b> the smaller of the two amounts over the larger, with the withdrawal beneath it; <b>Gap</b> the time between them. The <b>in</b> and <b>out</b> links open the two transactions on their networks' explorers.</div>
+    </details>
   </div>
 
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
   <script>
-    /* ---- header info tooltips (floating; body-appended so nothing clips them) ---- */
-    (function () {
-      var tip = document.createElement('div'); tip.className = 'uk-tip'; document.body.appendChild(tip);
-      function show(el){ var t = el.getAttribute('data-tip'); if(!t) return; tip.textContent = t; tip.classList.add('show');
-        var r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
-        tip.style.left = Math.max(8, Math.min(r.left + r.width/2 - tw/2, window.innerWidth - tw - 8)) + 'px';
-        tip.style.top = (r.top - th - 8 < 8 ? r.bottom + 8 : r.top - th - 8) + 'px'; }
-      function hide(){ tip.classList.remove('show'); }
-      document.addEventListener('mouseover', function(e){ var el = e.target.closest ? e.target.closest('[data-tip]') : null; if(el) show(el); });
-      document.addEventListener('mouseout',  function(e){ var el = e.target.closest ? e.target.closest('[data-tip]') : null; if(el) hide(); });
-      document.addEventListener('focusin',   function(e){ var el = e.target.closest ? e.target.closest('[data-tip]') : null; if(el) show(el); });
-      document.addEventListener('focusout', hide);
-    })();
+  (function () {
+    'use strict';
+    const EXPLORER = { ethereum: 'https://etherscan.io', base: 'https://basescan.org', arbitrum: 'https://arbiscan.io',
+      avalanche: 'https://snowtrace.io', unichain: 'https://uniscan.xyz', plasma: 'https://plasmascan.to',
+      ink: 'https://explorer.inkonchain.com', katana: 'https://explorer.katanarpc.com', tac: 'https://explorer.tac.build' };
+    const PAGE = 10;
+    const esc = UI.esc;
+    const state = { events: [], vaultByAddr: {}, vaults: [], all: [], sel: null, windowSec: 0, ratio: 0.7, list: [], page: 1 };
 
-    var EXPLORER = { ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io',
-      avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to',
-      ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
+    // ---- formatting ----
+    function fUsd(n) {
+      if (n == null || isNaN(n)) return '—';
+      if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K'; return '$' + n.toFixed(0);
+    }
+    function fTok(n) { if (n == null) return ''; if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 }); if (n >= 1) return n.toFixed(3); return n.toFixed(5); }
+    const shortAddr = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
+    function fGap(sec) {
+      if (sec < 60) return sec + 's'; if (sec < 3600) return Math.round(sec / 60) + ' min'; if (sec < 86400) return Math.round(sec / 3600) + ' hr';
+      if (sec < 2592000) return Math.round(sec / 86400) + ' d'; if (sec < 31536000) return Math.round(sec / 2592000) + ' mo'; return (sec / 31536000).toFixed(1) + ' yr';
+    }
+    function fWhen(ts) {
+      const d = new Date(ts * 1000), a = Date.now() / 1000 - ts;
+      const rel = a < 3600 ? Math.round(a / 60) + 'm ago' : a < 86400 ? Math.round(a / 3600) + 'h ago' : a < 2592000 ? Math.round(a / 86400) + 'd ago' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return { rel, abs: d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) };
+    }
 
-    var state = { events:[], vaults:[], vaultByAddr:{}, all:[], sel:null, windowSec:0, ratio:0.7, hi:-1, filtered:[] };
-
-    /* ---- formatting ---- */
-    function fUsd(n){ if(n==null||isNaN(n)) return '—';
-      if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M';
-      if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(0); }
-    function fUsdFull(n){ return '$'+Math.round(n).toLocaleString('en-US'); }
-    function fTok(n){ if(n==null) return ''; if(n>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0});
-      if(n>=1) return n.toFixed(3); return n.toFixed(5); }
-    function shortAddr(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
-    function fGap(sec){ if(sec<60) return sec+'s'; if(sec<3600) return Math.round(sec/60)+' min'; if(sec<86400) return Math.round(sec/3600)+' hr';
-      if(sec<2592000) return Math.round(sec/86400)+' d'; if(sec<31536000) return Math.round(sec/2592000)+' mo'; return (sec/31536000).toFixed(1)+' yr'; }
-    function fWhen(ts){ var d=new Date(ts*1000), now=Date.now()/1000, a=now-ts;
-      var rel = a<3600?Math.round(a/60)+'m ago':a<86400?Math.round(a/3600)+'h ago':a<2592000?Math.round(a/86400)+'d ago':d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      return { rel:rel, abs:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) }; }
-
-    /* ---- core: find all switch-ins (deposit funded by a prior withdrawal from a different vault) ---- */
+    // ---- every switch-in: a deposit funded by an earlier withdrawal from a different vault ----
     function computeAll(windowSec, minRatio) {
-      var byOwner = {};
-      for (var i=0;i<state.events.length;i++){
-        var e=state.events[i];
-        if (e.synthetic===true) continue;                 // exclude wrapper / rebalance flows
-        if (!e.owner || !(e.usdValue>0) || !e.timestamp) continue;
-        var w=e.owner.toLowerCase();
-        (byOwner[w]||(byOwner[w]=[])).push(e);
+      const byOwner = {};
+      for (const e of state.events) {
+        if (e.synthetic === true) continue;                 // wrapper and rebalance flows
+        if (!e.owner || !(e.usdValue > 0) || !e.timestamp) continue;
+        const w = e.owner.toLowerCase();
+        (byOwner[w] || (byOwner[w] = [])).push(e);
       }
-      var out=[];
-      Object.keys(byOwner).forEach(function(w){
-        var arr=byOwner[w]; if(arr.length<2) return;
-        arr.sort(function(a,b){return a.timestamp-b.timestamp;});
-        var withdraws=[], deposits=[];
-        for (var i=0;i<arr.length;i++){ if(arr[i].type==='withdraw') withdraws.push(arr[i]); else if(arr[i].type==='deposit') deposits.push(arr[i]); }
-        if(!withdraws.length||!deposits.length) return;
-        var used=new Array(withdraws.length).fill(false);
-        for (var d=0; d<deposits.length; d++){
-          var dep=deposits[d], best=-1, bestScore=-1, bestRatio=0;
-          for (var k=0;k<withdraws.length;k++){
-            if(used[k]) continue;
-            var wd=withdraws[k];
-            if(wd.vault===dep.vault) continue;                        // must be a DIFFERENT vault
-            if(wd.timestamp>dep.timestamp) continue;                  // withdrawal precedes deposit
-            if(windowSec>0 && wd.timestamp < dep.timestamp-windowSec) continue;
-            var ratio=Math.min(wd.usdValue,dep.usdValue)/Math.max(wd.usdValue,dep.usdValue);
-            if(ratio<minRatio) continue;
-            var gap=dep.timestamp-wd.timestamp;
-            var score=ratio*1000 - gap/86400;                         // prefer closest size, then smallest gap
-            if(score>bestScore){ bestScore=score; best=k; bestRatio=ratio; }
+      const out = [];
+      Object.keys(byOwner).forEach((w) => {
+        const arr = byOwner[w]; if (arr.length < 2) return;
+        arr.sort((a, b) => a.timestamp - b.timestamp);
+        const withdraws = [], deposits = [];
+        for (const e of arr) { if (e.type === 'withdraw') withdraws.push(e); else if (e.type === 'deposit') deposits.push(e); }
+        if (!withdraws.length || !deposits.length) return;
+        const used = new Array(withdraws.length).fill(false);
+        for (const dep of deposits) {
+          let best = -1, bestScore = -1, bestRatio = 0;
+          for (let k = 0; k < withdraws.length; k++) {
+            if (used[k]) continue;
+            const wd = withdraws[k];
+            if (wd.vault === dep.vault) continue;                       // a DIFFERENT vault
+            if (wd.timestamp > dep.timestamp) continue;                 // out before in
+            if (windowSec > 0 && wd.timestamp < dep.timestamp - windowSec) continue;
+            const ratio = Math.min(wd.usdValue, dep.usdValue) / Math.max(wd.usdValue, dep.usdValue);
+            if (ratio < minRatio) continue;
+            const score = ratio * 1000 - (dep.timestamp - wd.timestamp) / 86400;   // closest size, then smallest gap
+            if (score > bestScore) { bestScore = score; best = k; bestRatio = ratio; }
           }
-          if(best>=0){ used[best]=true;
-            out.push({ wallet:w, dep:dep, src:withdraws[best], ratio:bestRatio, gap:dep.timestamp-withdraws[best].timestamp });
+          if (best >= 0) {
+            used[best] = true;
+            out.push({ wallet: w, dep, src: withdraws[best], ratio: bestRatio, gap: dep.timestamp - withdraws[best].timestamp });
           }
         }
       });
       return out;
     }
 
-    /* ---- vault list (destinations), annotated with switch-in counts ---- */
-    function buildVaults(){
-      var seen={};
-      state.events.forEach(function(e){
-        if(!seen[e.vault]) seen[e.vault]={ addr:e.vault, name:e.vaultName||shortAddr(e.vault), chain:e.chain, count:0 };
-      });
-      state.vaultByAddr=seen;
+    // ---- the vaults, each with its switch-ins ----
+    function annotateCounts() {
+      Object.values(state.vaultByAddr).forEach((v) => { v.count = 0; });
+      state.all.forEach((s) => { const v = state.vaultByAddr[s.dep.vault]; if (v) v.count++; });
+      state.vaults = Object.values(state.vaultByAddr).sort((a, b) => b.count - a.count || (b.name < a.name ? 1 : -1));
     }
-    function annotateCounts(){
-      Object.keys(state.vaultByAddr).forEach(function(a){ state.vaultByAddr[a].count=0; });
-      state.all.forEach(function(s){ var v=state.vaultByAddr[s.dep.vault]; if(v) v.count++; });
-      state.vaults=Object.values(state.vaultByAddr).sort(function(a,b){ return b.count-a.count || (b.name<a.name?1:-1); });
+    const vaultName = (addr) => { const v = state.vaultByAddr[addr]; return v ? v.name : shortAddr(addr); };
+    function renderVaultSelect() {
+      const sel = document.getElementById('vault');
+      sel.innerHTML = state.vaults.map((v) => `<option value="${esc(v.addr)}"${v.chain ? ` data-chain="${esc(v.chain)}"` : ''}${v.count ? ` data-note="${v.count}"` : ''}>${esc(v.name)}</option>`).join('');
+      sel.value = state.sel || '';
     }
 
-    /* ---- rendering ---- */
-    function renderCards(list){
-      var vol=0, wallets={}, srcMap={};
-      list.forEach(function(s){ vol+=s.dep.usdValue; wallets[s.wallet]=1;
-        var sv=state.vaultByAddr[s.src.vault]; var nm=sv?sv.name:shortAddr(s.src.vault);
-        srcMap[nm]=(srcMap[nm]||0)+1; });
-      var topSrc=Object.keys(srcMap).sort(function(a,b){return srcMap[b]-srcMap[a];})[0];
-      var cards=[
-        ['Switched in', fUsd(vol), 'total deposit value'],
-        ['Switchers', Object.keys(wallets).length.toLocaleString(), 'unique wallets'],
-        ['Switch-ins', list.length.toLocaleString(), 'matched deposits'],
-        ['Top source', topSrc||'—', topSrc?srcMap[topSrc]+' of them came from here':'no switches yet']
-      ];
-      document.getElementById('cards').innerHTML = cards.map(function(c,i){
-        var cls = i===0?'v accent':'v';
-        var big = i===3 ? '<div class="'+cls+'" style="font-size:clamp(18px,2.4cqi,22px);line-height:1.25;letter-spacing:-0.02em;">'+c[1]+'</div>'
-                        : '<div class="'+cls+'">'+c[1]+'</div>';
-        return '<div class="card"><div class="k">'+c[0]+'</div>'+big+'<div class="sv">'+c[2]+'</div></div>';
+    // ---- what the page shows ----
+    function renderFigures(list) {
+      let usd = 0; const wallets = {};
+      list.forEach((s) => { usd += s.dep.usdValue; wallets[s.wallet] = 1; });
+      document.getElementById('fUsd').textContent = fUsd(usd);
+      document.getElementById('fWallets').textContent = Object.keys(wallets).length.toLocaleString();
+      document.getElementById('fCount').textContent = list.length.toLocaleString();
+    }
+    function renderSources(list) {
+      const m = {};
+      list.forEach((s) => { const a = s.src.vault; if (!m[a]) m[a] = { n: 0, usd: 0 }; m[a].n++; m[a].usd += s.dep.usdValue; });
+      const rows = Object.keys(m).map((a) => ({ name: vaultName(a), n: m[a].n, usd: m[a].usd })).sort((a, b) => b.usd - a.usd);
+      document.getElementById('srcCnt').textContent = rows.length ? rows.length + ' vault' + (rows.length > 1 ? 's' : '') : '';
+      const host = document.getElementById('sources');
+      if (!rows.length) { host.innerHTML = '<div class="empty" style="padding:24px 0;text-align:left">No switch-ins yet.</div>'; return; }
+      const max = rows[0].usd;
+      host.innerHTML = rows.slice(0, 8).map((r) =>
+        `<div class="src-row"><div class="top"><span class="nm" title="${esc(r.name)}">${esc(r.name)}</span><span class="usd">${fUsd(r.usd)}</span></div>`
+        + `<div class="bar"><span style="width:${Math.max(4, r.usd / max * 100)}%"></span></div>`
+        + `<div class="n">${r.n} switch-in${r.n > 1 ? 's' : ''}</div></div>`).join('');
+    }
+    function txLink(dir, ex, tx, chain) {
+      const label = dir === 'in' ? 'in' : 'out';
+      const what = (dir === 'in' ? 'Deposit (in)' : 'Withdrawal (out)') + ' tx on ' + (chain || 'an unknown network');
+      return ex && tx
+        ? `<a class="txlink ${dir}" href="${ex}/tx/${esc(tx)}" target="_blank" rel="noopener" title="${esc(what)}">${label} ↗</a>`
+        : `<span class="txlink ${dir}" title="${esc(ex ? what + ' (loading)' : 'no explorer for ' + (chain || 'this network'))}">${label}</span>`;
+    }
+    function renderRows() {
+      const list = state.list, box = document.getElementById('rows');
+      if (!list.length) {
+        box.innerHTML = `<div class="empty">No switch-ins into <b>${esc(state.sel ? vaultName(state.sel) : 'this vault')}</b> in this window.<br>Try a longer window or a looser amount match.</div>`;
+        document.getElementById('pager').innerHTML = '';
+        return;
+      }
+      const last = Math.max(1, Math.ceil(list.length / PAGE));
+      state.page = Math.min(Math.max(1, state.page), last);
+      box.innerHTML = list.slice((state.page - 1) * PAGE, state.page * PAGE).map((s) => {
+        const exIn = EXPLORER[s.dep.chain] || '', exOut = EXPLORER[s.src.chain] || '';
+        const when = fWhen(s.dep.timestamp);
+        const wallet = exIn
+          ? `<a class="addr" href="${exIn}/address/${esc(s.wallet)}" target="_blank" rel="noopener" title="${esc(s.wallet)}">${shortAddr(s.wallet)}</a>`
+          : `<span class="addr" title="${esc(s.wallet)}">${shortAddr(s.wallet)}</span>`;
+        const from = vaultName(s.src.vault);
+        const pct = Math.round(s.ratio * 100);
+        return `<div class="srow">
+          <span class="when" title="${esc(when.abs)}">${when.rel}</span>
+          <span class="wallet">${wallet}</span>
+          <span class="r"><span class="amt" title="${fTok(s.dep.assets)} ${esc(s.dep.symbol || '')}">${fUsd(s.dep.usdValue)}</span><span class="tok">${fTok(s.dep.assets)} ${esc(s.dep.symbol || '')}</span></span>
+          <span class="from" title="${esc(from)}${s.src.chain ? ' · ' + esc(s.src.chain) : ''}">${s.src.chain ? UI.chain(s.src.chain) : ''}<span class="fname">${esc(from)}</span></span>
+          <span class="gap">${fGap(s.gap)}</span>
+          <span class="r match"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span class="tok">${fUsd(s.src.usdValue)} out</span></span>
+          <span class="meta">${wallet}<span>·</span><span>${fGap(s.gap)} after</span><span>·</span><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span></span>
+          <span class="r txs">${txLink('in', exIn, s.dep.tx, s.dep.chain)}${txLink('out', exOut, s.src.tx, s.src.chain)}</span>
+        </div>`;
       }).join('');
+      document.getElementById('pager').innerHTML = UI.pager({ total: list.length, page: state.page, size: PAGE, noun: 'switch-ins' });
     }
 
-    function renderSources(list){
-      var m={};
-      list.forEach(function(s){ var a=s.src.vault; if(!m[a]) m[a]={ n:0, usd:0 }; m[a].n++; m[a].usd+=s.dep.usdValue; });
-      var rows=Object.keys(m).map(function(a){ var v=state.vaultByAddr[a]; return { name:v?v.name:shortAddr(a), chain:v?v.chain:'', n:m[a].n, usd:m[a].usd }; })
-        .sort(function(a,b){return b.usd-a.usd;});
-      document.getElementById('srcCnt').textContent = rows.length ? rows.length+' vault'+(rows.length>1?'s':'') : '';
-      var max=rows.length?rows[0].usd:1;
-      var host=document.getElementById('sources');
-      if(!rows.length){ host.innerHTML='<div class="empty" style="padding:30px 12px;">No inbound switches.</div>'; return; }
-      host.innerHTML = rows.slice(0,8).map(function(r){
-        return '<div class="src-row"><div class="top"><span class="nm" title="'+r.name+'">'+r.name+'</span><span class="usd">'+fUsd(r.usd)+'</span></div>'+
-          '<div class="bar"><span style="width:'+Math.max(4,r.usd/max*100)+'%"></span></div>'+
-          '<div class="n">'+r.n+' switch-in'+(r.n>1?'s':'')+'</div></div>';
-      }).join('');
+    function render(resetPage) {
+      const list = state.all.filter((s) => s.dep.vault === state.sel);
+      list.sort((a, b) => b.dep.timestamp - a.dep.timestamp);
+      state.list = list;
+      if (resetPage) state.page = 1;
+      renderFigures(list); renderSources(list); renderRows();
     }
-
-    function renderRows(list){
-      document.getElementById('rowsCnt').textContent = list.length.toLocaleString()+' deposit'+(list.length===1?'':'s');
-      var tb=document.getElementById('rows');
-      if(!list.length){ tb.innerHTML='<tr><td colspan="7"><div class="empty">No switch-ins into <b>'+(state.sel?state.vaultByAddr[state.sel].name:'this vault')+'</b> in this window.<br>Try a longer window or a looser amount match.</div></td></tr>'; return; }
-      var rows=list.slice(0,300).map(function(s){
-        var exIn=EXPLORER[s.dep.chain]||'', exOut=EXPLORER[s.src.chain]||''; var sv=state.vaultByAddr[s.src.vault];
-        var when=fWhen(s.dep.timestamp);
-        var rcls = s.ratio>=0.85?'ratio hi':'ratio mid';
-        var wl = exIn ? '<a class="addr" href="'+exIn+'/address/'+s.wallet+'" target="_blank" rel="noopener" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</a>' : '<span class="addr" title="'+s.wallet+'">'+shortAddr(s.wallet)+'</span>';
-        var inTx = exIn ? '<a class="txlink in" href="'+exIn+'/tx/'+s.dep.tx+'" target="_blank" rel="noopener" title="Deposit (in) tx on '+s.dep.chain+'">in ↗</a>' : '<span class="txlink in" style="opacity:.4" title="no explorer for '+s.dep.chain+'">in</span>';
-        var outTx = exOut ? '<a class="txlink out" href="'+exOut+'/tx/'+s.src.tx+'" target="_blank" rel="noopener" title="Withdrawal (out) tx on '+s.src.chain+'">out ↗</a>' : '<span class="txlink out" style="opacity:.4" title="no explorer for '+s.src.chain+'">out</span>';
-        return '<tr>'+
-          '<td><span title="'+when.abs+'">'+when.rel+'</span></td>'+
-          '<td>'+wl+'</td>'+
-          '<td class="r"><span class="amt">'+fUsd(s.dep.usdValue)+'</span><br><span class="amt tok">'+fTok(s.dep.assets)+' '+(s.dep.symbol||'')+'</span></td>'+
-          '<td><span class="from" title="'+(sv?sv.name:'')+'"><span class="fname">'+(sv?sv.name:shortAddr(s.src.vault))+'</span><span class="chip">'+(s.src.chain||'')+'</span></span></td>'+
-          '<td><span class="gap">'+fGap(s.gap)+'</span></td>'+
-          '<td class="r"><span class="'+rcls+'">'+Math.round(s.ratio*100)+'%</span><br><span class="amt tok">'+fUsd(s.src.usdValue)+' out</span></td>'+
-          '<td class="r txs">'+inTx+outTx+'</td>'+
-        '</tr>';
-      }).join('');
-      tb.innerHTML = rows + (list.length>300 ? '<tr><td colspan="7"><div class="empty" style="padding:18px;">Showing first 300 of '+list.length.toLocaleString()+'.</div></td></tr>' : '');
-    }
-
-    function render(){
-      var list = state.all.filter(function(s){ return s.dep.vault===state.sel; });
-      list.sort(function(a,b){ return b.dep.timestamp - a.dep.timestamp; });
-      state.filtered=list;
-      renderCards(list); renderSources(list); renderRows(list);
-    }
-
-    function recompute(){
+    function recompute() {
       state.all = computeAll(state.windowSec, state.ratio);
       annotateCounts();
-      renderVaultList('');
-      if(!state.sel || !state.vaultByAddr[state.sel]) state.sel = state.vaults.length ? state.vaults[0].addr : null;
-      setInput();
-      render();
+      if (!state.sel || !state.vaultByAddr[state.sel]) state.sel = state.vaults.length ? state.vaults[0].addr : null;
+      renderVaultSelect();
+      render(true);
     }
 
-    /* ---- combobox ---- */
-    function setInput(){ var v=state.sel?state.vaultByAddr[state.sel]:null; document.getElementById('vaultInput').value = v?v.name:''; }
-    function renderVaultList(q){
-      q=(q||'').toLowerCase();
-      var items = state.vaults.filter(function(v){ return !q || v.name.toLowerCase().indexOf(q)!==-1; });
-      document.getElementById('vaultList').innerHTML = items.slice(0,60).map(function(v,i){
-        return '<div class="opt" data-a="'+v.addr+'"><span class="nm">'+v.name+'</span>'+
-          '<span class="meta"><span class="chip">'+v.chain+'</span>'+(v.count?'<span class="cnt">'+v.count+'</span>':'')+'</span></div>';
-      }).join('') || '<div class="opt" style="cursor:default;color:var(--text-secondary)">No match</div>';
-    }
-    (function comboWire(){
-      var combo=document.getElementById('combo'), input=document.getElementById('vaultInput'), list=document.getElementById('vaultList');
-      function open(){ combo.classList.add('open'); }
-      function close(){ combo.classList.remove('open'); setInput(); }
-      input.addEventListener('focus', function(){ input.select(); renderVaultList(''); open(); });
-      input.addEventListener('input', function(){ renderVaultList(input.value); open(); });
-      list.addEventListener('mousedown', function(e){ var o=e.target.closest('.opt'); if(!o||!o.dataset.a) return;
-        state.sel=o.dataset.a; close(); render(); });
-      document.addEventListener('click', function(e){ if(!combo.contains(e.target)) close(); });
-    })();
+    // ---- controls ----
+    document.getElementById('vault').addEventListener('change', (e) => { state.sel = e.target.value; render(true); });
+    document.getElementById('window').addEventListener('change', (e) => { state.windowSec = +e.target.value; recompute(); });
+    document.getElementById('ratio').addEventListener('change', (e) => { state.ratio = +e.target.value; recompute(); });
+    UI.onPage(document.getElementById('pager'), (n) => {
+      state.page = n; renderRows();
+      const top = document.querySelector('.slist').getBoundingClientRect().top;
+      if (top < 0) window.scrollBy({ top: top - 80 });
+    });
 
-    /* ---- segmented controls ---- */
-    function wireSeg(id, attr, apply){
-      document.getElementById(id).addEventListener('click', function(e){
-        var b=e.target.closest('button'); if(!b) return;
-        [].forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('on', x===b); });
-        apply(b.getAttribute(attr));
-      });
+    // ---- data: the events a switch can be made of (tools/build-switch-events.js),
+    // their transaction hashes after the first draw; every event before it exists ----
+    const getJson = (f) => fetch(f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    function unpack(d, t) {
+      const tx = t && t.updatedAt === d.updatedAt && Array.isArray(t.tx) && t.tx.length === d.events.length ? t.tx : null;
+      return d.events.map((r, i) => ({
+        vault: d.vaults[r[0]][0], owner: d.owners[r[1]], type: r[2] ? 'withdraw' : 'deposit',
+        timestamp: r[3], usdValue: r[4], assets: r[5], symbol: r[6], chain: r[7], tx: tx ? tx[i] : undefined,
+      }));
     }
-    wireSeg('segWindow','data-w', function(v){ state.windowSec=+v; recompute(); });
-    wireSeg('segRatio','data-r', function(v){ state.ratio=+v; recompute(); });
-
-    /* ---- boot ---- */
-    (function load(){
-      fetch('activity-events.json').then(function(r){ return r.json(); }).then(function(d){
-        state.events = d.events||[];
-        if(d.updatedAt){ var u=new Date(d.updatedAt); document.getElementById('updated').innerHTML='· data updated <b>'+u.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>'; }
-        buildVaults();
+    function setStatus(updatedAt) {
+      document.getElementById('status').innerHTML = updatedAt
+        ? 'Events to <b>' + esc(new Date(updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</b>'
+        : '';
+    }
+    (async function load() {
+      const d = await getJson('/switch-events.json');
+      if (d && Array.isArray(d.events) && Array.isArray(d.vaults)) {
+        state.events = unpack(d, null);
+        d.vaults.forEach(([addr, name, chain]) => { state.vaultByAddr[addr] = { addr, name: name || shortAddr(addr), chain, count: 0 }; });
+        setStatus(d.updatedAt);
         recompute();
-      }).catch(function(err){
-        document.getElementById('cards').innerHTML='<div class="card" style="grid-column:1/-1;color:var(--red)">Couldn\'t load activity data. '+err+'</div>';
+        // The links' hashes: drawn into the rows when they arrive.
+        const t = await getJson('/switch-events-tx.json');
+        if (t) {
+          const withTx = unpack(d, t);
+          if (withTx.length && withTx[0].tx !== undefined) {
+            state.events.forEach((e, i) => { e.tx = withTx[i].tx; });
+            renderRows();
+          }
+        }
+        return;
+      }
+      // Until the file exists: every event ever collected, as before.
+      const full = await getJson('/activity-events.json');
+      if (!full) {
+        document.getElementById('rows').innerHTML = '<div class="ui-error">Couldn\'t load the activity data.</div>';
+        document.getElementById('status').textContent = '';
+        return;
+      }
+      state.events = full.events || [];
+      state.events.forEach((e) => {
+        if (!state.vaultByAddr[e.vault]) state.vaultByAddr[e.vault] = { addr: e.vault, name: e.vaultName || shortAddr(e.vault), chain: e.chain, count: 0 };
       });
+      setStatus(full.updatedAt);
+      recompute();
     })();
+  })();
   </script>
 </body>
 </html>
