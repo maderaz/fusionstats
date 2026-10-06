@@ -76,4 +76,44 @@ test('lists every vault and chain that has ever had an event, with every stored 
   assert.deepStrictEqual(r.eventChains, ['base', 'ethereum']);   // no chain stored = Ethereum
 });
 
+test('only the newest events keep their hash in the main file; every hash is in the second, in order', () => {
+  const evs = [ev(5, { tx: '0xe' }), ev(1, { tx: '0xa' }), ev(3, { tx: '0xc' }), ev(2, { tx: '0xb' }), ev(4, { tx: '0xd' })];
+  const r = buildRecent(data(evs), null, { minEvents: 1, txInline: 2 });
+  assert.deepStrictEqual(r.events.map(e => e.tx), [undefined, '0xa', undefined, '0xb', undefined]);
+  assert.deepStrictEqual(r.tx, ['0xe', '0xa', '0xc', '0xb', '0xd']);
+  assert.strictEqual(r.txSplit, true);
+});
+
+test('a same-transaction deposit and withdrawal on one vault is tagged atomic here; the other untagged events false', () => {
+  const r = buildRecent(data([
+    ev(1, { tx: '0x1', type: 'deposit' }), ev(1, { tx: '0x1', type: 'withdraw' }),            // round trip
+    ev(2, { tx: '0x2', type: 'deposit' }), ev(2, { tx: '0x2', type: 'withdraw', vault: '0xv2' }), // two vaults: not one
+    ev(3, { tx: '0x3', type: 'withdraw', synthetic: true, syntheticReason: 'keeper' }),           // the collector's tag stays
+    ev(3, { tx: '0x3', type: 'deposit' }),
+  ]), null, { minEvents: 1 });
+  assert.deepStrictEqual(r.events.map(e => [e.synthetic, e.syntheticReason]),
+    [[true, 'atomic'], [true, 'atomic'], [false, undefined], [false, undefined], [true, 'keeper'], [false, undefined]]);
+});
+
+test("the page's own fallback tagger, run without hashes, tags exactly as it did with them", () => {
+  // Lifted from index.html, so the two cannot drift apart unnoticed.
+  const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8');
+  const src = html.match(/function reclassifySyntheticFallback\(events, vaultsByAddr\) \{[\s\S]*?\n    \}\n/);
+  assert.ok(src, 'reclassifySyntheticFallback not found in index.html');
+  const reclassify = new Function(src[0] + '; return reclassifySyntheticFallback;')();
+  const vaults = { '0xv1': { tvl: 1000 }, '0xv2': { tvl: 1e6 } };
+  const fixture = () => [
+    ev(1, { tx: '0x1', type: 'deposit' }), ev(1, { tx: '0x1', type: 'withdraw' }),
+    ev(2, { tx: '0x2', type: 'deposit', usdValue: 5000 }),                  // over 3x its vault's TVL
+    ev(3, { tx: '0x3', type: 'deposit', vault: '0xv2' }), ev(4, { tx: '0x4', type: 'withdraw', vault: '0xv2' }),
+    ev(5, { tx: '0x5', type: 'deposit', synthetic: true, syntheticReason: 'keeper' }),
+  ];
+  const before = fixture();
+  reclassify(before, vaults);
+  const after = buildRecent(data(fixture()), null, { minEvents: 1, txInline: 1 }).events;
+  reclassify(after, vaults);
+  assert.deepStrictEqual(after.map(e => [!!e.synthetic, e.syntheticReason]), before.map(e => [!!e.synthetic, e.syntheticReason]));
+  assert.ok(after.filter(e => !e.tx).length >= 4, 'the hashes really were gone');
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

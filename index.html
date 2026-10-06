@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Data comes from GitHub's raw CDN (data-source.js): open that connection
+       while the rest of the head loads. -->
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <script src="/data-source.js"></script>
+  <!-- The data is on its way before anything else on the page has loaded. -->
+  <script>window.FusionData && FusionData.preload(['activity-recent.json', 'ipor-vaults.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Activity — Fusion Stats</title>
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -211,14 +216,22 @@
     }
 
     @keyframes shimmer { to { background-position: -200% 0; } }
-    .shimmer, #statsRow:empty, .flow-chart-bars:empty::after {
+    .shimmer, #statsRow:empty, #tvlStat:empty, .flow-chart-bars:empty::after {
       background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--line) 50%, var(--bg-subtle) 100%);
       background-size: 200% 100%;
       animation: shimmer 1.4s linear infinite;
     }
 
-    /* ---------- Overview: net inflow, then the daily chart ---------- */
+    /* ---------- Overview: TVL and net inflow, then the daily chart ---------- */
     .overview { padding: 32px 0 40px; border-top: 1px solid var(--line); }
+    /* TVL now, then net inflow over three windows: one row of four figures
+       with a divider between each, under two headings. */
+    .figures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+    .fig-flow > .label, .fig-flow .stat-card:first-child { padding-left: 28px; }
+    .fig-flow .stat-card:first-child { border-left: 1px solid var(--line); }
+    .stats-row.stats-one { grid-template-columns: minmax(0, 1fr); }
+    #tvlStat:empty { display: block; height: 70px; border-radius: 12px; }
+    .stat-card .value.tvl { color: var(--text); }
     .stats-row {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -251,7 +264,15 @@
       align-items: stretch;
       gap: 4px;
       height: 150px;
+      /* A very soft dot grid behind the bars, fading out toward the edges.
+         The fade is a background layer laid over the dots, so the bars and
+         the hover layer sit above both. */
+      --dots: rgba(11, 11, 15, 0.12);
+      background:
+        radial-gradient(ellipse 70% 80% at 50% 50%, transparent 40%, var(--bg) 100%),
+        radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 12px 12px;
     }
+    :root[data-theme="dark"] .flow-chart-bars { --dots: rgba(255, 255, 255, 0.09); }
     .flow-chart-bars::before {
       content: '';
       position: absolute;
@@ -388,7 +409,10 @@
       pointer-events: none;
     }
     .filter-label .info-tip { pointer-events: auto; }
-    .activity-filters select {
+    /* The cell's control: fusion-select.js's button, drawn as the <select> it
+       stands in for was (the select itself stays, hidden, as the source of
+       truth). */
+    .activity-filters select, .activity-filters .fs-trigger {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -409,7 +433,8 @@
       background-repeat: no-repeat;
       background-position: right 12px center;
     }
-    .activity-filters select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+    .activity-filters .fs-trigger { display: flex; align-items: center; }
+    .activity-filters select:focus-visible, .activity-filters .fs-trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 
     .seg {
       display: inline-flex;
@@ -691,6 +716,9 @@
 
       .overview { padding: 24px 0 30px; }
       .stats-row { margin-top: 14px; }
+      .figures { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .fig-flow > .label, .fig-flow .stat-card:first-child { padding-left: 0; }
+      .fig-flow .stat-card:first-child { border-left: none; }
       .stat-card { padding: 0 12px; }
       .stat-card .value { font-size: clamp(18px, 6cqi, 30px); letter-spacing: -0.035em; }
       .flow-chart { margin-top: 28px; }
@@ -712,10 +740,11 @@
     }
 
     @media (max-width: 1200px) { .page { padding: 36px 32px 80px; } }
-    /* nav.js puts a fixed menu button top-left below 900px: nothing sticks there. */
+    /* Below 900px the filters fill a third of a phone screen: they scroll
+       with the list instead of sticking over it. */
     @media (max-width: 900px) {
       .page { padding: 12px 24px 64px; }
-      #activityContent { scroll-margin-top: 72px; }
+      #activityContent { scroll-margin-top: 16px; }
       .feed-tools, th { position: static; }
       .feed-tools { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
     }
@@ -752,8 +781,16 @@
     </header>
 
     <section id="overview" class="overview">
-      <span class="label">Net inflow <span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
-      <div id="statsRow" class="stats-row"></div>
+      <div class="figures">
+        <div class="fig fig-tvl">
+          <span class="label">TVL <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></span>
+          <div id="tvlStat" class="stats-row stats-one"></div>
+        </div>
+        <div class="fig fig-flow">
+          <span class="label">Net inflow <span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
+          <div id="statsRow" class="stats-row"></div>
+        </div>
+      </div>
       <div id="flowChart" class="flow-chart">
         <div class="flow-chart-header">
           <span class="flow-chart-title label">Daily net flow</span>
@@ -773,7 +810,7 @@
         <div class="activity-filters">
           <label class="filter-group">
             <span class="filter-label">Min amount</span>
-            <select id="filterAmount">
+            <select id="filterAmount" data-fs>
               <option value="0">All</option>
               <option value="1000" selected>≥ $1K</option>
               <option value="10000">≥ $10K</option>
@@ -782,21 +819,21 @@
           </label>
           <label class="filter-group">
             <span class="filter-label">Product</span>
-            <select id="filterProduct">
+            <select id="filterProduct" data-fs>
               <option value="">All products</option>
             </select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Chain</span>
-            <select id="filterChain">
-              <option value="">All chains</option>
+            <select id="filterChain" data-fs>
+              <option value="" data-glyph="all">All chains</option>
             </select>
           </label>
           <label class="filter-group" title="Vaults whose underlying is a tokenised stock (Apple, Nvidia, Meta, Google, Microsoft, Coinbase...).">
             <span class="filter-label">Stocks
               <span class="info-tip" tabindex="0" data-tip="Vaults backed by tokenised equities. Detected from the underlying token address, which uses the 0xb2 vanity prefix, rather than from the vault name — name matching on &quot;Carry Trade&quot; would wrongly pull in the cbXRP, USDC and WETH carry vaults. New stock vaults are picked up automatically.">&#9432;</span>
             </span>
-            <select id="filterStocks">
+            <select id="filterStocks" data-fs>
               <option value="" selected>All vaults</option>
               <option value="only">Stocks only</option>
               <option value="exclude">Exclude stocks</option>
@@ -806,7 +843,7 @@
             <span class="filter-label">Synthetic
               <span class="info-tip" tabindex="0" data-tip="Detected automated/atomic flow that's not a genuine user deposit/withdrawal: same-tx D+W on the same vault, same-block round-trips, single events larger than 3× vault TVL, recurring keeper rotations, and recurring (depositor → withdrawer) address pairs. Toggle to inspect.">&#9432;</span>
             </span>
-            <select id="filterSynthetic">
+            <select id="filterSynthetic" data-fs>
               <option value="hide" selected>Hide</option>
               <option value="show">Show</option>
               <option value="only">Only synthetic</option>
@@ -833,6 +870,7 @@
     <div id="errorContent" style="display:none"></div>
   </div>
 
+  <script src="/fusion-select.js"></script>
   <script>
     function formatAmount(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
@@ -1093,12 +1131,17 @@
       // All chains from tracked vaults
       const allChains = [...new Set(trackedVaults.map(v => v.chain || 'ethereum'))].sort();
       chainsWithEvents = new Set(recentMeta ? recentMeta.eventChains : allEvents.map(e => e.chain || 'ethereum'));
-      select.innerHTML = '<option value="">All chains</option>'
+      // Each network by name, with its mark (fusion-select.js) and how many
+      // tracked vaults it has.
+      const nameOf = (c) => (window.FusionSelect ? FusionSelect.chainName(c) : c);
+      select.innerHTML = '<option value="" data-glyph="all">All chains</option>'
         + allChains.map(c => {
           const hasEvents = chainsWithEvents.has(c);
           const count = trackedVaults.filter(v => (v.chain || 'ethereum') === c).length;
-          const label = hasEvents ? `${c} (${count})` : `${c} (${count}) — no events yet`;
-          return `<option value="${c}">${label}</option>`;
+          const name = nameOf(c);
+          const label = hasEvents ? `${name} (${count})` : `${name} (${count}) — no events yet`;
+          const note = `${count} vault${count === 1 ? '' : 's'}${hasEvents ? '' : ' · no events yet'}`;
+          return `<option value="${c}" data-chain="${c}" data-label="${name}" data-note="${note}">${label}</option>`;
         }).join('');
       if (current && allChains.includes(current)) select.value = current;
     }
@@ -1120,34 +1163,92 @@
       return { data: await res.json(), recent: false };
     }
 
+    const getJson = (file) => fetch(file).then(r => (r.ok ? r.json() : null)).catch(() => null);
+
+    // Transaction hashes: the recent cache carries them for its newest events
+    // only (tools/build-activity-recent.js); the rest come in
+    // activity-recent-tx.json, every event's hash in the cache's own order,
+    // fetched once the page has drawn. They are needed for nothing but a row's
+    // link to its transaction. `inOrder` is the cache's events as they were
+    // in the file, before the page sorted them.
+    // The last hashes file that fitted, for the 5-minute re-render of the
+    // same data: no second download of it.
+    let txFile = null;
+    function fillTx(inOrder, file) {
+      if (!file || !Array.isArray(file.tx) || file.tx.length !== inOrder.length) return false;
+      // The hashes the cache kept must sit at the same places: if not, the
+      // two files do not line up and none is used.
+      if (inOrder.some((e, i) => e.tx && e.tx !== file.tx[i])) return false;
+      inOrder.forEach((e, i) => { if (!e.tx && file.tx[i]) e.tx = file.tx[i]; });
+      txFile = file;
+      return true;
+    }
+    function attachTx(data, inOrder) {
+      const fetchTx = (attempt) => getJson('activity-recent-tx.json').then(file => {
+        if (lastUpdatedAt !== data.updatedAt) return;          // newer data is on screen by now
+        if (file && file.updatedAt === data.updatedAt && fillTx(inOrder, file)) {
+          applyFilters({ resetPage: false });
+        } else if (attempt < 2) {
+          // The two files from different commits: the CDN caught one mid-update.
+          setTimeout(() => fetchTx(attempt + 1), 20000);
+        }
+      });
+      (window.requestIdleCallback || ((f) => setTimeout(f, 1)))(() => fetchTx(0), { timeout: 1500 });
+    }
+
+    // The copies kept from the last visit (data-source.js), when they can still
+    // stand in for the fresh files: both there, and the events still covering
+    // the 30-day figures, as fetchActivity asks of the recent cache.
+    async function keptActivity() {
+      if (!window.FusionData) return null;
+      const [data, ipor, tx] = await Promise.all([FusionData.cached('activity-recent.json'),
+        FusionData.cached('ipor-vaults.json'), FusionData.cached('activity-recent-tx.json')]);
+      if (!data || !ipor || !Array.isArray(data.events)) return null;
+      if (!(data.coveredFrom <= Date.now() / 1000 - 30 * 86400 - 3600)) return null;
+      if (data.txSplit && tx && tx.updatedAt === data.updatedAt && fillTx(data.events, tx)) data.txSplit = false;
+      return { data, recent: true, ipor };
+    }
+    let lastIporAt = null;
+
     // `poll`: a background check for new data. It re-renders only when the
     // data changed, and a failure leaves the page as it is. Resolves true when
     // it rendered new data.
-    async function loadActivity({ full = wantFullHistory, poll = false } = {}) {
+    // `kept`: draw from the copies kept on the last visit (keptActivity).
+    // `revalidate`: after drawing from those, fetch both files; re-render only
+    // if either changed, and on a failure keep what is on screen.
+    async function loadActivity({ full = wantFullHistory, poll = false, kept = null, revalidate = false } = {}) {
       const status = document.getElementById('loadingMsg');
 
       try {
-        if (status && !poll) status.textContent = 'Loading activity data...';
+        if (status && !poll && !kept && !revalidate) status.textContent = 'Loading activity data...';
         // With the full history on screen, ask the small file whether
         // anything changed before parsing 19 MB again.
         if (poll && full) {
           const res = await fetch('activity-recent.json');
           if (res.ok && (await res.json()).updatedAt === lastUpdatedAt) return false;
         }
-        const { data, recent } = await fetchActivity(full);
+        // The vault list comes alongside the events, not after them — on a
+        // poll, only once the events have changed.
+        const iporLoad = kept ? Promise.resolve(kept.ipor) : poll ? null : getJson('ipor-vaults.json');
+        const { data, recent } = kept || await fetchActivity(full);
         if (poll && data.updatedAt === lastUpdatedAt) return false;
+        const ipor = await (iporLoad || getJson('ipor-vaults.json'));
+        if (revalidate && data.updatedAt === lastUpdatedAt && (ipor && ipor.updatedAt) === lastIporAt) return false;
         const complete = !recent || data.total === (data.events || []).length;
 
         const events = data.events || [];
+        // The file's own order, which the hashes file follows; the page sorts
+        // `events` in place further down. Hashes already here for this data
+        // are filled in now.
+        let inOrder = recent && data.txSplit ? events.slice() : null;
+        if (inOrder && txFile && txFile.updatedAt === data.updatedAt && fillTx(inOrder, txFile)) inOrder = null;
 
         // Always use vault lookup as source of truth for symbol/name
         trackedVaults = data.vaults || [];
         // Also pull full vault list from ipor-vaults.json for complete chain coverage
         // and to provide TVL for the synthetic-detection fallback heuristic.
         try {
-          const iporRes = await fetch('ipor-vaults.json');
-          if (iporRes.ok) {
-            const ipor = await iporRes.json();
+          if (ipor) {
             const activityAddrs = new Set(trackedVaults.map(v => v.address));
             const iporByAddr = {};
             (ipor.vaults || []).forEach(v => { iporByAddr[v.address.toLowerCase()] = v; });
@@ -1234,6 +1335,7 @@
 
         allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         lastUpdatedAt = data.updatedAt;
+        lastIporAt = ipor && ipor.updatedAt;
         recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, eventChains: data.eventChains || [], coveredFrom: data.coveredFrom };
         historyComplete = complete;
         olderLoadFailed = false;
@@ -1270,14 +1372,17 @@
         }
 
         renderStats({ net24h, net7d, net30d });
+        renderTvl(ipor);
         renderFlowChart(events, 30);
         applyFilters({ resetPage: false });
         checkForFireEvents(events);
+        if (inOrder) attachTx(data, inOrder);
         return true;
 
       } catch (err) {
         console.error('Error:', err);
-        if (poll && allEvents.length) return false;
+        if (kept) return false;          // the fresh files will be tried next
+        if ((poll || revalidate) && allEvents.length) return false;
         // Older events failed to load, but the recent ones are on screen:
         // keep them, and say so where the next page would have been.
         if (full && allEvents.length) {
@@ -1319,6 +1424,21 @@
         + flowCard('7d', s.net7d)
         + flowCard('30d', s.net30d);
       document.getElementById('overview').style.display = '';
+    }
+
+    // TVL now: every vault's TVL as IPOR's API reports it, summed — from the
+    // vault list already loaded for the filters. Without that list, nothing.
+    function renderTvl(ipor) {
+      const el = document.getElementById('tvlStat');
+      const vaults = (ipor && ipor.vaults) || [];
+      const total = vaults.reduce((a, v) => a + (v.tvl > 0 ? v.tvl : 0), 0);
+      if (!(total > 0)) { el.closest('.fig').hidden = true; return; }
+      el.closest('.fig').hidden = false;
+      const text = total >= 1e9 ? '$' + (total / 1e9).toFixed(2) + 'B'
+        : total >= 1e6 ? '$' + (total / 1e6).toFixed(2) + 'M'
+        : '$' + (total / 1e3).toFixed(1) + 'K';
+      el.innerHTML = `<div class="stat-card"><div class="label">now</div>
+        <div class="value num-bold tvl">${text}</div></div>`;
     }
 
     // The days the flow chart draws, for its hover.
@@ -1474,7 +1594,11 @@
         const amount = `${amountText(e, whole)} <span class="sym">${sym}</span>`;
         const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
         // Arrow in, arrow out; the word stays DEPOSIT / WITHDRAW in the text.
-        const typeLink = `<a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}"><i class="dir" aria-hidden="true"></i><span class="t">${badgeText}</span></a>`;
+        // The link waits for the row's transaction hash (see attachTx); the
+        // badge reads the same without it.
+        const typeLink = e.tx
+          ? `<a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="${badgeClass}"><i class="dir" aria-hidden="true"></i><span class="t">${badgeText}</span></a>`
+          : `<span class="${badgeClass}"><i class="dir" aria-hidden="true"></i><span class="t">${badgeText}</span></span>`;
         rows += `<tr${e.synthetic ? ' class="row-synthetic"' : ''}>
           <td>${time}</td>
           <td>${typeLink}${synthBadge}</td>
@@ -1827,7 +1951,18 @@
       return { init, maybeAuto };
     })();
 
-    loadActivity().then(() => refreshNow.init());
+    // A return visit draws at once from what was kept last time, then checks
+    // that against the fresh files; a first visit waits for those.
+    (async function firstLoad() {
+      const kept = await keptActivity();
+      if (kept && await loadActivity({ kept })) await loadActivity({ revalidate: true });
+      else await loadActivity();
+    })().then(() => {
+      // Prerendered ahead of a click (nav.js): nothing starts a refresh until
+      // the page is actually on screen.
+      if (document.prerendering) document.addEventListener('prerenderingchange', () => refreshNow.init(), { once: true });
+      else refreshNow.init();
+    });
 
     // Re-fetch every 5 minutes to detect new events while tab is open — the
     // full history only if this visit already needed it.

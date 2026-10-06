@@ -74,11 +74,21 @@ jobs:
 
       # What the Activity page opens with: the last five weeks of events plus
       # what it needs from all history (tools/build-activity-recent.js), so a
-      # visit no longer downloads every event ever collected. Rebuilt from
-      # whatever activity-events.json now holds and committed with it.
+      # visit no longer downloads every event ever collected — and their
+      # transaction hashes beside it (activity-recent-tx.json), loaded after
+      # the page has drawn. Rebuilt from whatever activity-events.json now
+      # holds and committed with it.
       - name: Build the Activity page's recent cache
         continue-on-error: true
         run: node tools/build-activity-recent.js
+
+      # What the Stocks page reads: the stock vaults' share of the vault list,
+      # the TVL snapshots, the events and the router names, ~80 KB over the
+      # wire instead of the 4.7 MB of the four whole files
+      # (tools/build-stocks-data.js).
+      - name: Build the Stocks page's data file
+        continue-on-error: true
+        run: node tools/build-stocks-data.js
 
       - name: Commit & push data files
         run: |
@@ -86,6 +96,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f history.json logs.json activity-events.json
           [ -f activity-recent.json ] && git add -f activity-recent.json || true
+          [ -f activity-recent-tx.json ] && git add -f activity-recent-tx.json || true
+          [ -f stocks-data.json ] && git add -f stocks-data.json || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest
@@ -109,6 +121,9 @@ jobs:
             git fetch origin "$BRANCH"
             git checkout -B "$BRANCH" "origin/$BRANCH"
             for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            # The Stocks file is cut from this run's events and whatever TVL
+            # snapshots just landed (tvl-snapshots.yml): cut it again from both.
+            node tools/build-stocks-data.js && git add -f stocks-data.json || true
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "Update data files [skip ci]"

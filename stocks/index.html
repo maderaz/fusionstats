@@ -1,7 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Data comes from GitHub's raw CDN (data-source.js): open that connection
+       while the rest of the head loads. -->
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
   <script src="/data-source.js"></script>
+  <!-- The data is on its way before anything else on the page has loaded. -->
+  <script>window.FusionData && FusionData.preload(['stocks-data.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stocks — Fusion Stats</title>
@@ -12,9 +18,10 @@
   <!-- Geist for the page; Poppins stays because the charts and PNG exports draw in it. -->
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
+  <!-- Plotly draws the charts and nothing else: it loads alongside the page
+       instead of in front of it, and the charts draw when it is in. -->
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script src="/nav.js"></script>
-  <script>
-  </script>
   <style>
     * { margin: 0; padding: 0; }
     :root { --tint-strong: rgba(25, 23, 23, .13); }
@@ -126,7 +133,10 @@
       pointer-events: none;
     }
     .filter-label .info-tip { pointer-events: auto; }
-    .filters select {
+    /* The cell's control: fusion-select.js's button, drawn as the <select> it
+       stands in for was (the select itself stays, hidden, as the source of
+       truth). */
+    .filters select, .filters .fs-trigger {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -144,7 +154,8 @@
       -webkit-appearance: none;
               appearance: none;
     }
-    .filters select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+    .filters .fs-trigger { display: flex; align-items: center; }
+    .filters select:focus-visible, .filters .fs-trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 
     .seg {
       display: inline-flex;
@@ -553,19 +564,19 @@
         <div class="filters">
           <label class="filter-group">
             <span class="filter-label">Vault</span>
-            <select id="tvlVault"><option value="__all__">All stock vaults</option></select>
+            <select id="tvlVault" data-fs><option value="__all__">All stock vaults</option></select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Unit</span>
-            <select id="tvlUnit"><option value="usd">USD</option></select>
+            <select id="tvlUnit" data-fs><option value="usd">USD</option></select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Chart</span>
-            <select id="tvlType"><option value="line">Line</option><option value="bar">Bars</option></select>
+            <select id="tvlType" data-fs><option value="line">Line</option><option value="bar">Bars</option></select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Scale <span class="info-tip" tabindex="0" data-tip="Applies to every chart on the page that can take a log axis. Deposits and exits cross zero, so they stay linear.">&#9432;</span></span>
-            <select id="scaleSel"><option value="linear">Linear</option><option value="log">Log</option></select>
+            <select id="scaleSel" data-fs><option value="linear">Linear</option><option value="log">Log</option></select>
           </label>
         </div>
         <div class="seg" role="group" aria-label="Range">
@@ -591,11 +602,11 @@
         <div class="filters">
           <label class="filter-group">
             <span class="filter-label">Vault</span>
-            <select id="walVault"><option value="__all__">All stock vaults</option></select>
+            <select id="walVault" data-fs><option value="__all__">All stock vaults</option></select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Measure <span class="info-tip" tabindex="0" data-tip="Cumulative counts every wallet that has ever deposited. Active per day counts the distinct wallets that transacted that day.">&#9432;</span></span>
-            <select id="walMode"><option value="cumulative">Cumulative</option><option value="active">Active per day</option></select>
+            <select id="walMode" data-fs><option value="cumulative">Cumulative</option><option value="active">Active per day</option></select>
           </label>
         </div>
         <div class="seg" role="group" aria-label="Range">
@@ -619,11 +630,11 @@
         <div class="filters">
           <label class="filter-group">
             <span class="filter-label">Vault</span>
-            <select id="flowVault"><option value="__all__">All stock vaults</option></select>
+            <select id="flowVault" data-fs><option value="__all__">All stock vaults</option></select>
           </label>
           <label class="filter-group">
             <span class="filter-label">Net line</span>
-            <select id="flowNet"><option value="off">Off</option><option value="on">On</option></select>
+            <select id="flowNet" data-fs><option value="off">Off</option><option value="on">On</option></select>
           </label>
         </div>
         <div class="seg" role="group" aria-label="Range">
@@ -721,7 +732,7 @@
         <div class="filters">
           <label class="filter-group">
             <span class="filter-label">Vault</span>
-            <select id="feedVault"><option value="__all__">All stock vaults</option></select>
+            <select id="feedVault" data-fs><option value="__all__">All stock vaults</option></select>
           </label>
         </div>
         <div class="seg" id="feedTypeGroup" role="group" aria-label="Type">
@@ -760,9 +771,9 @@
     </details>
   </div>
 
-  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script defer src="/track.js"></script>
   <script src="/routes.js"></script>
+  <script src="/fusion-select.js"></script>
   <script>
   (function () {
     const DAY_MS = 86400000, DAY_SEC = 86400;
@@ -900,6 +911,59 @@
 
     // Traces report hover positions but draw no label of their own.
     const quiet = (traces) => traces.map(t => { const q = Object.assign({}, t, { hoverinfo: 'none' }); delete q.hovertemplate; return q; });
+
+    // ---- Charts draw when Plotly is in and they are near the screen --------
+    // Plotly is 350 KB, and the figures and tables need none of it: they fill
+    // in as soon as the data is here, while it loads. A chart further down is
+    // drawn as it comes within a screen of view, so opening the page does not
+    // wait on five charts at once; until then it keeps its placeholder.
+    // draw() takes Plotly.react's arguments, and what to do once it has drawn.
+    const PLOT_IDS = ['tvlPlot', 'walPlot', 'flowPlot', 'routePie', 'retPlot'];
+    const pendingPlots = {}, drawnPlots = new Set(), nearPlots = new Set();
+    const canWatch = 'IntersectionObserver' in window;
+    let plotlyIn = !!window.Plotly;
+    function draw(id, traces, layout, config, after) {
+      pendingPlots[id] = [traces, layout, config, after];
+      if (drawnPlots.has(id) || nearPlots.has(id) || !canWatch) flushPlot(id);
+    }
+    function flushPlot(id) {
+      const a = pendingPlots[id];
+      if (!a || !plotlyIn) return;
+      delete pendingPlots[id];
+      // Plotly draws alongside what is already there, so a placeholder or a
+      // message would stay painted over the chart.
+      const el = document.getElementById(id);
+      el.querySelectorAll(':scope > .loading, :scope > .missing').forEach(n => n.remove());
+      Plotly.react(id, a[0], a[1], a[2]);
+      drawnPlots.add(id);
+      if (a[3]) a[3]();
+    }
+    // A message in a chart's place: nothing waiting may draw over it.
+    const undraw = (id) => { delete pendingPlots[id]; };
+    if (canWatch) {
+      const io = new IntersectionObserver((entries) => entries.forEach(en => {
+        if (!en.isIntersecting) return;
+        nearPlots.add(en.target.id);
+        io.unobserve(en.target);
+        flushPlot(en.target.id);
+      }), { rootMargin: '600px 0px' });
+      PLOT_IDS.forEach(id => { const el = document.getElementById(id); if (el) io.observe(el); });
+    }
+    if (!plotlyIn) {
+      const tag = document.getElementById('plotlyJs');
+      if (tag) {
+        tag.addEventListener('load', () => {
+          plotlyIn = !!window.Plotly;
+          Object.keys(pendingPlots).forEach(id => { if (nearPlots.has(id) || !canWatch) flushPlot(id); });
+        });
+        tag.addEventListener('error', () => PLOT_IDS.forEach(id => {
+          if (drawnPlots.has(id)) return;
+          undraw(id);
+          document.getElementById(id).innerHTML = '<div class="missing">The chart library (cdn.plot.ly) did not load. '
+            + 'The figures and tables on this page are unaffected.</div>';
+        }));
+      }
+    }
 
     // ---- Hover: the page's own, not Plotly's --------------------------------
     // Plotly's label is a square box in its own font that jumps from point to
@@ -1073,10 +1137,7 @@
     function renderTvl() {
       const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange);
       const el = document.getElementById('tvlPlot');
-      if (!pts.length) { el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
-      // Plotly renders alongside existing children rather than replacing them,
-      // so the placeholder stayed painted over the chart until it was removed.
-      const ph = el.querySelector('.loading'); if (ph) ph.remove();
+      if (!pts.length) { undraw('tvlPlot'); el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
       const usd = S.tvlUnit === 'usd';
       const unitLabel = usd ? 'USD' : (S.tvlUnit === 'units' ? 'units' : S.tvlUnit);
       const yOf = (p) => p.pad ? null : (usd ? p.tvl : p.units);
@@ -1089,9 +1150,10 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
-      Plotly.react('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG);
-      glide('tvlPlot', (pts) => hvWhen(pts[0].x, stepFor(S.tvlRange) === HOUR_SEC)
-        + '<div class="hv-big">' + (usd ? fUsd(pts[0].y) : fNum(pts[0].y, 4) + ' ' + esc(unitLabel)) + '</div>');
+      const hourly = stepFor(S.tvlRange) === HOUR_SEC;
+      draw('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG, () =>
+        glide('tvlPlot', (pts) => hvWhen(pts[0].x, hourly)
+          + '<div class="hv-big">' + (usd ? fUsd(pts[0].y) : fNum(pts[0].y, 4) + ' ' + esc(unitLabel)) + '</div>'));
       renderUnitsBreakdown();
 
       const chosen = vaultsFor(S.tvlVault);
@@ -1124,8 +1186,7 @@
     function renderWallets() {
       const pts = withLead(walletSeries(S.walVault, S.walRange, S.walMode), 'v', S.walRange);
       const el = document.getElementById('walPlot');
-      if (!pts.length) { el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
-      const ph2 = el.querySelector('.loading'); if (ph2) ph2.remove();
+      if (!pts.length) { undraw('walPlot'); el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
       const trace = S.walMode === 'active'
         ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
@@ -1133,9 +1194,10 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
-      Plotly.react('walPlot', quiet([trace]), baseLayout(',d', true), CONFIG);
-      glide('walPlot', (pts) => hvWhen(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US')
-        + '</div><div class="hv-when" style="margin:1px 0 0">' + (S.walMode === 'active' ? 'wallets active' : 'wallets in total') + '</div>');
+      const what = S.walMode === 'active' ? 'wallets active' : 'wallets in total';
+      draw('walPlot', quiet([trace]), baseLayout(',d', true), CONFIG, () =>
+        glide('walPlot', (pts) => hvWhen(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US')
+          + '</div><div class="hv-when" style="margin:1px 0 0">' + what + '</div>'));
     }
 
     function renderStats() {
@@ -1548,15 +1610,16 @@
       const el = document.getElementById('flowPlot');
       const priced = pts.filter(p => p.inflow || p.exit);
       if (!pts.length) {
+        undraw('flowPlot');
         el.innerHTML = '<div class="missing">No deposits or exits recorded in this range for this selection.</div>';
         document.getElementById('flowNote').textContent = ''; return;
       }
       if (!priced.length) {
+        undraw('flowPlot');
         el.innerHTML = '<div class="missing">Events exist in this range but every amount is empty — '
           + 'usdValue is missing on this feed, so there is nothing to size the bars by.</div>';
         document.getElementById('flowNote').textContent = ''; return;
       }
-      const ph = el.querySelector('.loading'); if (ph) ph.remove();
       const x = pts.map(p => new Date(p.ts * 1000));
       const traces = [
         { type: 'bar', name: 'Deposits', x, y: pts.map(p => p.inflow),
@@ -1572,15 +1635,14 @@
       // silently ignoring the control.
       const lay = baseLayout('$,.2s');
       lay.barmode = 'relative';
-      Plotly.react('flowPlot', quiet(traces), lay, CONFIG);
-      glide('flowPlot', (pts) => {
+      draw('flowPlot', quiet(traces), lay, CONFIG, () => glide('flowPlot', (pts) => {
         const by = (n) => (pts.find(p => p.data.name === n) || {}).y || 0;
         const net = by('Deposits') + by('Exits');      // exits are drawn below zero
         return hvWhen(pts[0].x)
           + hvRow(ACCENT, 'Deposits', fUsd(by('Deposits')))
           + hvRow(cssVar('--red'), 'Exits', fUsd(Math.abs(by('Exits'))))
           + hvRow(cssVar('--text'), 'Net', (net >= 0 ? '+' : '−') + fUsd(Math.abs(net)));
-      });
+      }));
       const tIn = pts.reduce((a, p) => a + p.inflow, 0), tOut = pts.reduce((a, p) => a + p.exit, 0);
       document.getElementById('flowNote').textContent =
         pts.length + ' active days · in ' + fUsd(tIn) + ' · out ' + fUsd(tOut)
@@ -1722,18 +1784,18 @@
       const el = document.getElementById('routePie');
       const data = routePieData();
       if (!data) {
+        undraw('routePie');
         el.innerHTML = '<div class="missing">No deposits in this range, so there is nothing to divide.</div>';
         document.getElementById('routeLegend').innerHTML = '';
         return;
       }
-      const ph = el.querySelector('.loading'); if (ph) ph.remove();
 
       // Colours are resolved here rather than handed to Plotly as var(--x),
       // which it cannot read.
       const colors = data.rows.map(r => r.color.startsWith('var(')
         ? cssVar(r.color.slice(4, -1), '#9BA3AF') : r.color);
 
-      Plotly.react('routePie', [{
+      draw('routePie', [{
         type: 'pie', hole: 0.58,
         labels: data.rows.map(r => r.label),
         values: data.rows.map(r => r.usd),
@@ -1931,11 +1993,11 @@
       const series = returnSeries(S.retRange);
       const el = document.getElementById('retPlot');
       if (!series.length) {
+        undraw('retPlot');
         el.innerHTML = '<div class="missing">No vault has two or more share-price snapshots in this range, '
           + 'so there is no price movement to measure. Share price comes from tvl-snapshots.json.</div>';
         document.getElementById('retTable').innerHTML = ''; return;
       }
-      const ph = el.querySelector('.loading'); if (ph) ph.remove();
       const palette = SERIES_COLORS;
       // One line per vault, named by the vault. Named by token, two Alphabet
       // vaults drew two lines both called "GOOGLc", and a Tezos vault was
@@ -1950,9 +2012,8 @@
       // keyed in its line's colour, and pointing at a row picks out its line.
       const lay = baseLayout('.4~f', true);
       lay.yaxis.rangemode = 'normal';
-      Plotly.react('retPlot', quiet(traces), lay, CONFIG);
-      glide('retPlot', (pts) => hvWhen(pts[0].x) + pts.slice().sort((a, b) => b.y - a.y)
-        .map(p => hvRow(p.data.line.color, p.data.name, p.y.toFixed(2))).join(''));
+      draw('retPlot', quiet(traces), lay, CONFIG, () => glide('retPlot', (pts) => hvWhen(pts[0].x)
+        + pts.slice().sort((a, b) => b.y - a.y).map(p => hvRow(p.data.line.color, p.data.name, p.y.toFixed(2))).join('')));
 
       document.getElementById('retTable').innerHTML =
         '<div class="scroll" style="margin-top:0.9rem"><table class="data-table"><thead><tr><th>Vault</th>'
@@ -1983,8 +2044,9 @@
             + '<td class="num">' + (Math.floor(r.days * 10) / 10).toFixed(1) + '</td></tr>').join('')
         + '</tbody></table></div>';
 
-      // A row picks out its line; the others step back.
-      const pick = (i) => Plotly.restyle('retPlot', { opacity: traces.map((_, k) => (i == null || k === i ? 1 : 0.14)) });
+      // A row picks out its line; the others step back. (Once the chart is drawn.)
+      const pick = (i) => drawnPlots.has('retPlot') && !pendingPlots.retPlot
+        && Plotly.restyle('retPlot', { opacity: traces.map((_, k) => (i == null || k === i ? 1 : 0.14)) });
       document.querySelectorAll('#retTable tr[data-line]').forEach(tr => {
         tr.addEventListener('mouseenter', () => pick(Number(tr.dataset.line)));
         tr.addEventListener('mouseleave', () => pick(null));
@@ -2581,6 +2643,8 @@
     const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
 
     async function downloadPlot(id, slug, size) {
+      // A chart not yet scrolled to has not been drawn: draw it now.
+      nearPlots.add(id); flushPlot(id);
       const gd = document.getElementById(id);
       if (!gd || !gd.data) return;
       const stamp = new Date().toISOString().slice(0, 10);
@@ -2700,9 +2764,12 @@
     }
 
     function fillVaultSelects() {
+      // Each with its stock's mark beside it in the dropdown (fusion-select.js).
       const opts = '<option value="__all__">All stock vaults</option>'
         + S.vaults.slice().sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
-            .map(v => '<option value="' + v.address + '">' + v.token + ' — ' + v.name + '</option>').join('');
+            .map(v => { const icon = iconUrlFor(v.token);
+              return '<option value="' + v.address + '"' + (icon ? ' data-icon="' + icon + '"' : '') + '>'
+                + v.token + ' — ' + v.name + '</option>'; }).join('');
       ['tvlVault', 'walVault', 'feedVault', 'flowVault'].forEach(id => { document.getElementById(id).innerHTML = opts; });
 
       // USD, a raw unit total, then one entry per funded ticker. Picking a
@@ -2712,8 +2779,9 @@
       document.getElementById('tvlUnit').innerHTML =
         '<option value="usd">USD</option>'
         + '<option value="units">Stock units (all)</option>'
-        + funded.map(v => '<option value="' + v.token + '" data-vault="' + v.address + '">'
-            + v.token + ' units</option>').join('');
+        + funded.map(v => { const icon = iconUrlFor(v.token);
+            return '<option value="' + v.token + '" data-vault="' + v.address + '"' + (icon ? ' data-icon="' + icon + '"' : '') + '>'
+              + v.token + ' units</option>'; }).join('');
     }
 
     // One floating bubble serves every ⓘ. Positioned against the window, so a
@@ -2752,26 +2820,23 @@
       window.addEventListener('scroll', () => { if (current) hide(); }, { passive: true });
     })();
 
-    (async function load() {
-      try { const s = localStorage.getItem(LAYOUT_KEY); if (s && VALID_LAYOUTS.indexOf(s) >= 0) S.layout = s; } catch (e) {}
-      buildExportMenus();
-
-      const get = (n) => fetch('/' + n).then(r => r.ok ? r.json() : null).catch(() => null);
-      const [iv, tv, act, rid] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'),
-                                                    get('activity-events.json'), get('router-identity.json')]);
-      // Absent or stale, every router simply falls back to its address — the
-      // page never depends on this file being there.
-      // Absent or stale, every router falls back to its address — the page
-      // never depends on this file being there. Built into R below, once the
-      // events it learns smart accounts from have loaded.
-      if (!iv) { document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; return; }
-
+    // ---- Data ----------------------------------------------------------------
+    // Everything the page reads comes in one small file, stocks-data.json
+    // (tools/build-stocks-data.js): the stock vaults' share of ipor-vaults,
+    // tvl-snapshots, activity-events and router-identity, in their shapes —
+    // 80 KB over the wire where the four are 4.7 MB. <head> has already started
+    // it. The four files are the fallback.
+    // Absent or stale, every router falls back to its address — the page
+    // never depends on router-identity being there.
+    function applyData(d) {
+      const iv = d.ipor, tv = d.tvl, act = d.activity, rid = d.identity;
       S.vaults = (iv.vaults || [])
         .filter(v => STOCK_RE.test((v.assetAddress || '').toLowerCase()))
         .map(v => ({ address: (v.address || '').toLowerCase(), name: v.name, token: v.token, tvl: v.tvl, apy: v.apy,
                      chain: (v.chain || 'base').toLowerCase() }));
       S.vaultSet = new Set(S.vaults.map(v => v.address));
 
+      S.snaps = {};
       if (tv && tv.vaults) {
         Object.keys(tv.vaults).forEach(k => {
           const a = k.toLowerCase();
@@ -2780,6 +2845,7 @@
           }
         });
       }
+      S.events = []; S.firstDeposit = {}; S.updatedAt = null;
       if (act) {
         const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
         S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);
@@ -2798,11 +2864,21 @@
         ? 'Data updated ' + new Date(S.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '';
 
+      // The selects are rebuilt from the vault list; what was picked stays picked.
       fillVaultSelects();
+      ['tvlVault', 'walVault', 'feedVault', 'flowVault', 'tvlUnit'].forEach(id => {
+        const el = document.getElementById(id);
+        if ([...el.options].some(o => o.value === S[id])) el.value = S[id];
+        else S[id] = el.value;
+      });
       renderStats(); renderTvl(); renderWallets(); renderFeed();
       renderFlows(); renderRoutes(); renderReturns();
       renderConcentration(); renderReference();
+      if (document.getElementById('holdersView').style.display !== 'none') renderHolders();
+    }
 
+    // The controls, wired once: fresher data redraws under them.
+    function wire() {
       document.getElementById('tvlVault').addEventListener('change', function () {
         S.tvlVault = this.value;
         // A per-ticker unit only makes sense for its own vault; drop back to
@@ -2959,6 +3035,36 @@
                     last ? last.tvl : (v.tvl || 0), sp[v.address] || '', price[v.address] || ''];
           })]);
       });
+    }
+
+    (async function load() {
+      try { const s = localStorage.getItem(LAYOUT_KEY); if (s && VALID_LAYOUTS.indexOf(s) >= 0) S.layout = s; } catch (e) {}
+      buildExportMenus();
+
+      const get = (n) => fetch('/' + n).then(r => r.ok ? r.json() : null).catch(() => null);
+      const usable = (d) => !!(d && d.ipor && d.activity);
+      const fresh = get('stocks-data.json').then(async (d) => {
+        if (usable(d)) return d;
+        const [ipor, tvl, activity, identity] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'),
+                                                                  get('activity-events.json'), get('router-identity.json')]);
+        return { ipor, tvl, activity, identity };
+      });
+      // A return visit draws at once from the copy kept last time (unless the
+      // fresh file beat it here), and redraws only if the fresh one differs.
+      let arrived = null;
+      fresh.then(d => { arrived = d; });
+      const kept = window.FusionData ? await FusionData.cached('stocks-data.json') : null;
+      let shown = null;
+      if (!(arrived && arrived.ipor) && usable(kept)) { applyData(kept); wire(); shown = kept; }
+
+      const data = await fresh;
+      if (!data.ipor) {
+        if (!shown) { undraw('tvlPlot'); document.getElementById('tvlPlot').innerHTML = '<div class="loading">Could not load vault data.</div>'; }
+        return;
+      }
+      const stamp = (x) => [x.builtAt, (x.ipor || {}).updatedAt, (x.tvl || {}).updatedAt, (x.activity || {}).updatedAt].join('|');
+      if (!shown) { applyData(data); wire(); }
+      else if (stamp(data) !== stamp(shown)) applyData(data);
     })();
   })();
   </script>
