@@ -4,225 +4,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Socials · IPOR Fusion Stats</title>
+  <title>Socials — Fusion Stats</title>
+  <meta name="description" content="Branded 3D cube images for social posts, sized for each network.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Geist for the page; Poppins and JetBrains Mono are the image's own type. -->
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Poppins:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
   <style>
-    :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16a34a;
-      --red: #dc2626;
-      --card: var(--surface);
+    /* The settings: one grid of cells, each a small label over its value,
+       drawn like the site's filter bars. */
+    .soc { display: flex; flex-direction: column; margin-top: 24px; }
+    .soc-grid {
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px;
+      border: 1px solid var(--line-strong); border-radius: 14px; overflow: clip;
+      background: var(--line);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
     }
+    .soc-grid .ui-filter { border: none; border-radius: 0; background: var(--bg); }
+    .soc-grid .ui-filter:hover, .soc-grid .ui-filter:focus-within { background: var(--bg-subtle); }
+    .soc-val { margin-left: auto; color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 
-    [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
-      --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --green: #22c55e;
-      --red: #ef4444;
-      --card: var(--surface);
+    /* A slider sits along the bottom of its cell. */
+    .soc-grid .soc-range input[type="range"] {
+      inset: auto 14px 11px; width: calc(100% - 28px); height: 14px; padding: 0;
+      background: none; cursor: pointer;
     }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 2rem;
-      min-height: 100vh;
+    .soc-grid .soc-range input[type="range"]:focus-visible { box-shadow: none; }
+    .soc-range input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+    .soc-range input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 14px; height: 14px; margin-top: -5px;
+      border: 2px solid var(--accent); border-radius: 50%; background: var(--bg);
     }
+    .soc-range input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-bg); }
+    .soc-range input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+    .soc-range input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+    .soc-range input[type="range"]::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid var(--accent); border-radius: 50%; background: var(--bg); }
 
-    .container { max-width: 960px; margin: 0 auto; }
-
-    .theme-toggle {
-      margin-left: auto;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    .theme-toggle:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .top-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
-    }
-
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-
-    header { margin-bottom: 2rem; }
-
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      background: linear-gradient(135deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    header p {
-      font-size: 0.85rem;
-      color: var(--text-body);
-      margin-top: 0.25rem;
-    }
-
-    /* Generator card */
-    .generator-card {
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .generator-card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-
-    /* Controls */
-    .controls-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      align-items: flex-end;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    .control-group label {
-      font-size: 0.7rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .control-group input[type="range"] {
-      width: 120px;
-      accent-color: var(--accent);
-    }
-
-    .control-group input[type="text"] {
-      padding: 0.4rem 0.75rem;
-      border-radius: 6px;
-      border: 1px solid var(--stroke);
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.8rem;
-      width: 200px;
-    }
-
-    .control-group select {
-      padding: 0.4rem 0.75rem;
-      border-radius: 6px;
-      border: 1px solid var(--stroke);
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.8rem;
+    /* An image to upload: the whole cell opens the picker. */
+    .soc-pick, .soc-act button {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; gap: 8px;
+      padding: 21px 14px 0;
+      border: none; border-radius: inherit; background: none;
+      font: 500 14px var(--sans); color: var(--text); text-align: left;
       cursor: pointer;
     }
+    .soc-act button:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+    .soc-pick .logo-preview {
+      display: none; flex-shrink: 0; width: 20px; height: 20px;
+      border-radius: 5px; object-fit: contain;
+      background: var(--bg-subtle); box-shadow: 0 0 0 1px var(--line);
+    }
+    .soc-clear {
+      position: absolute; z-index: 2; right: 10px; bottom: 6px;
+      height: 24px; padding: 0 8px;
+      border: 1px solid var(--line-strong); border-radius: 7px;
+      background: var(--bg); color: var(--text-2);
+      font: 500 12px var(--sans); cursor: pointer;
+    }
+    .soc-clear:hover { color: var(--text); }
 
-    .btn {
-      padding: 0.5rem 1.25rem;
-      border-radius: 8px;
-      border: none;
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
+    /* The preview, on a faint dot grid; the download under it. */
+    .soc-stage {
+      margin-top: 20px; padding: 28px 0;
+      border-radius: 16px;
+      --dots: rgba(11, 11, 15, 0.12);
+      background: radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 14px 14px;
+    }
+    [data-theme="dark"] .soc-stage { --dots: rgba(255, 255, 255, 0.09); }
+    .canvas-wrapper { display: flex; justify-content: center; align-items: center; max-width: 960px; margin: 0 auto; }
+    .soc-out { display: flex; justify-content: center; margin-top: 14px; }
+
+    @container (max-width: 900px) {
+      .soc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @container (max-width: 700px) {
+      .soc-pick, .soc-act button { padding: 19px 12px 0; font-size: 13.5px; }
+      .soc-grid .soc-range input[type="range"] { inset: auto 12px 10px; width: calc(100% - 24px); }
+      /* On a phone the picture comes first, the settings under it. */
+      .soc { margin-top: 16px; }
+      .soc-stage { order: -2; margin-top: 0; padding: 0; background: none; }
+      .soc-out { order: -1; margin: 12px 0 18px; }
+      .soc-out .ui-btn { width: 100%; height: 42px; }
+    }
+    @container (max-width: 560px) {
+      .soc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .soc-grid .soc-full { grid-column: 1 / -1; }
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-end));
-      color: #fff;
-    }
-
-    .btn-primary:hover { filter: brightness(1.1); }
-
-    .btn-secondary {
-      background: var(--bg);
-      color: var(--text-body);
-      border: 1px solid var(--stroke);
-    }
-
-    .btn-secondary:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-
-    /* Canvas area */
-    .canvas-wrapper {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin: 1.5rem 0;
-    }
+    /* ---------- The scene: the image itself, as it was ---------- */
+    .cube-canvas, .cube-canvas *, .cube-canvas *::before, .cube-canvas *::after { margin: 0; padding: 0; }
+    /* The type and ink the image was drawn with, not the page's. */
+    .cube-canvas { font: 16px 'Poppins', sans-serif; color: #000; -webkit-font-smoothing: auto; }
+    [data-theme="dark"] .cube-canvas { color: #E8E8F0; }
 
     .cube-canvas {
       width: 520px;
@@ -638,293 +515,163 @@
       filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
     }
 
-    .logo-upload-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .logo-upload-wrap .logo-preview {
-      width: 28px;
-      height: 28px;
-      border-radius: 4px;
-      border: 1px solid var(--stroke);
-      background: var(--bg-alt);
-      object-fit: contain;
-      display: none;
-    }
-
-    .logo-upload-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.4rem 0.75rem;
-      border-radius: 6px;
-      border: 1px solid var(--stroke);
-      background: var(--bg);
-      color: var(--text-body);
-      font-family: 'Poppins', sans-serif;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .logo-upload-label:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-
-    /* Download info */
-    .download-info {
-      text-align: center;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.75rem;
-    }
-
     @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
-
-      /* Top nav: horizontal scroll on narrow screens */
-      .top-nav {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .top-nav::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      .generator-card { padding: 1rem; }
-      .generator-card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; }
-
-      .controls-row {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.75rem;
-        margin-bottom: 1rem;
-      }
-      .control-group { width: 100%; }
-      .control-group input[type="text"],
-      .control-group select {
-        width: 100%;
-        font-size: 0.85rem;
-      }
-      .control-group input[type="range"] { width: 100%; }
-
-      .btn { width: 100%; padding: 0.6rem 1rem; }
-      .logo-upload-wrap { flex-wrap: wrap; }
-
       /* Canvas: always fit viewport on mobile, cap tall portraits */
       .cube-canvas {
         width: 100% !important;
         max-width: 100%;
       }
       .canvas-wrapper {
-        margin: 1rem 0;
         overflow: hidden;
       }
       .cube-text-overlay { font-size: 0.85rem; }
       .cube-text-sub { font-size: 0.55rem; }
-
-      .download-info { font-size: 0.7rem; }
     }
   </style>
   <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <a href="/">Activity</a>
-      <a href="/all-vaults">All Vaults</a>
-      <a href="/tvl">TVL</a>
-      <a href="/dominance">Dominance</a>
-      <a href="/address">Address</a>
-      <a href="/spark">Spark</a>
-      <a href="/logs">Logs</a>
-      <a href="/video">Video</a>
-        <a href="/socials" class="active">Socials</a>
-    </nav>
-
-    <header>
-      <h1>Social Image Generator</h1>
-      <p>Generate branded 3D cube images for social media posts</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Socials</h1>
+        <p class="ui-lede">Branded 3D cube images for social posts, sized for each network.</p>
+      </div>
     </header>
 
-    <div class="generator-card">
-      <h2>Customize</h2>
-      <div class="controls-row">
-        <div class="control-group">
-          <label>Title Text</label>
-          <input type="text" id="titleText" value="IPOR Fusion" placeholder="Title text...">
-        </div>
-        <div class="control-group">
-          <label>Subtitle</label>
-          <input type="text" id="subText" value="DeFi Yield Vault" placeholder="Subtitle...">
-        </div>
-        <div class="control-group">
-          <label>Color Theme</label>
-          <select id="colorTheme">
-            <option value="purple">Purple (IPOR)</option>
-            <option value="orange">Orange (Spark)</option>
-            <option value="blue">Blue (Sky)</option>
-            <option value="green">Green (Matrix)</option>
+    <div class="soc">
+      <div class="soc-grid" role="group" aria-label="Image settings">
+        <label class="ui-filter soc-full"><span class="ui-filter-label">Title</span><input type="text" id="titleText" value="IPOR Fusion" placeholder="Title"></label>
+        <label class="ui-filter"><span class="ui-filter-label">Subtitle</span><input type="text" id="subText" value="DeFi Yield Vault" placeholder="Subtitle"></label>
+        <label class="ui-filter"><span class="ui-filter-label">Size</span>
+          <select id="imgSize" data-fs>
+            <option value="1024x1024" data-short="1024 × 1024" data-note="1024 × 1024" selected>Square</option>
+            <option value="512x512" data-short="512 × 512" data-note="512 × 512">Square, small</option>
+            <option value="1500x500" data-short="1500 × 500" data-note="1500 × 500">X/Twitter banner</option>
+            <option value="1200x675" data-short="1200 × 675" data-note="1200 × 675">X/Twitter post</option>
+            <option value="1200x630" data-short="1200 × 630" data-note="1200 × 630">OG / Facebook</option>
+            <option value="1080x1080" data-short="1080 × 1080" data-note="1080 × 1080">Instagram post</option>
+            <option value="1080x1920" data-short="1080 × 1920" data-note="1080 × 1920">Story / Reels</option>
+            <option value="1584x396" data-short="1584 × 396" data-note="1584 × 396">LinkedIn banner</option>
+            <option value="1280x720" data-short="1280 × 720" data-note="1280 × 720">YouTube thumbnail</option>
+            <option value="3000x1000" data-short="3000 × 1000" data-note="3000 × 1000">Discord banner</option>
           </select>
-        </div>
-        <div class="control-group">
-          <label>Size</label>
-          <select id="imgSize">
-            <option value="1024x1024" selected>1024 x 1024 (Square)</option>
-            <option value="512x512">512 x 512 (Square)</option>
-            <option value="1500x500">1500 x 500 (X/Twitter Banner)</option>
-            <option value="1200x675">1200 x 675 (X/Twitter Post)</option>
-            <option value="1200x630">1200 x 630 (OG / Facebook)</option>
-            <option value="1080x1080">1080 x 1080 (Instagram Post)</option>
-            <option value="1080x1920">1080 x 1920 (Story / Reels)</option>
-            <option value="1584x396">1584 x 396 (LinkedIn Banner)</option>
-            <option value="1280x720">1280 x 720 (YouTube Thumb)</option>
-            <option value="3000x1000">3000 x 1000 (Discord Banner)</option>
+        </label>
+        <label class="ui-filter"><span class="ui-filter-label">Colour</span>
+          <select id="colorTheme" data-fs>
+            <option value="purple" data-icon="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='6.5' fill='%238429FF'/%3E%3C/svg%3E" data-note="IPOR">Purple</option>
+            <option value="orange" data-icon="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='6.5' fill='%23F77725'/%3E%3C/svg%3E" data-note="Spark">Orange</option>
+            <option value="blue" data-icon="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='6.5' fill='%233B82F6'/%3E%3C/svg%3E" data-note="Sky">Blue</option>
+            <option value="green" data-icon="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='6.5' fill='%2322C55E'/%3E%3C/svg%3E" data-note="Matrix">Green</option>
           </select>
-        </div>
-      </div>
-      <div class="controls-row">
-        <div class="control-group">
-          <label>Logo</label>
-          <div class="logo-upload-wrap">
-            <label class="logo-upload-label" for="logoUpload">Upload</label>
-            <input type="file" id="logoUpload" accept="image/*" style="display:none">
-            <img class="logo-preview" id="logoPreview">
-            <button class="btn btn-secondary" id="logoClear" style="display:none;padding:0.3rem 0.5rem;font-size:0.7rem;">Clear</button>
-          </div>
-        </div>
-        <div class="control-group">
-          <label>Logo Placement</label>
-          <select id="logoPlacement">
-            <option value="none">None</option>
-            <option value="front">Front Only</option>
-            <option value="sides">Sides Only</option>
-            <option value="all">All Faces</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>Logo Size: <span id="logoSizeVal">60</span>%</label>
-          <input type="range" id="logoSize" min="20" max="90" value="60">
-        </div>
-      </div>
-      <div class="controls-row">
-        <div class="control-group">
-          <label>Inner Cube</label>
-          <select id="innerCubeToggle">
-            <option value="off">Hidden</option>
-            <option value="on">Show</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>Cube Size: <span id="innerCubeSizeVal">55</span>%</label>
-          <input type="range" id="innerCubeSize" min="25" max="85" value="55">
-        </div>
-        <div class="control-group">
-          <label>Front Icon</label>
-          <div class="logo-upload-wrap">
-            <label class="logo-upload-label" for="icFrontUpload">Upload</label>
-            <input type="file" id="icFrontUpload" accept="image/*" style="display:none">
-            <img class="logo-preview" id="icFrontPreview">
-          </div>
-        </div>
-        <div class="control-group">
-          <label>Side Icon</label>
-          <div class="logo-upload-wrap">
-            <label class="logo-upload-label" for="icSideUpload">Upload</label>
-            <input type="file" id="icSideUpload" accept="image/*" style="display:none">
-            <img class="logo-preview" id="icSidePreview">
-          </div>
-        </div>
-        <div class="control-group">
-          <label>Surface Effect</label>
-          <select id="fxSelect">
-            <option value="grid">Static Grid</option>
-            <option value="pulse">Pulse Ripple</option>
-            <option value="scan">Scan Line</option>
-            <option value="energy">Energy Flow</option>
-            <option value="rain">Digital Rain</option>
+        </label>
+        <label class="ui-filter"><span class="ui-filter-label">Surface</span>
+          <select id="fxSelect" data-fs>
+            <option value="grid">Static grid</option>
+            <option value="pulse">Pulse ripple</option>
+            <option value="scan">Scan line</option>
+            <option value="energy">Energy flow</option>
+            <option value="rain">Digital rain</option>
             <option value="heartbeat">Heartbeat</option>
-            <option value="laser">Laser Grid</option>
+            <option value="laser">Laser grid</option>
             <option value="honeycomb">Honeycomb</option>
           </select>
+        </label>
+        <label class="ui-filter soc-range"><span class="ui-filter-label">Rotation Y<span class="soc-val"><span id="rotYVal">-35</span>°</span></span><input type="range" id="rotY" min="-180" max="180" value="-35"></label>
+        <label class="ui-filter soc-range"><span class="ui-filter-label">Rotation X<span class="soc-val"><span id="rotXVal">-25</span>°</span></span><input type="range" id="rotX" min="-60" max="60" value="-25"></label>
+        <div class="ui-filter soc-act"><span class="ui-filter-label">Motion</span><button type="button" id="spinBtn">Start Spin</button></div>
+        <div class="ui-filter soc-file">
+          <span class="ui-filter-label">Logo</span>
+          <label class="soc-pick" for="logoUpload"><img class="logo-preview" id="logoPreview" alt=""><span>Upload</span></label>
+          <button type="button" class="soc-clear" id="logoClear" style="display:none">Clear</button>
+          <input type="file" id="logoUpload" accept="image/*" style="display:none">
         </div>
-        <div class="control-group">
-          <label>Rotation Y: <span id="rotYVal">-35</span>&deg;</label>
-          <input type="range" id="rotY" min="-180" max="180" value="-35">
+        <label class="ui-filter"><span class="ui-filter-label">Logo on</span>
+          <select id="logoPlacement" data-fs>
+            <option value="none">None</option>
+            <option value="front">Front only</option>
+            <option value="sides">Sides only</option>
+            <option value="all">All faces</option>
+          </select>
+        </label>
+        <label class="ui-filter soc-range"><span class="ui-filter-label">Logo size<span class="soc-val"><span id="logoSizeVal">60</span>%</span></span><input type="range" id="logoSize" min="20" max="90" value="60"></label>
+        <label class="ui-filter"><span class="ui-filter-label">Inner cube</span>
+          <select id="innerCubeToggle" data-fs>
+            <option value="off">Hidden</option>
+            <option value="on">Shown</option>
+          </select>
+        </label>
+        <label class="ui-filter soc-range"><span class="ui-filter-label">Cube size<span class="soc-val"><span id="innerCubeSizeVal">55</span>%</span></span><input type="range" id="innerCubeSize" min="25" max="85" value="55"></label>
+        <div class="ui-filter soc-file">
+          <span class="ui-filter-label">Front icon</span>
+          <label class="soc-pick" for="icFrontUpload"><img class="logo-preview" id="icFrontPreview" alt=""><span>Upload</span></label>
+          <input type="file" id="icFrontUpload" accept="image/*" style="display:none">
         </div>
-        <div class="control-group">
-          <label>Rotation X: <span id="rotXVal">-25</span>&deg;</label>
-          <input type="range" id="rotX" min="-60" max="60" value="-25">
+        <div class="ui-filter soc-file">
+          <span class="ui-filter-label">Side icon</span>
+          <label class="soc-pick" for="icSideUpload"><img class="logo-preview" id="icSidePreview" alt=""><span>Upload</span></label>
+          <input type="file" id="icSideUpload" accept="image/*" style="display:none">
         </div>
-        <div class="control-group">
-          <label>Spin</label>
-          <button class="btn btn-secondary" id="spinBtn">Start Spin</button>
-        </div>
-        <button class="btn btn-primary" id="downloadBtn">Download PNG</button>
       </div>
-    </div>
 
-    <div class="canvas-wrapper">
-      <div class="cube-canvas" id="cubeCanvas">
-        <svg class="scene-bg" id="sceneBg" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="scene">
-          <div class="ground-grid" id="groundGrid"></div>
-          <div class="cube-pivot" id="cubePivot">
-            <!-- Wireframe outer -->
-            <div class="wire-pivot" id="wirePivot" style="position:absolute;left:-20px;top:-20px;transform-style:preserve-3d;">
-              <div class="wire-face wire-front"></div>
-              <div class="wire-face wire-back"></div>
-              <div class="wire-face wire-right"></div>
-              <div class="wire-face wire-left"></div>
-              <div class="wire-face wire-top"></div>
-              <div class="wire-face wire-bottom"></div>
-            </div>
-            <!-- Solid faces -->
-            <div class="cube-face face-front" id="faceFront"></div>
-            <div class="cube-face face-back"></div>
-            <div class="cube-face face-right" id="faceRight"></div>
-            <div class="cube-face face-left"></div>
-            <div class="cube-face face-top" id="faceTop"></div>
-            <div class="cube-face face-bottom"></div>
-            <!-- Inner horizontal planes -->
-            <div class="inner-plane" id="plane1" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
-            <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
-            <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
-            <!-- Inner 3D Square (inside cube-pivot for shared 3D context) -->
-            <div class="inner-cube-face ic-front" data-face="front">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
-            </div>
-            <div class="inner-cube-face ic-back" data-face="side">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
-            </div>
-            <div class="inner-cube-face ic-right" data-face="side">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
-            </div>
-            <div class="inner-cube-face ic-left" data-face="side">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
-            </div>
-            <div class="inner-cube-face ic-top" data-face="side">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
-            </div>
-            <div class="inner-cube-face ic-bottom" data-face="side">
-              <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+      <div class="soc-stage">
+        <div class="canvas-wrapper">
+          <div class="cube-canvas" id="cubeCanvas">
+            <svg class="scene-bg" id="sceneBg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="scene">
+              <div class="ground-grid" id="groundGrid"></div>
+              <div class="cube-pivot" id="cubePivot">
+                <!-- Wireframe outer -->
+                <div class="wire-pivot" id="wirePivot" style="position:absolute;left:-20px;top:-20px;transform-style:preserve-3d;">
+                  <div class="wire-face wire-front"></div>
+                  <div class="wire-face wire-back"></div>
+                  <div class="wire-face wire-right"></div>
+                  <div class="wire-face wire-left"></div>
+                  <div class="wire-face wire-top"></div>
+                  <div class="wire-face wire-bottom"></div>
+                </div>
+                <!-- Solid faces -->
+                <div class="cube-face face-front" id="faceFront"></div>
+                <div class="cube-face face-back"></div>
+                <div class="cube-face face-right" id="faceRight"></div>
+                <div class="cube-face face-left"></div>
+                <div class="cube-face face-top" id="faceTop"></div>
+                <div class="cube-face face-bottom"></div>
+                <!-- Inner horizontal planes -->
+                <div class="inner-plane" id="plane1" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+                <div class="inner-plane" id="plane2" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+                <div class="inner-plane" id="plane3" style="height:1px;transform:rotateX(0deg) translateY(0px) translateZ(0px);"></div>
+                <!-- Inner 3D Square (inside cube-pivot for shared 3D context) -->
+                <div class="inner-cube-face ic-front" data-face="front">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+                <div class="inner-cube-face ic-back" data-face="side">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+                <div class="inner-cube-face ic-right" data-face="side">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+                <div class="inner-cube-face ic-left" data-face="side">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+                <div class="inner-cube-face ic-top" data-face="side">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+                <div class="inner-cube-face ic-bottom" data-face="side">
+                  <div class="ic-bg"></div><div class="ic-grain"></div><div class="ic-highlight"></div><div class="ic-icon"></div>
+                </div>
+              </div>
+              <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
+              <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
             </div>
           </div>
-          <div class="cube-text-overlay" id="cubeTitle">IPOR Fusion</div>
-          <div class="cube-text-sub" id="cubeSub">DeFi Yield Vault</div>
         </div>
       </div>
+      <div class="soc-out"><button type="button" class="ui-btn primary" id="downloadBtn">Download PNG</button></div>
     </div>
-    <div class="download-info">Click "Download PNG" to render the scene to a high-res PNG via html2canvas</div>
   </div>
 
+  <script src="/fusion-select.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script>
     // The theme is the nav's (nav.js); the scene recolours with it.
