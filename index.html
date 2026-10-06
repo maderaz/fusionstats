@@ -230,18 +230,27 @@
        stacks the halves. */
     .ov { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 44px; }
     .ov-half { min-width: 0; display: flex; flex-direction: column; }
-    .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto auto; }
+    /* A label that does not fit its cell wraps (its ⓘ stays with its last
+       word) and every value in the row stays level: the cards share the
+       row's two lines. */
+    .figs > .stat-card { display: grid; grid-row: span 2; grid-template-rows: subgrid; row-gap: 0; }
+    .figs > .stat-card > * { min-width: 0; }
     .figs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #statsRow:empty { display: block; height: 70px; border-radius: 12px; }
-    .stat-card { padding: 0 22px; border-left: 1px solid var(--line); min-width: 0; }
+    .stat-card { padding: 0 16px; border-left: 1px solid var(--line); min-width: 0; }
     .stat-card:first-child { padding-left: 0; border-left: none; }
     .ov-half + .ov-half .stat-card:first-child { margin-left: -22px; padding-left: 22px; border-left: 1px solid var(--line); }
-    .stat-card .label { display: flex; align-items: center; gap: 5px; color: var(--text-3); white-space: nowrap; }
+    .stat-card .label { display: block; align-self: end; color: var(--text-3); line-height: 1.3; text-wrap: balance; font-size: clamp(11.5px, calc(1.1cqi + 3.5px), 13px); }
+    .stat-card .label .nw { white-space: nowrap; }
+    /* The ⓘ, centred on the text: it has no line of its own (its font size
+       is 0), so on the baseline it would hang below the words. */
+    .stat-card .label .info-tip { margin-left: 5px; vertical-align: middle; position: relative; top: -1px; }
     .stat-card .value:empty { height: 1.05em; width: 70%; border-radius: 8px; }
     .stat-card .value.earn { color: var(--pos); }
     .stat-card .value {
       margin-top: 6px;
-      font-size: clamp(20px, 3cqi, 32px);
+      font-size: clamp(15px, calc(3.3cqi - 7.5px), 32px);
       color: var(--text);
       line-height: 1.05;
       font-weight: 600;
@@ -848,7 +857,6 @@
     .mobile-event-when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
 
     @container (max-width: 900px) {
-      .stat-card { padding: 0 20px; }
       td, th { padding-left: 10px; padding-right: 10px; }
       .badge-deposit, .badge-withdraw { gap: 8px; }
     }
@@ -883,9 +891,17 @@
       .ov { grid-template-columns: minmax(0, 1fr); gap: 26px; }
       .stat-card { padding: 0 14px; }
       .stat-card:first-child { padding-left: 0; }
+      /* The narrowest phones: a little more room for each figure, and the
+         amount filter says just "Min". */
+      @container (max-width: 345px) {
+        .stat-card { padding: 0 9px; }
+        .stat-card:first-child { padding-left: 0; }
+        .fl-long { display: none; }
+      }
       .ov-half + .ov-half .stat-card:first-child { margin-left: 0; padding-left: 0; border-left: none; }
-      .stat-card .value { margin-top: 4px; font-size: clamp(20px, 7cqi, 28px); letter-spacing: -0.035em; }
-      .figs-3 .stat-card .value { font-size: clamp(16px, 5.6cqi, 22px); }
+      /* A phone: three figures across the whole column. */
+      .stat-card .value { margin-top: 4px; letter-spacing: -0.035em; font-size: clamp(15px, calc(6.9cqi - 6px), 28px); }
+      .stat-card .label { font-size: clamp(11.5px, calc(2.2cqi + 4px), 13px); }
       #statsRow:empty { height: 52px; }
       /* The chart: its dates in its header, no axis row under it. */
       .flow-chart { margin-top: 20px; }
@@ -976,9 +992,9 @@
       <div class="ov" id="charts2">
         <div class="ov-half">
           <div class="figs figs-3">
-            <div class="stat-card fig-tvl"><div class="label">TVL <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></div><div class="value" id="tvlValue"></div></div>
-            <div class="stat-card fig-earn"><div class="label">DAO earnings <span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></div><div class="value earn" id="earnValue"></div></div>
-            <div class="stat-card fig-curator"><div class="label">Curator earnings <span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></div><div class="value earn" id="curatorValue"></div></div>
+            <div class="stat-card fig-tvl"><div class="label"><span class="nw">TVL<span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></span></div><div class="value" id="tvlValue"></div></div>
+            <div class="stat-card fig-earn"><div class="label">DAO <span class="nw">earnings<span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="earnValue"></div></div>
+            <div class="stat-card fig-curator"><div class="label">Curator <span class="nw">earnings<span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="curatorValue"></div></div>
           </div>
           <div id="tvlWeekly" class="flow-chart">
             <div class="flow-chart-header">
@@ -1015,7 +1031,7 @@
       <div class="feed-tools">
         <div class="activity-filters">
           <label class="filter-group">
-            <span class="filter-label">Min amount</span>
+            <span class="filter-label">Min<span class="fl-long"> amount</span></span>
             <select id="filterAmount" data-fs>
               <option value="0">All</option>
               <option value="1000" selected>≥ $1K</option>
@@ -1666,7 +1682,7 @@
       const row = document.getElementById('statsRow');
       const tip = document.querySelector('#flowTip .info-tip');
       const card = (label, val, withTip) => `<div class="stat-card">
-          <div class="label">Net ${label}${withTip && tip ? tip.outerHTML : ''}</div>
+          <div class="label">Net <span class="nw">${label}${withTip && tip ? tip.outerHTML : ''}</span></div>
           <div class="value num-bold">${formatUsdCompact(val)}</div>
         </div>`;
       row.innerHTML = card('24h', s.net24h, true) + card('7d', s.net7d) + card('30d', s.net30d);

@@ -58,6 +58,12 @@
       .mhead .px-h, .mrow .px { display: none; }
       .spark { width: 92px; }
     }
+    /* A heading wider than its column wraps onto two lines rather than run
+       into the next one. */
+    .mhead { align-items: end; }
+    .mhead > span { white-space: normal; }
+    .mhead button { white-space: normal; text-align: inherit; line-height: 1.25; }
+    .mhead .r { text-align: right; }
     /* Phone: the vault and its sparkline, then the four numbers. */
     @container (max-width: 640px) {
       .mhead { display: none; }

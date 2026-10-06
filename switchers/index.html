@@ -89,6 +89,10 @@
       .srow .when { grid-area: when; font-size: 12.5px; color: var(--text-3); }
       .srow .meta { grid-area: meta; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
       .srow .meta .addr { font-size: 11.5px; }
+      /* The match and the wallet always show; on the narrowest phones the
+         time after is what shortens. */
+      .srow .meta > * { flex-shrink: 0; }
+      .srow .meta .gap-t { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       .srow .txs { grid-area: txs; }
     }
   </style>
@@ -293,7 +297,7 @@
           <span class="from" title="${esc(from)}${s.src.chain ? ' · ' + esc(s.src.chain) : ''}">${s.src.chain ? UI.chain(s.src.chain) : ''}<span class="fname">${esc(from)}</span></span>
           <span class="gap">${fGap(s.gap)}</span>
           <span class="r match"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span class="tok">${fUsd(s.src.usdValue)} out</span></span>
-          <span class="meta">${wallet}<span>·</span><span>${fGap(s.gap)} after</span><span>·</span><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span></span>
+          <span class="meta"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span>·</span>${wallet}<span>·</span><span class="gap-t">${fGap(s.gap)} after</span></span>
           <span class="r txs">${txLink('in', exIn, s.dep.tx, s.dep.chain)}${txLink('out', exOut, s.src.tx, s.src.chain)}</span>
         </div>`;
       }).join('');

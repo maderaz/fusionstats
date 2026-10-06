@@ -37,6 +37,10 @@
     .note b { font-weight: 600; color: var(--text); }
     /* A scenario: today against the stock all supplied. */
     .scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px 40px; }
+    /* A grid cell holding a table must not take the table's width: its
+       scroller would never scroll, and the page would. */
+    .scen > div { min-width: 0; }
+    .scen .nw { white-space: nowrap; }
     .scen h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
     .scen .ui-table th:first-child, .scen .ui-table td:first-child { white-space: normal; }
     .scen .fits { margin: 10px 0 0; font-size: 13px; color: var(--text-3); }
@@ -52,6 +56,9 @@
       .sm { display: inline; }
       #markets td, #markets th { padding-left: 5px; padding-right: 5px; font-size: 12.5px; }
       .scen { grid-template-columns: minmax(0, 1fr); }
+      /* A figure in two lines, its tokens over its dollars. */
+      .scen .ui-table td.n .nw { display: block; }
+      .scen .ui-table td.n .sep { display: none; }
     }
   </style>
   <script defer src="/track.js"></script>
@@ -69,7 +76,7 @@
     <div id="body">
       <div class="ui-figures" style="--n:4" id="figures">
         <div class="ui-figure"><div class="k">Fusion supplied</div><div class="v"></div><div class="s">&nbsp;</div></div>
-        <div class="ui-figure"><div class="k">Share of Aave V4 stocks</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Fusion share</div><div class="v"></div><div class="s">&nbsp;</div></div>
         <div class="ui-figure"><div class="k">USDC borrowed</div><div class="v"></div><div class="s">&nbsp;</div></div>
         <div class="ui-figure"><div class="k">Idle in the vaults</div><div class="v"></div><div class="s">&nbsp;</div></div>
       </div>
@@ -318,7 +325,7 @@
         const add = Math.min(m.idle, room);
         addUsd += add * (m.price || 0);
         const after = { supplied: m.supplied + add, fusion: m.fusion + add };
-        const both = (n) => tok(n, n >= 100 ? 0 : 1) + ' ' + esc(m.symbol) + ' · ' + usd(n * (m.price || 0));
+        const both = (n) => '<span class="nw">' + tok(n, n >= 100 ? 0 : 1) + ' ' + esc(m.symbol) + '</span><span class="sep"> · </span><span class="nw">' + usd(n * (m.price || 0)) + '</span>';
         let rows = row(esc(m.symbol) + ' reserve size', both(m.supplied), both(after.supplied))
           + row('Fusion ' + esc(m.symbol) + ' supplied', both(m.fusion), both(after.fusion))
           + row('Fusion share of ' + esc(m.symbol), pct(m.supplied ? m.fusion / m.supplied : null), pct(after.fusion / after.supplied));

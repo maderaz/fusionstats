@@ -114,6 +114,16 @@
     .rt-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
     .rt-sub { display: block; font-size: 12px; font-weight: 400; color: var(--text-3); }
     .rt-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; min-width: 2px; }
+    /* The tables fit their column (below); scrolling sideways inside it is
+       the last resort, never the page. */
+    .routes-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* Narrower than a desktop: a route's name and its "moved … to add …"
+       line wrap, and the bar goes (Net beside it says the same). */
+    @container (max-width: 900px) {
+      .rt-name { white-space: normal; align-items: flex-start; }
+      .rt-name .rt-dot { margin-top: 5px; }
+      #routesTable th:nth-child(8), #routesTable td:nth-child(8) { display: none; }
+    }
     .routes-note { margin-top: 16px; max-width: 760px; font-size: 13px; line-height: 1.6; color: var(--text-2); }
     .routes-note p + p { margin-top: 6px; }
     .routes-note p { margin: 0; }
