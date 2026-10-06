@@ -1,114 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <script src="/data-source.js"></script>
+  <!-- All of the page's files at once: they used to download one after another. -->
+  <script>window.FusionData && FusionData.preload(['activity-events.json', 'ipor-vaults.json', 'router-identity.json', 'vault-deployments.json', 'vaults.json', 'tvl-snapshots.json', 'vault-holders.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Address Lookup — Fusion Stats</title>
+  <meta name="description" content="Any wallet's or vault's activity in Fusion vaults: flows, TVL, holders, share price, where deposits come from and how a vault rebalances.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg: #F5F5FA; --bg-alt: #E9E9F3; --surface: #FFFFFF; --stroke: #E5E5E5;
-      --text: #000000; --text-body: #70747A; --text-secondary: #9BA3AF;
-      --accent: #8429FF; --accent-end: #6C00FF; --accent-light: #A37FFF;
-      --accent-bg: rgba(132,41,255,0.10);
-      --green: #16a34a; --green-bg: rgba(22,163,74,0.08);
-      --red: #dc2626; --red-bg: rgba(220,38,38,0.08);
-    }
-    [data-theme="dark"] {
-      --bg: #0F0F14; --bg-alt: #1A1A24; --surface: #16161E; --stroke: #2A2A3A;
-      --text: #E8E8F0; --text-body: #9A9AB0; --text-secondary: #6A6A80;
-      --accent: #A37FFF; --accent-end: #8429FF; --accent-light: #B89AFF;
-      --accent-bg: rgba(132,41,255,0.15);
-      --green: #22c55e; --green-bg: rgba(34,197,94,0.12);
-      --red: #ef4444; --red-bg: rgba(239,68,68,0.12);
-    }
-    body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; font-weight: 400; transition: background 0.3s, color 0.3s; }
-    .num-bold { font-family: 'Source Sans 3', sans-serif; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .top-nav { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 1.5rem; }
-    .top-nav a { font-size: 0.8rem; font-weight: 500; color: var(--text-body); text-decoration: none; padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
-    .top-nav a:hover { color: var(--accent); border-color: var(--stroke); }
-    .top-nav a.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
-    .theme-toggle { margin-left: auto; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
-    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
-    header { margin-bottom: 1.5rem; }
-    header h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.02em; background: linear-gradient(90deg, var(--accent), var(--accent-end)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-    header p { color: var(--text-body); font-size: 0.875rem; }
-
-    /* Search */
-    .addr-input-wrap { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .addr-input-wrap input {
-      flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
-      padding: 0.6rem 0.9rem; background: var(--surface); border: 1px solid var(--stroke);
-      border-radius: 8px; color: var(--text); outline: none; transition: border-color 0.15s;
-    }
-    .addr-input-wrap input:focus { border-color: var(--accent); }
-    .addr-input-wrap input::placeholder { color: var(--text-secondary); font-family: 'Poppins', sans-serif; font-size: 0.8rem; }
-    .btn { font-family: inherit; font-size: 0.8rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); cursor: pointer; transition: all 0.15s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
-    .btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* Top wallets chips */
-    .top-wallets { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.5rem; }
+    /* ---------- Lookup ---------- */
+    .lookup { display: flex; gap: 10px; align-items: stretch; margin: 0; padding: 22px 0 6px; }
+    .lookup .ui-filters { flex: 1 1 auto; }
+    .lookup .ui-filter input { font: 500 14px var(--mono); letter-spacing: -0.01em; }
+    .lookup .acts { display: flex; gap: 8px; }
+    .lookup .acts .ui-btn { height: 56px; border-radius: 14px; padding: 0 16px; }
+    .intro { padding: 26px 0 10px; }
+    .intro p { margin: 0 0 12px; font-size: 14px; color: var(--text-2); }
+    .intro .label { margin: 0 0 8px; font-size: 12.5px; font-weight: 500; color: var(--text-3); }
+    .top-wallets { display: flex; flex-wrap: wrap; gap: 6px; }
     .wallet-chip {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
-      padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--stroke);
-      background: var(--surface); color: var(--text-body); cursor: pointer;
-      text-decoration: none; transition: all 0.15s;
+      display: inline-flex; align-items: center; height: 30px; padding: 0 11px;
+      border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+      font: 12.5px var(--mono); color: var(--text-2); text-decoration: none; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
     }
-    .wallet-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .wallet-chip:hover { color: var(--accent); border-color: var(--line-strong); background: var(--bg-subtle); }
+    .empty-state { padding: 48px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
 
-    /* Stats */
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
-    .stat-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 10px; padding: 0.85rem 1rem; }
-    .stat-card .label { font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-bottom: 0.35rem; }
-    .stat-card .value { font-size: 1.15rem; letter-spacing: -0.02em; }
-    .stat-card .sub { font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.15rem; }
+    /* ---------- Figures (the stats row) ---------- */
+    #statsRow { padding-top: 22px; }
+    .ui-figure .v.pos { color: var(--pos); }
+    .ui-figure .v.neg { color: var(--neg); }
+    .ui-figure .s.pos { color: var(--pos); }
+    .ui-figure .s.neg { color: var(--neg); }
 
-    /* Flow chart */
-    .flow-chart { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; padding: 0.85rem 1rem 0.65rem; margin-bottom: 1rem; }
-    .flow-chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
-    .flow-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
-    .flow-chart-range { font-size: 0.65rem; color: var(--text-secondary); }
-    .flow-chart-bars { display: flex; align-items: center; gap: 3px; height: 80px; position: relative; }
-    .flow-chart-bars::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--stroke); z-index: 0; }
+    /* ---------- Net flow: a bar a day, in above the line, out below ---------- */
+    .flow-chart-bars { display: flex; align-items: center; gap: 3px; height: 96px; position: relative; }
+    .flow-chart-bars::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line-strong); }
     .flow-bar-slot { flex: 1; height: 100%; position: relative; z-index: 1; }
     .flow-bar { position: absolute; left: 0; right: 0; min-height: 2px; border-radius: 3px; transition: opacity 0.15s; }
-    .flow-bar.positive { background: var(--green); bottom: 50%; }
-    .flow-bar.negative { background: var(--red); top: 50%; }
+    .flow-bar.positive { background: var(--pos-bar); bottom: 50%; }
+    .flow-bar.negative { background: var(--neg-bar); top: 50%; }
+    .flow-bar.zero { display: none; }
     .flow-bar-slot:hover .flow-bar { opacity: 0.7; }
-    .flow-bar-slot .flow-tip { display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.88); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.7rem; white-space: nowrap; z-index: 10; pointer-events: none; line-height: 1.4; }
+    .flow-bar-slot .flow-tip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 10;
+      padding: 7px 10px; border-radius: 9px; background: var(--tip-bg); color: var(--tip-fg);
+      font: 12px/1.45 var(--sans); white-space: nowrap; pointer-events: none; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    }
     .flow-bar-slot:hover .flow-tip, .flow-bar-slot.active .flow-tip { display: block; }
-    .flow-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.35rem; }
+    .flow-chart-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-3); }
 
-    /* Per-vault TVL chart (Plotly bar) */
-    .tvl-chart-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; padding: 0.85rem 1rem 0.65rem; margin-bottom: 1rem; }
-    .tvl-chart-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
-    .tvl-chart-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
-    .tvl-chart-range-group { display: flex; gap: 0.2rem; }
-    .tvl-chart-range-group button { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.65rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
-    .tvl-chart-range-group button:hover { color: var(--accent); border-color: var(--accent); }
-    .tvl-chart-range-group button.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
-    .tvl-color-swatch { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 26px; border: 1px solid var(--stroke); border-radius: 5px; cursor: pointer; overflow: hidden; padding: 2px; }
-    .tvl-color-swatch input[type="color"] { width: 100%; height: 100%; border: none; padding: 0; background: none; cursor: pointer; }
-    #tvlAxisInvert { font-family: inherit; font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); background: var(--surface); color: var(--text-body); border-radius: 5px; cursor: pointer; transition: all 0.15s; }
-    #tvlAxisInvert:hover { color: var(--accent); border-color: var(--accent); }
-    .sp-gain { font-size: 0.72rem; font-weight: 600; color: var(--green, #16a34a); }
-    .tvl-chart-export { margin-left: auto; font-family: inherit; font-size: 0.7rem; padding: 0.35rem 0.8rem; border: 1px solid var(--accent); background: var(--accent); color: #fff; border-radius: 5px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
-    .tvl-chart-export ~ .tvl-chart-export { margin-left: 0; }
-    .tvl-chart-export:hover { opacity: 0.85; }
-    #tvlChart { width: 100%; height: 380px; }
+    /* ---------- Chart switches: the site's segmented control ---------- */
+    .tvl-chart-range-group {
+      display: inline-flex; flex-shrink: 0; padding: 3px;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--bg-subtle);
+    }
+    .tvl-chart-range-group button {
+      height: 32px; padding: 0 13px; border: none; border-radius: 9px; background: transparent;
+      color: var(--text-2); font: 500 13px var(--sans); white-space: nowrap; cursor: pointer;
+      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .tvl-chart-range-group button:hover { color: var(--text); }
+    .tvl-chart-range-group button.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
+    .tvl-chart-range-group button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .ui-chart { margin: 0 -4px; }
+    #routesChart { height: 300px; }
+    .ui-head .ui-count.pos { color: var(--pos); }
+    .ui-head .ui-count.neg { color: var(--neg); }
+    /* In the Export menu: the colour and the axis the image is drawn with. */
+    .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 10px; font-size: 13px; color: var(--text-2); }
+    .tvl-color-swatch { display: inline-flex; width: 32px; height: 28px; padding: 2px; border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; overflow: hidden; }
+    .tvl-color-swatch input[type="color"] { width: 100%; height: 100%; padding: 0; border: none; background: none; cursor: pointer; }
+    .axis-btn { height: 28px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); color: var(--text); font: 500 12.5px var(--sans); cursor: pointer; }
+    .axis-btn:hover { background: var(--bg-subtle); }
 
-    /* Where deposits come from. Route colours are fixed per ROUTE, never per
-       rank, so tightening the window from All to 7D never repaints a route.
-       Categorical slots and their dark steps come from the validated reference
-       palette; "Other" is the de-emphasis role and is grey on purpose. Stack
-       order puts Other beside Direct, the one route every vault has — beside
-       Direct Zap's magenta it failed colour-blind separation (ΔE 2.8). */
+    /* ---------- Where deposits come from ---------- */
     .routes-card {
       --rt-other: #9BA3AF; --rt-direct: #2a78d6; --rt-harvest: #eb6834; --rt-zyfi: #1baf7a;
       --rt-portals: #eda100; --rt-zap: #e87ba4; --rt-account: #008300; --rt-proto: #4a3aa7;
@@ -119,185 +93,145 @@
       --rt-portals: #c98500; --rt-zap: #d55181; --rt-account: #008300; --rt-proto: #9085e9;
       --rt-grid: #23232F; --rt-zero: #3A3A4A;
     }
-    .routes-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0.35rem 0 0.9rem; }
-    .routes-chip { border: 1px solid var(--stroke); border-radius: 10px; padding: 0.6rem 0.8rem; min-width: 0; }
-    .routes-chip .k { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; }
-    .routes-chip .v { font-size: 1.05rem; font-weight: 600; margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .routes-chip .s { font-size: 0.68rem; color: var(--text-body); margin-top: 0.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    #routesChart { width: 100%; height: 300px; }
-    .routes-sub { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; margin: 1.1rem 0 0.4rem; }
-    .routes-table { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
-    .routes-table th { text-align: left; font-weight: 500; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--stroke); white-space: nowrap; }
-    .routes-table td { padding: 0.5rem; border-bottom: 1px solid var(--stroke); vertical-align: middle; }
-    .routes-table tr:last-child td { border-bottom: none; }
-    .routes-table .num { text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .routes-table th.num { font-family: inherit; }
-    .routes-table tr.total td { font-weight: 600; border-top: 1px solid var(--stroke); }
-    .routes-table .pos { color: var(--green); } .routes-table .neg { color: var(--red); }
-    .routes-table .muted { color: var(--text-secondary); font-size: 0.68rem; }
-    .routes-table a { color: var(--accent); text-decoration: none; font-family: 'JetBrains Mono', monospace; }
-    .rt-name { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 600; white-space: nowrap; }
+    .routes-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 4px 0 18px; }
+    .routes-chip { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
+    .routes-chip:first-child { padding-left: 0; border-left: none; }
+    .routes-chip .k { font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .routes-chip .v { margin-top: 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.025em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .routes-chip .s { margin-top: 2px; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .routes-sub { margin: 26px 0 6px; font-size: 14px; font-weight: 600; color: var(--text); }
+    .routes-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+    .routes-table th { padding: 10px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .routes-table td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--text); }
+    .routes-table th:first-child, .routes-table td:first-child { padding-left: 0; }
+    .routes-table th:last-child, .routes-table td:last-child { padding-right: 0; }
+    .routes-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .routes-table tr.total td { font-weight: 600; border-bottom: none; }
+    .routes-table .pos { color: var(--pos); } .routes-table .neg { color: var(--neg); }
+    .routes-table .muted { color: var(--text-3); font-size: 12.5px; }
+    .routes-table a { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+    .rt-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; white-space: nowrap; }
     .rt-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
-    .rt-sub { display: block; font-size: 0.62rem; color: var(--text-secondary); font-weight: 400; }
+    .rt-sub { display: block; font-size: 12px; font-weight: 400; color: var(--text-3); }
     .rt-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; min-width: 2px; }
-    .routes-note { font-size: 0.7rem; line-height: 1.55; color: var(--text-body); margin-top: 0.9rem; }
-    .routes-note p + p { margin-top: 0.4rem; }
-    .routes-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    /* Wide tables scroll inside their card rather than squeeze: crushed, the
-       wallet addresses broke across two lines and Net fell off the edge. */
-    #routesTable .routes-table { min-width: 720px; }
-    #routesTop .routes-table { min-width: 520px; }
-    .routes-table a, .routes-table .num { white-space: nowrap; }
-    @media (max-width: 700px) { .routes-strip { grid-template-columns: 1fr; } }
+    .routes-note { margin-top: 16px; max-width: 760px; font-size: 13px; line-height: 1.6; color: var(--text-2); }
+    .routes-note p + p { margin-top: 6px; }
+    .routes-note p { margin: 0; }
 
-    /* Breakdown panels */
-    .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
-    .panel { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; }
-    .panel-title { font-size: 0.75rem; font-weight: 500; padding: 0.85rem 1rem; border-bottom: 1px solid var(--stroke); }
-    .panel table { width: 100%; border-collapse: collapse; }
-    .panel th { text-align: left; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--stroke); }
-    .panel td { padding: 0.5rem 0.8rem; font-size: 0.78rem; border-bottom: 1px solid var(--stroke); color: var(--text-body); }
-    .panel tr:last-child td { border-bottom: none; }
-    .flow-bar-inline { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 0.4rem; min-width: 2px; }
-
-    /* Event history */
-    .history-card { background: var(--surface); border: 1px solid var(--stroke); border-radius: 12px; overflow: hidden; margin-bottom: 2rem; }
-    .history-card .panel-title { display: flex; justify-content: space-between; align-items: center; }
-    .history-table { width: 100%; border-collapse: collapse; }
-    .history-table th { text-align: left; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); font-weight: 500; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--stroke); }
-    .history-table td { padding: 0.5rem 0.8rem; font-size: 0.78rem; border-bottom: 1px solid var(--stroke); color: var(--text-body); }
-    .history-table tr:last-child td { border-bottom: none; }
-    .badge-deposit, .badge-withdraw { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.12rem 0.4rem; border-radius: 4px; text-decoration: none; }
-    .badge-deposit { color: var(--green); background: var(--green-bg); }
-    .badge-withdraw { color: var(--red); background: var(--red-bg); }
-
-    /* Rebalance section */
-    .rebalance-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border-bottom: 1px solid var(--stroke); }
-    .rebalance-stat { padding: 0.7rem 1rem; border-right: 1px solid var(--stroke); }
-    .rebalance-stat:last-child { border-right: none; }
-    .rebalance-stat .label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.25rem; }
-    .rebalance-stat .value { font-size: 0.95rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-    .rebalance-stat .sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem; }
-    .rebalance-chart-wrap { padding: 0.85rem 1rem 0.65rem; border-bottom: 1px solid var(--stroke); position: relative; }
+    /* ---------- Rebalances ---------- */
+    #rebalanceCard .panel-title, #historyCard .panel-title {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 14px;
+      font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text);
+    }
+    #rebalanceCard .panel-title > span { float: none !important; font-size: 13px !important; font-weight: 400 !important; letter-spacing: 0; color: var(--text-3) !important; }
+    .rebalance-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 0 20px; }
+    .rebalance-stat { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
+    .rebalance-stat:first-child { padding-left: 0; border-left: none; }
+    .rebalance-stat .label { font-size: 12.5px; font-weight: 500; color: var(--text-3); }
+    .rebalance-stat .value { margin-top: 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .rebalance-stat .sub { margin-top: 2px; font-size: 12.5px; color: var(--text-3); }
+    .rebalance-chart-wrap { position: relative; padding: 4px 0 6px; }
+    .rebalance-chart-wrap .flow-chart-header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px !important; }
+    .flow-chart-title { font-size: 13px; font-weight: 500; color: var(--text-2); }
+    .flow-chart-range { font-size: 12.5px; color: var(--text-3); }
     .rebalance-chart-scroll { overflow-x: auto; overflow-y: visible; }
-    .rebalance-chart-bars { display: flex; align-items: flex-end; gap: 1px; height: 200px; position: relative; min-width: 100%; }
-    .rebalance-chart-bar-slot { flex: 1 1 0; min-width: 2px; height: 100%; position: relative; display: flex; align-items: flex-end; cursor: default; border-radius: 2px; }
-    .rebalance-chart-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 0; transition: opacity 0.15s; pointer-events: none; }
-    .rebalance-chart-bar-slot:hover { background: rgba(132, 41, 255, 0.08); }
-    .rebalance-chart-bar-slot:hover .rebalance-chart-bar { opacity: 0.7; }
+    .rebalance-chart-bars { display: flex; align-items: flex-end; gap: 1px; height: 180px; position: relative; min-width: 100%; }
+    .rebalance-chart-bar-slot { flex: 1 1 0; min-width: 2px; height: 100%; position: relative; display: flex; align-items: flex-end; border-radius: 2px; }
+    .rebalance-chart-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; pointer-events: none; transition: opacity 0.15s; }
+    .rebalance-chart-bar-slot:hover { background: var(--accent-bg); }
+    .rebalance-chart-bar-slot:hover .rebalance-chart-bar { opacity: 0.75; }
     #rebalanceChartTip {
-      position: absolute;
-      pointer-events: none;
-      background: rgba(15, 17, 22, 0.95);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.72rem;
-      line-height: 1.45;
-      z-index: 50;
-      white-space: nowrap;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.3);
-      opacity: 0;
-      transition: opacity 0.1s ease;
+      position: absolute; z-index: 50; padding: 8px 12px; border-radius: 10px;
+      background: var(--tip-bg); color: var(--tip-fg); font: 12.5px/1.45 var(--sans); white-space: nowrap;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); pointer-events: none; opacity: 0; transition: opacity 0.1s ease;
     }
     #rebalanceChartTip.show { opacity: 1; }
-    #rebalanceChartTip .tt-date { font-weight: 600; margin-bottom: 3px; }
-    #rebalanceChartTip .tt-amount { color: #b794ff; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 0.78rem; }
-    #rebalanceChartTip .tt-sub { color: rgba(255,255,255,0.6); font-size: 0.66rem; margin-top: 2px; }
-    #rebalanceChartTip.empty .tt-amount { color: rgba(255,255,255,0.5); font-weight: 500; font-size: 0.7rem; }
-    .rebalance-chart-axis { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-secondary); margin-top: 0.4rem; }
-    .info-tip { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; font-size: 0.7rem; color: var(--text-secondary); cursor: default; position: relative; vertical-align: middle; }
-    .info-tip::after { content: attr(data-tip); display: none; position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: rgba(15,17,22,0.95); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.66rem; font-weight: 400; white-space: normal; width: max-content; max-width: 280px; line-height: 1.45; z-index: 30; pointer-events: none; text-align: left; text-transform: none; letter-spacing: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .info-tip:hover::after { display: block; }
-    .rebalance-protocols-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--stroke); }
-    .rebalance-protocols-row .row-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-right: 0.3rem; display: inline-flex; align-items: center; gap: 0.25rem; }
-    .rebalance-protocol-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.55rem; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 0.7rem; font-weight: 600; }
-    .rebalance-protocol-chip.other { background: var(--surface); color: var(--text-secondary); border: 1px dashed var(--stroke); cursor: help; position: relative; }
-    .rebalance-protocol-chip.other::after {
-      content: attr(data-tip);
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(15, 17, 22, 0.95);
-      color: #fff;
-      padding: 9px 12px;
-      border-radius: 7px;
-      font-size: 0.68rem;
-      font-weight: 400;
-      white-space: pre;
-      max-width: 320px;
-      line-height: 1.55;
-      z-index: 30;
-      pointer-events: none;
-      text-align: left;
-      letter-spacing: 0;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    #rebalanceChartTip .tt-date { margin-bottom: 2px; font-size: 11.5px; opacity: 0.62; }
+    #rebalanceChartTip .tt-amount { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    #rebalanceChartTip .tt-sub { margin-top: 1px; font-size: 12px; opacity: 0.7; }
+    #rebalanceChartTip.empty .tt-amount { font-size: 13px; font-weight: 500; opacity: 0.6; }
+    .rebalance-chart-axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-3); }
+    .info-tip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; vertical-align: middle; font-size: 12px; color: var(--text-3); cursor: help; }
+    .info-tip::after, .rebalance-protocol-chip.other::after {
+      content: attr(data-tip); display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 30;
+      width: max-content; max-width: 300px; padding: 9px 12px; border-radius: 10px; background: var(--tip-bg); color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans); text-align: left; text-transform: none; letter-spacing: 0; white-space: normal;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18); pointer-events: none;
     }
-    .rebalance-protocol-chip.other:hover::after { display: block; }
-    .rebalance-protocol-chip .count { color: var(--text-secondary); font-weight: 500; font-size: 0.65rem; margin-left: 0.2rem; }
-    .rebalance-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1rem; border-bottom: 1px solid var(--stroke); font-size: 0.78rem; flex-wrap: wrap; }
-    .rebalance-row:last-child { border-bottom: none; }
-    .rebalance-row .when { color: var(--text-secondary); width: 5.5rem; flex-shrink: 0; font-size: 0.72rem; }
-    .rebalance-row .flow { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.12rem 0.45rem; border-radius: 5px; background: var(--accent-bg); border: 1px solid var(--stroke); font-size: 0.7rem; }
-    .rebalance-row .flow .arrow { font-family: monospace; opacity: 0.7; }
+    .rebalance-protocol-chip.other::after { white-space: pre; }
+    .info-tip:hover::after, .rebalance-protocol-chip.other:hover::after { display: block; }
+    .rebalance-protocols-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 14px 0; border-top: 1px solid var(--line); }
+    .rebalance-protocols-row .row-label { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; font-size: 12.5px; font-weight: 500; color: var(--text-3); }
+    .rebalance-protocol-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 11px; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 12.5px; font-weight: 600; }
+    .rebalance-protocol-chip.other { position: relative; background: var(--bg); color: var(--text-3); border: 1px dashed var(--line-strong); cursor: help; }
+    .rebalance-protocol-chip .count { margin-left: 2px; color: var(--text-3); font-weight: 500; }
+    .rebalance-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 11px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+    .rebalance-row .when { flex-shrink: 0; width: 64px; font-size: 12.5px; color: var(--text-3); }
+    .rebalance-row .flow { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border-radius: 8px; background: var(--bg-subtle); font-size: 12.5px; }
+    .rebalance-row .flow .arrow { opacity: 0.6; }
     .rebalance-row .flow .protocol { font-weight: 600; color: var(--accent); }
-    .rebalance-row .flow .amount { color: var(--text-body); font-variant-numeric: tabular-nums; }
-    .rebalance-row .tx-link { font-size: 0.68rem; color: var(--text-secondary); margin-left: auto; font-family: monospace; }
+    .rebalance-row .flow .amount { color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .rebalance-row .tx-link { margin-left: auto; font: 12px var(--mono); color: var(--text-3); text-decoration: none; }
     .rebalance-row .tx-link:hover { color: var(--accent); }
-    .rebalance-empty { padding: 1.5rem 1rem; text-align: center; color: var(--text-secondary); font-size: 0.78rem; }
-    .rebalance-toggle { display: block; width: 100%; padding: 0.7rem; text-align: center; font-family: inherit; font-size: 0.75rem; font-weight: 500; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
-    .rebalance-toggle:hover { background: var(--accent-bg); }
-    .rebalance-pager { display: flex; align-items: center; justify-content: center; gap: 0.65rem; padding: 0.65rem 1rem; border-top: 1px solid var(--stroke); font-size: 0.72rem; color: var(--text-secondary); flex-wrap: wrap; }
-    .rebalance-pager button { font-family: inherit; font-size: 0.72rem; padding: 0.3rem 0.6rem; border: 1px solid var(--stroke); border-radius: 5px; background: var(--surface); color: var(--text-body); cursor: pointer; }
-    .rebalance-pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-    .rebalance-pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .rebalance-empty { padding: 24px 0; font-size: 13.5px; color: var(--text-3); }
+    .rebalance-toggle { display: block; width: 100%; height: 44px; margin-top: 4px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--bg); color: var(--text); font: 500 13.5px var(--sans); cursor: pointer; }
+    .rebalance-toggle:hover { background: var(--bg-subtle); }
+    .rebalance-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 14px 0 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--text-2); }
+    .rebalance-pager button { height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); color: var(--text); font: 500 13px var(--sans); cursor: pointer; }
+    .rebalance-pager button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--line-strong); }
+    .rebalance-pager button:disabled { opacity: 0.4; cursor: default; }
     .rebalance-pager .rebalance-collapse-btn { margin-left: auto; }
-    @media (max-width: 700px) {
-      .rebalance-stats { grid-template-columns: repeat(2, 1fr); }
-      .rebalance-stat:nth-child(2) { border-right: none; }
-      .rebalance-stat:nth-child(1), .rebalance-stat:nth-child(2) { border-bottom: 1px solid var(--stroke); }
-    }
 
-    .show-more-btn { display: block; width: 100%; padding: 0.7rem; text-align: center; font-family: inherit; font-size: 0.78rem; color: var(--accent); background: transparent; border: none; border-top: 1px solid var(--stroke); cursor: pointer; }
-    .show-more-btn:hover { background: var(--accent-bg); }
+    /* ---------- Events: a table on a desktop, two lines on a phone ---------- */
+    .hlist { --cols: 92px 120px minmax(0, 1fr) minmax(0, 1.2fr); }
+    .hhead, .hrow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
+    .hhead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .hrow { min-height: 52px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .hrow > * { min-width: 0; }
+    .hrow .when { color: var(--text-2); white-space: nowrap; }
+    .hrow .amt b { display: block; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hrow .amt span { display: block; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .hrow .prod { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+    .hrow .prod .who { font: 12.5px var(--mono); color: var(--text-2); text-decoration: none; }
+    .hrow .prod .who:hover { color: var(--accent); }
+    .badge-deposit, .badge-withdraw { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 7px; font-size: 12px; font-weight: 600; text-decoration: none; }
+    .badge-deposit { color: var(--pos); background: var(--pos-soft); }
+    .badge-withdraw { color: var(--neg); background: var(--neg-soft); }
 
-    /* Empty / loading */
-    .empty-state { text-align: center; padding: 3rem 2rem; color: var(--text-secondary); font-size: 0.875rem; }
-    .intro-state { text-align: center; padding: 2rem; color: var(--text-secondary); }
-    .intro-state p { font-size: 0.85rem; margin-bottom: 1rem; }
-    .intro-state .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-secondary); }
-
-    /* Mobile cards for event history */
-    .mobile-events { display: none; }
-    .mobile-event { padding: 0.85rem 1rem; border-bottom: 1px solid var(--stroke); display: flex; flex-direction: column; gap: 0.5rem; }
-    .mobile-event:last-child { border-bottom: none; }
-    .mobile-event-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-    .mobile-event-when { font-size: 0.7rem; color: var(--text-secondary); }
-    .mobile-event-amount { font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .mobile-event-usd { font-size: 0.78rem; color: var(--text-secondary); font-weight: 400; }
-    .mobile-event-meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-body); gap: 0.5rem; }
-    .mobile-event-product { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
-      .top-nav { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-      .top-nav::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-      .stat-card { padding: 0.65rem 0.6rem; }
-      .stat-card .value { font-size: 0.9rem; }
-      .stat-card .label { font-size: 0.55rem; }
-      .stat-card .sub { font-size: 0.6rem; }
-      .panels { grid-template-columns: 1fr; }
-      .history-card table { display: none; }
-      .mobile-events { display: block; }
-      .addr-input-wrap { flex-wrap: wrap; }
-      .addr-input-wrap input { min-width: 0; }
+    @container (max-width: 700px) {
+      .lookup { flex-wrap: wrap; padding-top: 14px; }
+      .lookup .acts { width: 100%; }
+      .lookup .acts .ui-btn { flex: 1; height: 42px; border-radius: 12px; }
+      .lookup .ui-filter input { font-size: 12.5px; }
+      .ui-section .ui-toolbar { gap: 8px; }
+      .tvl-chart-range-group button { height: 32px; padding: 0 10px; }
+      .routes-strip { grid-template-columns: 1fr; row-gap: 0; }
+      .routes-chip { padding: 10px 0; border-left: none; border-top: 1px solid var(--line); }
+      .routes-chip:first-child { border-top: none; padding-top: 0; }
+      /* Each table keeps the columns that carry it; every column is in the CSV. */
+      #routesTable th:nth-child(2), #routesTable td:nth-child(2),
+      #routesTable th:nth-child(3), #routesTable td:nth-child(3),
+      #routesTable th:nth-child(4), #routesTable td:nth-child(4),
+      #routesTable th:nth-child(6), #routesTable td:nth-child(6),
+      #routesTable th:nth-child(8), #routesTable td:nth-child(8),
+      #routesTop th:nth-child(3), #routesTop td:nth-child(3),
+      #routesTop th:nth-child(4), #routesTop td:nth-child(4),
+      #routesTop th:nth-child(5), #routesTop td:nth-child(5) { display: none; }
+      .routes-table td { white-space: normal; }
+      .rebalance-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
+      .rebalance-stat:nth-child(3) { padding-left: 0; border-left: none; }
+      .rebalance-row .when { width: auto; }
+      .hhead { display: none; }
+      .hrow {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "amt type" "prod when";
+        row-gap: 4px; padding: 11px 0; min-height: 0;
+      }
+      .hrow .amt { grid-area: amt; }
+      .hrow .amt span { display: none; }
+      .hrow .type { grid-area: type; justify-self: end; }
+      .hrow .prod { grid-area: prod; font-size: 12.5px; color: var(--text-3); }
+      .hrow .when { grid-area: when; justify-self: end; font-size: 12.5px; color: var(--text-3); }
     }
   </style>
   <script defer src="/track.js"></script>
@@ -306,52 +240,60 @@
   <script src="/routes.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <a href="/">Activity</a>
-      <a href="/all-vaults">All Vaults</a>
-      <a href="/tvl">TVL</a>
-      <a href="/dominance">Dominance</a>
-      <a href="/address" class="active">Address</a>
-      <a href="/spark">Spark</a>
-      <a href="/rebalance-methodology">Rebalance Docs</a>
-      <a href="/logs">Logs</a>
-      <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
-    </nav>
-
-    <header>
-      <h1>Address Lookup</h1>
-      <p>Explore any wallet's Fusion vault activity</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Address</h1>
+        <p class="ui-lede">Any wallet's or vault's activity in Fusion vaults: its flows, and for a vault its TVL, holders, share price, where deposits come from and how it rebalances.</p>
+        <div class="ui-status" id="status">Loading…</div>
+      </div>
     </header>
 
-    <div class="addr-input-wrap">
-      <input type="text" id="addrInput" placeholder="Paste an Ethereum address (0x…)" spellcheck="false" autocomplete="off">
-      <a class="btn" id="appBtn" style="display:none" target="_blank" rel="noopener">Open in App</a>
-      <a class="btn" id="explorerBtn" style="display:none" target="_blank" rel="noopener" title="View on Etherscan">&#8599; Explorer</a>
+    <div class="lookup">
+      <div class="ui-filters">
+        <label class="ui-filter">
+          <span class="ui-filter-label">Wallet or vault address</span>
+          <input type="text" id="addrInput" placeholder="Paste an address (0x…)" spellcheck="false" autocomplete="off">
+        </label>
+      </div>
+      <div class="acts">
+        <a class="ui-btn" id="appBtn" style="display:none" target="_blank" rel="noopener">Open in App ↗</a>
+        <a class="ui-btn" id="explorerBtn" style="display:none" target="_blank" rel="noopener" title="View on the block explorer">Explorer ↗</a>
+      </div>
     </div>
 
     <div id="introSection">
-      <div class="intro-state">
-        <p>Enter an address above, or explore a top wallet:</p>
+      <div class="intro">
+        <p>Paste an address above, or open one of the busiest wallets:</p>
         <div class="label">Top wallets by volume</div>
         <div class="top-wallets" id="topWallets"></div>
       </div>
     </div>
 
     <div id="resultSection" style="display:none">
-      <div id="statsRow" class="stats-row"></div>
-      <div id="flowChart" class="flow-chart" style="display:none">
-        <div class="flow-chart-header">
-          <span class="flow-chart-title">Net flow over time</span>
-          <span class="flow-chart-range" id="flowRange"></span>
-        </div>
+      <div id="statsRow" class="ui-figures"></div>
+      <section class="ui-section" id="flowChart" style="display:none">
+        <div class="ui-head"><h2>Net flow<span class="ui-count" id="flowRange"></span></h2></div>
         <div class="flow-chart-bars" id="flowBars"></div>
         <div class="flow-chart-axis"><span id="flowStart"></span><span id="flowEnd"></span></div>
-      </div>
-      <div id="tvlChartCard" class="tvl-chart-card" style="display:none">
-        <div class="tvl-chart-toolbar">
-          <span class="tvl-chart-title">TVL over time</span>
+      </section>
+      <section class="ui-section" id="tvlChartCard" style="display:none">
+        <div class="ui-head">
+          <h2>TVL</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="menu-row"><span>Bar colour</span><label class="tvl-color-swatch" title="Bar colour"><input type="color" id="tvlBarColor" value="#8429FF"></label></div>
+              <div class="menu-row"><span>Axis in the image</span><button id="tvlAxisInvert" class="axis-btn" type="button">Dark</button></div>
+              <div class="ui-menu-actions">
+                <button id="downloadTvlPng" class="ui-btn primary" type="button">Download PNG</button>
+                <button id="downloadTvlPng43" class="ui-btn" type="button">Download 4:3</button>
+                <button id="downloadTvlPngSquare" class="ui-btn" type="button">Download 1:1</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
           <div class="tvl-chart-range-group" id="tvlChartRange">
             <button data-range="30">30d</button>
             <button data-range="90">90d</button>
@@ -362,72 +304,75 @@
             <button data-denom="usd" class="active">USD</button>
             <button data-denom="asset" id="tvlDenomAssetBtn">Asset</button>
           </div>
-          <div class="tvl-chart-range-group" id="tvlChartStyle">
-            <label class="tvl-color-swatch" title="Bar color">
-              <input type="color" id="tvlBarColor" value="#8429FF">
-            </label>
-            <button id="tvlAxisInvert" type="button" title="Invert axis colors (black ⇄ white)">Axis ⬤</button>
-          </div>
-          <button id="downloadTvlPng" class="tvl-chart-export" type="button">Download PNG</button>
-          <button id="downloadTvlPng43" class="tvl-chart-export" type="button">Download 4:3</button>
-          <button id="downloadTvlPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
         </div>
-        <div id="tvlChart"></div>
-      </div>
-      <div id="holdersChartCard" class="tvl-chart-card" style="display:none">
-        <div class="tvl-chart-toolbar">
-          <span class="tvl-chart-title">Holders over time</span>
+        <div id="tvlChart" class="ui-chart"></div>
+      </section>
+      <section class="ui-section" id="holdersChartCard" style="display:none">
+        <div class="ui-head">
+          <h2>Holders<span class="ui-count" id="holdersNow"></span></h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="menu-row"><span>Bar colour</span><label class="tvl-color-swatch" title="Bar colour"><input type="color" id="holdersBarColor" value="#8429FF"></label></div>
+              <div class="menu-row"><span>Axis in the image</span><button id="holdersAxisInvert" class="axis-btn" type="button">Dark</button></div>
+              <div class="ui-menu-actions">
+                <button id="downloadHoldersPng" class="ui-btn primary" type="button">Download PNG</button>
+                <button id="downloadHoldersPng43" class="ui-btn" type="button">Download 4:3</button>
+                <button id="downloadHoldersPngSquare" class="ui-btn" type="button">Download 1:1</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
           <div class="tvl-chart-range-group" id="holdersChartRange">
             <button data-range="30">30d</button>
             <button data-range="90">90d</button>
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
-          <div class="tvl-chart-range-group" id="holdersChartStyle">
-            <label class="tvl-color-swatch" title="Bar color">
-              <input type="color" id="holdersBarColor" value="#8429FF">
-            </label>
-            <button id="holdersAxisInvert" type="button" title="Invert axis colors (black ⇄ white)">Axis ⬤</button>
-          </div>
-          <span id="holdersNow" class="sp-gain"></span>
-          <button id="downloadHoldersPng" class="tvl-chart-export" type="button">Download PNG</button>
-          <button id="downloadHoldersPng43" class="tvl-chart-export" type="button">Download 4:3</button>
-          <button id="downloadHoldersPngSquare" class="tvl-chart-export" type="button">Download 1:1</button>
         </div>
-        <div id="holdersChart"></div>
-      </div>
-      <div id="sharePriceCard" class="tvl-chart-card" style="display:none">
-        <div class="tvl-chart-toolbar">
-          <span class="tvl-chart-title">Share price over time</span>
+        <div id="holdersChart" class="ui-chart"></div>
+      </section>
+      <section class="ui-section" id="sharePriceCard" style="display:none">
+        <div class="ui-head">
+          <h2>Share price</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="menu-row"><span>Line colour</span><label class="tvl-color-swatch" title="Line colour"><input type="color" id="spLineColor" value="#8429FF"></label></div>
+              <div class="ui-menu-actions">
+                <button id="downloadSpPng" class="ui-btn primary" type="button">Download PNG</button>
+                <button id="downloadSpLinePng" class="ui-btn" type="button" title="Just the line: no fill, no x-axis, transparent">Download the line</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
           <div class="tvl-chart-range-group" id="spRange">
             <button data-range="30">30d</button>
             <button data-range="90">90d</button>
             <button data-range="180">180d</button>
             <button data-range="all" class="active">All</button>
           </div>
-          <label class="tvl-color-swatch" title="Line color">
-            <input type="color" id="spLineColor" value="#8429FF">
-          </label>
           <div class="tvl-chart-range-group" id="spShape">
             <button data-shape="spline" class="active">Smooth</button>
             <button data-shape="linear">Sharp</button>
           </div>
-          <span id="spGain" class="sp-gain"></span>
-          <button id="downloadSpPng" class="tvl-chart-export" type="button">Download PNG</button>
-          <button id="downloadSpLinePng" class="tvl-chart-export" type="button" title="Just the line — no fill, no x-axis, transparent bg">Download line</button>
         </div>
-        <div id="sharePriceChart"></div>
-      </div>
-      <div id="routesCard" class="tvl-chart-card routes-card" style="display:none">
-        <div class="tvl-chart-toolbar">
-          <span class="tvl-chart-title">Where deposits come from</span>
+        <div id="sharePriceChart" class="ui-chart"></div>
+      </section>
+      <section class="ui-section routes-card" id="routesCard" style="display:none">
+        <div class="ui-head">
+          <h2>Where deposits come from</h2>
+          <button id="routesCsv" class="ui-btn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
+        </div>
+        <div class="ui-toolbar">
           <div class="tvl-chart-range-group" id="routesRange">
-            <button data-range="7" type="button">7D</button>
-            <button data-range="30" type="button" class="active">30D</button>
-            <button data-range="90" type="button">90D</button>
+            <button data-range="7" type="button">7d</button>
+            <button data-range="30" type="button">30d</button>
+            <button data-range="90" type="button" class="active">90d</button>
             <button data-range="all" type="button">All</button>
           </div>
-          <button id="routesCsv" class="tvl-chart-export" type="button">Download CSV</button>
         </div>
         <div class="routes-strip" id="routesStrip"></div>
         <div id="routesChart"></div>
@@ -436,10 +381,10 @@
         <div class="routes-sub">Largest net depositors</div>
         <div class="routes-scroll" id="routesTop"></div>
         <div class="routes-note" id="routesNote"></div>
-      </div>
+      </section>
       <div class="panels" id="panels"></div>
-      <div class="history-card" id="rebalanceCard" style="display:none"></div>
-      <div class="history-card" id="historyCard"></div>
+      <section class="ui-section" id="rebalanceCard" style="display:none"></section>
+      <section class="ui-section" id="historyCard"></section>
     </div>
 
     <div id="emptySection" style="display:none">
@@ -447,6 +392,9 @@
     </div>
   </div>
 
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
   <script>
     // Theme
 
@@ -483,6 +431,7 @@
       if (!res.ok) return;
       const data = await res.json();
       const events = data.events || [];
+      window.__eventsUpdatedAt = data.updatedAt || null;
       const vaultInfo = {};
       (data.vaults || []).forEach(v => { vaultInfo[v.address] = v; });
       events.forEach(e => { const v = vaultInfo[e.vault]; if (v) { e.symbol = v.symbol; e.vaultName = v.name; } });
@@ -677,6 +626,7 @@
       document.getElementById('addrInput').value = addr;
       setUrlAddr(addr);
       if (!/^0x[a-f0-9]{40}$/.test(addr)) {
+        setStatus([]);
         document.getElementById('resultSection').style.display = 'none';
         document.getElementById('emptySection').style.display = 'none';
         document.getElementById('introSection').style.display = '';
@@ -700,6 +650,7 @@
       appBtn.href = `https://app.ipor.io/fusion/${chain}/${addr}`;
       appBtn.style.display = '';
       if (events.length === 0) {
+        setStatus([]);
         document.getElementById('resultSection').style.display = 'none';
         document.getElementById('emptySection').style.display = '';
         return;
@@ -727,12 +678,13 @@
       renderTvlChart(addr, vaultInfo, scoped);
       renderHoldersChart(addr, vaultInfo, scoped);
       renderSharePriceChart(addr, vaultInfo);
+      if (vaultInfo) addVaultFigures();
       renderRoutes(addr, vaultInfo, scoped);
       // Per Vault / Per Asset panels hidden for now — duplicative on single-vault
       // pages and confusing when cumulative net flow ≠ current TVL.
       const panelsEl = document.getElementById('panels');
       if (panelsEl) panelsEl.innerHTML = '';
-      renderHistory(scoped);
+      renderHistory(scoped, !!vaultInfo);
       renderRebalances(addr);
     }
 
@@ -748,7 +700,9 @@
     // Ranked by gross, the rebalancer always wins and the real inflow is
     // invisible. Ranked by net, a single $840K direct deposit shows up as what
     // it was: most of that week's wave.
-    let __routesR = null, __routesRange = '30', __routesCtx = null;
+    // Opens on 90 days: on 30 its first figure would be the page's own
+    // 30-day net flow again.
+    let __routesR = null, __routesRange = '90', __routesCtx = null;
     const ROUTES_DAY = 86400;
     const ROUTE_SLOT = { 'Direct': 'direct', 'Harvest': 'harvest', 'Zyfi': 'zyfi', 'Portals': 'portals',
                          'Direct Zap': 'zap', 'Smart account': 'account' };
@@ -898,21 +852,27 @@
       const slotPx = Math.max(1, (w - 70) / S.buckets.length);
       const bargap = Math.min(0.85, Math.max(0.12, 1 - 24 / slotPx));
       const weekly = !(__routesRange === '7' || __routesRange === '30');
-      Plotly.react(el, traces, {
+      const layout = {
         barmode: 'relative', bargap, barcornerradius: 4,
         margin: { l: 58, r: 10, t: 30, b: 30 },
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, sans-serif', size: 11, color: cssTok('--text-body') || '#70747A' },
-        hovermode: 'x unified',
-        hoverlabel: { bgcolor: surface, bordercolor: cssTok('--stroke') || '#E5E5E5',
-                      font: { color: cssTok('--text') || '#000', size: 11 } },
+        font: { family: 'Geist, -apple-system, sans-serif', size: 11, color: cssTok('--text-2') || '#70747A' },
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
         showlegend: true,
         legend: { orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', font: { size: 11 }, traceorder: 'normal' },
-        xaxis: { type: 'date', showgrid: false, tickfont: { size: 10 },
-                 hoverformat: weekly ? 'Week of %b %d' : '%b %d, %Y' },
-        yaxis: { tickformat: '$~s', gridcolor: routeColor('grid'), gridwidth: 1,
-                 zeroline: true, zerolinecolor: routeColor('zero'), zerolinewidth: 1, tickfont: { size: 10 } },
-      }, { displayModeBar: false, responsive: true });
+        xaxis: { type: 'date', showgrid: false, tickfont: { size: 11 }, showspikes: false },
+        yaxis: { tickformat: '$~s', gridcolor: routeColor('grid'), gridwidth: 1, showspikes: false,
+                 zeroline: true, zerolinecolor: routeColor('zero'), zerolinewidth: 1, tickfont: { size: 11 } },
+      };
+      const fitted = FusionChart.fit(layout);
+      if (FusionChart.compact()) fitted.margin.t = 34;   // the key sits above the plot
+      el.__wideLayout = layout;
+      Plotly.react(el, FusionChart.quiet(traces), fitted, CHART_CONFIG).then(() => FusionChart.glide(el, (pts) => {
+        const d = new Date(pts[0].x);
+        const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: weekly ? undefined : 'numeric', timeZone: 'UTC' });
+        return '<div class="hv-when">' + (weekly ? 'Week of ' : '') + when + '</div>'
+          + pts.map(p => FusionChart.row(p.data.marker && p.data.marker.color, p.data.name, fmtUsd(p.y))).join('');
+      }));
     }
 
     // How each name was arrived at, in words. The evidence differs in strength
@@ -972,10 +932,7 @@
         + '<th class="num">Deposits</th><th class="num">Wallets</th><th class="num">Gross in</th>'
         + '<th class="num">Gross out</th><th class="num">Net</th><th></th></tr></thead><tbody>'
         + body
-        + '<tr class="total"><td>Total</td><td></td><td class="num">'
-        + rows.reduce((a, r) => a + (r.n || 0), 0) + '</td><td></td>'
-        + '<td class="num">' + fmtUsdPlain(F.in) + '</td><td class="num">' + fmtUsdPlain(F.out) + '</td>'
-        + '<td class="num ' + (F.net >= 0 ? 'pos' : 'neg') + '">' + fmtUsd(F.net) + '</td><td></td></tr>'
+        // No total row: "Net in" above the chart is that total, in and out.
         + '</tbody></table>';
     }
 
@@ -1097,6 +1054,41 @@
     // has to redraw — otherwise the bars keep the old theme's steps.
     new MutationObserver(() => { if (__routesCtx) drawRoutes(); })
       .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    FusionChart.onChange(() => { if (__routesCtx) drawRoutes(); });
+
+    // ---- Charts: on screen in the page's own colours, with the axes inside on
+    // a phone and the site's hover; an image in the axis colour chosen in its
+    // Export menu, from its own layout, so the screen is never touched. ----
+    const CHART_CONFIG = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false };
+    function screenColors() {
+      return { axis: FusionChart.cssVar('--text-2', '#70747A'), line: FusionChart.cssVar('--line-strong', '#E2E2E7'),
+               grid: 'rgba(0,0,0,0)', gridMinor: 'rgba(0,0,0,0)', bg: 'rgba(0,0,0,0)' };
+    }
+    function drawChart(id, traces, layout, describe) {
+      const gd = document.getElementById(id);
+      gd.__wideLayout = layout;
+      return Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout), CHART_CONFIG)
+        .then(() => FusionChart.glide(gd, describe));
+    }
+    function saveImage(fig, width, height, filename) {
+      return Plotly.toImage(fig, { format: 'png', width, height, scale: 2 }).then((url) => {
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+    }
+    // A zoomed chart's image keeps the zoom.
+    function keepZoom(gd, layout) {
+      const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
+      if (gd.layout && gd.layout.xaxis && gd.layout.xaxis.autorange === false && xr) { layout.xaxis.range = xr.slice(); layout.xaxis.autorange = false; }
+      return layout;
+    }
+    const dateTicks = (pts) => (pts.length && pts[pts.length - 1].day - pts[0].day > 330 ? "%b '%y" : '%b %d');
+    // Redraw on a theme switch or a phone turned sideways.
+    window.__redraw = {};
+    const redrawAll = () => Object.values(window.__redraw).forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+    window.addEventListener('fusion:theme', redrawAll);
+    FusionChart.onChange(redrawAll);
 
     // Per-vault TVL bar chart (Plotly, rounded corners). Anchored on the right
     // edge to vaultInfo.tvl at the ipor-vaults.json snapshot time, walked
@@ -1213,7 +1205,7 @@
       return { pts, anchorDay, minDay: pts[0].day, hasAssets: false, symbol: null };
     }
 
-    function tvlMakeTraceLayout(state, range, vaultInfo) {
+    function tvlMakeTraceLayout(state, range, vaultInfo, forExport) {
       let cutoff = null;
       if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
       let pts = state.pts;
@@ -1228,7 +1220,7 @@
       const hoverFmt = denomIsAsset
         ? `<b>%{x|%b %d, %Y}</b><br>%{y:,.4~r} ${sym}<extra></extra>`
         : `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`;
-      const c = tvlAxisColors();
+      const c = forExport ? tvlAxisColors() : screenColors();
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: yValues,
@@ -1239,29 +1231,25 @@
       };
       const layout = {
         autosize: true,
-        margin: { l: 70, r: 16, t: 8, b: 48 },
-        plot_bgcolor: c.bg,
-        paper_bgcolor: c.bg,
-        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
-        xaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
-          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 6 },
-        },
-        yaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, tickformat: tickFmt,
-          rangemode: 'tozero',
-          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 4 },
-        },
+        margin: { l: 64, r: 16, t: 12, b: 44 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 11 },
+        xaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, type: 'date', tickformat: dateTicks(pts), showspikes: false },
+        yaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, tickformat: tickFmt, rangemode: 'tozero', showspikes: false },
         bargap: 0.18,
         showlegend: false,
-        hovermode: 'x',
-        dragmode: 'zoom',
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
       };
       return { trace, layout };
+    }
+    // The hover: the day, and the TVL in dollars or in the vault's asset.
+    function tvlDescribe(pts) {
+      const y = pts[0].y, asset = __tvlDenom === 'asset' && __tvlState && __tvlState.hasAssets;
+      return FusionChart.when(pts[0].x) + '<div class="hv-big">'
+        + (asset ? y.toLocaleString('en-US', { maximumFractionDigits: 4 }) + ' ' + escapeHtml(__tvlState.symbol || '') : '$' + Math.round(y).toLocaleString('en-US'))
+        + '</div>';
     }
 
     // Square (1:1) figure for social export. Honours the currently-visible
@@ -1323,7 +1311,7 @@
         margin: { l: 132, r: 28, t: 24, b: 96 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, sans-serif', color: c.axis, size: 26 },
+        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 26 },
         xaxis: {
           showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
           tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
@@ -1370,12 +1358,12 @@
       } else {
         denomGroup.style.display = 'none';
       }
-      const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
-      Plotly.newPlot('tvlChart', [trace], layout, TVL_CONFIG);
       const reactChart = () => {
-        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo);
-        Plotly.react('tvlChart', [trace], layout, TVL_CONFIG);
+        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo, false);
+        return drawChart('tvlChart', [trace], layout, tvlDescribe);
       };
+      reactChart();
+      window.__redraw.tvl = reactChart;
       // Range buttons
       document.querySelectorAll('#tvlChartRange button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.range === __tvlRange);
@@ -1402,14 +1390,11 @@
       }
       // Axis invert toggle (black ⇄ white axis lines + labels). White axis pairs
       // with a dark preview bg so it stays visible; exports keep transparent bg.
+      // The axis colour of the image: dark for a white slide, light for a dark one.
       const axisBtn = document.getElementById('tvlAxisInvert');
       if (axisBtn) {
-        axisBtn.textContent = __tvlAxisDark ? 'Axis ⬤' : 'Axis ◯';
-        axisBtn.onclick = () => {
-          __tvlAxisDark = !__tvlAxisDark;
-          axisBtn.textContent = __tvlAxisDark ? 'Axis ⬤' : 'Axis ◯';
-          reactChart();
-        };
+        axisBtn.textContent = __tvlAxisDark ? 'Dark' : 'Light';
+        axisBtn.onclick = () => { __tvlAxisDark = !__tvlAxisDark; axisBtn.textContent = __tvlAxisDark ? 'Dark' : 'Light'; };
       }
       // Export. 'wide' snapshots the live chart at on-screen proportions.
       // 'square' (1080×1080) and '43' (1440×1080) re-render the live chart as a
@@ -1435,50 +1420,12 @@
             }
           } catch {}
           const { trace, layout } = tvlMakeSquareFigure(__tvlState, __tvlRange, vaultInfo, visibleDays);
-          // Snapshot current figure so we can restore after capturing.
-          const savedData = gd.data, savedLayout = gd.layout;
-          try {
-            await Plotly.react(gd, [trace], layout, TVL_CONFIG);
-            const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `fusion-tvl-${slug}-${denomSlug}-${ratioSlug}-${stamp}.png`;
-            document.body.appendChild(a); a.click(); a.remove();
-          } finally {
-            await Plotly.react(gd, savedData, savedLayout, TVL_CONFIG);
-          }
+          await saveImage({ data: [trace], layout }, dims.w, dims.h, `fusion-tvl-${slug}-${denomSlug}-${ratioSlug}-${stamp}.png`);
           return;
         }
-
-        // Wide: snapshot the live chart with transparent bg + gridlines hidden.
-        const origPaper = gd.layout.paper_bgcolor;
-        const origPlot  = gd.layout.plot_bgcolor;
-        try {
-          await Plotly.relayout(gd, {
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor:  'rgba(0,0,0,0)',
-            'xaxis.showgrid': false,
-            'yaxis.showgrid': false,
-            'xaxis.minor.showgrid': false,
-            'yaxis.minor.showgrid': false,
-          });
-          await Plotly.downloadImage(gd, {
-            format: 'png',
-            filename: `fusion-tvl-${slug}-${denomSlug}-${stamp}`,
-            width: gd.clientWidth,
-            height: gd.clientHeight,
-            scale: 2,
-          });
-        } finally {
-          await Plotly.relayout(gd, {
-            paper_bgcolor: origPaper,
-            plot_bgcolor:  origPlot,
-            'xaxis.showgrid': true,
-            'yaxis.showgrid': true,
-            'xaxis.minor.showgrid': true,
-            'yaxis.minor.showgrid': true,
-          });
-        }
+        // At the chart's own size: its layout, in the image's axis colour.
+        const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo, true);
+        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight, `fusion-tvl-${slug}-${denomSlug}-${stamp}.png`);
       };
       document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
       document.getElementById('downloadTvlPng43').onclick = () => exportTvlPng('43');
@@ -1588,7 +1535,7 @@
       return { pts, anchorDay, minDay: pts[0].day, current: last, source: 'events' };
     }
 
-    function holdersMakeTraceLayout(state, range) {
+    function holdersMakeTraceLayout(state, range, forExport) {
       let cutoff = null;
       if (range !== 'all') cutoff = state.anchorDay - parseInt(range, 10);
       let pts = state.pts;
@@ -1597,7 +1544,7 @@
       const DAY_MS = 86400 * 1000;
       const yValues = pts.map(p => p.holders);
       const maxY = yValues.reduce((m, v) => Math.max(m, v), 0);
-      const c = axisColors(__holdersAxisDark);
+      const c = forExport ? axisColors(__holdersAxisDark) : screenColors();
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: yValues,
@@ -1608,30 +1555,20 @@
       };
       const layout = {
         autosize: true,
-        margin: { l: 56, r: 16, t: 8, b: 48 },
-        plot_bgcolor: c.bg,
-        paper_bgcolor: c.bg,
-        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
-        xaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
-          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 6 },
-        },
-        yaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, tickformat: ',d', dtick: holdersDtick(maxY),
-          rangemode: 'tozero',
-          minor: { showgrid: true, gridcolor: c.gridMinor, griddash: 'dot', gridwidth: 1, nticks: 4 },
-        },
+        margin: { l: 52, r: 16, t: 12, b: 44 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 11 },
+        xaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, type: 'date', tickformat: dateTicks(pts), showspikes: false },
+        yaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, tickformat: ',d', dtick: holdersDtick(maxY), rangemode: 'tozero', showspikes: false },
         bargap: 0.18,
         showlegend: false,
-        hovermode: 'x',
-        dragmode: 'zoom',
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
       };
       return { trace, layout };
     }
+    const holdersDescribe = (pts) => FusionChart.when(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US') + ' holders</div>';
 
     // Square / 4:3 social figure — parallels tvlMakeSquareFigure. Down-samples
     // to ~24 bars keeping the LAST count per bucket (holders is a level, like
@@ -1681,7 +1618,7 @@
         margin: { l: 110, r: 28, t: 24, b: 96 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, sans-serif', color: c.axis, size: 26 },
+        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 26 },
         xaxis: {
           showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
           tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
@@ -1722,17 +1659,16 @@
         const tip = isOnChain
           ? 'On-chain holder count: replays every Transfer event on the vault share token.'
           : 'Estimated from deposit/withdraw events — misses wallet→wallet share transfers. Run the Collect Vault Holders workflow to populate the on-chain series.';
-        nowEl.innerHTML = __holdersState.current.toLocaleString() + ' holders now'
+        nowEl.innerHTML = (isOnChain ? 'on-chain' : 'from deposits and withdrawals')
           + ` <span class="info-tip" data-tip="${tip}">&#9432;</span>`;
-        nowEl.style.color = 'var(--text-secondary)';
       }
 
       const reactChart = () => {
-        const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange);
-        Plotly.react('holdersChart', [trace], layout, TVL_CONFIG);
+        const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange, false);
+        return drawChart('holdersChart', [trace], layout, holdersDescribe);
       };
-      const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange);
-      Plotly.newPlot('holdersChart', [trace], layout, TVL_CONFIG);
+      reactChart();
+      window.__redraw.holders = reactChart;
 
       document.querySelectorAll('#holdersChartRange button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.range === __holdersRange);
@@ -1749,12 +1685,8 @@
       }
       const axisBtn = document.getElementById('holdersAxisInvert');
       if (axisBtn) {
-        axisBtn.textContent = __holdersAxisDark ? 'Axis ⬤' : 'Axis ◯';
-        axisBtn.onclick = () => {
-          __holdersAxisDark = !__holdersAxisDark;
-          axisBtn.textContent = __holdersAxisDark ? 'Axis ⬤' : 'Axis ◯';
-          reactChart();
-        };
+        axisBtn.textContent = __holdersAxisDark ? 'Dark' : 'Light';
+        axisBtn.onclick = () => { __holdersAxisDark = !__holdersAxisDark; axisBtn.textContent = __holdersAxisDark ? 'Dark' : 'Light'; };
       }
 
       const exportHoldersPng = async (aspect) => {
@@ -1774,49 +1706,11 @@
             }
           } catch {}
           const { trace, layout } = holdersMakeSquareFigure(__holdersState, __holdersRange, visibleDays);
-          const savedData = gd.data, savedLayout = gd.layout;
-          try {
-            await Plotly.react(gd, [trace], layout, TVL_CONFIG);
-            const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `fusion-holders-${slug}-${ratioSlug}-${stamp}.png`;
-            document.body.appendChild(a); a.click(); a.remove();
-          } finally {
-            await Plotly.react(gd, savedData, savedLayout, TVL_CONFIG);
-          }
+          await saveImage({ data: [trace], layout }, dims.w, dims.h, `fusion-holders-${slug}-${ratioSlug}-${stamp}.png`);
           return;
         }
-
-        // Wide: snapshot the live chart with transparent bg + gridlines hidden.
-        const origPaper = gd.layout.paper_bgcolor;
-        const origPlot  = gd.layout.plot_bgcolor;
-        try {
-          await Plotly.relayout(gd, {
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor:  'rgba(0,0,0,0)',
-            'xaxis.showgrid': false,
-            'yaxis.showgrid': false,
-            'xaxis.minor.showgrid': false,
-            'yaxis.minor.showgrid': false,
-          });
-          await Plotly.downloadImage(gd, {
-            format: 'png',
-            filename: `fusion-holders-${slug}-${stamp}`,
-            width: gd.clientWidth,
-            height: gd.clientHeight,
-            scale: 2,
-          });
-        } finally {
-          await Plotly.relayout(gd, {
-            paper_bgcolor: origPaper,
-            plot_bgcolor:  origPlot,
-            'xaxis.showgrid': true,
-            'yaxis.showgrid': true,
-            'xaxis.minor.showgrid': true,
-            'yaxis.minor.showgrid': true,
-          });
-        }
+        const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange, true);
+        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight, `fusion-holders-${slug}-${stamp}.png`);
       };
       document.getElementById('downloadHoldersPng').onclick = () => exportHoldersPng('wide');
       document.getElementById('downloadHoldersPng43').onclick = () => exportHoldersPng('43');
@@ -1857,7 +1751,7 @@
       return { pts, symbol: snap.symbol || '' };
     }
 
-    function spMakeTraceLayout(state, range) {
+    function spMakeTraceLayout(state, range, forExport) {
       let pts = state.pts;
       if (range !== 'all') {
         const cutoff = pts[pts.length - 1].day - parseInt(range, 10);
@@ -1865,7 +1759,7 @@
         if (f.length > 1) pts = f;
       }
       const DAY_MS = 86400 * 1000;
-      const c = tvlAxisColors();
+      const c = forExport ? tvlAxisColors() : screenColors();
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
         y: pts.map(p => p.sp),
@@ -1880,24 +1774,18 @@
       const lo = Math.min(...ys), hi = Math.max(...ys), pad = (hi - lo) * 0.08 || hi * 0.02;
       const layout = {
         autosize: true,
-        margin: { l: 70, r: 16, t: 8, b: 48 },
-        plot_bgcolor: c.bg, paper_bgcolor: c.bg,
-        font: { family: 'Poppins, sans-serif', color: c.axis, size: 11 },
-        xaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, type: 'date', tickformat: '%b %d',
-        },
-        yaxis: {
-          showgrid: true, gridcolor: c.grid, griddash: 'dot', gridwidth: 1,
-          showline: true, linecolor: c.line, linewidth: 1,
-          tickfont: { size: 10 }, tickformat: '.4~f',
-          range: [Math.max(0, lo - pad), hi + pad],
-        },
-        showlegend: false, hovermode: 'x', dragmode: 'zoom',
+        margin: { l: 64, r: 16, t: 12, b: 44 },
+        plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 11 },
+        xaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, type: 'date', tickformat: dateTicks(pts), showspikes: false },
+        yaxis: { showgrid: false, showline: true, linecolor: c.line, linewidth: 1, tickfont: { size: 11 }, tickformat: '.4~f', range: [Math.max(0, lo - pad), hi + pad], showspikes: false },
+        showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
       };
       return { trace, layout };
     }
+    const spDescribe = (pts) => FusionChart.when(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toFixed(4) + '</div>'
+      + '<div class="hv-when" style="margin:1px 0 0">' + escapeHtml(__spState && __spState.symbol ? 'per share, in ' + __spState.symbol : 'per share') + '</div>';
 
     function renderSharePriceChart(addr, vaultInfo) {
       try { renderSharePriceChartInner(addr, vaultInfo); }
@@ -1917,16 +1805,13 @@
       // Total gain badge (first → last share price over the full series).
       const first = __spState.pts[0].sp, lastV = __spState.pts[__spState.pts.length - 1].sp;
       const gainPct = first > 0 ? (lastV / first - 1) * 100 : 0;
-      const gainEl = document.getElementById('spGain');
-      gainEl.textContent = (gainPct >= 0 ? '+' : '') + gainPct.toFixed(2) + '% since inception';
-      gainEl.style.color = gainPct >= 0 ? 'var(--green)' : 'var(--red)';
 
       const draw = () => {
-        const { trace, layout } = spMakeTraceLayout(__spState, __spRange);
-        Plotly.react('sharePriceChart', [trace], layout, TVL_CONFIG);
+        const { trace, layout } = spMakeTraceLayout(__spState, __spRange, false);
+        return drawChart('sharePriceChart', [trace], layout, spDescribe);
       };
-      const init = spMakeTraceLayout(__spState, __spRange);
-      Plotly.newPlot('sharePriceChart', [init.trace], init.layout, TVL_CONFIG);
+      draw();
+      window.__redraw.sp = draw;
 
       document.querySelectorAll('#spRange button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.range === __spRange);
@@ -1949,46 +1834,23 @@
           draw();
         };
       });
+      const spSlug = () => (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       document.getElementById('downloadSpPng').onclick = async () => {
         const gd = document.getElementById('sharePriceChart');
-        const oP = gd.layout.paper_bgcolor, oPl = gd.layout.plot_bgcolor;
-        try {
-          await Plotly.relayout(gd, { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', 'xaxis.showgrid': false, 'yaxis.showgrid': false });
-          const stamp = new Date().toISOString().slice(0, 10);
-          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
-        } finally {
-          await Plotly.relayout(gd, { paper_bgcolor: oP, plot_bgcolor: oPl, 'xaxis.showgrid': true, 'yaxis.showgrid': true });
-        }
+        const { trace, layout } = spMakeTraceLayout(__spState, __spRange, true);
+        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight,
+          `fusion-shareprice-${spSlug()}-${new Date().toISOString().slice(0, 10)}.png`);
       };
       // "Download line" — minimalist export for overlay/composition use.
       // Strips the area-fill gradient and the entire x-axis, keeps the y-axis
       // for value reference, transparent paper + plot bg.
       document.getElementById('downloadSpLinePng').onclick = async () => {
         const gd = document.getElementById('sharePriceChart');
-        const trace = gd.data[0] || {};
-        const origFill = trace.fill, origFillColor = trace.fillcolor;
-        const oP = gd.layout.paper_bgcolor, oPl = gd.layout.plot_bgcolor;
-        try {
-          await Plotly.restyle(gd, { fill: 'none', fillcolor: 'rgba(0,0,0,0)' });
-          await Plotly.relayout(gd, {
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor:  'rgba(0,0,0,0)',
-            'xaxis.visible': false,
-            'yaxis.showgrid': false,
-          });
-          const stamp = new Date().toISOString().slice(0, 10);
-          const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-          await Plotly.downloadImage(gd, { format: 'png', filename: `fusion-shareprice-${slug}-line-${stamp}`, width: gd.clientWidth, height: gd.clientHeight, scale: 2 });
-        } finally {
-          await Plotly.restyle(gd, { fill: origFill || 'tozeroy', fillcolor: origFillColor || rgbaFromColor(__spLineColor, 0.08) });
-          await Plotly.relayout(gd, {
-            paper_bgcolor: oP,
-            plot_bgcolor:  oPl,
-            'xaxis.visible': true,
-            'yaxis.showgrid': true,
-          });
-        }
+        const { trace, layout } = spMakeTraceLayout(__spState, __spRange, true);
+        trace.fill = 'none'; trace.fillcolor = 'rgba(0,0,0,0)';
+        layout.xaxis.visible = false;
+        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight,
+          `fusion-shareprice-${spSlug()}-line-${new Date().toISOString().slice(0, 10)}.png`);
       };
     }
 
@@ -2072,7 +1934,7 @@
 
         if (txVolumes.length === 0) {
           card.innerHTML = `
-            <div class="panel-title">Rebalance Activity
+            <div class="panel-title">Rebalances
               <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">scanned ${all.length} txs · updated ${updated}</span>
             </div>
             <div class="rebalance-empty">No protocol-level capital movement detected in the scanned window. The vault either hasn't rebalanced, or its strategy uses fuses we don't yet recognize.</div>`;
@@ -2165,22 +2027,22 @@
         const statsHtml = `
           <div class="rebalance-stats">
             <div class="rebalance-stat">
-              <div class="label">24H Volume</div>
+              <div class="label">Last 24h</div>
               <div class="value">${fmtMoney(v24h)}</div>
               <div class="sub">${txVolumes.filter(t => now - t.ts <= 86400).length} txs</div>
             </div>
             <div class="rebalance-stat">
-              <div class="label">7D Volume</div>
+              <div class="label">Last 7d</div>
               <div class="value">${fmtMoney(v7d)}</div>
               <div class="sub">${txVolumes.filter(t => now - t.ts <= 7*86400).length} txs</div>
             </div>
             <div class="rebalance-stat">
-              <div class="label">30D Volume</div>
+              <div class="label">Last 30d</div>
               <div class="value">${fmtMoney(v30d)}</div>
               <div class="sub">${txVolumes.filter(t => now - t.ts <= 30*86400).length} txs</div>
             </div>
             <div class="rebalance-stat">
-              <div class="label">All Time Tracked</div>
+              <div class="label">All tracked</div>
               <div class="value">${fmtMoney(vAll)}</div>
               <div class="sub">${txVolumes.length} txs · ${trackedDays}d window</div>
             </div>
@@ -2232,7 +2094,7 @@
         };
 
         card.innerHTML = `
-          <div class="panel-title">Rebalance Activity
+          <div class="panel-title">Rebalances
             <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">updated ${updated}</span>
           </div>
           ${statsHtml}
@@ -2321,7 +2183,7 @@
       const total = state.all.length;
 
       if (!state.expanded) {
-        host.innerHTML = `<button class="rebalance-toggle" onclick="window.__rebalanceState.expanded=true;renderRebalanceRows()">Show ${total} transactions</button>`;
+        host.innerHTML = `<button class="rebalance-toggle" onclick="window.__rebalanceState.expanded=true;renderRebalanceRows()">Show the transactions</button>`;
         return;
       }
 
@@ -2361,6 +2223,20 @@
     }
 
     // Stats cards
+    // The figures: for a vault its TVL and 30-day net flow (then its holders
+    // and share price, once those are worked out); for a wallet its 30-day
+    // net flow and how many vaults. When a vault was created goes in the
+    // status line.
+    const figure = (k, v, sub, vcls, scls, title) => '<div class="ui-figure"><div class="k">' + k + '</div>'
+      + '<div class="v' + (vcls ? ' ' + vcls : '') + '"' + (title ? ' title="' + escAttr(title) + '"' : '') + '>' + v + '</div>'
+      + '<div class="s' + (scls ? ' ' + scls : '') + '">' + (sub || '&nbsp;') + '</div></div>';
+    function setStatus(extra) {
+      const at = window.__eventsUpdatedAt;
+      const parts = [];
+      if (at) parts.push('Events to <b>' + escapeHtml(new Date(at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</b>');
+      (extra || []).forEach(x => parts.push(x));
+      document.getElementById('status').innerHTML = parts.join(' · ');
+    }
     function renderStats(s, addr, vaultInfo) {
       const el = document.getElementById('statsRow');
       const isVault = !!vaultInfo;
@@ -2374,10 +2250,8 @@
         if (e.type === 'deposit') dep30 += usd; else wd30 += usd;
       }
       const net30 = dep30 - wd30;
-      const netColor = net30 >= 0 ? 'var(--green)' : 'var(--red)';
 
-      const cards = [];
-
+      const figs = [], meta = [];
       if (isVault) {
         // Prefer the latest on-chain totalAssets snapshot (matches the TVL chart
         // and the official IPOR app) over ipor-vaults.json `tvl`, which can be
@@ -2390,18 +2264,13 @@
           if (lastUsd) tvl = lastUsd.tvlUsd;
         }
         // Strategy P&L (since inception) = TVL − cumulative net deposits across
-        // ALL non-synthetic events on this vault. Surfaces the gap between
-        // "what depositors put in" and "what they own now" so the cards
-        // reconcile visually: TVL = inception net flow + strategy P&L.
-        //
-        // We gate this to stablecoin underlyings only. For volatile underlyings
-        // (WBTC, WETH, …) events store usdValue at event-time but TVL is
-        // current-price, so the gap conflates token-price drift with real
-        // strategy P&L and is misleading. Stablecoins have price = 1 by
-        // construction, so the math reconciles cleanly.
+        // ALL non-synthetic events on this vault: what depositors put in against
+        // what they own now. Stablecoin underlyings only: for volatile ones an
+        // event's USD is at event time and the TVL at today's price, so the gap
+        // would be the token's price move, not the strategy's result.
         const sym = (vaultInfo.token || '').toUpperCase();
         const stableLike = /USD|DAI|GHO|EURC|EUR$|ZCHF/.test(sym);
-        let pnlLine = '';
+        let pnlSub = '', pnlCls = '', pnlTitle = '';
         if (stableLike) {
           let inceptionNet = 0, inceptionEvCount = 0;
           for (const e of (window.allEvents || [])) {
@@ -2411,98 +2280,62 @@
             inceptionNet += (e.type === 'deposit' ? e.usdValue : -e.usdValue);
             inceptionEvCount++;
           }
-          // Show only when the data is meaningful and the gap is more than
-          // rounding noise. Also cap at |30%|: real strategy P&L lives well
-          // inside this band; values past it almost always mean the backfill
-          // doesn't cover vault inception (so the cumulative net is missing
-          // history) — surfacing them as "loss" would mislead, not reconcile.
+          // Only when meaningful, beyond rounding, and within ±30%: past it the
+          // event history almost always misses the vault's start.
           if (inceptionEvCount >= 2 && Math.abs(inceptionNet) > 1000 && tvl > 0) {
             const pnl = tvl - inceptionNet;
             const pnlPct = (pnl / inceptionNet) * 100;
             if (Math.abs(pnl) > 100 && Math.abs(pnlPct) > 0.5 && Math.abs(pnlPct) <= 30) {
-              const color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-              const sign = pnl >= 0 ? '+' : '−';
-              pnlLine = `<div class="sub" style="color:${color}" title="Current TVL minus cumulative net deposits since inception. Positive = yield earned; negative = strategy loss (e.g. leveraged-loop drawdown). Stablecoin underlyings only; values past ±30% suppressed as they typically indicate incomplete event history rather than real P&L.">${sign}${fmtUsdPlain(Math.abs(pnl))} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%) since inception</div>`;
+              pnlSub = (pnl >= 0 ? '+' : '−') + fmtUsdPlain(Math.abs(pnl)) + ' (' + (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(1) + '%) since inception';
+              pnlCls = pnl >= 0 ? 'pos' : 'neg';
+              pnlTitle = 'Current TVL minus cumulative net deposits since inception. Positive = yield earned; negative = strategy loss (e.g. leveraged-loop drawdown). Stablecoin underlyings only; values past ±30% suppressed as they typically indicate incomplete event history rather than real P&L.';
             }
           }
         }
-        cards.push(`
-          <div class="stat-card">
-            <div class="label">TVL</div>
-            <div class="value num-bold">${tvl > 0 ? fmtUsdPlain(tvl) : '—'}</div>
-            ${pnlLine}
-          </div>`);
-      }
+        figs.push(figure('TVL', tvl > 0 ? fmtUsdPlain(tvl) : '—', pnlSub ? '<span title="' + escAttr(pnlTitle) + '">' + pnlSub + '</span>' : '', '', pnlCls));
 
-      cards.push(`
-        <div class="stat-card">
-          <div class="label">Deposited (30D)</div>
-          <div class="value num-bold" style="color:var(--green)">${fmtUsdPlain(dep30)}</div>
-        </div>`);
-
-      cards.push(`
-        <div class="stat-card">
-          <div class="label">Withdrawn (30D)</div>
-          <div class="value num-bold" style="color:var(--red)">${fmtUsdPlain(wd30)}</div>
-        </div>`);
-
-      cards.push(`
-        <div class="stat-card">
-          <div class="label">Net Flow (30D)</div>
-          <div class="value num-bold" style="color:${netColor}">${fmtUsd(net30)}</div>
-        </div>`);
-
-      if (!isVault) {
-        cards.push(`
-          <div class="stat-card">
-            <div class="label">Vaults</div>
-            <div class="value num-bold">${s.vaultCount}</div>
-          </div>`);
-      }
-
-      if (isVault) {
+        // When the vault was created, and a gap between that and its first data.
+        const chainName = window.FusionSelect ? FusionSelect.chainName(vaultInfo.chain || 'ethereum') : (vaultInfo.chain || '');
         const deployIso = (window.vaultDeploymentByAddr || {})[addr.toLowerCase()];
-        let createdLabel = '—';
-        let gapSub = '';
+        let created = '';
         if (deployIso) {
           try {
-            createdLabel = new Date(deployIso).toLocaleDateString('en-US', {
-              year: 'numeric', month: 'short', day: 'numeric'
-            });
-            // Gap detection measured against what actually drives the chart.
-            // The chart prefers on-chain TVL snapshots, so when they exist the
-            // gap is deployment → earliest snapshot day. Only when there are no
-            // snapshots do we fall back to earliest event (the walked-back
-            // chart's left edge). >14d ⇒ run the TVL Snapshots workflow.
+            created = new Date(deployIso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            // Measured against what drives the chart: the earliest snapshot when
+            // there are snapshots, else the earliest event. Over 14 days: a gap.
             const deployTs = Math.floor(new Date(deployIso).getTime() / 1000);
-            const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
             let earliestDataTs = null;
-            if (snap && snap.series && snap.series.length) {
-              earliestDataTs = snap.series[0].day * 86400;
-            } else {
-              earliestDataTs = (s.events || []).reduce(
-                (min, e) => (e.timestamp && (!min || e.timestamp < min)) ? e.timestamp : min,
-                null
-              );
-            }
+            if (snap && snap.series && snap.series.length) earliestDataTs = snap.series[0].day * 86400;
+            else earliestDataTs = (s.events || []).reduce((min, e) => (e.timestamp && (!min || e.timestamp < min)) ? e.timestamp : min, null);
             if (earliestDataTs && deployTs && earliestDataTs > deployTs) {
               const gapDays = Math.round((earliestDataTs - deployTs) / 86400);
-              if (gapDays > 14) {
-                const hint = (snap && snap.series && snap.series.length) ? '' : ' — run TVL Snapshots';
-                gapSub = `<div class="sub" style="color:var(--red)">⚠ ${gapDays}d data gap${hint}</div>`;
-              }
+              if (gapDays > 14) meta.push('<span style="color:var(--neg)">⚠ ' + gapDays + 'd data gap' + ((snap && snap.series && snap.series.length) ? '' : ' — run TVL Snapshots') + '</span>');
             }
           } catch {}
         }
-        cards.push(`
-          <div class="stat-card">
-            <div class="label">Created</div>
-            <div class="value num-bold">${createdLabel}</div>
-            ${gapSub}
-          </div>`);
+        meta.unshift('vault on ' + escapeHtml(chainName) + (created ? ', created <b>' + escapeHtml(created) + '</b>' : ''));
       }
 
-      el.innerHTML = cards.join('');
+      figs.push(figure('Net flow, 30d', fmtUsd(net30), fmtUsdPlain(dep30) + ' in · ' + fmtUsdPlain(wd30) + ' out', net30 >= 0 ? 'pos' : 'neg'));
+      if (!isVault) figs.push(figure('Vaults', String(s.vaultCount)));
+      el.innerHTML = figs.join('');
+      el.style.setProperty('--n', figs.length);
+      setStatus(meta);
+    }
+
+    // A vault's holders now and its share price's move since inception, as
+    // figures once their charts have worked them out.
+    function addVaultFigures() {
+      const el = document.getElementById('statsRow');
+      const add = [];
+      if (__holdersState) add.push(figure('Holders', Number(__holdersState.current).toLocaleString('en-US'), 'now'));
+      if (__spState && __spState.pts.length) {
+        const first = __spState.pts[0].sp, last = __spState.pts[__spState.pts.length - 1].sp;
+        const g = first > 0 ? (last / first - 1) * 100 : 0;
+        add.push(figure('Share price', (g >= 0 ? '+' : '') + g.toFixed(2) + '%', 'since inception', g >= 0 ? 'pos' : 'neg'));
+      }
+      el.insertAdjacentHTML('beforeend', add.join(''));
+      el.style.setProperty('--n', el.children.length);
     }
 
     // Flow chart (daily bars)
@@ -2553,7 +2386,8 @@
         const val = buckets[i];
         const daysAgo = days - 1 - i;
         const heightPct = Math.abs(val) / maxAbs * 50;
-        const cls = val >= 0 ? 'positive' : 'negative';
+        // A day with nothing in or out draws no bar: the line is the zero.
+        const cls = val > 0 ? 'positive' : val < 0 ? 'negative' : 'zero';
         const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
         html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div><div class="flow-tip">${label}<br><strong>${fmtUsd(val)}</strong></div></div>`;
       }
@@ -2651,53 +2485,51 @@
       `;
     }
 
-    // Event history
-    let historyLimit = 50;
-    function renderHistory(events) {
-      historyLimit = 50;
-      renderHistoryInner(events);
+    // Events: ten a page, newest first, each linked to its transaction on
+    // its own network's explorer.
+    const HISTORY_PAGE = 10;
+    let historyPage = 1, historyEvents = [];
+    const txUrl = (e) => (EXPLORERS[e.chain] || EXPLORERS.ethereum).replace('/address/', '/tx/') + e.tx;
+    let historyIsVault = false;
+    function renderHistory(events, isVault) {
+      historyIsVault = !!isVault;
+      historyEvents = events;
+      historyPage = 1;
+      renderHistoryInner();
     }
-    function renderHistoryInner(events) {
-      const card = document.getElementById('historyCard');
-      const shown = events.slice(0, historyLimit);
-      const hasMore = events.length > historyLimit;
-
-      let rows = '';
-      let mobileRows = '';
-      shown.forEach(e => {
+    function renderHistoryInner() {
+      const events = historyEvents, card = document.getElementById('historyCard');
+      const last = Math.max(1, Math.ceil(events.length / HISTORY_PAGE));
+      historyPage = Math.min(Math.max(1, historyPage), last);
+      const rows = events.slice((historyPage - 1) * HISTORY_PAGE, historyPage * HISTORY_PAGE).map(e => {
         const time = e.timestamp ? timeAgo(e.timestamp) : '#' + e.block;
         const bc = e.type === 'deposit' ? 'badge-deposit' : 'badge-withdraw';
-        const bt = e.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
-        const sym = e.symbol || '?';
+        const bt = e.type === 'deposit' ? 'Deposit' : 'Withdraw';
+        const amount = formatAmount(e.assets) + ' ' + (e.symbol || '?');
+        const usdStr = e.usdValue != null ? '$' + e.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
         const name = e.vaultName || shortAddr(e.vault);
-        const usdStr = e.usdValue != null ? '$' + e.usdValue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
-        rows += `<tr>
-          <td>${time}</td>
-          <td><a href="https://etherscan.io/tx/${e.tx}" target="_blank" class="${bc}">${bt}</a></td>
-          <td class="num-bold">${formatAmount(e.assets)} ${sym}${usdStr ? '<br><span style="color:var(--text-secondary);font-weight:400;font-size:0.7rem">'+usdStr+'</span>' : ''}</td>
-          <td>${escapeHtml(name)}</td>
-        </tr>`;
-        mobileRows += `<div class="mobile-event">
-          <div class="mobile-event-top"><a href="https://etherscan.io/tx/${e.tx}" target="_blank" class="${bc}">${bt}</a><span class="mobile-event-when">${time}</span></div>
-          <div class="mobile-event-top"><span class="mobile-event-amount">${formatAmount(e.assets)} ${sym}</span><span class="mobile-event-usd">${usdStr}</span></div>
-          <div class="mobile-event-meta"><span class="mobile-event-product">${escapeHtml(name)}</span></div>
-        </div>`;
-      });
-
-      card.innerHTML = `
-        <div class="panel-title">Event History <span style="float:right;font-size:0.7rem;font-weight:400;color:var(--text-secondary)">${events.length} events</span></div>
-        <table class="history-table"><thead><tr><th>When</th><th>Type</th><th>Amount</th><th>Product</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class="mobile-events">${mobileRows}</div>
-        ${hasMore ? '<button class="show-more-btn" id="showMoreBtn">Show more (' + (events.length - historyLimit) + ' remaining)</button>' : ''}
-      `;
-
-      if (hasMore) {
-        document.getElementById('showMoreBtn').addEventListener('click', () => {
-          historyLimit += 100;
-          renderHistoryInner(events);
-        });
-      }
+        const who = (e.owner || e.sender || '').toLowerCase();
+        const last = historyIsVault
+          ? (who ? '<a href="?a=' + escAttr(who) + '" class="who" title="' + escAttr(who) + '">' + shortAddr(who) + '</a>' : '—')
+          : escapeHtml(name);
+        return '<div class="hrow">'
+          + '<span class="when">' + time + '</span>'
+          + '<span class="type"><a href="' + escAttr(txUrl(e)) + '" target="_blank" rel="noopener" class="' + bc + '">' + bt + '</a></span>'
+          + '<span class="amt" data-text="' + escAttr(amount + (usdStr ? ' ' + usdStr : '')) + '"><b>' + escapeHtml(amount) + '</b>' + (usdStr ? '<span>' + usdStr + '</span>' : '') + '</span>'
+          + '<span class="prod"' + (historyIsVault ? '' : ' title="' + escAttr(name) + '"') + '>' + last + '</span>'
+          + '</div>';
+      }).join('');
+      card.innerHTML = '<div class="panel-title">Events</div>'
+        + '<div class="hlist"><div class="hhead"><span>When</span><span>Type</span><span>Amount</span><span>' + (historyIsVault ? 'Wallet' : 'Vault') + '</span></div>'
+        + '<div id="historyRows">' + rows + '</div></div>'
+        + '<div id="historyPager">' + UI.pager({ total: events.length, page: historyPage, size: HISTORY_PAGE, noun: 'events' }) + '</div>';
     }
+    UI.onPage(document.getElementById('historyCard'), (n) => {
+      historyPage = n;
+      renderHistoryInner();
+      const top = document.getElementById('historyCard').getBoundingClientRect().top;
+      if (top < 0) window.scrollBy({ top: top - 80 });
+    });
 
     // Input handling
     const input = document.getElementById('addrInput');
@@ -2711,6 +2543,7 @@
 
     // Init
     loadEvents().then(() => {
+      setStatus([]);
       const urlAddr = getUrlAddr();
       if (urlAddr) selectAddress(urlAddr);
     });

@@ -3,14 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="fusion-theme" content="light-only">
 <title>Video Creator — Fusion Stats</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/ui.css">
 <style>
-  :root {
+  /* The storyboard's own colours, kept to the white frame: the page around
+     it follows the site's theme. */
+  .viewport {
     --purple: #8429FF;
     --purple-deep: #6C00FF;
     --purple-light: #A37FFF;
@@ -24,34 +26,23 @@
     --body: #4A4F5A;
     --muted: #8A8F99;
     --line: #E7E5EE;
-    --bg: #0f0f13;
-    --surface: #1a1a22;
-    --text: #e8e6f0;
-    --text-secondary: #9090a0;
-    --accent: #8429FF;
-    --stroke: #2a2a35;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; }
-  a { color: inherit; text-decoration: none; }
-
-  /* Nav */
-  .top-nav { display: flex; justify-content: center; align-items: center; gap: 0.25rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--stroke); background: var(--surface); position: relative; }
-  .top-nav a { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); padding: 0.3rem 0.7rem; border-radius: 6px; transition: all 0.2s; }
-  .top-nav a:hover { color: var(--text); }
-  .top-nav a.active { color: var(--accent); border: 1px solid var(--accent); }
-
-  /* Layout */
-  .container { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-  h1 { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--accent); margin-bottom: 0.25rem; }
-  .subtitle { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 2rem; }
-
-  /* Player */
-  .player-wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-  .viewport {
     width: 100%; max-width: 600px; aspect-ratio: 1 / 1;
     border-radius: 16px; overflow: hidden; position: relative;
-    background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    background: #fff; color: var(--ink);
+    /* The type the storyboard was drawn with, not the page's 14px/1.5. */
+    font-size: 16px; line-height: normal; -webkit-font-smoothing: auto;
+    /* A ring, not a border: the frame stays exactly its size. */
+    box-shadow: 0 0 0 1px var(--line-strong, #E2E2E7), 0 14px 40px rgba(16, 16, 24, 0.10);
+  }
+  .viewport *, .viewport *::before { box-sizing: border-box; margin: 0; padding: 0; }
+  [data-theme="dark"] .viewport { box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55); }
+
+  /* The player, and beside it (below it on a phone) the keyframes. */
+  .player-wrap { display: grid; grid-template-columns: minmax(0, 600px) minmax(0, 1fr); gap: 14px 36px; align-items: start; justify-items: center; padding-top: 26px; }
+  .frame-list { grid-column: 2; grid-row: 1 / span 3; justify-self: stretch; }
+  @container (max-width: 880px) {
+    .player-wrap { grid-template-columns: minmax(0, 600px); }
+    .frame-list { grid-column: 1; grid-row: auto; margin-top: 8px; }
   }
 
   /* Frames */
@@ -128,48 +119,43 @@
   @keyframes blink { 50% { opacity: 0; } }
 
   /* Controls */
-  .controls { display: flex; align-items: center; gap: 1rem; width: 100%; max-width: 600px; }
-  .btn { padding: 0.5rem 1.2rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid var(--stroke); background: var(--surface); color: var(--text); transition: all 0.2s; }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-  .timeline { flex: 1; height: 6px; background: var(--stroke); border-radius: 3px; cursor: pointer; position: relative; }
-  .timeline-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.1s linear; }
-  .time-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-secondary); min-width: 70px; text-align: right; }
+  .controls { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 600px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px;
+    border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); color: var(--text);
+    font: 500 13px var(--sans); cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: var(--bg-subtle); }
+  .btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .timeline { flex: 1; height: 6px; border-radius: 3px; background: var(--line-strong); cursor: pointer; position: relative; }
+  .timeline-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.1s linear; }
+  .time-label { min-width: 72px; text-align: right; font: 12.5px var(--mono); color: var(--text-3); }
 
   /* Frame indicator */
-  .frame-indicators { display: flex; gap: 0.5rem; width: 100%; max-width: 600px; justify-content: center; }
-  .frame-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--stroke); cursor: pointer; transition: all 0.2s; }
+  .frame-indicators { display: flex; gap: 8px; width: 100%; max-width: 600px; justify-content: center; }
+  .frame-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); cursor: pointer; transition: transform 0.2s, background 0.2s; }
   .frame-dot.active { background: var(--accent); transform: scale(1.3); }
 
-  /* Frame list */
-  .frame-list { width: 100%; max-width: 600px; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .frame-item { display: flex; align-items: center; gap: 1rem; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid var(--stroke); background: var(--surface); cursor: pointer; transition: all 0.2s; }
-  .frame-item:hover { border-color: var(--accent); }
-  .frame-item.active { border-color: var(--accent); background: rgba(132,41,255,0.08); }
-  .frame-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--accent); font-weight: 600; min-width: 16px; }
-  .frame-info { flex: 1; }
-  .frame-title { font-size: 0.75rem; font-weight: 600; }
-  .frame-time { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-secondary); }
+  /* The keyframes, as a list */
+  .frame-list { width: 100%; border-top: 1px solid var(--line); }
+  .frame-item { display: flex; align-items: center; gap: 14px; padding: 11px 10px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background 0.15s; }
+  .frame-item:hover { background: var(--bg-subtle); }
+  .frame-item.active { background: var(--accent-bg); }
+  .frame-num { min-width: 18px; font: 600 12px var(--mono); color: var(--accent); }
+  .frame-info { flex: 1; min-width: 0; }
+  .frame-title { font-size: 14px; font-weight: 500; color: var(--text); }
+  .frame-time { margin-top: 1px; font: 12px var(--mono); color: var(--text-3); }
 </style>
   <script src="/nav.js"></script>
 </head>
 <body>
-  <nav class="top-nav">
-    <a href="/">Activity</a>
-    <a href="/all-vaults">All Vaults</a>
-    <a href="/tvl">TVL</a>
-    <a href="/dominance">Dominance</a>
-    <a href="/address">Address</a>
-    <a href="/spark">Spark</a>
-    <a href="/logs">Logs</a>
-    <a href="/socials">Socials</a>
-    <a href="/video" class="active">Video</a>
-  </nav>
-
-  <div class="container">
-    <h1>Fusion Video Creator</h1>
-    <p class="subtitle">18s storyboard — 7 keyframes — 1:1 — white bg + purple gradients</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Video</h1>
+        <p class="ui-lede">An 18-second storyboard for Fusion: 7 keyframes, square, white with purple gradients.</p>
+      </div>
+    </header>
 
     <div class="player-wrap">
       <div class="viewport" id="viewport">

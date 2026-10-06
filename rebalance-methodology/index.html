@@ -4,267 +4,70 @@
   <script src="/data-source.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rebalance Activity — Methodology — Fusion Stats</title>
+  <title>Rebalance Methodology — Fusion Stats</title>
+  <meta name="description" content="How the per-vault Rebalance Activity is read on-chain, classified, priced and summed, and what would change in a first-party implementation.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16a34a;
-      --red: #dc2626;
-      --warn: #d97706;
-      --code-bg: #F0F0F8;
-    }
-
-    [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
-      --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --green: #22c55e;
-      --red: #ef4444;
-      --warn: #f59e0b;
-      --code-bg: #1A1A24;
-    }
-
-    body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; }
-
-    .top-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .top-nav a:hover { color: var(--accent); border-color: var(--stroke); }
-    .top-nav a.active { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
-
-    .theme-toggle {
-      margin-left: auto;
-      width: 36px; height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
-
-    header { margin-bottom: 2rem; }
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.35rem;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    header p { color: var(--text-body); font-size: 0.875rem; max-width: 720px; }
-
-    .doc h2 {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin: 2rem 0 0.75rem;
-      letter-spacing: -0.01em;
-      color: var(--text);
-    }
-    .doc h3 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin: 1.25rem 0 0.5rem;
-      color: var(--text);
-    }
-    .doc p, .doc li {
-      font-size: 0.85rem;
-      color: var(--text-body);
-      line-height: 1.6;
-    }
-    .doc p { margin-bottom: 0.75rem; }
-    .doc ul, .doc ol { margin: 0.5rem 0 0.9rem 1.25rem; }
-    .doc li { margin-bottom: 0.35rem; }
-    .doc strong { color: var(--text); font-weight: 600; }
-    .doc a { color: var(--accent); text-decoration: none; }
-    .doc a:hover { text-decoration: underline; }
-
-    .doc code, .doc kbd {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78em;
-      background: var(--code-bg);
-      color: var(--text);
-      padding: 0.08em 0.35em;
-      border-radius: 4px;
-      border: 1px solid var(--stroke);
-    }
-
-    .doc pre {
-      background: var(--code-bg);
-      border: 1px solid var(--stroke);
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
-      overflow-x: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.74rem;
-      line-height: 1.55;
-      color: var(--text);
-      margin: 0.5rem 0 1rem;
-    }
-    .doc pre code { background: transparent; border: 0; padding: 0; font-size: inherit; color: inherit; }
-
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .callout {
-      border-left: 3px solid var(--accent);
-      background: var(--accent-bg);
-      padding: 0.7rem 1rem;
-      border-radius: 0 8px 8px 0;
-      margin: 0.5rem 0 1rem;
-    }
-    .callout.warn { border-left-color: var(--warn); background: rgba(217, 119, 6, 0.08); }
-    .callout.warn strong { color: var(--warn); }
-    .callout p:last-child { margin-bottom: 0; }
-
-    table.api {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.78rem;
-      margin: 0.5rem 0 1rem;
-    }
-    table.api th, table.api td {
-      text-align: left;
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid var(--stroke);
-      vertical-align: top;
-    }
-    table.api th {
-      font-weight: 600;
-      color: var(--text);
-      background: var(--bg-alt);
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    table.api td code { font-size: 0.72rem; }
-
-    .pill {
-      display: inline-block;
-      font-size: 0.65rem;
-      font-weight: 600;
-      padding: 0.1rem 0.45rem;
-      border-radius: 999px;
-      background: var(--accent-bg);
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-right: 0.3rem;
-    }
-    .pill.no { background: rgba(220, 38, 38, 0.10); color: var(--red); }
-    .pill.yes { background: rgba(22, 163, 74, 0.10); color: var(--green); }
-
-    .toc {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 0.85rem 1.1rem;
-      font-size: 0.78rem;
-      margin-bottom: 1.5rem;
-    }
-    .toc-title {
-      font-size: 0.65rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-secondary);
-      margin-bottom: 0.45rem;
-    }
-    .toc ol { margin: 0; padding-left: 1.1rem; }
-    .toc li { margin-bottom: 0.2rem; color: var(--text-body); }
-    .toc a { color: var(--text-body); text-decoration: none; }
+    /* Contents: the nine sections, two columns on a desktop. */
+    .toc { padding: 22px 0 26px; border-bottom: 1px solid var(--line); }
+    .toc-title { margin: 0 0 10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); }
+    .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 40px; }
+    .toc li { margin: 0 0 6px; font-size: 14px; color: var(--text-3); break-inside: avoid; }
+    .toc a { color: var(--text-2); text-decoration: none; }
     .toc a:hover { color: var(--accent); }
 
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      .top-nav { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-      .top-nav::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-      .panel { padding: 1rem; }
-      .doc pre { font-size: 0.7rem; }
+    /* The document: sections on hairlines, the text at a reading width. */
+    .doc .panel { padding: 32px 0; border-top: 1px solid var(--line); }
+    .doc .panel:first-child { border-top: none; }
+    .doc .panel[id] { scroll-margin-top: 16px; }
+    .doc h2 { margin: 0 0 14px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+    .doc h3 { margin: 24px 0 8px; font-size: 15px; font-weight: 600; color: var(--text); }
+    .doc p, .doc li { max-width: 760px; font-size: 14.5px; line-height: 1.65; color: var(--text-2); }
+    .doc p { margin: 0 0 12px; }
+    .doc ul, .doc ol { margin: 6px 0 14px 22px; padding: 0; }
+    .doc li { margin-bottom: 5px; }
+    .doc strong { color: var(--text); font-weight: 600; }
+    .doc a { color: var(--accent); text-decoration: none; }
+    .doc a:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .doc code, .doc kbd { padding: 1px 6px; border-radius: 6px; background: var(--bg-subtle); color: var(--text); font: 12.5px var(--mono); }
+    .doc pre { margin: 8px 0 16px; padding: 14px 16px; overflow-x: auto; border-radius: 12px; background: var(--bg-subtle); font: 12.5px/1.6 var(--mono); color: var(--text); }
+    .doc pre code { padding: 0; background: transparent; font-size: inherit; }
+    .callout { max-width: 760px; margin: 8px 0 16px; padding: 12px 16px; border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; background: var(--accent-bg); }
+    .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+    .callout.warn strong { color: var(--amber); }
+    .callout p:last-child { margin-bottom: 0; }
+    table.api { width: 100%; margin: 8px 0 16px; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
+    table.api th, table.api td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    table.api th { font-size: 12px; font-weight: 500; color: var(--text-3); }
+    table.api th:first-child, table.api td:first-child { padding-left: 0; }
+    table.api td { color: var(--text-2); line-height: 1.55; }
+    table.api td code { font-size: 12px; overflow-wrap: anywhere; }
+    .pill { display: inline-block; margin-right: 4px; padding: 1px 8px; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    .pill.no { background: var(--neg-soft); color: var(--neg); }
+    .pill.yes { background: var(--pos-soft); color: var(--pos); }
+    @container (max-width: 700px) {
+      .toc ol { columns: 1; }
+      .doc .panel { padding: 24px 0; }
+      .doc h2 { font-size: 18px; }
+      .doc p, .doc li { font-size: 14px; }
+      .doc pre { margin-left: -4px; margin-right: -4px; font-size: 11.5px; }
+      table.api { display: block; overflow-x: auto; }
     }
   </style>
   <script defer src="/track.js"></script>
   <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <a href="/">Activity</a>
-      <a href="/all-vaults">All Vaults</a>
-      <a href="/tvl">TVL</a>
-      <a href="/dominance">Dominance</a>
-      <a href="/address">Address</a>
-      <a href="/spark">Spark</a>
-      <a href="/rebalance-methodology" class="active">Rebalance Docs</a>
-      <a href="/logs">Logs</a>
-      <a href="/video">Video</a>
-      <a href="/socials">Socials</a>
-    </nav>
-
-    <header>
-      <h1>Rebalance Activity — Methodology</h1>
-      <p>Technical explainer for porting the per-vault Rebalance Activity chart (rendered on the <code>/address</code> page) into the production Fusion app. Covers exactly what we read on-chain, what we deliberately don't read, the heuristics behind the volume numbers, and what would change in a first-party implementation.</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Rebalance methodology</h1>
+        <p class="ui-lede keep">How the per-vault Rebalance Activity on the <code style="font:13px var(--mono)">/address</code> page is built: exactly what is read on-chain, what is deliberately not, the heuristics behind the volume numbers, and what would change in a first-party implementation in the Fusion app.</p>
+      </div>
     </header>
 
     <div class="toc">

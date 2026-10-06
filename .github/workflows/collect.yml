@@ -90,6 +90,29 @@ jobs:
         continue-on-error: true
         run: node tools/build-stocks-data.js
 
+      # What the TVL page draws — TVL per network per day — from the vault list
+      # just refreshed and the snapshots (tools/build-tvl-daily.js), so it no
+      # longer downloads every snapshot of every vault.
+      - name: Build the TVL page's daily file
+        continue-on-error: true
+        run: node tools/build-tvl-daily.js
+
+      # What the Switchers page matches: the events of the wallets that have
+      # both deposited and withdrawn, in two vaults or more, ~150 KB over the
+      # wire instead of every event (tools/build-switch-events.js), and their
+      # transaction hashes in a file of their own, fetched after it draws.
+      - name: Build the Switchers page's events
+        continue-on-error: true
+        run: node tools/build-switch-events.js
+
+      # What the Dust Tracker counts: every deposit under $20K, already marked
+      # ZyfAI's or not from zyfai-wallets.json, ~290 KB over the wire instead
+      # of every event and ZyfAI's 1.7 MB list (tools/build-dust-events.js);
+      # the hashes beside it, fetched when its transaction list opens.
+      - name: Build the Dust Tracker's deposits
+        continue-on-error: true
+        run: node tools/build-dust-events.js
+
       - name: Commit & push data files
         run: |
           git config user.name "github-actions[bot]"
@@ -98,6 +121,11 @@ jobs:
           [ -f activity-recent.json ] && git add -f activity-recent.json || true
           [ -f activity-recent-tx.json ] && git add -f activity-recent-tx.json || true
           [ -f stocks-data.json ] && git add -f stocks-data.json || true
+          [ -f tvl-daily.json ] && git add -f tvl-daily.json || true
+          [ -f switch-events.json ] && git add -f switch-events.json || true
+          [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true
+          [ -f dust-events.json ] && git add -f dust-events.json || true
+          [ -f dust-events-tx.json ] && git add -f dust-events-tx.json || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest
@@ -124,6 +152,11 @@ jobs:
             # The Stocks file is cut from this run's events and whatever TVL
             # snapshots just landed (tvl-snapshots.yml): cut it again from both.
             node tools/build-stocks-data.js && git add -f stocks-data.json || true
+            node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
+            # The Dust Tracker's deposits are marked from ZyfAI's list, which
+            # collect-zyfai.yml may have just updated: mark them again.
+            node tools/build-dust-events.js || true
+            for f in dust-events.json dust-events-tx.json; do [ -f "$f" ] && git add -f "$f"; done
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "Update data files [skip ci]"
