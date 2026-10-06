@@ -1,13 +1,15 @@
 // ui-chart.js — what the site's Plotly charts share.
 //
-// On a phone a chart's axis labels took a third of its width and a fifth of
-// its height: the plot itself was left a third of the box. FusionChart.fit()
-// gives the box back to the plot there: the y labels sit inside the plot on
-// faint gridlines, the x labels inside along its foot, small and few, and the
-// margins are gone.
+// Every chart with axes is drawn the same way, on a phone and on a desktop:
+// the plot runs the full width of its box, on the box's faint dots, which stop
+// at the plot's edges. The y labels sit just inside its left edge, small and
+// under the data. Under the plot, outside the dots, three dates: the first,
+// the middle and the last (frame(), called by glide() after every draw).
 // Exact values are what the hover is for.
 //
-//   layout = FusionChart.fit(layout)    a copy of layout, fitted to the screen
+//   layout = FusionChart.fit(layout)    a copy of layout, drawn that way
+//   FusionChart.frame(gd)               the dots fitted to the plot, the dates
+//                                       under it (glide() calls it)
 //   FusionChart.compact()               true on a phone: the page's content
 //                                       column (.ui-page) 560px or narrower,
 //                                       where its CSS goes to the phone layout
@@ -41,34 +43,94 @@
     (getComputedStyle(document.documentElement).getPropertyValue(name) || fallback || '').trim() || fallback;
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
+  // The strip under the plot that holds the dates.
+  const DATE_ROW = 24;
+
   function fit(layout) {
     const out = clone(layout);
     // Only charts with axes: a pie keeps its own margins.
-    if (!compact() || !Object.keys(out).some(k => /^[xy]axis\d*$/.test(k))) return out;
-    const grid = cssVar('--line', 'rgba(127, 127, 127, 0.16)');
+    if (!Object.keys(out).some(k => /^[xy]axis\d*$/.test(k))) return out;
+    const phone = compact();
     const muted = cssVar('--text-3', cssVar('--text-secondary', '#9A9AA6'));
-    // Both axes' labels inside the plot: the box is all chart.
-    out.margin = { l: 0, r: 0, t: 8, b: 0, pad: 0 };
-    const small = (f) => Object.assign({}, f, { size: 10, color: muted });
+    // A key above the plot keeps the room the page gave it.
+    const keyOnTop = out.showlegend && out.legend && (out.legend.y == null || out.legend.y >= 1);
+    out.margin = { l: 0, r: 0, t: keyOnTop ? ((out.margin && out.margin.t) || 30) : 12, b: DATE_ROW, pad: 0 };
+    const small = (f) => Object.assign({}, f, { size: phone ? 10 : 11, color: muted });
     for (const k of Object.keys(out)) {
       if (!/^xaxis\d*$/.test(k)) continue;
-      Object.assign(out[k], {
-        automargin: false, ticks: '', ticklen: 0, nticks: 4,
-        ticklabelposition: 'inside', showline: false, tickfont: small(out[k].tickfont),
-      });
+      // The dates are frame()'s: three of them, under the dots.
+      Object.assign(out[k], { automargin: false, showticklabels: false, ticks: '', ticklen: 0, showline: false, showgrid: false });
     }
     for (const k of Object.keys(out)) {
       if (!/^yaxis\d*$/.test(k)) continue;
       Object.assign(out[k], {
-        automargin: false, ticks: '', ticklen: 0, nticks: 6,
-        // 'allow': with the x labels inside too, Plotly's overflow check
-        // hides every y label though they sit well inside the plot.
-        ticklabelposition: 'inside', ticklabeloverflow: 'allow', showline: false, zeroline: false,
-        showgrid: true, gridcolor: grid, griddash: 'dot', gridwidth: 1,
-        tickfont: small(out[k].tickfont),
+        automargin: false, ticks: '', ticklen: 0, nticks: phone ? 5 : 6,
+        // Inside the plot, just above the level they name, under the bars
+        // and lines: the data covers them. Above, not on it: a label on the
+        // zero line read as "-$0". 'allow': Plotly's overflow check would
+        // hide labels that sit inside.
+        ticklabelposition: 'inside top', ticklabeloverflow: 'allow', ticklabelstandoff: 4, layer: 'below traces',
+        showline: false, showgrid: false, tickfont: small(out[k].tickfont),
       });
     }
     return out;
+  }
+
+  // The plot's square on its box: the dots stop at its edges (the box's
+  // --plot-t and --plot-b, in ui.css), and the dates go under it. The data's
+  // own first and last x on screen, not the axis's padding, and not a line's
+  // zero start (customdata 'anchor'), which is no reading.
+  function frame(gd) {
+    if (typeof gd === 'string') gd = document.getElementById(gd);
+    const fl = gd && gd._fullLayout;
+    if (!fl || !fl.xaxis || !fl._size) return;
+    const box = gd.closest('.ui-chart') || gd;
+    const sz = fl._size;
+    box.style.setProperty('--plot-t', sz.t + 'px');
+    box.style.setProperty('--plot-b', Math.max(0, fl.height - sz.t - sz.h) + 'px');
+    let row = box.querySelector(':scope > .ui-dates');
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'ui-dates';
+      row.setAttribute('aria-hidden', 'true');
+      box.appendChild(row);
+    }
+    row.innerHTML = dates(gd).map(t => '<span>' + esc(t) + '</span>').join('');
+    // A zoom (desktop) changes what is on screen.
+    if (!gd.__framed && gd.on) { gd.__framed = true; gd.on('plotly_relayout', () => frame(gd)); }
+  }
+
+  function dates(gd) {
+    const xa = gd._fullLayout.xaxis;
+    const lim = (xa.range || []).map(v => xa.r2l(v));
+    const [r0, r1] = [Math.min(...lim), Math.max(...lim)];
+    let lo = Infinity, hi = -Infinity;
+    for (const t of gd._fullData || []) {
+      if (t.visible === false || t.visible === 'legendonly' || !t.x) continue;
+      const cd = Array.isArray(t.customdata) ? t.customdata : null;
+      for (let i = 0; i < t.x.length; i++) {
+        if (cd && cd[i] === 'anchor') continue;
+        const l = xa.d2l(t.x[i]);
+        if (!Number.isFinite(l) || l < r0 || l > r1) continue;
+        if (l < lo) lo = l;
+        if (l > hi) hi = l;
+      }
+    }
+    if (!(hi >= lo)) return [];
+    const mid = (lo + hi) / 2;
+    if (xa.type === 'date') {
+      const day = 864e5, span = hi - lo;
+      const o = span > 120 * day ? { month: 'short', year: 'numeric' }
+        : span > 2 * day ? { month: 'short', day: 'numeric' }
+        : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+      const f = (ms) => new Date(ms).toLocaleString('en-US', Object.assign({ timeZone: 'UTC' }, o));
+      return [f(lo), f(mid), f(hi)];
+    }
+    if (xa.type === 'category' || xa.type === 'multicategory') {
+      const c = xa._categories || [];
+      return [lo, mid, hi].map(v => String(c[Math.round(v)] == null ? '' : c[Math.round(v)]));
+    }
+    return [lo, mid, hi].map(v => Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }));
   }
 
   // Listeners hear of it when compact() flips, whether the window or only the
@@ -152,6 +214,7 @@
     gd.on('plotly_unhover', off);
     gd.__hv = { on, off };
     if (!gd.__hvLeave) { gd.addEventListener('mouseleave', () => gd.__hv && gd.__hv.off()); gd.__hvLeave = true; }
+    frame(gd);
   }
 
   // The bubble's pieces: a date line, and a keyed row.
@@ -205,5 +268,5 @@
     }));
   }
 
-  window.FusionChart = { fit, compact, onChange, quiet, glide, when, row, cssVar, png };
+  window.FusionChart = { fit, compact, onChange, quiet, glide, frame, when, row, cssVar, png };
 })();
