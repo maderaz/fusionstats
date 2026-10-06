@@ -1,398 +1,194 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['share-prices.json', 'ipor-vaults.json', 'fe-apy.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitor — Fusion Stats</title>
-  <script src="/nav.js"></script>
+  <title>Share-Price Monitor — Fusion Stats</title>
+  <meta name="description" content="Share-price trajectory per Fusion vault, its realised APY against the rate the IPOR app shows, sorted by how far the two drift apart.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%88</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
-  <script>
-  </script>
+  <script src="/nav.js"></script>
   <style>
-    /* ---------- Filters: one bar, label over value, as on Activity ---------- */
-    .toolbar {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px 16px;
-      padding: 24px 0 18px;
-    }
-    .filterbar {
-      display: flex;
-      flex: 0 1 640px;
-      min-width: 0;
-      border: 1px solid var(--line-strong);
-      border-radius: 14px;
-      background: var(--bg);
-      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
-    }
-    /* The select covers its segment, so a click anywhere opens it. */
-    .toolbar label.field {
-      position: relative;
-      flex: 1 1 0;
-      min-width: 0;
-      height: 54px;
-      padding: 9px 14px 0;
-      border-left: 1px solid var(--line);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .toolbar label.field:first-child { border-left: none; border-radius: 13px 0 0 13px; flex-grow: 1.9; }
-    .toolbar label.field:last-child { border-radius: 0 13px 13px 0; }
-    .toolbar label.field:hover, .toolbar label.field:focus-within { background: var(--bg-subtle); }
-    .toolbar .field-label {
-      position: relative;
-      z-index: 1;
-      display: block;
-      font-size: 11.5px;
-      font-weight: 500;
-      color: var(--text-2);
-      white-space: nowrap;
-      pointer-events: none;
-    }
-    .toolbar select {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      padding: 21px 28px 0 14px;
-      border: none;
-      border-radius: inherit;
-      background: transparent var(--ui-chevron) no-repeat right 12px center;
-      font: 500 14px var(--sans);
-      color: var(--text);
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: pointer;
-      outline: none;
-      -webkit-appearance: none;
-              appearance: none;
-    }
-    .toolbar select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
-    .stat-pill { margin-left: auto; font-size: 13px; color: var(--text-3); }
-
-    /* ---------- Table: text on the page edge, rows highlight a little wider ---------- */
-    .table-scroll {
-      margin: 0 -12px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    table {
-      width: 100%;
-      min-width: 720px;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 14px;
-    }
-    thead th {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      padding: 10px 12px;
-      background: var(--bg);
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text-3);
-      white-space: nowrap;
-    }
-    thead th.num { text-align: right; }
-    thead th.sortable { cursor: pointer; user-select: none; transition: color 0.15s; }
-    thead th.sortable:hover, thead th.sort-active { color: var(--text); }
-    thead th .sort-arrow { margin-left: 4px; font-size: 11px; opacity: 0.35; }
-    thead th.sort-active .sort-arrow { opacity: 1; color: var(--accent); }
-    thead th .tip {
-      display: inline-block;
-      width: 13px;
-      height: 13px;
-      margin-left: 5px;
-      vertical-align: -2px;
-      overflow: hidden;            /* so its baseline is its bottom edge and it sits on the text line */
-      font-size: 0;
-      color: var(--text-3);
-      background: currentColor;
-      -webkit-mask: var(--ui-i-mask) center / contain no-repeat;
-              mask: var(--ui-i-mask) center / contain no-repeat;
-      cursor: help;
-      transition: color 0.15s;
-    }
-    thead th .tip:hover { color: var(--text); }
-    tbody td {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: middle;
-      color: var(--text);
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr td { transition: background 0.1s; }
-    tbody tr:hover td { background: var(--bg-hover); }
-
-    .vault-name {
-      max-width: 340px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-weight: 500;
-    }
-    .vault-name a { color: inherit; text-decoration: none; transition: color 0.15s; }
-    .vault-name a:hover { color: var(--accent); }
-    .vault-name .sub { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--text-3); }
-    .vault-name .sub .sep { margin: 0 6px; opacity: 0.6; }
-    .vault-name .sub .tvl { font-variant-numeric: tabular-nums; }
-    .vault-name .sub .app-cta { color: var(--accent); font-weight: 500; text-decoration: none; }
-    .vault-name .sub .app-cta:hover { text-decoration: underline; text-underline-offset: 3px; }
-
-    .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .pct { font-weight: 600; }
-    .pct.pos { color: var(--pos); }
-    .pct.neg { color: var(--neg); }
-    .pct.flag { background: var(--neg-soft); }
-    tbody tr:hover td.pct.flag { background: var(--neg-soft); }
-    .dflag {
-      padding: 2px 7px;
-      border-radius: 6px;
-      background: var(--amber-soft);
-      color: var(--amber);
-      font-size: 11.5px;
-      font-weight: 600;
-      white-space: nowrap;
-      cursor: help;
-    }
-    .dflag-inline { color: var(--amber); cursor: help; }
-    .px-cell { white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .px-from { color: var(--text-3); }
-    .px-arrow { margin: 0 5px; color: var(--text-3); }
-    .px-to { color: var(--text); font-weight: 600; }
-    .px-from[data-tip], .px-to[data-tip] { cursor: help; }
-    .px-from[data-tip]:hover, .px-to[data-tip]:hover {
-      text-decoration: underline dotted;
-      text-decoration-color: var(--text-3);
-      text-underline-offset: 3px;
-    }
-    /* One bubble for every explanation (native titles don't show on touch). */
-    .tip-pop {
-      position: fixed;
-      z-index: 200;
-      display: none;
-      max-width: 280px;
-      padding: 9px 12px;
-      border-radius: 10px;
-      background: var(--tip-bg);
-      color: var(--tip-fg);
-      font: 400 12.5px/1.5 var(--sans);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-    }
-    .tip-pop.show { display: block; }
-    .spark-cell { width: 136px; padding-top: 4px; padding-bottom: 4px; }
+    /* ---------- The list: a table on a desktop, two lines on a phone ---------- */
+    .mlist { --cols: minmax(0, 2.2fr) 128px minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.8fr); }
+    .mhead, .mrow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
+    .mhead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .mhead > span { display: flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+    .mhead .r { justify-content: flex-end; }
+    .mhead button { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+    .mhead button:hover, .mhead button.on { color: var(--text); }
+    .mhead .arrow { font-size: 10px; }
+    .mrow { min-height: 58px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .mrow:hover { background: linear-gradient(90deg, transparent, var(--bg-subtle) 4%, var(--bg-subtle) 96%, transparent); }
+    .mrow > * { min-width: 0; }
+    .mrow .r { justify-self: end; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .vname b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .vname b a { color: inherit; text-decoration: none; }
+    .vname b a:hover { color: var(--accent); }
+    .vname .sub { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-3); }
+    .vname .sub .tvl { font-variant-numeric: tabular-nums; }
+    .vname .sub a { color: var(--accent); font-weight: 500; text-decoration: none; }
+    .vname .sub a:hover { text-decoration: underline; text-underline-offset: 3px; }
     .spark { display: block; width: 120px; height: 28px; }
     .spark .line { fill: none; stroke-width: 1.5; }
     .spark .dot { stroke: var(--bg); stroke-width: 1; }
+    .px { color: var(--text-2); font-size: 13px; }
+    .px .to { color: var(--text); font-weight: 500; }
+    .px .arr { margin: 0 4px; color: var(--text-3); }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
     .na { color: var(--text-3); }
-    .loading { padding: 64px 20px; text-align: center; color: var(--text-3); }
-    .err { padding: 20px; color: var(--neg); font-size: 14px; }
+    .flag { font-weight: 600; }
+    .dflag { display: inline-block; padding: 1px 7px; border-radius: 6px; background: var(--amber-soft); color: var(--amber); font-size: 12px; font-weight: 600; cursor: help; }
+    .dflag-inline { color: var(--amber); cursor: help; }
+    .dev.ok { color: var(--pos); }
+    .dev.watch { color: var(--amber); }
+    .dev.far { color: var(--neg); font-weight: 600; }
+    .mhead-m { display: none; }
+    .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
 
-    .footnote {
-      margin-top: 24px;
-      padding-top: 18px;
-      border-top: 1px solid var(--line);
-      font-size: 12.5px;
-      line-height: 1.65;
-      color: var(--text-3);
+    @container (max-width: 900px) {
+      .mlist { --cols: minmax(0, 2fr) 96px minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.8fr); }
+      .mhead .px-h, .mrow .px { display: none; }
+      .spark { width: 92px; }
     }
-    .footnote strong { color: var(--text-2); font-weight: 600; }
-    .footnote code {
-      padding: 1px 5px;
-      border-radius: 5px;
-      background: var(--bg-subtle);
-      color: var(--text-2);
-      font: 11.5px var(--mono);
-    }
-
-    /* Wide enough for the whole table: let the headings stick to the window. */
-    @container (min-width: 760px) { .table-scroll { overflow: visible; } }
-    @media (max-width: 900px) { thead th { position: static; } }
+    /* Phone: the vault and its sparkline, then the four numbers. */
     @container (max-width: 640px) {
-      .filterbar { flex-basis: 100%; display: grid; grid-template-columns: 1fr 1fr; overflow: clip; }
-      .toolbar label.field { border-left: none; border-radius: 0; }
-      .toolbar label.field:first-child { grid-column: span 2; border-bottom: 1px solid var(--line); }
-      .toolbar label.field:last-child { border-left: 1px solid var(--line); }
-      .stat-pill { margin-left: 0; }
+      .mhead { display: none; }
+      .mrow {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-areas: "name name name spark" "d apy fe dev";
+        row-gap: 6px; column-gap: 8px; padding: 12px 0; min-height: 0;
+      }
+      .mrow:hover { background: none; }
+      .mrow .vname { grid-area: name; }
+      .mrow .sp { grid-area: spark; justify-self: end; }
+      .spark { width: 76px; height: 26px; }
+      .mrow .d { grid-area: d; } .mrow .apy { grid-area: apy; } .mrow .fe { grid-area: fe; } .mrow .dev { grid-area: dev; }
+      .mrow .d, .mrow .apy, .mrow .fe, .mrow .dev { justify-self: stretch; text-align: left; font-size: 13px; }
+      /* The four numbers' names once, above the list, not in every row. */
+      .mhead-m { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 11.5px; font-weight: 500; color: var(--text-3); }
+      .vname .sub .app { display: none; }
     }
   </style>
+  <script defer src="/track.js"></script>
 </head>
 <body>
   <div class="ui-page">
     <header class="ui-masthead">
       <div>
         <h1>Share-Price Monitor</h1>
-        <p class="ui-lede">Share-price trajectory over the <strong id="windowLabel">last 7 days</strong> per vault. Default-sorted by <strong>Deviation</strong> — the gap between the advertised FE APY and the realized sharePrice APY (the on-chain truth) — so vaults whose front-end rate drifts from reality surface first. Click any column header to re-sort.</p>
+        <p class="ui-lede">Each vault's share price over a window, and how the rate it actually earned compares with the rate the IPOR app shows. The widest gaps come first.</p>
+        <div class="ui-status" id="status">Loading…</div>
       </div>
     </header>
 
-    <div class="toolbar">
-      <div class="filterbar">
-      <label class="field">
-        <span class="field-label">Sort by</span>
-        <select id="sortSel">
-          <option value="" disabled hidden>Custom (header click)</option>
-          <option value="deviation">Deviation (FE vs sharePrice)</option>
-          <option value="best">Best Δ% (top performers)</option>
-          <option value="worst">Worst Δ%</option>
-          <option value="anomaly">Anomaly (|Δ%|)</option>
-          <option value="apy">sharePrice APY (realized)</option>
-          <option value="feapy">FE APY (fee-adjusted)</option>
-          <option value="name">Name</option>
-          <option value="tvl">TVL</option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="field-label">Timeframe</span>
-        <select id="windowSel">
-          <option value="7">7d</option>
-          <option value="30">30d</option>
-          <option value="90">90d</option>
-          <option value="0">All</option>
-        </select>
-      </label>
-      <label class="field">
-        <span class="field-label">Chain</span>
-        <select id="chainSel"><option value="">All</option></select>
-      </label>
+    <section class="ui-section">
+      <div class="ui-toolbar">
+        <div class="ui-filters" style="--cols: 2">
+          <label class="ui-filter wide full">
+            <span class="ui-filter-label">Sort by</span>
+            <select id="sortSel" data-fs>
+              <option value="" disabled hidden>Custom (a column)</option>
+              <option value="deviation">Deviation (FE vs sharePrice)</option>
+              <option value="best">Best Δ% (top performers)</option>
+              <option value="worst">Worst Δ%</option>
+              <option value="anomaly">Anomaly (|Δ%|)</option>
+              <option value="apy">sharePrice APY (realized)</option>
+              <option value="feapy">FE APY (fee-adjusted)</option>
+              <option value="name">Name</option>
+              <option value="tvl">TVL</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Timeframe</span>
+            <select id="windowSel" data-fs>
+              <option value="7" selected>7 days</option>
+              <option value="30">30 days</option>
+              <option value="90">90 days</option>
+              <option value="0">All</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Network</span>
+            <select id="chainSel" data-fs><option value="" data-glyph="all">All networks</option></select>
+          </label>
+        </div>
       </div>
-      <span class="stat-pill" id="statPill"></span>
-    </div>
 
-    <div class="card">
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="name">Vault<span class="sort-arrow" data-arrow="name">↕</span><span class="tip" data-tip="Vault name, with its underlying asset, current TVL, and a quick link to open it in the IPOR Fusion app. Tap the name to open the full vault page on Fusion Stats. Click the column header to sort by name.">i</span></th>
-              <th>Trajectory<span class="tip" data-tip="Sparkline of the share-price points in the selected timeframe. Line color reflects the period move (green up / red down / purple ≈ flat yield); the endpoint dot shows current momentum (green if the latest point is above the previous one, red if below).">i</span></th>
-              <th class="num sortable" data-sort="latest">Start → Now<span class="sort-arrow" data-arrow="latest">↕</span><span class="tip" data-tip="Share price (= convertToAssets(1 share) in underlying terms) at the start of the selected window and now. ~1.0 at vault inception, drifts up with yield. Hover either number for its exact UTC timestamp. Click the header to sort by latest price.">i</span></th>
-              <th class="num sortable" data-sort="delta">Δ <span id="deltaLabel">7d</span><span class="sort-arrow" data-arrow="delta">↕</span><span class="tip" data-tip="Percent change in share price across the selected window (the two numbers in Start → Now). Positive = the vault earned yield over the period; negative = share price fell (a loss or fee event) and warrants a look. Click the header to sort. ⚠ marks values our pipeline can't trust (off-scale snapshot data).">i</span></th>
-              <th class="num sortable" data-sort="apy">sharePrice <span id="apyWindowLabel">7d</span> APY<span class="sort-arrow" data-arrow="apy">↕</span><span class="tip" data-tip="The vault's REALIZED annualized return, derived only from its on-chain share price (= convertToAssets(1 share)) over the selected window via the compound formula (1 + r)^(365 / days) − 1, where r = last/first sharePrice and days = actual elapsed time between the first and last trusted points. Share price already reflects every fee and loss, so this is the ground truth of what the vault actually earned. Hidden when the window spans less than ~12 hours of data, suppressed (⚠) for off-scale snapshots.">i</span></th>
-              <th class="num sortable" data-sort="feapy">FE APY<span class="sort-arrow" data-arrow="feapy">↕</span><span class="tip" data-tip="APR shown in the IPOR app (api.ipor.io) net of the vault's on-chain performance and management fees: APR×(1−perfFee) − mgmtFee. This is the forward-looking rate the front end advertises — compare it against the sharePrice APY (the realized truth) via the Deviation column. Shows the gross APR (muted) when the on-chain fees can't be read.">i</span></th>
-              <th class="num sortable" data-sort="deviation">Deviation<span class="sort-arrow" data-arrow="deviation">↕</span><span class="tip" data-tip="FE APY minus the sharePrice APY (the realized, on-chain truth) in percentage points. Surfaces vaults where the advertised front-end rate diverges from what the vault actually earned: a large positive value means FE APY overstates reality, negative means it understates. Sorted by absolute deviation by default so the biggest divergences sit on top. '—' until the FE APY (fee-adjusted) is computed by the collector.">i</span></th>
-            </tr>
-          </thead>
-          <tbody id="rows">
-            <tr><td colspan="7" class="loading">Loading snapshots…</td></tr>
-          </tbody>
-        </table>
+      <div class="mlist">
+        <div class="mhead">
+          <span><button type="button" data-sort="name">Vault</button><span class="arrow" data-arrow="name"></span></span>
+          <span>Trajectory <span class="ui-tip" tabindex="0" data-tip="The share price across the window. The line's colour is the window's move (green up, red down, purple a slow yield); the end dot is the latest move (green up, red down).">ⓘ</span></span>
+          <span class="r px-h"><button type="button" data-sort="latest">Start → Now</button><span class="arrow" data-arrow="latest"></span><span class="ui-tip" tabindex="0" data-tip="Share price (convertToAssets of one share, in the underlying) at the window's start and now. About 1.0 when a vault launches, drifting up with yield. Hover either number for its time.">ⓘ</span></span>
+          <span class="r"><button type="button" data-sort="delta">Δ <span class="wl">7d</span></button><span class="arrow" data-arrow="delta"></span><span class="ui-tip" tabindex="0" data-tip="The share price's change across the window. Positive: it earned yield. Negative: it fell (a loss or a fee) and warrants a look. ⚠ marks a value the data cannot back (off-scale snapshots).">ⓘ</span></span>
+          <span class="r"><button type="button" data-sort="apy">sharePrice APY</button><span class="arrow" data-arrow="apy"></span><span class="ui-tip" tabindex="0" data-tip="What the vault actually earned, annualised from its on-chain share price over the window: (1 + r)^(365 / days) − 1, with r the last over the first price and days the time between them. The share price is net of every fee and loss: this is the truth. Hidden under ~12 hours of data.">ⓘ</span></span>
+          <span class="r"><button type="button" data-sort="feapy">FE APY</button><span class="arrow" data-arrow="feapy"></span><span class="ui-tip" tabindex="0" data-tip="The APR the IPOR app shows, net of the vault's on-chain performance and management fees: APR × (1 − perf fee) − mgmt fee. Muted: the gross APR, when the fees could not be read.">ⓘ</span></span>
+          <span class="r"><button type="button" data-sort="deviation">Deviation</button><span class="arrow" data-arrow="deviation"></span><span class="ui-tip" tabindex="0" data-tip="FE APY minus sharePrice APY, in percentage points. Large and positive: the app overstates what the vault earns; negative: it understates. Sorted by size either way.">ⓘ</span></span>
+        </div>
+        <div class="mhead-m" aria-hidden="true"><span>Δ <span class="wl">7d</span></span><span>APY</span><span>FE APY</span><span>Deviation</span></div>
+        <div id="rows"><div class="empty">Loading snapshots…</div></div>
       </div>
-    </div>
+      <div id="pager"></div>
+    </section>
 
-    <div class="footnote">
-      Share price = <code>convertToAssets(1 share)</code> in underlying terms (~1.0 at deploy, trends up with yield).
-      Line color reflects the window Δ%; the endpoint dot signals current momentum (green = last point higher than the previous, red = lower).
-      "Δ" = first→last sharePrice across the selected timeframe. <strong>sharePrice APY</strong> annualizes that move via the compound formula <code>(1 + r)^(365 / days) − 1</code> where <code>days</code> is the actual elapsed time (in seconds, not point count) between the first and last trusted snapshots — so vaults sampled multiple times per day don't get a bogus 50000% APY from intra-day noise. It is the realized, on-chain truth (share price already nets out every fee and loss). <strong>FE APY</strong> is the rate the IPOR app advertises, fee-adjusted (<code>APR×(1−perfFee) − mgmtFee</code>). <strong>Deviation</strong> = FE APY − sharePrice APY in percentage points: small = the front-end rate matches reality, large (±) = it diverges and warrants a look. Sharp drops or sustained negatives need investigation (rebalance loss, fee event, parse error). Click column headers to sort, use the toolbar to switch timeframe or filter by chain.
-    </div>
+    <details class="ui-more">
+      <summary>How it's computed</summary>
+      <div>Share price is <code>convertToAssets(1 share)</code> in the underlying: about 1.0 at launch, trending up with yield. Readings outside 0.1–100 are scaling errors in the snapshots and are dropped; a window left with a jump over 3× or a move over 300% is flagged ⚠. <b>Δ</b> is the first to the last trusted price in the window. <b>sharePrice APY</b> annualises it with <code>(1 + r)^(365 / days) − 1</code>, <code>days</code> being the time actually elapsed between those two snapshots, so a vault sampled several times a day does not get a 50000% APY from intra-day noise. <b>FE APY</b> is the IPOR app's rate, fee-adjusted. <b>Deviation</b> = FE APY − sharePrice APY: small means the app's rate matches reality, large (either way) means it does not. Sharp drops or sustained negatives deserve a look: a rebalance loss, a fee event, or a parse error.</div>
+    </details>
   </div>
 
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/share-price.js"></script>
   <script>
+  (function () {
+    'use strict';
+    const PAGE = 20;
+    const esc = UI.esc;
     let allRows = [];
-    let rawData = { snap: null, names: {}, tvls: {}, fe: {}, feMeta: null };
-    // Trajectory window defaults to 7 days; the toolbar lets the user widen it
-    // to 30 / 90 days or All. Start → Now, Δ and APY all derive from the same
-    // window so the table reconciles row-internally. Sort state is split into a
-    // key + direction so both the dropdown and clickable column headers can
-    // drive it without duplicating enums.
-    let state = { sortKey: 'deviation', sortDir: 'desc', chain: '', window: 7 };
+    let rawData = { windows: null, snapVaults: null, names: {}, tvls: {}, fe: {} };
+    let state = { sortKey: 'deviation', sortDir: 'desc', chain: '', window: 7, page: 1 };
 
-    // Translation table between the Sort dropdown (preset combinations) and
-    // (sortKey, sortDir) state. Keeps the two UIs in sync without forking enums.
-    const DROPDOWN_PRESETS = {
-      best:    { key: 'delta',   dir: 'desc' },
-      worst:   { key: 'delta',   dir: 'asc'  },
-      anomaly: { key: 'anomaly', dir: 'desc' },
-      apy:     { key: 'apy',     dir: 'desc' },
-      feapy:   { key: 'feapy',   dir: 'desc' },
-      deviation: { key: 'deviation', dir: 'desc' },
-      name:    { key: 'name',    dir: 'asc'  },
-      tvl:     { key: 'tvl',     dir: 'desc' },
+    // The Sort dropdown's presets, as (key, direction).
+    const PRESETS = {
+      best: { key: 'delta', dir: 'desc' }, worst: { key: 'delta', dir: 'asc' }, anomaly: { key: 'anomaly', dir: 'desc' },
+      apy: { key: 'apy', dir: 'desc' }, feapy: { key: 'feapy', dir: 'desc' }, deviation: { key: 'deviation', dir: 'desc' },
+      name: { key: 'name', dir: 'asc' }, tvl: { key: 'tvl', dir: 'desc' },
     };
-    function presetFor(key, dir) {
-      for (const [name, p] of Object.entries(DROPDOWN_PRESETS)) {
-        if (p.key === key && p.dir === dir) return name;
-      }
-      return '';   // header-driven combination with no dropdown equivalent
-    }
+    const presetFor = (key, dir) => { for (const [n, p] of Object.entries(PRESETS)) if (p.key === key && p.dir === dir) return n; return ''; };
+    const windowLabel = () => (state.window > 0 ? state.window + 'd' : 'all');
 
-    function windowLabel() {
-      return state.window > 0 ? state.window + 'd' : 'all';
-    }
-    function windowDaysLabel() {
-      return state.window > 0 ? `last ${state.window} days` : 'all history';
-    }
-    function updateWindowLabels() {
-      const wl = document.getElementById('windowLabel');
-      const dl = document.getElementById('deltaLabel');
-      const al = document.getElementById('apyWindowLabel');
-      if (wl) wl.textContent = windowDaysLabel();
-      if (dl) dl.textContent = windowLabel();
-      if (al) al.textContent = windowLabel();
-    }
-
-    // Sync the Sort dropdown and the column-header arrows to whatever
-    // (sortKey, sortDir) state currently holds. Called after any sort change
-    // — from the dropdown OR from a header click — so both UIs always agree.
     function syncSortUI() {
-      const sortSel = document.getElementById('sortSel');
-      if (sortSel) sortSel.value = presetFor(state.sortKey, state.sortDir);
-      document.querySelectorAll('thead th.sortable').forEach(th => {
-        const k = th.getAttribute('data-sort');
-        const arrow = th.querySelector('.sort-arrow');
-        if (k === state.sortKey) {
-          th.classList.add('sort-active');
-          if (arrow) arrow.textContent = state.sortDir === 'desc' ? '↓' : '↑';
-        } else {
-          th.classList.remove('sort-active');
-          if (arrow) arrow.textContent = '↕';
-        }
-      });
+      document.getElementById('sortSel').value = presetFor(state.sortKey, state.sortDir);
+      document.querySelectorAll('.mhead button[data-sort]').forEach((b) => b.classList.toggle('on', b.dataset.sort === state.sortKey));
+      document.querySelectorAll('.mhead .arrow').forEach((a) => { a.textContent = a.dataset.arrow === state.sortKey ? (state.sortDir === 'desc' ? '↓' : '↑') : ''; });
     }
 
+    // The window's rows: ready-made in share-prices.json, else worked out
+    // from every snapshot (share-price.js), and the names, TVLs and FE APYs.
     function recompute() {
-      if (!rawData.snap) return;
-      allRows = compute(rawData.snap.vaults).map(r => {
-        // FE APY (API-derived, fee-adjusted) keyed by lowercase address.
+      const base = rawData.windows
+        ? (rawData.windows[String(state.window)] || []).map(SharePrice.unpack)
+        : SharePrice.rows(rawData.snapVaults, state.window).map((r) => Object.assign(r, { mom: SharePrice.momentum(r.vals) }));
+      allRows = base.map((r) => {
         const fe = rawData.fe[r.addr] || null;
-        // Deviation = FE APY − sharePrice APY (the realized on-chain truth).
-        // Only meaningful when we have a fee-adjusted FE APY AND a trusted
-        // sharePrice APY for this window; otherwise null → sinks in the sort.
-        const deviationPct = (fe && fe.feApyPct != null && r.apyPct != null && !r.dataFlag)
-          ? fe.feApyPct - r.apyPct
-          : null;
-        return {
-          ...r,
-          name: rawData.names[r.addr] || r.name,
-          tvl: rawData.tvls[r.addr] || 0,
-          fe,
-          deviationPct,
-        };
+        // Deviation = FE APY − sharePrice APY, only with both, and trusted data.
+        const deviationPct = (fe && fe.feApyPct != null && r.apyPct != null && !r.dataFlag) ? fe.feApyPct - r.apyPct : null;
+        return Object.assign({}, r, { name: rawData.names[r.addr] || r.name, tvl: rawData.tvls[r.addr] || 0, fe, deviationPct });
       });
-      updateWindowLabels();
-      render(allRows);
+      document.querySelectorAll('.wl').forEach((e) => { e.textContent = windowLabel(); });
+      render();
     }
 
-    function fmtPrice(v) {
-      if (v == null) return '—';
-      const abs = Math.abs(v);
-      if (abs >= 100) return v.toFixed(2);
-      if (abs >= 1) return v.toFixed(4);
-      return v.toPrecision(4);
-    }
-    function fmtPct(v) {
-      if (v == null) return '—';
-      const sign = v >= 0 ? '+' : '';
-      return sign + v.toFixed(2) + '%';
-    }
+    function fmtPrice(v) { if (v == null) return '—'; const a = Math.abs(v); if (a >= 100) return v.toFixed(2); if (a >= 1) return v.toFixed(4); return v.toPrecision(4); }
+    function fmtPct(v) { if (v == null) return '—'; return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
     function fmtTvl(v) {
       if (!(v > 0)) return '';
       if (v >= 1e9) return '$' + (v / 1e9).toFixed(2).replace(/\.00$/, '') + 'B';
@@ -403,157 +199,46 @@
     function fmtDate(ts) {
       if (!ts) return '';
       const d = new Date(ts * 1000);
-      const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
-      return `${date} · ${hh}:${mm} UTC`;
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' · '
+        + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ' UTC';
     }
-
-    // Build SVG sparkline. `lineColor` reflects the window Δ% (overall mood);
-    // `dotColor` reflects current momentum (last vs prev → up/down/flat) so the
-    // endpoint signals whether the price is moving up or down right now.
+    // The sparkline: the line's colour is the window's move, the dot the last move.
     function sparkSvg(vals, lineColor, dotColor) {
       if (!vals || vals.length < 2) return '<span class="na">no data</span>';
-      const W = 120, H = 28, PAD_X = 2, PAD_Y = 4;
+      const W = 120, H = 28, PX = 2, PY = 4;
       const lo = Math.min(...vals), hi = Math.max(...vals);
       const range = (hi - lo) || (hi * 0.001) || 1;
-      const innerW = W - 2 * PAD_X;
-      const innerH = H - 2 * PAD_Y;
-      const pts = vals.map((v, i) => {
-        const x = PAD_X + (i / (vals.length - 1)) * innerW;
-        const y = PAD_Y + (1 - (v - lo) / range) * innerH;
-        return x.toFixed(1) + ',' + y.toFixed(1);
-      }).join(' ');
-      const lastX = (PAD_X + innerW).toFixed(1);
-      const lastY = (PAD_Y + (1 - (vals[vals.length - 1] - lo) / range) * innerH).toFixed(1);
-      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-        <polyline class="line" points="${pts}" stroke="${lineColor}"/>
-        <circle class="dot" cx="${lastX}" cy="${lastY}" r="2.4" fill="${dotColor}"/>
-      </svg>`;
+      const iw = W - 2 * PX, ih = H - 2 * PY;
+      const pts = vals.map((v, i) => (PX + (i / (vals.length - 1)) * iw).toFixed(1) + ',' + (PY + (1 - (v - lo) / range) * ih).toFixed(1)).join(' ');
+      const lastY = (PY + (1 - (vals[vals.length - 1] - lo) / range) * ih).toFixed(1);
+      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline class="line" points="${pts}" stroke="${lineColor}"/><circle class="dot" cx="${(PX + iw).toFixed(1)}" cy="${lastY}" r="2.4" fill="${dotColor}"/></svg>`;
     }
-
-    // Current momentum: green if last > prev, red if last < prev, grey if flat
-    // or insufficient data. Drives the sparkline endpoint dot color.
-    function momentumColor(vals) {
-      if (!vals || vals.length < 2) return '#9BA3AF';
-      const last = vals[vals.length - 1], prev = vals[vals.length - 2];
-      if (last > prev) return '#16A34A';
-      if (last < prev) return '#DC2626';
-      return '#9BA3AF';
-    }
-
+    const momentumColor = (mom) => (mom > 0 ? '#16A34A' : mom < 0 ? '#DC2626' : '#9BA3AF');
     function colorFor(pct) {
       if (pct == null) return '#9BA3AF';
-      if (pct < -2) return '#DC2626';   // red — nuking
-      if (pct < 0)  return '#D97706';   // amber — drifting down
-      if (pct >  5) return '#16A34A';   // green — strong gain
-      return '#8429FF';                  // flagship — normal slow yield
+      if (pct < -2) return '#DC2626';
+      if (pct < 0) return '#D97706';
+      if (pct > 5) return '#16A34A';
+      return '#8429FF';
     }
 
-    function compute(snapshots) {
-      const out = [];
-      for (const [addr, v] of Object.entries(snapshots || {})) {
-        const ser = (v.snapshots || [])
-          .filter(s => typeof s.sharePrice === 'number' && s.day != null && typeof s.timestamp === 'number')
-          .sort((a, b) => a.timestamp - b.timestamp);
-        // window slice — keep points whose `day` (UNIX days since epoch) is
-        // within the last N calendar days of the vault's most recent point.
-        // Day-bucketing (not "last N points") because the collector samples
-        // sub-daily now — slicing by point count would give a couple of HOURS
-        // of data for high-cadence vaults when the user asked for 7d. "All"
-        // keeps the whole series.
-        let winPts;
-        if (state.window > 0 && ser.length) {
-          const maxDay = ser[ser.length - 1].day;
-          winPts = ser.filter(s => s.day >= maxDay - state.window + 1);
-        } else {
-          winPts = ser.slice();
-        }
-        const win = winPts.map(s => s.sharePrice);
-
-        // Plausibility filter: an ERC-4626 yield vault's share price lives near
-        // 1.0 by construction and drifts slowly. Readings outside [0.1, 100]
-        // are scaling artifacts — some vaults' historical snapshots are off by
-        // 100x (e.g. 0.0109 instead of 1.09, a 2-decimal glitch). Drop those so
-        // a bad point can't manufacture a +9927% "gain".
-        const cleanPts = winPts.filter(p => p.sharePrice >= 0.1 && p.sharePrice <= 100);
-        const clean = cleanPts.map(p => p.sharePrice);
-
-        let deltaPct = null, dataFlag = null, vals = clean;
-        let apyPct = null;
-        let firstTs = null, lastTs = null;
-        if (clean.length >= 2) {
-          deltaPct = (clean[clean.length - 1] / clean[0] - 1) * 100;
-          // Annualize the period return using the ACTUAL elapsed seconds between
-          // the first and last trusted points (not the `day` field, which is
-          // truncated to whole UNIX days — multiple sub-daily snapshots map to
-          // the same day, which used to give daysSpan=0 → fallback to 1 → APY
-          // annualized as if an hour of intra-day noise were a 1-day return).
-          firstTs = cleanPts[0].timestamp;
-          lastTs = cleanPts[cleanPts.length - 1].timestamp;
-          const daysSpan = (lastTs - firstTs) / 86400;
-          const r = clean[clean.length - 1] / clean[0];
-          // Require at least ~12h of span before annualizing — anything shorter
-          // is intra-day noise and produces nonsense like 50000% APY.
-          if (r > 0 && daysSpan >= 0.5) {
-            apyPct = (Math.pow(r, 365 / daysSpan) - 1) * 100;
-          }
-          // Residual discontinuity even after filtering, or an implausible
-          // magnitude → don't trust the number; flag the row.
-          let maxJump = 1;
-          for (let i = 1; i < clean.length; i++) {
-            const rr = clean[i] > 0 && clean[i - 1] > 0 ? Math.max(clean[i] / clean[i - 1], clean[i - 1] / clean[i]) : Infinity;
-            if (rr > maxJump) maxJump = rr;
-          }
-          if (Math.abs(deltaPct) > 300 || maxJump > 3) { dataFlag = 'anomaly'; }
-        } else if (win.length >= 2) {
-          // Had data, but it was all implausible → can't compute a trustworthy
-          // delta. Surface as a data glitch rather than a fake number.
-          dataFlag = 'glitch';
-          vals = win;   // keep raw for the sparkline shape so the issue is visible
-        }
-        // first/last of the trusted (clean) window — these are the exact two
-        // values the Δ window is computed from, so showing "first → last" in
-        // the Latest column makes the percentage self-explanatory.
-        const winFirst = clean.length >= 2 ? clean[0] : null;
-        const winLast = clean.length ? clean[clean.length - 1] : (win.length ? win[win.length - 1] : null);
-        const lastPointTs = winPts.length ? winPts[winPts.length - 1].timestamp : null;
-
-        out.push({
-          addr, name: v.symbol ? (v.symbol + ' vault') : addr.slice(0, 10),
-          symbol: v.symbol || '?',
-          chain: v.chain || 'unknown',
-          tvl: 0,                       // filled from ipor-vaults.json below
-          vals, winFirst, latest: winLast, deltaPct, apyPct, dataFlag,
-          firstTs, lastTs: lastTs || lastPointTs,
-        });
-      }
-      return out;
-    }
-
-    // Extract the comparable value for each sort key. Flagged rows return null
-    // so they get pushed to the bottom regardless of direction (a 100x scaling
-    // artifact shouldn't crowd out a genuine top/bottom performer).
+    // Flagged rows sort to the bottom whichever way: an artifact must not
+    // crowd out a real top or bottom performer.
     function sortValue(r, key) {
-      if (key === 'name')    return (r.name || '').toLowerCase();
-      if (key === 'tvl')     return r.tvl || 0;
+      if (key === 'name') return (r.name || '').toLowerCase();
+      if (key === 'tvl') return r.tvl || 0;
       if (key === 'anomaly') return r.dataFlag ? null : Math.abs(r.deltaPct ?? 0);
-      if (key === 'latest')  return r.dataFlag ? null : r.latest;
-      if (key === 'delta')   return r.dataFlag ? null : r.deltaPct;
-      if (key === 'apy')     return r.dataFlag ? null : r.apyPct;
-      if (key === 'feapy')   return r.fe?.feApyPct ?? null;
-      // Deviation sorts by absolute magnitude — a manager wants the biggest
-      // gaps between FE rate and on-chain truth on top, regardless of sign.
+      if (key === 'latest') return r.dataFlag ? null : r.latest;
+      if (key === 'delta') return r.dataFlag ? null : r.deltaPct;
+      if (key === 'apy') return r.dataFlag ? null : r.apyPct;
+      if (key === 'feapy') return r.fe?.feApyPct ?? null;
       if (key === 'deviation') return r.deviationPct == null ? null : Math.abs(r.deviationPct);
       return null;
     }
-
     function applySort(rows) {
-      const s = [...rows];
-      const key = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+      const s = [...rows], key = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
       s.sort((a, b) => {
         const av = sortValue(a, key), bv = sortValue(b, key);
-        // Null/flagged rows go to the bottom regardless of direction.
         if (av == null && bv == null) return 0;
         if (av == null) return 1;
         if (bv == null) return -1;
@@ -563,247 +248,117 @@
       return s;
     }
 
-    function render(rows) {
-      const tbody = document.getElementById('rows');
-      const filtered = state.chain ? rows.filter(r => r.chain === state.chain) : rows;
-      document.getElementById('statPill').textContent =
-        `${filtered.length} vaults · ${windowDaysLabel()}`;
-      if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="loading">No vaults match.</td></tr>';
-        return;
+    function cellsFor(r) {
+      const isGlitch = r.dataFlag === 'glitch', isAnomaly = r.dataFlag === 'anomaly';
+      let d;
+      if (isGlitch) d = '<span class="dflag" title="Share-price snapshots for this vault are off-scale (a ~100x decimals glitch). Δ suppressed until the data is rescanned.">⚠ data</span>';
+      else if (isAnomaly) d = `<span class="${r.deltaPct >= 0 ? 'pos' : 'neg'}"><span class="dflag-inline" title="Large or discontinuous move — likely a data artifact, treat with caution.">⚠</span> ${fmtPct(r.deltaPct)}</span>`;
+      else d = `<span class="${r.deltaPct == null ? 'na' : r.deltaPct >= 0 ? 'pos' : 'neg'}${r.deltaPct != null && r.deltaPct < -2 ? ' flag' : ''}">${fmtPct(r.deltaPct)}</span>`;
+      let apy;
+      if (isGlitch || r.apyPct == null) apy = '<span class="na">—</span>';
+      else if (isAnomaly) apy = `<span class="${r.apyPct >= 0 ? 'pos' : 'neg'}"><span class="dflag-inline" title="Annualized from a flagged window — treat with caution.">⚠</span> ${fmtPct(r.apyPct)}</span>`;
+      else apy = `<span class="${r.apyPct >= 0 ? 'pos' : 'neg'}">${fmtPct(r.apyPct)}</span>`;
+      const fe = r.fe, f2 = (n) => (n == null ? '—' : n.toFixed(2));
+      let feCell;
+      if (fe && fe.feApyPct != null) feCell = `<span class="${fe.feApyPct >= 0 ? 'pos' : 'neg'}" title="${f2(fe.aprPct)}% APR − ${f2(fe.perfPct)}% perf − ${f2(fe.mgmtPct)}% mgmt → ${f2(fe.feApyPct)}% net">${fmtPct(fe.feApyPct)}</span>`;
+      else if (fe && fe.aprPct != null) feCell = `<span class="na" title="On-chain fees couldn't be read for this vault — showing gross APR (${f2(fe.aprPct)}%) without the fee deduction.">${fmtPct(fe.aprPct)}</span>`;
+      else feCell = '<span class="na">—</span>';
+      let dev;
+      if (r.deviationPct == null) dev = '<span class="na">—</span>';
+      else {
+        const ad = Math.abs(r.deviationPct);
+        dev = `<span class="dev ${ad < 1 ? 'ok' : ad < 3 ? 'watch' : 'far'}" title="FE APY ${fmtPct(fe.feApyPct)} − sharePrice APY ${fmtPct(r.apyPct)} = ${fmtPct(r.deviationPct)} (pp)">${fmtPct(r.deviationPct)}</span>`;
       }
-      tbody.innerHTML = applySort(filtered).map(r => {
-        const isGlitch = r.dataFlag === 'glitch';
-        const isAnomaly = r.dataFlag === 'anomaly';
+      let px;
+      if (isGlitch) px = '<span class="na">—</span>';
+      else if (r.winFirst != null && r.latest != null) px = `<span title="Window start: ${fmtDate(r.firstTs)}">${fmtPrice(r.winFirst)}</span><span class="arr">→</span><span class="to" title="Latest snapshot: ${fmtDate(r.lastTs)}">${fmtPrice(r.latest)}</span>`;
+      else px = r.latest != null ? `<span class="to" title="Latest snapshot: ${fmtDate(r.lastTs)}">${fmtPrice(r.latest)}</span>` : '—';
+      return { d, apy, feCell, dev, px };
+    }
+
+    function render() {
+      const filtered = state.chain ? allRows.filter((r) => r.chain === state.chain) : allRows;
+      const box = document.getElementById('rows');
+      if (!filtered.length) { box.innerHTML = '<div class="empty">No vaults match.</div>'; document.getElementById('pager').innerHTML = ''; return; }
+      const sorted = applySort(filtered);
+      const last = Math.max(1, Math.ceil(sorted.length / PAGE));
+      state.page = Math.min(Math.max(1, state.page), last);
+      box.innerHTML = sorted.slice((state.page - 1) * PAGE, state.page * PAGE).map((r) => {
+        const c = cellsFor(r);
         const lineColor = r.dataFlag ? '#9BA3AF' : colorFor(r.deltaPct);
-        const dotColor = r.dataFlag ? '#9BA3AF' : momentumColor(r.vals);
-        const tvlStr = fmtTvl(r.tvl);
-        const appUrl = `https://app.ipor.io/fusion/${r.chain}/${r.addr}`;
-        const appLink = `<span class="sep">•</span><a class="app-cta" href="${appUrl}" target="_blank" rel="noopener">Open in App ↗</a>`;
-        const sub = tvlStr
-          ? `<span class="sym">${r.symbol}</span><span class="sep">•</span><span class="tvl">${tvlStr}</span>${appLink}`
-          : `<span class="sym">${r.symbol}</span>${appLink}`;
-        // Δ cell: real number for clean rows; a flagged marker for data issues
-        // so a 100x scaling artifact never reads as a +9927% gain.
-        let deltaCell;
-        if (isGlitch) {
-          deltaCell = `<td class="num"><span class="dflag tip" data-tip="Share-price snapshots for this vault are off-scale (a ~100x decimals glitch). Δ suppressed until the data is rescanned.">⚠ data</span></td>`;
-        } else if (isAnomaly) {
-          const cls = r.deltaPct >= 0 ? 'pos' : 'neg';
-          deltaCell = `<td class="num pct ${cls}"><span class="dflag-inline tip" data-tip="Large or discontinuous move — likely a data artifact, treat with caution.">⚠</span> ${fmtPct(r.deltaPct)}</td>`;
-        } else {
-          const flag = (r.deltaPct != null && r.deltaPct < -2) ? ' flag' : '';
-          const cls = r.deltaPct == null ? 'na' : (r.deltaPct >= 0 ? 'pos' : 'neg');
-          deltaCell = `<td class="num pct ${cls}${flag}">${fmtPct(r.deltaPct)}</td>`;
-        }
-        // APY cell: extrapolated annualized return for clean rows. Suppressed
-        // for glitch rows, marked ⚠ for anomalies, '—' if we couldn't compute.
-        let apyCell;
-        if (isGlitch || r.apyPct == null) {
-          apyCell = '<td class="num"><span class="na">—</span></td>';
-        } else if (isAnomaly) {
-          const cls = r.apyPct >= 0 ? 'pos' : 'neg';
-          apyCell = `<td class="num pct ${cls}"><span class="dflag-inline tip" data-tip="Annualized from a flagged window — treat with caution.">⚠</span> ${fmtPct(r.apyPct)}</td>`;
-        } else {
-          const cls = r.apyPct >= 0 ? 'pos' : 'neg';
-          apyCell = `<td class="num pct ${cls}">${fmtPct(r.apyPct)}</td>`;
-        }
-        // FE APY cell: the APR the IPOR app reports, net of the vault's on-chain
-        // perf/mgmt fees (api.ipor.io + on-chain reads, refreshed by the
-        // collect-fe-apy cron). Falls back to the muted gross APR when fees
-        // couldn't be read for that chain; '—' when the API has no entry.
-        let feApyCell;
-        const fe = r.fe;
-        const fmt2 = (n) => n == null ? '—' : n.toFixed(2);
-        if (fe && fe.feApyPct != null) {
-          const cls = fe.feApyPct >= 0 ? 'pos' : 'neg';
-          const tip = `${fmt2(fe.aprPct)}% APR − ${fmt2(fe.perfPct)}% perf − ${fmt2(fe.mgmtPct)}% mgmt → ${fmt2(fe.feApyPct)}% net`;
-          feApyCell = `<td class="num pct ${cls}"><span data-tip="${tip}">${fmtPct(fe.feApyPct)}</span></td>`;
-        } else if (fe && fe.aprPct != null) {
-          feApyCell = `<td class="num"><span class="na" title="fees unavailable — gross APR" data-tip="On-chain fees couldn't be read for this vault — showing gross APR (${fmt2(fe.aprPct)}%) without the fee deduction.">${fmtPct(fe.aprPct)}</span></td>`;
-        } else {
-          feApyCell = '<td class="num"><span class="na">—</span></td>';
-        }
-        // Deviation cell: FE APY − sharePrice APY in percentage points. Share
-        // price is the absolute on-chain truth, so this exposes where the
-        // advertised front-end rate drifts from reality. Colored by magnitude
-        // (green ≈ in line, amber = watch, red = big gap); '—' until the
-        // fee-adjusted FE APY exists and the sharePrice APY is trusted.
-        let deviationCell;
-        if (r.deviationPct == null) {
-          deviationCell = '<td class="num"><span class="na">—</span></td>';
-        } else {
-          const ad = Math.abs(r.deviationPct);
-          const col = ad < 1 ? 'var(--green)' : ad < 3 ? 'var(--amber)' : 'var(--red)';
-          const flag = ad >= 3 ? ' flag' : '';
-          const tip = `FE APY ${fmtPct(fe.feApyPct)} − sharePrice APY ${fmtPct(r.apyPct)} = ${fmtPct(r.deviationPct)} (pp)`;
-          deviationCell = `<td class="num pct${flag}" style="color:${col}"><span data-tip="${tip}">${fmtPct(r.deviationPct)}</span></td>`;
-        }
-        // Start → Now cell: the window's first and last so the Δ% beside it is
-        // obvious at a glance. For glitch rows we suppress the pair too — the
-        // raw value would be off-scale garbage (e.g. 1.02e12 for Tanken).
-        // Each price is wrapped in a hover-tooltip showing its exact UTC date.
-        let latestCell;
-        if (isGlitch) {
-          latestCell = '<span class="na">—</span>';
-        } else if (r.winFirst != null && r.latest != null) {
-          const fromTip = r.firstTs ? ` data-tip="Window start: ${fmtDate(r.firstTs)}"` : '';
-          const toTip = r.lastTs ? ` data-tip="Latest snapshot: ${fmtDate(r.lastTs)}"` : '';
-          latestCell = `<span class="px-from"${fromTip}>${fmtPrice(r.winFirst)}</span><span class="px-arrow">→</span><span class="px-to"${toTip}>${fmtPrice(r.latest)}</span>`;
-        } else {
-          const toTip = r.lastTs ? ` data-tip="Latest snapshot: ${fmtDate(r.lastTs)}"` : '';
-          latestCell = (r.latest != null ? `<span class="px-to"${toTip}>${fmtPrice(r.latest)}</span>` : '—');
-        }
-        return `<tr>
-          <td class="vault-name" title="${r.name}">
-            <a href="/address/?a=${r.addr}">${r.name}</a>
-            <span class="sub">${sub}</span>
-          </td>
-          <td class="spark-cell">${sparkSvg(r.vals, lineColor, dotColor)}</td>
-          <td class="num px-cell">${latestCell}</td>
-          ${deltaCell}
-          ${apyCell}
-          ${feApyCell}
-          ${deviationCell}
-        </tr>`;
+        const dotColor = r.dataFlag ? '#9BA3AF' : momentumColor(r.mom);
+        const tvl = fmtTvl(r.tvl);
+        const app = `https://app.ipor.io/fusion/${encodeURIComponent(r.chain)}/${r.addr}`;
+        return `<div class="mrow">
+          <span class="vname" title="${esc(r.name)}"><b><a href="/address/?a=${r.addr}">${esc(r.name)}</a></b>
+            <span class="sub">${esc(r.symbol)}${tvl ? ' · <span class="tvl">' + tvl + '</span>' : ''}<span class="app"> · <a href="${app}" target="_blank" rel="noopener">Open in App ↗</a></span></span></span>
+          <span class="sp">${sparkSvg(r.vals, lineColor, dotColor)}</span>
+          <span class="r px">${c.px}</span>
+          <span class="r d">${c.d}</span>
+          <span class="r apy">${c.apy}</span>
+          <span class="r fe">${c.feCell}</span>
+          <span class="r dev">${c.dev}</span>
+        </div>`;
       }).join('');
+      document.getElementById('pager').innerHTML = UI.pager({ total: sorted.length, page: state.page, size: PAGE, noun: 'vaults' });
     }
 
-    async function load() {
-      try {
-        const [snapRes, iporRes, feRes] = await Promise.all([
-          fetch('/tvl-snapshots.json?t=' + Date.now()),
-          fetch('/ipor-vaults.json?t=' + Date.now()).catch(() => null),
-          // FE APY data — data-source.js redirects this to the raw CDN so it
-          // stays fresh between code deploys. Optional: degrade gracefully.
-          fetch('/fe-apy.json?t=' + Date.now()).catch(() => null),
-        ]);
-        if (!snapRes.ok) throw new Error('tvl-snapshots.json HTTP ' + snapRes.status);
-        const snap = await snapRes.json();
-        let ipor = null;
-        try { if (iporRes && iporRes.ok) ipor = await iporRes.json(); } catch {}
-        let feData = null;
-        try { if (feRes && feRes.ok) feData = await feRes.json(); } catch {}
+    // ---- controls ----
+    document.getElementById('sortSel').addEventListener('change', (e) => {
+      const p = PRESETS[e.target.value];
+      if (p) { state.sortKey = p.key; state.sortDir = p.dir; }
+      state.page = 1; syncSortUI(); render();
+    });
+    document.getElementById('windowSel').addEventListener('change', (e) => { state.window = parseInt(e.target.value, 10) || 0; recompute(); });
+    document.getElementById('chainSel').addEventListener('change', (e) => { state.chain = e.target.value; state.page = 1; render(); });
+    document.querySelector('.mhead').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-sort]'); if (!b) return;
+      const key = b.dataset.sort;
+      if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      else { state.sortKey = key; state.sortDir = key === 'name' ? 'asc' : 'desc'; }
+      state.page = 1; syncSortUI(); render();
+    });
+    UI.onPage(document.getElementById('pager'), (n) => {
+      state.page = n; render();
+      const top = document.querySelector('.mlist').getBoundingClientRect().top;
+      if (top < 0) window.scrollBy({ top: top - 80 });
+    });
 
-        const nameByAddr = {};
-        const tvlByAddr = {};
-        if (ipor && Array.isArray(ipor.vaults)) {
-          for (const v of ipor.vaults) {
-            const a = (v.address || '').toLowerCase();
-            if (a) { nameByAddr[a] = v.name || v.token || a; tvlByAddr[a] = v.tvl || 0; }
-          }
-        }
-
-        // FE APY keyed by lowercase address (the collector already lowercases,
-        // but normalize defensively so the merge by r.addr never misses).
-        const feByAddr = {};
-        if (feData && feData.vaults && typeof feData.vaults === 'object') {
-          for (const [a, v] of Object.entries(feData.vaults)) {
-            feByAddr[a.toLowerCase()] = v;
-          }
-        }
-
-        rawData = { snap, names: nameByAddr, tvls: tvlByAddr, fe: feByAddr, feMeta: feData };
-        recompute();
-
-        // Build chain filter dynamically from data
-        const chainSel = document.getElementById('chainSel');
-        [...new Set(allRows.map(r => r.chain))].sort().forEach(c => {
-          const o = document.createElement('option');
-          o.value = c; o.textContent = c;
-          chainSel.appendChild(o);
-        });
-
-        const sortSel = document.getElementById('sortSel');
-        const windowSel = document.getElementById('windowSel');
-        windowSel.value = String(state.window);
-        sortSel.onchange = () => {
-          const preset = DROPDOWN_PRESETS[sortSel.value];
-          if (preset) { state.sortKey = preset.key; state.sortDir = preset.dir; }
-          syncSortUI();
-          render(allRows);
-        };
-        windowSel.onchange = () => {
-          state.window = parseInt(windowSel.value, 10) || 0;
-          recompute();
-        };
-        chainSel.onchange = () => { state.chain = chainSel.value; render(allRows); };
-
-        // Click any sortable column header to sort by it. Re-clicking the
-        // active header flips direction so users can drill in either way
-        // without hunting for a dropdown.
-        document.querySelectorAll('thead th.sortable').forEach(th => {
-          th.addEventListener('click', (e) => {
-            // Don't sort when clicking the (i) tooltip marker inside the header.
-            if (e.target.closest('.tip')) return;
-            const key = th.getAttribute('data-sort');
-            if (state.sortKey === key) {
-              state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-            } else {
-              state.sortKey = key;
-              state.sortDir = (key === 'name') ? 'asc' : 'desc';
-            }
-            syncSortUI();
-            render(allRows);
-          });
-        });
-
-        syncSortUI();
-      } catch (e) {
-        document.getElementById('rows').innerHTML =
-          `<tr><td colspan="7" class="err">Failed to load: ${e.message}</td></tr>`;
+    // ---- data ----
+    const getJson = (f) => fetch(f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const when = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    (async function load() {
+      const [prices, ipor, feData] = await Promise.all([getJson('/share-prices.json'), getJson('/ipor-vaults.json'), getJson('/fe-apy.json')]);
+      let snapAt = prices && prices.updatedAt;
+      if (prices && prices.windows) rawData.windows = prices.windows;
+      else {
+        // Until share-prices.json exists: every snapshot, as before.
+        const snap = await getJson('/tvl-snapshots.json');
+        if (!snap) { document.getElementById('rows').innerHTML = '<div class="ui-error">Failed to load the share-price snapshots.</div>'; document.getElementById('status').textContent = ''; return; }
+        rawData.snapVaults = snap.vaults; snapAt = snap.updatedAt;
       }
-    }
-    load();
-
-    // Hover tooltips for the (i) markers. Native `title` doesn't appear on
-    // touch devices, so we drive a visible popover ourselves. Desktop: show on
-    // mouseover, hide on mouseout. Touch (no hover): tap toggles via click.
-    (function () {
-      const pop = document.createElement('div');
-      pop.className = 'tip-pop';
-      document.body.appendChild(pop);
-      let openEl = null;
-      const hide = () => { pop.classList.remove('show'); openEl = null; };
-      const show = (tip) => {
-        pop.textContent = tip.getAttribute('data-tip') || '';
-        pop.classList.add('show');
-        openEl = tip;
-        // Position below the marker, clamped to the viewport.
-        const r = tip.getBoundingClientRect();
-        const pr = pop.getBoundingClientRect();
-        let left = r.left + r.width / 2 - pr.width / 2;
-        left = Math.max(8, Math.min(left, window.innerWidth - pr.width - 8));
-        let top = r.bottom + 6;
-        if (top + pr.height > window.innerHeight - 8) top = r.top - pr.height - 6;
-        pop.style.left = left + 'px';
-        pop.style.top = Math.max(8, top) + 'px';
-      };
-      // mouseover/mouseout bubble (mouseenter/mouseleave don't), so we delegate
-      // and gate on the target actually entering/leaving the .tip element.
-      document.addEventListener('mouseover', (e) => {
-        const tip = e.target.closest('[data-tip]');
-        if (!tip || tip === openEl) return;
-        show(tip);
+      if (ipor && Array.isArray(ipor.vaults)) {
+        for (const v of ipor.vaults) {
+          const a = (v.address || '').toLowerCase();
+          if (a) { rawData.names[a] = v.name || v.token || a; rawData.tvls[a] = v.tvl || 0; }
+        }
+      }
+      if (feData && feData.vaults && typeof feData.vaults === 'object') {
+        for (const [a, v] of Object.entries(feData.vaults)) rawData.fe[a.toLowerCase()] = v;
+      }
+      const parts = [];
+      if (snapAt) parts.push('Snapshots to <b>' + esc(when(snapAt)) + '</b>');
+      if (feData && feData.updatedAt) parts.push('FE APY <b>' + esc(when(feData.updatedAt)) + '</b>');
+      document.getElementById('status').innerHTML = parts.join(' · ');
+      recompute();
+      // The networks, each with its mark.
+      const chainSel = document.getElementById('chainSel');
+      [...new Set(allRows.map((r) => r.chain))].sort().forEach((c) => {
+        const o = new Option(FusionSelect.chainName(c), c); o.dataset.chain = c; chainSel.appendChild(o);
       });
-      document.addEventListener('mouseout', (e) => {
-        const tip = e.target.closest('[data-tip]');
-        if (!tip || tip !== openEl) return;
-        const related = e.relatedTarget;
-        if (related && tip.contains(related)) return;   // moved within the tip
-        hide();
-      });
-      // Touch fallback: tap to toggle, tap elsewhere to dismiss.
-      document.addEventListener('click', (e) => {
-        const tip = e.target.closest('[data-tip]');
-        if (!tip) { if (openEl) hide(); return; }
-        e.stopPropagation();
-        if (openEl === tip) hide();
-        else show(tip);
-      });
-      window.addEventListener('resize', hide);
-      window.addEventListener('scroll', hide, true);
+      syncSortUI();
     })();
+  })();
   </script>
 </body>
 </html>

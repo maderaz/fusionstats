@@ -107,6 +107,14 @@ jobs:
         continue-on-error: true
         run: node tools/build-tvl-daily.js
 
+      # The Share-Price Monitor's rows for each window, worked out with the
+      # page's own code (share-price.js), ~70 KB over the wire instead of the
+      # whole snapshot history (tools/build-share-prices.js).
+      - name: Build the Monitor's share prices
+        if: always()
+        continue-on-error: true
+        run: node tools/build-share-prices.js
+
       - name: Commit & push results
         if: always()
         run: |
@@ -114,7 +122,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # One at a time: a single missing file makes `git add a b c` add none
           # of them, and the snapshots would go uncommitted with it.
-          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json; do
+          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json share-prices.json; do
             [ -f "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)
