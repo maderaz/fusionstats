@@ -20,6 +20,17 @@
 //                were stored under: the Product filter
 //   eventChains  chains with at least one event: the Chain filter's labels
 //   total        events in the full file
+//   txSplit      true: only the newest TX_INLINE events carry their
+//                transaction hash here
+//
+// Transaction hashes were half of what this file weighed over the wire (they
+// do not compress), and the page needs one only to link a row it is showing.
+// So the newest TX_INLINE events keep theirs — the rows the page opens on —
+// and every event's hash is in activity-recent-tx.json, in the same order,
+// which the page loads once it has drawn. The one thing the page computed
+// from hashes, its fallback tag for an untagged deposit and withdrawal in the
+// same transaction on the same vault ("atomic"), is computed here instead, by
+// the same rule, and every event it leaves untagged is marked synthetic:false.
 //
 // The page reaches for the full file only when a page or a filter goes past
 // coveredFrom.
@@ -32,6 +43,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const WINDOW_DAYS = 35;      // the page's 30-day figures, with five days' slack
 const MIN_EVENTS = 2000;     // and never fewer than this, however quiet a month
+const TX_INLINE = 400;       // newest events that keep their hash in the main file
 // Fields the page reads. sender, shares, logIdx and usdPrice it does not.
 const KEEP = ['type', 'vault', 'vaultName', 'symbol', 'chain', 'underlyingToken', 'owner', 'assets',
               'tx', 'block', 'timestamp', 'usdValue', 'synthetic', 'syntheticReason'];
@@ -49,7 +61,27 @@ function pageVaults(data, ipor) {
   return known;
 }
 
-function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVENTS } = {}) {
+// The Activity page's fallback tagger for events the collector left untagged
+// (reclassifySyntheticFallback in index.html), its same-transaction half: a
+// deposit and a withdrawal in one transaction on one vault are a round trip.
+// Applied to the events the page would have loaded, as it applied it; the
+// rest of the untagged are marked false, so the page has nothing left to
+// group by hash.
+function tagAtomic(events) {
+  const byTxVault = {};
+  for (const e of events) {
+    if (e.synthetic !== undefined) continue;
+    (byTxVault[`${e.tx}|${e.vault}`] ||= []).push(e);
+  }
+  for (const evs of Object.values(byTxVault)) {
+    const atomic = evs.some(e => e.type === 'deposit') && evs.some(e => e.type === 'withdraw');
+    for (const e of evs) {
+      if (atomic) { e.synthetic = true; e.syntheticReason = 'atomic'; } else e.synthetic = false;
+    }
+  }
+}
+
+function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVENTS, txInline = TX_INLINE } = {}) {
   const events = data.events || [];
   const known = pageVaults(data, ipor);
 
@@ -85,6 +117,14 @@ function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVE
     for (const k of KEEP) if (e[k] !== undefined) out[k] = e[k];
     recent.push(out);
   }
+  tagAtomic(recent);
+
+  // Every hash, in event order, for the second file; the newest txInline
+  // events keep theirs here (ties at the cut keep theirs too).
+  const tx = recent.map(e => e.tx || null);
+  const newest = recent.map(e => e.timestamp).sort((a, b) => b - a);
+  const keepFrom = newest.length > txInline ? newest[txInline - 1] : -Infinity;
+  for (const e of recent) if (e.timestamp < keepFrom) delete e.tx;
 
   return {
     updatedAt: data.updatedAt,
@@ -95,7 +135,9 @@ function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVE
     prices,
     eventVaults,
     eventChains: [...eventChains].sort(),
+    txSplit: true,
     events: recent,
+    tx,
   };
 }
 
@@ -103,13 +145,15 @@ function main() {
   const data = JSON.parse(fs.readFileSync(path.join(ROOT, 'activity-events.json'), 'utf8'));
   let ipor = null;
   try { ipor = JSON.parse(fs.readFileSync(path.join(ROOT, 'ipor-vaults.json'), 'utf8')); } catch {}
-  const out = buildRecent(data, ipor);
+  const { tx, ...out } = buildRecent(data, ipor);
   const body = JSON.stringify(out);
+  const txBody = JSON.stringify({ updatedAt: out.updatedAt, tx });
   fs.writeFileSync(path.join(ROOT, 'activity-recent.json'), body + '\n');
+  fs.writeFileSync(path.join(ROOT, 'activity-recent-tx.json'), txBody + '\n');
   const days = ((Date.parse(out.updatedAt) / 1000 - out.coveredFrom) / 86400).toFixed(1);
   console.log(`activity-recent.json: ${out.events.length} of ${out.total} events (last ${days} days), `
-    + `${(body.length / 1024).toFixed(0)} KB`);
+    + `${(body.length / 1024).toFixed(0)} KB; activity-recent-tx.json ${(txBody.length / 1024).toFixed(0)} KB`);
 }
 
 if (require.main === module) main();
-module.exports = { buildRecent, WINDOW_DAYS, MIN_EVENTS };
+module.exports = { buildRecent, tagAtomic, WINDOW_DAYS, MIN_EVENTS, TX_INLINE };
