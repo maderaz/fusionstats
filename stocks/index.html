@@ -1029,7 +1029,9 @@
       const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); };
       const on = (ev) => {
         const h = gd.querySelector(':scope > .hv');
-        const pts = (ev.points || []).filter(p => p.y != null && p.x != null);
+        // A line's zero start (customdata 'anchor') shapes the line; it is
+        // not a reading, so the hover passes over it.
+        const pts = (ev.points || []).filter(p => p.y != null && p.x != null && p.customdata !== 'anchor');
         if (!h || !pts.length) return off();
         const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
         const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));
@@ -1191,10 +1193,11 @@
       const hover = usd
         ? '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>'
         : '<b>%{x|%b %d, %Y}</b><br>%{y:,.4f} ' + unitLabel + '<extra></extra>';
+      const marks = pts.map(p => p.anchor ? 'anchor' : null);
       const trace = S.tvlType === 'bar'
-        ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
+        ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
             marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } }, hovertemplate: hover }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
+        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
       const hourly = stepFor(S.tvlRange) === HOUR_SEC;
