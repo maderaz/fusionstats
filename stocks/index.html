@@ -504,6 +504,33 @@
       .holders-top td:nth-child(2) { white-space: nowrap; }
       .holders-top .tag { display: flex; width: fit-content; margin: 4px 0 0; }
       .holders-top .rank { width: 26px; }
+
+      /* A phone: less said, more shown. The subtitle and the chart's
+         sampling note step aside; the figures pack into a tight grid. */
+      .ui-masthead .ui-lede { display: none; }
+      #tvlNote { display: none; }
+      .stat-row { row-gap: 0; padding: 14px 0 18px; }
+      .stat-row .stat { padding-top: 12px; padding-bottom: 12px; }
+      .stat-row .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+      .stat .v { margin-top: 4px; font-size: clamp(20px, 7cqi, 26px); }
+      /* Each table keeps the columns that carry it, so none scrolls sideways;
+         every column is still in its CSV. */
+      #unitsBreakdown th:nth-child(2), #unitsBreakdown td:nth-child(2),
+      #routeTable th:nth-child(3), #routeTable td:nth-child(3),
+      #routeTable th:nth-child(n+5), #routeTable td:nth-child(n+5),
+      #retTable th:nth-child(4), #retTable td:nth-child(4),
+      #refTable th:nth-child(2), #refTable td:nth-child(2),
+      #refTable th:nth-child(3), #refTable td:nth-child(3),
+      #refTable th:nth-child(n+6), #refTable td:nth-child(n+6),
+      #flowsView th:nth-child(3), #flowsView td:nth-child(3),
+      #flowsView th:nth-child(6), #flowsView td:nth-child(6) { display: none; }
+      .route-table th:first-child { min-width: 0; }
+      .route-name .via { max-width: 170px; }
+      #routeTable th:nth-child(4), #routeTable td:nth-child(4) { padding-right: 0; }
+      #retTable .name-cell .label, #retTable .vault-link { white-space: normal; }
+      #retTable .name-cell { min-width: 0; }
+      #retTable th, #retTable td { padding-left: 8px; padding-right: 8px; }
+      #retTable th:first-child, #retTable td:first-child { padding-left: 0; }
     }
     /* Routes: roomier rows, each contract under its route's name. */
     .route-table td { padding-top: 14px; padding-bottom: 14px; }
@@ -520,7 +547,9 @@
     }
     @container (max-width: 560px) {
       .filters { display: grid; grid-template-columns: 1fr 1fr; overflow: clip; }
-      .filter-group { min-width: 0; height: 52px; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
+      .filter-group { min-width: 0; height: 48px; padding: 8px 12px 0; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
+      .filter-label { font-size: 11px; gap: 4px; }
+      .filters select, .filters .fs-trigger { padding: 19px 26px 0 12px; font-size: 13.5px; background-position: right 10px center; }
       .filter-group:nth-child(-n+2) { border-top: none; }
       .filter-group:nth-child(2n) { border-left: 1px solid var(--line); }
       .filter-group:last-child:nth-child(odd) { grid-column: span 2; }
@@ -774,6 +803,7 @@
   <script defer src="/track.js"></script>
   <script src="/routes.js"></script>
   <script src="/fusion-select.js"></script>
+  <script src="/ui-chart.js"></script>
   <script>
   (function () {
     const DAY_MS = 86400000, DAY_SEC = 86400;
@@ -934,7 +964,10 @@
       // message would stay painted over the chart.
       const el = document.getElementById(id);
       el.querySelectorAll(':scope > .loading, :scope > .missing').forEach(n => n.remove());
-      Plotly.react(id, a[0], a[1], a[2]);
+      // On a phone the plot takes the whole box (ui-chart.js); the layout as
+      // built is kept for the PNG export, which never draws the phone's.
+      Plotly.react(id, a[0], FusionChart.fit(a[1]), a[2]);
+      el.__wideLayout = a[1];
       drawnPlots.add(id);
       if (a[3]) a[3]();
     }
@@ -2657,7 +2690,8 @@
       const scale = 2;
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
-      const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
+      const fig = gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : gd;
+      const url = await Plotly.toImage(fig, { format: 'png', width: w, height: h, scale });
       await composeExport(url, w * scale, h * scale,
                           'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id));
     }
@@ -2988,6 +3022,8 @@
         renderTvl(); renderWallets(); renderFlows(); renderReturns(); renderRoutePie();
       };
       document.getElementById('scaleSel').addEventListener('change', function () { S.scale = this.value; repaintAll(); });
+      // A phone turned sideways crosses into the wide layout, and back.
+      FusionChart.onChange(repaintAll);
       // The theme is the nav's (the sidebar switch, nav.js); the charts and PNG
       // exports follow it.
       S.theme = window.FusionTheme ? window.FusionTheme.get() : 'light';

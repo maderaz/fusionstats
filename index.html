@@ -223,7 +223,7 @@
     }
 
     /* ---------- Overview: TVL and net inflow, then the daily chart ---------- */
-    .overview { padding: 32px 0 40px; border-top: 1px solid var(--line); }
+    .overview { padding: 28px 0 32px; border-top: 1px solid var(--line); }
     /* TVL now, then net inflow over three windows: one row of four figures
        with a divider between each, under two headings. */
     .figures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
@@ -250,7 +250,7 @@
       white-space: nowrap;
     }
 
-    .flow-chart { margin-top: 40px; }
+    .flow-chart { margin-top: 32px; }
     .flow-chart-header {
       display: flex;
       justify-content: space-between;
@@ -273,10 +273,13 @@
         radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 12px 12px;
     }
     :root[data-theme="dark"] .flow-chart-bars { --dots: rgba(255, 255, 255, 0.09); }
+    /* --zero: how far down the zero line sits, set by renderFlowChart from
+       the data so the bars fill the height whichever way the month went. */
+    .flow-chart-bars { --zero: 50%; }
     .flow-chart-bars::before {
       content: '';
       position: absolute;
-      left: 0; right: 0; top: 50%;
+      left: 0; right: 0; top: var(--zero);
       height: 1px;
       background: var(--line-strong);
     }
@@ -294,8 +297,8 @@
       min-height: 2px;
       transition: opacity 0.18s;
     }
-    .flow-bar.positive { bottom: 50%; background: var(--pos-bar); border-radius: 4px 4px 1px 1px; }
-    .flow-bar.negative { top: 50%; background: var(--neg-bar); border-radius: 1px 1px 4px 4px; }
+    .flow-bar.positive { bottom: calc(100% - var(--zero)); background: var(--pos-bar); border-radius: 4px 4px 1px 1px; }
+    .flow-bar.negative { top: var(--zero); background: var(--neg-bar); border-radius: 1px 1px 4px 4px; }
     /* While a day is pointed at, it stays lit and the rest step back. */
     .flow-chart-bars.hv-live .flow-bar { opacity: 0.35; }
     .flow-chart-bars.hv-live .flow-bar-slot.on { background: var(--bg-subtle); }
@@ -714,32 +717,52 @@
       .pg-ctrls { gap: 10px; }
       .pg-step { height: 44px; padding: 0 16px; font-size: 14px; border-radius: 12px; }
 
-      .overview { padding: 24px 0 30px; }
-      .stats-row { margin-top: 14px; }
-      .figures { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-      .fig-flow > .label, .fig-flow .stat-card:first-child { padding-left: 0; }
-      .fig-flow .stat-card:first-child { border-left: none; }
-      .stat-card { padding: 0 12px; }
-      .stat-card .value { font-size: clamp(18px, 6cqi, 30px); letter-spacing: -0.035em; }
-      .flow-chart { margin-top: 28px; }
-      .flow-chart-bars { height: 108px; gap: 2px; }
+      .m-show { display: inline; }
+      .m-hide { display: none; }
+      .m-show.tip-slot { display: inline-flex; align-items: center; }
+
+      .overview { padding: 18px 0 22px; }
+      /* The four figures in one 2×2 grid, without the headings over them
+         (each figure names itself): TVL · Net 24h / Net 7d · Net 30d. */
+      .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .fig, .fig > .stats-row:not(:empty) { display: contents; }
+      .fig > .label { display: none; }
+      #tvlStat:empty, #statsRow:empty { height: 58px; margin: 0; }
+      .figures .stat-card { padding: 0 0 12px; border-left: none; }
+      #statsRow > .stat-card:nth-child(odd) { padding-left: 16px; border-left: 1px solid var(--line); }
+      #statsRow > .stat-card:nth-child(n+2) { padding-top: 12px; border-top: 1px solid var(--line); padding-bottom: 0; }
+      .stat-card .value { margin-top: 4px; font-size: clamp(20px, 7cqi, 28px); letter-spacing: -0.035em; }
+      /* The chart: its dates in its header, no axis row under it. */
+      .flow-chart { margin-top: 20px; }
+      .flow-chart-header { margin-bottom: 10px; }
+      .flow-chart-axis { display: none; }
+      .flow-chart-bars { height: 120px; gap: 2px; }
       .flow-bar { left: 14%; right: 14%; }
 
       .feed { padding-top: 26px; }
       .feed-tools { gap: 10px; }
+      /* Five filters in two rows of three cells, not three rows of two. */
       .activity-filters {
         flex-basis: 100%;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.1fr) minmax(0, 1.1fr);
         overflow: clip;
       }
-      .filter-group { height: 52px; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
-      .filter-group:nth-child(-n+2) { border-top: none; }
-      .filter-group:nth-child(2n) { border-left: 1px solid var(--line); }
-      .filter-group:last-child:nth-child(odd) { grid-column: span 2; }
+      .filter-group { height: 48px; padding: 8px 10px 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: 0; }
+      .filter-group:nth-child(-n+3) { border-top: none; }
+      .filter-group:nth-child(3n+1) { border-left: none; }
+      .filter-group:nth-child(4) { grid-column: span 2; }
+      .filter-label { font-size: 11px; gap: 4px; }
+      .activity-filters select, .activity-filters .fs-trigger { padding: 19px 24px 0 10px; font-size: 13.5px; background-position: right 8px center; }
+      .seg button { height: 36px; }
     }
 
     @media (max-width: 1200px) { .page { padding: 36px 32px 80px; } }
+    /* Words for the narrow layout only (.m-show) and the wide one only
+       (.m-hide); the narrow rules are in the 700px container query below.
+       :where keeps this default from outranking them. */
+    :where(.m-show) { display: none; }
+
     /* Below 900px the filters fill a third of a phone screen: they scroll
        with the list instead of sticking over it. */
     @media (max-width: 900px) {
@@ -750,11 +773,15 @@
     }
     @media (max-width: 480px) {
       .page { padding: 6px 16px 48px; }
-      .masthead { gap: 12px; padding-bottom: 22px; }
+      .masthead { gap: 6px; padding-bottom: 16px; }
       .masthead h1 { font-size: 26px; }
-      .lede { font-size: 14px; }
-      .mast-meta { font-size: 12.5px; }
-      #vaultCount { padding-left: 0; border-left: none; }
+      /* The title says what this is; the line under it is for the desktop. */
+      .lede { display: none; }
+      .mast-meta { font-size: 12.5px; gap: 4px 10px; }
+      /* "Updated 2 h ago · 115 vaults": one line. */
+      #vaultCount::before { content: '\00b7'; margin-right: 5px; color: var(--text-3); }
+      .mast-meta:not(.can-refresh) #vaultCount { padding-left: 0; border-left: none; }
+      #lastUpdated .next { display: none; }
     }
   </style>
   <script defer src="/track.js"></script>
@@ -794,7 +821,7 @@
       <div id="flowChart" class="flow-chart">
         <div class="flow-chart-header">
           <span class="flow-chart-title label">Daily net flow</span>
-          <span class="flow-chart-range">last <span id="flowRangeLabel">30d</span></span>
+          <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
         </div>
         <div class="flow-chart-bars" id="flowChartBars"></div>
         <div class="flow-chart-axis">
@@ -1209,6 +1236,10 @@
       return { data, recent: true, ipor };
     }
     let lastIporAt = null;
+    // The last vault list that loaded: what a later load falls back on when
+    // its own copy fails, so a refresh never draws without one (and the TVL
+    // figure never drops out) after the page has had one.
+    let lastIpor = null;
 
     // `poll`: a background check for new data. It re-renders only when the
     // data changed, and a failure leaves the page as it is. Resolves true when
@@ -1232,7 +1263,7 @@
         const iporLoad = kept ? Promise.resolve(kept.ipor) : poll ? null : getJson('ipor-vaults.json');
         const { data, recent } = kept || await fetchActivity(full);
         if (poll && data.updatedAt === lastUpdatedAt) return false;
-        const ipor = await (iporLoad || getJson('ipor-vaults.json'));
+        const ipor = (await (iporLoad || getJson('ipor-vaults.json'))) || lastIpor;
         if (revalidate && data.updatedAt === lastUpdatedAt && (ipor && ipor.updatedAt) === lastIporAt) return false;
         const complete = !recent || data.total === (data.events || []).length;
 
@@ -1329,13 +1360,14 @@
         if (vaultCount > 0) {
           const floor = data.minTvlUsd != null ? data.minTvlUsd : 50;
           const floorLabel = floor >= 1000 ? `$${floor / 1000}K` : `$${floor}`;
-          vaultCountEl.innerHTML = `Vaults Tracked: ${vaultCount} <span class="info-tip" tabindex="0" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
+          vaultCountEl.innerHTML = `<span class="m-hide">Vaults Tracked: ${vaultCount}</span><span class="m-show">${vaultCount} vaults</span> <span class="info-tip" tabindex="0" data-tip="All Fusion vaults above ${floorLabel} TVL across all supported networks. /all-vaults applies no floor, so it lists more.">&#9432;</span>`;
           vaultCountEl.style.display = '';
         }
 
         allEvents = events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         lastUpdatedAt = data.updatedAt;
         lastIporAt = ipor && ipor.updatedAt;
+        if (ipor) lastIpor = ipor;
         recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, eventChains: data.eventChains || [], coveredFrom: data.coveredFrom };
         historyComplete = complete;
         olderLoadFailed = false;
@@ -1412,15 +1444,18 @@
     function renderStats(s) {
       const row = document.getElementById('statsRow');
 
-      function flowCard(label, val) {
+      // On a phone the four figures share one 2×2 grid without the headings
+      // above them, so each says what it is: "Net 24h", with the heading's ⓘ.
+      const tip = document.querySelector('.fig-flow > .label .info-tip');
+      function flowCard(label, val, withTip) {
         const color = val >= 0 ? 'var(--pos)' : 'var(--neg)';
         return `<div class="stat-card">
-          <div class="label">${label}</div>
+          <div class="label"><span class="m-show">Net</span><span>${label}</span>${withTip && tip ? `<span class="m-show tip-slot">${tip.outerHTML}</span>` : ''}</div>
           <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
         </div>`;
       }
 
-      row.innerHTML = flowCard('24h', s.net24h)
+      row.innerHTML = flowCard('24h', s.net24h, true)
         + flowCard('7d', s.net7d)
         + flowCard('30d', s.net30d);
       document.getElementById('overview').style.display = '';
@@ -1437,7 +1472,9 @@
       const text = total >= 1e9 ? '$' + (total / 1e9).toFixed(2) + 'B'
         : total >= 1e6 ? '$' + (total / 1e6).toFixed(2) + 'M'
         : '$' + (total / 1e3).toFixed(1) + 'K';
-      el.innerHTML = `<div class="stat-card"><div class="label">now</div>
+      const tip = document.querySelector('.fig-tvl > .label .info-tip');
+      el.innerHTML = `<div class="stat-card"><div class="label"><span class="m-hide">now</span>`
+        + `<span class="m-show">TVL</span>${tip ? `<span class="m-show tip-slot">${tip.outerHTML}</span>` : ''}</div>
         <div class="value num-bold tvl">${text}</div></div>`;
     }
 
@@ -1510,8 +1547,14 @@
         buckets[idx] += e.type === 'deposit' ? usd : -usd;
       });
 
-      // Find max absolute value for scaling
-      const maxAbs = Math.max(...buckets.map(Math.abs), 1);
+      // One scale for both signs, the zero line placed so the biggest inflow
+      // day reaches the top and the biggest outflow day the bottom: a month
+      // of mostly inflows no longer leaves the lower half empty. Each side
+      // keeps at least a tenth of the height.
+      const maxPos = Math.max(0, ...buckets), maxNeg = Math.max(0, ...buckets.map(v => -v));
+      const zero = Math.min(0.9, Math.max(0.1, maxPos + maxNeg > 0 ? maxPos / (maxPos + maxNeg) : 0.5));
+      const scale = Math.max(maxPos / zero, maxNeg / (1 - zero), 1);   // value per full height
+      bars.style.setProperty('--zero', (zero * 100).toFixed(2) + '%');
 
       // Format helpers
       const fmtDay = daysAgo => {
@@ -1532,7 +1575,7 @@
       for (let i = 0; i < days; i++) {
         const val = buckets[i];
         const daysAgo = days - 1 - i;
-        const heightPct = Math.abs(val) / maxAbs * 50; // max 50% (half the chart)
+        const heightPct = Math.abs(val) / scale * 100;
         const cls = val >= 0 ? 'positive' : 'negative';
         const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
         html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div></div>`;
@@ -1543,6 +1586,7 @@
       document.getElementById('flowChartStart').textContent = fmtDay(days - 1);
       document.getElementById('flowChartEnd').textContent = 'today';
       document.getElementById('flowRangeLabel').textContent = days + 'd';
+      document.getElementById('flowRangeSpan').textContent = fmtDay(days - 1) + ' – today';
       chart.style.display = 'block';
     }
 
