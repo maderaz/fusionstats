@@ -66,7 +66,7 @@
     const f = (n) => n.toLocaleString('en-US');
     if (last <= 1) return total ? `<nav class="ui-pager" aria-label="Pages"><span class="pg-range">${f(total)} ${esc(noun || '')}</span></nav>` : '';
     return `<nav class="ui-pager" aria-label="Pages">
-      <span class="pg-range">${f(start)}–${f(end)} of ${f(total)} ${esc(noun || '')}</span>
+      <span class="pg-range"><span class="pg-span">${f(start)}–${f(end)} of </span>${f(total)} ${esc(noun || '')}</span>
       <div class="pg-ctrls">
         <button type="button" class="pg-step" data-page="${p - 1}"${p > 1 ? '' : ' disabled'} aria-label="Previous page">Prev</button>
         <span class="pg-nums">${list}</span>

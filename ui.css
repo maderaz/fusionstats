@@ -399,6 +399,7 @@ body {
 @container (max-width: 700px) {
   .ui-pager { flex-direction: column; align-items: stretch; gap: 12px; padding-top: 16px; }
   .ui-pager .pg-range { text-align: center; }
+  .ui-pager .pg-span { display: none; }   /* "Page n of N" below says where you are */
   .ui-pager .pg-nums { display: none; }
   .ui-pager .pg-of { display: block; flex: 1; text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
   .ui-pager .pg-ctrls { gap: 10px; }
