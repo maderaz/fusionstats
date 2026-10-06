@@ -16,7 +16,8 @@
   const GROUPS = [
     { pages: [
       { href: '/',                      label: 'Activity',       icon: 'activity' },
-      { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New' },
+      { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
+        sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'stocks' }] },
     ] },
     { label: 'Insights', pages: [
       { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
@@ -253,7 +254,7 @@
     }
     .fnav-theme button:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 1px; }
     .fnav-badge {
-      margin-left: auto;
+      margin-left: -4px;
       padding: 2px 6px;
       border-radius: 999px;
       background: var(--accent-bg, rgba(132, 41, 255, 0.10));
@@ -261,8 +262,36 @@
       font: 600 10px/1.3 var(--fnav-font);
       letter-spacing: 0.02em;
     }
+    /* A page with pages under it: a mini chevron at the row's end opens
+       them, indented under its label on a hairline. */
+    .fnav-item { position: relative; display: flex; flex-direction: column; }
+    .fnav-item > a { padding-right: 34px; }
+    .fnav-sub-toggle {
+      position: absolute; top: 5px; right: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; padding: 0;
+      border: 0; border-radius: 6px; background: none;
+      color: var(--text-secondary, #9BA3AF);
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .fnav-sub-toggle:hover { color: var(--text, #000); background: var(--bg-hover, var(--bg-alt, rgba(127, 127, 127, 0.1))); }
+    .fnav-sub-toggle:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: -2px; }
+    .fnav-item.closed .fnav-sub-toggle .fnav-chev { transform: rotate(-90deg); }
+    .fnav-sub { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; }
+    .fnav-item.closed .fnav-sub { grid-template-rows: 0fr; }
+    .fnav-sub > div {
+      display: flex; flex-direction: column; gap: 1px;
+      min-height: 0; overflow: hidden;
+      margin-left: 17px; padding: 2px 0 2px 9px;
+      border-left: 1px solid var(--stroke, #e5e5e5);
+    }
+    .fnav-item.closed .fnav-sub > div { visibility: hidden; transition: visibility 0s 0.22s; }
+    .fnav-links .fnav-sub a { height: 30px; padding: 0 10px; font-size: 13px; }
+    .fnav-links a.parent-active { color: var(--text, #000); }
+    .fnav-links a.parent-active .fnav-ic, .fnav-links a.parent-active .fnav-ic .a { color: var(--accent, #8429FF); }
     @media (prefers-reduced-motion: reduce) {
-      .fnav-fold-body, .fnav-chev, .fnav-sheet, .fnav-sheet-scrim { transition: none !important; }
+      .fnav-fold-body, .fnav-chev, .fnav-sheet, .fnav-sheet-scrim, .fnav-sub { transition: none !important; }
     }
 
     /* ---------- Phone and tablet ---------- */
@@ -404,16 +433,31 @@
   `;
 
   const CHEVRON = '<svg class="fnav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>';
-  const here = (p) => (isActive(p.href) ? ' aria-current="page"' : '');
+  // A page with pages under it is the current one only on itself; on one of
+  // its own it reads as their parent.
+  const exact = (href) => path === href;
+  const current = (p) => (p.sub ? exact(p.href) : isActive(p.href));
+  const here = (p) => (current(p) ? ' aria-current="page"' : '');
   const KEY = GROUPS.filter(g => !g.label).flatMap(g => g.pages);
   const MORE = GROUPS.filter(g => g.label);
 
   // Sidebar links (desktop).
   const link = (p) => {
     const badge = p.badge ? `<span class="fnav-badge">${p.badge}</span>` : '';
-    const cls = [isActive(p.href) ? 'active' : '', KEY.includes(p) ? 'fnav-key' : ''].filter(Boolean).join(' ');
-    return `<a href="${p.href}"${cls ? ` class="${cls}"` : ''}${here(p)}>${icon(p.icon)}<span class="fnav-label">${p.label}</span>${badge}</a>`;
+    const inSub = p.sub && p.sub.some(s => isActive(s.href));
+    const cls = [current(p) ? 'active' : '', inSub ? 'parent-active' : '', KEY.includes(p) ? 'fnav-key' : ''].filter(Boolean).join(' ');
+    const a = `<a href="${p.href}"${cls ? ` class="${cls}"` : ''}${here(p)}>${icon(p.icon)}<span class="fnav-label">${p.label}</span>${badge}</a>`;
+    if (!p.sub) return a;
+    // Open on its own pages and on itself, else as last left.
+    let open = inSub || exact(p.href);
+    if (!open) { try { open = localStorage.getItem(subKey(p)) === 'open'; } catch {} }
+    const id = 'fnav-sub-' + p.label.toLowerCase().replace(/\W+/g, '-');
+    return `<div class="fnav-item${open ? '' : ' closed'}" data-key="${subKey(p)}">${a}`
+      + `<button type="button" class="fnav-sub-toggle" aria-expanded="${open}" aria-controls="${id}" aria-label="${p.label} pages">${CHEVRON}</button>`
+      + `<div class="fnav-sub" id="${id}"><div>${p.sub.map(s => `<a href="${s.href}"${isActive(s.href) ? ' class="active"' : ''}${isActive(s.href) ? ' aria-current="page"' : ''}>`
+        + `<span class="fnav-label">${s.label}</span></a>`).join('')}</div></div></div>`;
   };
+  const subKey = (p) => 'fusionstats_nav_sub_' + p.label.toLowerCase();
   const foldKey = (g) => 'fusionstats_nav_' + g.label.toLowerCase();
   const startsOpen = (g) => {
     if (g.pages.some(p => isActive(p.href))) return true;
@@ -439,7 +483,8 @@
       + `${pill(p.icon)}${p.badge ? '<span class="fnav-dot" aria-hidden="true"></span>' : ''}<span>${p.label}</span></a>`).join('')
     + `<button type="button" class="fnav-tab fnav-more${inMore ? ' active' : ''}" id="fnav-more" aria-expanded="false"`
     + ` aria-controls="fnav-sheet" aria-haspopup="dialog">${pill('more')}<span>More</span></button>`;
-  const tiles = MORE.map(g => `<div class="fnav-sheet-group" role="group" aria-label="${g.label}">`
+  const SUBS = KEY.filter(p => p.sub).map(p => ({ label: p.label, pages: p.sub }));
+  const tiles = SUBS.concat(MORE).map(g => `<div class="fnav-sheet-group" role="group" aria-label="${g.label}">`
       + `<div class="fnav-sheet-label">${g.label}</div><div class="fnav-tiles">`
       + g.pages.map(p => `<a class="fnav-tile${isActive(p.href) ? ' active' : ''}" href="${p.href}"${here(p)}>`
           + `${icon(p.icon)}<span class="fnav-label">${p.label}</span></a>`).join('')
@@ -537,6 +582,16 @@
         btn.setAttribute('aria-expanded', String(isOpen));
         try { localStorage.setItem(fold.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
         if (isOpen) setTimeout(() => fold.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 240);
+      });
+    });
+
+    // A page's own pages: open or close them, and remember it.
+    wrap.querySelectorAll('.fnav-sub-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.fnav-item');
+        const isOpen = !item.classList.toggle('closed');
+        btn.setAttribute('aria-expanded', String(isOpen));
+        try { localStorage.setItem(item.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
       });
     });
 
