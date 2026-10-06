@@ -21,6 +21,7 @@
 //   node tools/ui-audit.mjs --widths 320,390,1440 --pages /,/stocks
 //   node tools/ui-audit.mjs --plotly path/to/plotly-basic.min.js   (offline)
 //   node tools/ui-audit.mjs --json findings.json
+//   node tools/ui-audit.mjs --verbose          (each page and width as it goes)
 //
 // It serves this checkout itself (like Vercel: /stocks is stocks/index.html;
 // data-source.js reads the local data files on localhost) and blocks every
@@ -40,6 +41,7 @@ const PAGES = arg('pages', '/,/stocks,/stocks/aave-v4/,/all-vaults,/switchers,/d
 const PLOTLY = arg('plotly', process.env.PLOTLY_JS || '');
 const JSON_OUT = arg('json', '');
 const PARALLEL = +arg('parallel', 3);
+const VERBOSE = process.argv.includes('--verbose');
 
 async function loadPlaywright() {
   for (const m of ['playwright', 'playwright-core', process.env.PLAYWRIGHT_MODULE, '/opt/node22/lib/node_modules/playwright/index.mjs'].filter(Boolean)) {
@@ -278,6 +280,7 @@ async function auditWidth(w) {
     return r.fulfill({ status: 404, body: '' });
   });
   for (const pg of PAGES) {
+    const t0 = Date.now();
     const p = await ctx.newPage();
     try { await p.goto(ORIGIN + pg, { waitUntil: 'networkidle', timeout: 60000 }); } catch {}
     // Everything drawn: scroll through, so lazy sections render.
@@ -303,6 +306,7 @@ async function auditWidth(w) {
       } catch (e) { all.push({ w, path: pg, kind: 'error', el: tag, detail: String(e.message).slice(0, 100) }); }
     }
     await p.close();
+    if (VERBOSE) console.log(`  ${w}px ${pg}  ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   }
   await ctx.close();
 }
