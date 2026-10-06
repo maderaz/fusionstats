@@ -45,7 +45,31 @@
       letter-spacing: -0.03em;
       font-variant-numeric: tabular-nums;
     }
-    #concStats { padding: 4px 0 20px; }
+    #concStats { padding: 4px 0 26px; }
+    /* Diversification: five small figures, each with its share underneath. */
+    .stat-row.divers { grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); padding: 2px 0 28px; }
+    .stat-row.divers .v { font-size: 22px; }
+    .stat .s { margin-top: 2px; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    /* Largest holders: one line a row. */
+    .holders-top td { height: 50px; padding-top: 0; padding-bottom: 0; }
+    .holders-top .rank { width: 36px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .tag {
+      display: inline-flex; align-items: center; height: 20px; margin-left: 8px; padding: 0 7px;
+      border-radius: 6px; background: var(--bg-subtle); color: var(--text-2);
+      font-size: 11.5px; font-weight: 500; vertical-align: 1px; cursor: help;
+    }
+    .holds { display: inline-flex; align-items: center; gap: 10px; }
+    .logos { display: inline-flex; }
+    .logos img {
+      width: 20px; height: 20px; margin-left: -6px;
+      border-radius: 50%; background: var(--bg-subtle);
+      box-shadow: 0 0 0 2px var(--bg); object-fit: contain;
+    }
+    .logos img:first-child { margin-left: 0; }
+    .tickers { font-size: 13px; color: var(--text-2); }
+    /* Performance: each row keyed in its line's colour. */
+    .line-key { flex: 0 0 14px; width: 14px; height: 3px; margin-right: 10px; border-radius: 2px; }
+    #retTable tr[data-line] { cursor: default; }
 
     /* ---------- Sections: no boxes, a hairline between ---------- */
     .chart-card { padding: 36px 0 28px; border-top: 1px solid var(--line); }
@@ -358,10 +382,6 @@
     .pie-legend .row .val { flex: 0 0 auto; color: var(--text-2); font-variant-numeric: tabular-nums; }
     .pie-legend .row .pct { flex: 0 0 3.4rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-    .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 8px; }
-    /* A table wider than its column scrolls inside it, never the page. */
-    .two-up > div { min-width: 0; overflow-x: auto; }
-
     /* ---------- Tables: Activity's headings and rows ---------- */
     .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
@@ -455,13 +475,24 @@
       .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .stat-row .stat:nth-child(3n + 1) { padding-left: 0; border-left: none; }
       #concStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat-row.divers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       #concStats .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       #concStats .stat:nth-child(odd) { padding-left: 0; border-left: none; }
     }
     @container (max-width: 560px) {
-      .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat-row, .stat-row.divers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .stat-row .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       .stat-row .stat:nth-child(odd) { padding-left: 0; border-left: none; }
+      /* The 3-column rule above still matches the 4th figure; two columns
+         want a divider on every even one. */
+      .stat-row .stat:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--line); }
+      /* Largest holders on a phone: logos without the ticker list, the
+         address on one line and whose contract it is under it. */
+      .holders-top .tickers { display: none; }
+      .holders-top td { height: auto; padding-top: 11px; padding-bottom: 11px; }
+      .holders-top td:nth-child(2) { white-space: nowrap; }
+      .holders-top .tag { display: flex; width: fit-content; margin: 4px 0 0; }
+      .holders-top .rank { width: 26px; }
     }
     /* Routes: roomier rows, each contract under its route's name. */
     .route-table td { padding-top: 14px; padding-bottom: 14px; }
@@ -490,7 +521,6 @@
       .pg-step { height: 44px; padding: 0 16px; border-radius: 12px; }
       .card-head { gap: 10px; }
     }
-    @media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
     @media (max-width: 640px) {
       .plot { height: 240px; }
       .plot-pie { height: 300px; }   /* after .plot's own small-screen height: same specificity, order decides */
@@ -582,7 +612,7 @@
     <!-- ---------- DEPOSIT & EXIT ACTIVITY ---------- -->
     <section class="chart-card">
       <div class="card-head">
-        <h2 class="chart-section-title">Daily flows <span class="info-tip" tabindex="0" data-tip="Deposits above the line, exits below in red; the line is the daily net. The range also sets the routes below.">&#9432;</span></h2>
+        <h2 class="chart-section-title">Daily flows <span class="info-tip" tabindex="0" data-tip="Deposits above the axis, exits below in red. Turn on the net line to draw each day&#39;s net across them. The range also sets the routes below.">&#9432;</span></h2>
         <div class="xport" data-png="flowPng" data-csv="flowCsv" data-csv-label="Daily flows as CSV"></div>
       </div>
       <div class="chart-toolbar" id="flowToolbar">
@@ -590,6 +620,10 @@
           <label class="filter-group">
             <span class="filter-label">Vault</span>
             <select id="flowVault"><option value="__all__">All stock vaults</option></select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Net line</span>
+            <select id="flowNet"><option value="off">Off</option><option value="on">On</option></select>
           </label>
         </div>
         <div class="seg" role="group" aria-label="Range">
@@ -654,20 +688,14 @@
         <button class="xport-btn" id="concCsv" type="button" title="Holders as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
       </div>
       <div class="stat-row" id="concStats"></div>
-      <div class="two-up">
-        <div>
-          <div class="panel-head">
-            <h3 class="sub-title">Diversification <span class="info-tip" tabindex="0" data-tip="How many companies each wallet holds.">&#9432;</span></h3>
-          </div>
-          <div id="diversTable"></div>
-        </div>
-        <div>
-          <div class="panel-head">
-            <h3 class="sub-title">Largest holders <span class="sub-meta">top 10</span></h3>
-          </div>
-          <div id="topHolders"></div>
-        </div>
+      <div class="panel-head">
+        <h3 class="sub-title">Diversification <span class="info-tip" tabindex="0" data-tip="How many companies each wallet holds, and what share of holders that is.">&#9432;</span></h3>
       </div>
+      <div class="stat-row divers" id="diversStats"></div>
+      <div class="panel-head">
+        <h3 class="sub-title">Largest holders <span class="sub-meta">top 10</span></h3>
+      </div>
+      <div id="topHolders"></div>
       <div class="chart-note" id="concNote"></div>
     </section>
 
@@ -777,7 +805,7 @@
       // new: analytics sections
       vaultSet: new Set(),
       scale: 'linear', theme: 'light',
-      flowVault: '__all__', flowRange: '90', pieMetric: 'gross',
+      flowVault: '__all__', flowRange: '90', flowNet: false, pieMetric: 'gross',
       retRange: '90',
     };
 
@@ -1535,10 +1563,11 @@
           marker: { color: ACCENT }, hovertemplate: '<b>%{x|%b %d}</b><br>in %{y:$,.0f}<extra></extra>' },
         { type: 'bar', name: 'Exits', x, y: pts.map(p => -p.exit),
           marker: { color: cssVar('--red') }, hovertemplate: '<b>%{x|%b %d}</b><br>out %{y:$,.0f}<extra></extra>' },
-        { type: 'scatter', mode: 'lines', name: 'Net', x, y: pts.map(p => p.net),
-          line: { color: cssVar('--text'), width: 1.5 },
-          hovertemplate: '<b>%{x|%b %d}</b><br>net %{y:$,.0f}<extra></extra>' },
       ];
+      // The net, drawn across the bars only when asked for: on by default it
+      // read as a black zigzag scribbled over them.
+      if (S.flowNet) traces.push({ type: 'scatter', mode: 'lines', name: 'Net', x, y: pts.map(p => p.net),
+          line: { color: cssVar('--text'), width: 1.5 } });
       // A diverging series cannot be drawn on a log axis; say so rather than
       // silently ignoring the control.
       const lay = baseLayout('$,.2s');
@@ -1546,7 +1575,7 @@
       Plotly.react('flowPlot', quiet(traces), lay, CONFIG);
       glide('flowPlot', (pts) => {
         const by = (n) => (pts.find(p => p.data.name === n) || {}).y || 0;
-        const net = by('Net');
+        const net = by('Deposits') + by('Exits');      // exits are drawn below zero
         return hvWhen(pts[0].x)
           + hvRow(ACCENT, 'Deposits', fUsd(by('Deposits')))
           + hvRow(cssVar('--red'), 'Exits', fUsd(Math.abs(by('Exits'))))
@@ -1917,9 +1946,9 @@
         line: { color: palette[i % palette.length], width: 2 },
         hovertemplate: '<b>' + esc(r.vault.name) + '</b> %{x|%b %d}<br>%{y:.2f}<extra></extra>',
       }));
+      // No legend under the chart: the table below is the legend, each row
+      // keyed in its line's colour, and pointing at a row picks out its line.
       const lay = baseLayout('.4~f', true);
-      lay.showlegend = true;
-      lay.legend = { orientation: 'h', y: -0.18, font: { size: 11 } };
       lay.yaxis.rangemode = 'normal';
       Plotly.react('retPlot', quiet(traces), lay, CONFIG);
       glide('retPlot', (pts) => hvWhen(pts[0].x) + pts.slice().sort((a, b) => b.y - a.y)
@@ -1936,7 +1965,9 @@
             // The vault by name, linked to its page in the IPOR app; the
             // company and ticker underneath. Two vaults can hold the same
             // token, so the token alone cannot say which one performed.
-            '<tr><td><span class="name-cell">' + iconFor(r.vault.token, seriesColor(i))
+            '<tr data-line="' + i + '"><td><span class="name-cell">'
+            + '<span class="line-key" style="background:' + palette[i % palette.length] + '"></span>'
+            + iconFor(r.vault.token, seriesColor(i))
             + '<span class="label"><a class="vault-link" href="' + esc(appUrl(r.vault)) + '" target="_blank"'
             + ' rel="noopener" title="Open ' + esc(r.vault.name) + ' in the IPOR app">' + esc(r.vault.name)
             + '<span class="ext" aria-hidden="true">↗</span></a>'
@@ -1951,6 +1982,13 @@
             // "under 14d" read as a contradiction.
             + '<td class="num">' + (Math.floor(r.days * 10) / 10).toFixed(1) + '</td></tr>').join('')
         + '</tbody></table></div>';
+
+      // A row picks out its line; the others step back.
+      const pick = (i) => Plotly.restyle('retPlot', { opacity: traces.map((_, k) => (i == null || k === i ? 1 : 0.14)) });
+      document.querySelectorAll('#retTable tr[data-line]').forEach(tr => {
+        tr.addEventListener('mouseenter', () => pick(Number(tr.dataset.line)));
+        tr.addEventListener('mouseleave', () => pick(null));
+      });
     }
 
     function renderConcentration() {
@@ -1975,42 +2013,41 @@
         ['Effective holders ' + tip(effTip), c.effective.toFixed(1)],
       ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
 
+      // Diversification as figures, not a table of coloured dots and slivers.
       const d = diversification();
       const keys = Object.keys(d.buckets).map(Number).sort((a, b) => a - b);
       const totalW = keys.reduce((a, k) => a + d.buckets[k], 0);
-      document.getElementById('diversTable').innerHTML =
-        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Companies held</th>'
-        + '<th class="num">Wallets</th><th class="num">Share</th></tr></thead><tbody>'
-        + keys.map((k, i) => '<tr>'
-            + nameCell(k + (k === 1 ? ' company' : ' companies'), seriesColor(i), null)
-            + '<td class="num">' + d.buckets[k] + '</td>'
-            + shareCell(totalW ? d.buckets[k] / totalW : 0) + '</tr>').join('')
-        + '</tbody></table></div>';
+      document.getElementById('diversStats').style.setProperty('--n', Math.min(keys.length, 6));
+      document.getElementById('diversStats').innerHTML = keys.map(k =>
+        '<div class="stat"><div class="k">' + k + (k === 1 ? ' company' : ' companies') + '</div>'
+        + '<div class="v">' + d.buckets[k] + '</div>'
+        + '<div class="s">' + (totalW ? (d.buckets[k] / totalW * 100).toFixed(1) : '0.0') + '% of holders</div></div>').join('');
 
+      // The ten largest: rank, wallet (and whose contract it is), what it
+      // holds as a row of logos, value, share. One line each.
       const byAddr = {}; S.vaults.forEach(v => { byAddr[v.address] = v.token; });
       document.getElementById('topHolders').innerHTML =
-        '<div class="scroll"><table class="data-table tight"><thead><tr><th>Wallet</th>'
-        + '<th class="num">Value</th><th class="num">Share</th><th>Holds</th></tr></thead><tbody>'
-        + c.rows.slice(0, 10).map(r => {
+        '<div class="scroll"><table class="data-table holders-top"><thead><tr><th class="rank">#</th><th>Wallet</th>'
+        + '<th>Holds</th><th class="num">Value</th><th class="num">Share</th></tr></thead><tbody>'
+        + c.rows.slice(0, 10).map((r, n) => {
             // A protocol contract in this list is not a whale, it is a queue.
             // Showing it as a bare address invites exactly the wrong reading.
             const id = knownProtocol(r.wallet);
-            return '<tr><td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
-            + shortAddr(r.wallet) + '</a>'
-            + (id ? ' <span class="badge" title="' + esc(id.reason || '') + ' — this contract holds the position for '
-                    + esc(id.protocol) + '\'s own depositors, who are not individually visible here">'
-                    + esc(id.protocol) + '</span>' : '')
-            + '</td>'
-            + '<td class="num">' + fUsd(r.usd) + '</td>'
-            + shareCell(c.total ? r.usd / c.total : 0)
-            + '<td>' + Object.keys(r.pos).map(a => {
-                const tok = byAddr[a] || '?';
-                const url = iconUrlFor(tok);
-                return '<span class="badge" style="background:var(--accent-bg);color:var(--accent);margin-right:0.25rem">'
-                  + (url ? '<img class="tok-inline" src="' + url + '" alt="" '
-                           + 'onerror="this.remove()">' : '')
-                  + tok + '</span>';
-              }).join('') + '</td></tr>'; }).join('')
+            const toks = Object.keys(r.pos).map(a => byAddr[a] || '?');
+            return '<tr><td class="rank">' + (n + 1) + '</td>'
+              + '<td><a class="addr" href="https://basescan.org/address/' + r.wallet + '" target="_blank" rel="noopener">'
+              + shortAddr(r.wallet) + '</a>'
+              + (id ? '<span class="tag" title="' + esc(id.reason || '') + ' — this contract holds the position for '
+                      + esc(id.protocol) + '\'s own depositors, who are not individually visible here">'
+                      + esc(id.protocol) + '</span>' : '')
+              + '</td>'
+              + '<td><span class="holds"><span class="logos">' + toks.map(t => {
+                  const url = iconUrlFor(t);
+                  return url ? '<img src="' + url + '" alt="" title="' + esc(tickerLabel(t)) + '" onerror="this.remove()">' : '';
+                }).join('') + '</span><span class="tickers">' + toks.map(t => esc(tickerLabel(t))).join(', ') + '</span></span></td>'
+              + '<td class="num"><strong>' + fUsd(r.usd) + '</strong></td>'
+              + '<td class="num">' + (c.total ? (r.usd / c.total * 100).toFixed(1) : '0.0') + '%</td></tr>';
+          }).join('')
         + '</tbody></table></div>';
 
       document.getElementById('concNote').innerHTML = '';
@@ -2234,6 +2271,10 @@
           sub: best ? best.vault.token + ' leads at ' + (best.total >= 0 ? '+' : '')
                       + (best.total * 100).toFixed(2) + '%' : '',
           scope: [RANGE_LABEL[S.retRange] || S.retRange, 'Indexed to 100'].join('  ·  '),
+          // Keyed by colour, not logo: two vaults share a company, and the
+          // colour is what ties an entry to its line.
+          legend: series.map((r, i) => ({ label: r.vault.name, value: fPct(r.total),
+                                          icon: null, color: SERIES_COLORS[i % SERIES_COLORS.length] })),
           note: 'Measured on price per share, not value held. Value moves whenever someone deposits; '
                 + 'price only moves when the strategy earns.',
         };
@@ -2854,6 +2895,9 @@
       // ---- new section controls ----
       document.getElementById('flowVault').addEventListener('change', function () {
         S.flowVault = this.value; renderFlows();
+      });
+      document.getElementById('flowNet').addEventListener('change', function () {
+        S.flowNet = this.value === 'on'; renderFlows();
       });
       wireButtons('flowToolbar', 'data-flow-range', v => {
         S.flowRange = v; renderFlows(); renderRoutes();
