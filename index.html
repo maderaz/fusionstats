@@ -251,6 +251,17 @@
     }
 
     .flow-chart { margin-top: 32px; }
+    /* TVL growth by the week and the daily net flow: half the width each,
+       one above the other on a phone. Without the TVL file, the flow chart
+       takes the whole row. */
+    .charts2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px; margin-top: 32px; }
+    .charts2 > .flow-chart { min-width: 0; margin-top: 0; }
+    .charts2.one { grid-template-columns: minmax(0, 1fr); }
+    .charts2 .flow-chart-bars { gap: 3px; }
+    .charts2 .flow-bar { left: 22%; right: 22%; }
+    /* Weekly TVL: one colour, from a zero line at the bottom. */
+    .flow-chart-bars.tvl-bars { --zero: 100%; }
+    .flow-bar.tvl { bottom: 0; background: var(--accent); border-radius: 99px 99px 3px 3px; }
     .flow-chart-header {
       display: flex;
       justify-content: space-between;
@@ -889,6 +900,9 @@
       .flow-chart-axis { display: none; }
       .flow-chart-bars { height: 120px; gap: 2px; }
       .flow-bar { left: 14%; right: 14%; }
+      .charts2 { grid-template-columns: minmax(0, 1fr); gap: 26px; margin-top: 20px; }
+      .charts2 .flow-chart-bars { gap: 2px; }
+      .charts2 .flow-bar { left: 14%; right: 14%; }
 
       .feed { padding-top: 26px; }
       .feed-tools { gap: 10px; }
@@ -974,15 +988,29 @@
           <div id="statsRow" class="stats-row"></div>
         </div>
       </div>
-      <div id="flowChart" class="flow-chart">
-        <div class="flow-chart-header">
-          <span class="flow-chart-title label">Daily net flow</span>
-          <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
+      <!-- TVL growth by the week beside the daily net flow, half each. -->
+      <div class="charts2" id="charts2">
+        <div id="tvlWeekly" class="flow-chart">
+          <div class="flow-chart-header">
+            <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault at the end of each week, from the vaults' on-chain snapshots, as the TVL page draws it. This week's bar is today's TVL, the figure above.">&#9432;</span></span>
+            <span class="flow-chart-range"><span class="m-hide">weekly, last <span id="tvlRangeLabel">26w</span></span><span class="m-show" id="tvlRangeSpan"></span></span>
+          </div>
+          <div class="flow-chart-bars tvl-bars" id="tvlWeeklyBars"></div>
+          <div class="flow-chart-axis">
+            <span id="tvlWeeklyStart"></span>
+            <span>today</span>
+          </div>
         </div>
-        <div class="flow-chart-bars" id="flowChartBars"></div>
-        <div class="flow-chart-axis">
-          <span id="flowChartStart"></span>
-          <span id="flowChartEnd"></span>
+        <div id="flowChart" class="flow-chart">
+          <div class="flow-chart-header">
+            <span class="flow-chart-title label">Daily net flow</span>
+            <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
+          </div>
+          <div class="flow-chart-bars" id="flowChartBars"></div>
+          <div class="flow-chart-axis">
+            <span id="flowChartStart"></span>
+            <span id="flowChartEnd"></span>
+          </div>
         </div>
       </div>
     </section>
@@ -1659,10 +1687,13 @@
 
     // TVL now: every vault's TVL as IPOR's API reports it, summed — from the
     // vault list already loaded for the filters. Without that list, nothing.
+    let lastTvlTotal = 0;
     function renderTvl(ipor) {
       const el = document.getElementById('tvlStat');
       const vaults = (ipor && ipor.vaults) || [];
       const total = vaults.reduce((a, v) => a + (v.tvl > 0 ? v.tvl : 0), 0);
+      lastTvlTotal = total;
+      if (tvlDaily) renderTvlWeekly(); else loadTvlWeekly();
       if (!(total > 0)) { el.closest('.fig').hidden = true; return; }
       el.closest('.fig').hidden = false;
       const text = total >= 1e9 ? '$' + (total / 1e9).toFixed(2) + 'B'
@@ -1674,14 +1705,15 @@
         <div class="value num-bold tvl">${text}</div></div>`;
     }
 
-    // The days the flow chart draws, for its hover.
+    // What each chart's bars stand for, for their hovers: per bar, its label,
+    // the bubble's rows ([name, value, colour]) and the colour of its dot.
     let flowDays = [];
+    let tvlWeeks = [];
 
-    // One hairline, one dot and one bubble glide to the nearest day — the
-    // pointer anywhere over the chart picks one — and that day's bar stays lit
+    // One hairline, one dot and one bubble glide to the nearest bar — the
+    // pointer anywhere over the chart picks one — and that bar stays lit
     // while the rest step back. Tap on a touch screen; tap elsewhere to close.
-    (function flowHover() {
-      const bars = document.getElementById('flowChartBars');
+    function glideBars(bars, itemsOf) {
       let live = false;
       const hide = () => {
         live = false;
@@ -1690,27 +1722,27 @@
         bars.querySelectorAll('.flow-bar-slot.on').forEach(el => el.classList.remove('on'));
       };
       function show(clientX) {
+        const items = itemsOf();
         const h = bars.querySelector('.hv'), slots = [...bars.querySelectorAll('.flow-bar-slot')];
-        if (!h || !slots.length || slots.length !== flowDays.length) return;
+        if (!h || !slots.length || slots.length !== items.length) return;
         const box = bars.getBoundingClientRect();
         let i = 0, best = Infinity;
         slots.forEach((el, k) => { const r = el.getBoundingClientRect(); const d = Math.abs(clientX - (r.left + r.width / 2)); if (d < best) { best = d; i = k; } });
         const r = slots[i].getBoundingClientRect(), bar = slots[i].querySelector('.flow-bar').getBoundingClientRect();
-        const day = flowDays[i], up = day.value >= 0;
+        const it = items[i];
         const x = r.left + r.width / 2 - box.left;
-        const y = (up ? bar.top : bar.bottom) - box.top;
+        const y = (it.down ? bar.bottom : bar.top) - box.top;
         if (!live) h.classList.add('hv-jump');
         slots.forEach((el, k) => el.classList.toggle('on', k === i));
         bars.classList.add('hv-live');
         h.querySelector('.hv-line').style.transform = 'translateX(' + x + 'px)';
         const dot = h.querySelector('.hv-dot');
-        dot.style.color = up ? 'var(--pos-bar)' : 'var(--neg-bar)';
+        dot.style.color = it.color;
         dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
         const b = h.querySelector('.hv-bubble');
-        b.innerHTML = '<div class="hv-when">' + day.label + '</div><div class="hv-row"><span class="hv-k">'
-          + '<span class="hv-sw" style="background:' + (up ? 'var(--pos-bar)' : 'var(--neg-bar)') + '"></span>Net flow</span>'
-          + '<span class="hv-v">' + day.text + '</span></div>';
-        // Above the chart, centred on the day, kept within it.
+        b.innerHTML = '<div class="hv-when">' + it.label + '</div>' + it.rows.map(([k, v, c]) => '<div class="hv-row"><span class="hv-k">'
+          + (c ? '<span class="hv-sw" style="background:' + c + '"></span>' : '') + k + '</span><span class="hv-v">' + v + '</span></div>').join('');
+        // Above the chart, centred on the bar, kept within it.
         const bw = b.offsetWidth, bh = b.offsetHeight;
         b.style.transform = 'translate(' + Math.max(0, Math.min(x - bw / 2, box.width - bw)) + 'px,' + (-bh - 10) + 'px)';
         h.classList.add('hv-on');
@@ -1720,7 +1752,64 @@
       bars.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hide(); });
       bars.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(e.clientX); });
       document.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !bars.contains(e.target)) hide(); });
-    })();
+    }
+    glideBars(document.getElementById('flowChartBars'), () => flowDays);
+    glideBars(document.getElementById('tvlWeeklyBars'), () => tvlWeeks);
+
+    // TVL growth: every Fusion vault's TVL at the end of each week, from
+    // tvl-daily.json (tools/build-tvl-daily.js), weeks cut as the TVL page
+    // cuts them (tvl/index.html bucketize: a week shows its last day). This
+    // week ends today, at the TVL figure above. Loaded once the page has
+    // drawn; without the file the net flow takes the whole row.
+    const TVL_WEEKS = 26;
+    let tvlDaily, tvlDailyLoad = null;
+    function loadTvlWeekly() {
+      if (!tvlDailyLoad) tvlDailyLoad = getJson('tvl-daily.json').then((f) => { tvlDaily = f; renderTvlWeekly(); });
+      return tvlDailyLoad;
+    }
+    function renderTvlWeekly() {
+      const chart = document.getElementById('tvlWeekly'), bars = document.getElementById('tvlWeeklyBars');
+      const f = tvlDaily;
+      if (!f || !f.perChain || !(f.anchorDay >= f.minDay)) {
+        chart.hidden = true;
+        document.getElementById('charts2').classList.add('one');
+        return;
+      }
+      const total = new Array(f.anchorDay - f.minDay + 1).fill(0);
+      for (const vals of Object.values(f.perChain)) vals.forEach((v, i) => { if (i < total.length) total[i] += Math.max(0, v || 0); });
+      const weeks = new Map();
+      total.forEach((tvl, i) => { const day = f.minDay + i, key = Math.floor(day / 7) * 7; weeks.set(key, { day: key, asOf: day, tvl }); });
+      let pts = [...weeks.values()].sort((a, b) => a.day - b.day);
+      const today = Math.floor(Date.now() / 86400000);
+      if (lastTvlTotal > 0 && today >= f.anchorDay) {
+        const key = Math.floor(today / 7) * 7, last = pts[pts.length - 1];
+        if (last && last.day === key) Object.assign(last, { asOf: today, tvl: lastTvlTotal });
+        else pts.push({ day: key, asOf: today, tvl: lastTvlTotal });
+      }
+      pts = pts.slice(-TVL_WEEKS);
+      if (!pts.length) { chart.hidden = true; document.getElementById('charts2').classList.add('one'); return; }
+
+      const fmt = (day) => new Date(day * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+      const usd = (v) => (v >= 1e9 ? '$' + (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : '$' + (v / 1e3).toFixed(1) + 'K');
+      const max = Math.max(...pts.map(p => p.tvl), 1);
+      let html = '';
+      tvlWeeks = pts.map((p, i) => {
+        html += `<div class="flow-bar-slot"><div class="flow-bar tvl" style="height:${(p.tvl / max * 100).toFixed(2)}%"></div></div>`;
+        const prev = i ? pts[i - 1].tvl : null;
+        const rows = [['TVL', usd(p.tvl), 'var(--accent)']];
+        if (prev > 0) {
+          const ch = (p.tvl - prev) / prev * 100;
+          rows.push(['Week', `<span style="color:var(${ch >= 0 ? '--pos' : '--neg'})">${ch >= 0 ? '+' : '−'}${Math.abs(ch).toFixed(1)}%</span>`]);
+        }
+        return { label: fmt(p.day) + ' – ' + (p.asOf === today ? 'today' : fmt(p.asOf)), rows, color: 'var(--accent)' };
+      });
+      bars.innerHTML = html + '<div class="hv"><div class="hv-line"></div><span class="hv-dot"></span><div class="hv-bubble"></div></div>';
+      document.getElementById('tvlWeeklyStart').textContent = fmt(pts[0].day);
+      document.getElementById('tvlRangeLabel').textContent = pts.length + 'w';
+      document.getElementById('tvlRangeSpan').textContent = 'weekly, ' + fmt(pts[0].day) + ' – today';
+      chart.hidden = false;
+      document.getElementById('charts2').classList.remove('one');
+    }
 
     function renderFlowChart(events, days = 30) {
       const chart = document.getElementById('flowChart');
@@ -1775,7 +1864,8 @@
         const cls = val >= 0 ? 'positive' : 'negative';
         const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
         html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div></div>`;
-        flowDays.push({ label, value: val, text: fmtUsd(val) });
+        const c = val >= 0 ? 'var(--pos-bar)' : 'var(--neg-bar)';
+        flowDays.push({ label, rows: [['Net flow', fmtUsd(val), c]], color: c, down: val < 0 });
       }
       bars.innerHTML = html + '<div class="hv"><div class="hv-line"></div><span class="hv-dot"></span><div class="hv-bubble"></div></div>';
 
