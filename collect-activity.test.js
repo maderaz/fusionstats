@@ -156,6 +156,55 @@ test('no endpoint answering is unreachable, with the reason', () => {
   assert.ok(/plasma/.test(h.reason));
 });
 
+// Oct 6: Private ETH Lending Optimizer went back above the TVL floor and
+// resumed from its cursor of 8 days before, while the 30 other Base vaults
+// were at the head. Verbatim blocks from that run.
+const HEAD6 = 52252149;
+const base30 = Array.from({ length: 30 }, (_, i) => ({ address: '0xb' + i, name: 'Base ' + i, tvl: 1e6, start: 52241915, cursor: HEAD6 }));
+const priv = { address: '0xd757', name: 'Private ETH Lending Optimizer', tvl: 297961, start: 51894615, cursor: 52070615 };
+const T0 = Date.parse('2026-10-06T13:36:36Z');
+
+test('a vault catching up while the rest are at the head: behind, named, since this run', () => {
+  const h = chainHealth({ chain: 'base', head: HEAD6, vaults: [...base30, priv], prev: { status: 'ok', checkedAt: '2026-10-06T07:53:00Z' }, now: T0 });
+  assert.strictEqual(h.status, 'behind');
+  assert.strictEqual(h.lagHours, 100.9);
+  assert.strictEqual(h.behindSince, new Date(T0).toISOString());
+  assert.deepStrictEqual(h.laggards.map(l => [l.name, l.lagHours, l.moved, l.stuck]), [['Private ETH Lending Optimizer', 100.9, true, false]]);
+});
+
+test('behindSince carries over while the chain stays behind, and clears at the head', () => {
+  const was = { status: 'behind', behindSince: '2026-10-05T20:00:00.000Z', checkedAt: '2026-10-06T07:53:00Z' };
+  assert.strictEqual(chainHealth({ chain: 'base', head: HEAD6, vaults: [...base30, priv], prev: was, now: T0 }).behindSince, was.behindSince);
+  const back = chainHealth({ chain: 'base', head: HEAD6, vaults: [...base30, { ...priv, cursor: HEAD6 }], prev: was, now: T0 });
+  assert.strictEqual(back.status, 'ok');
+  assert.strictEqual(back.behindSince, null);
+  assert.deepStrictEqual(back.laggards, []);
+});
+
+test("a verdict from before behindSince counts from its own time", () => {
+  const h = chainHealth({ chain: 'base', head: HEAD6, vaults: [priv], prev: { status: 'stalled', checkedAt: '2026-10-05T19:55:00.000Z' }, now: T0 });
+  assert.strictEqual(h.behindSince, '2026-10-05T19:55:00.000Z');
+});
+
+test('a vault whose pass ran and did not move is stuck; one the time ran out before is not', () => {
+  const asked = { ...priv, address: '0xa', cursor: priv.start };
+  const notReached = { ...priv, address: '0xb', cursor: priv.start, reached: false };
+  const h = chainHealth({ chain: 'base', head: HEAD6, vaults: [...base30, asked, notReached], now: T0 });
+  assert.strictEqual(h.status, 'behind');           // the chain moved
+  assert.deepStrictEqual(h.laggards.map(l => [l.address, l.stuck]), [['0xa', true], ['0xb', false]]);
+});
+
+test('nothing on the chain moved while a vault is behind: stalled', () => {
+  const still = base30.map(v => ({ ...v, start: v.cursor }));
+  const h = chainHealth({ chain: 'base', head: HEAD6, vaults: [...still, { ...priv, cursor: priv.start }], now: T0 });
+  assert.strictEqual(h.status, 'stalled');
+});
+
+test('unreachable keeps the time a chain already behind fell behind', () => {
+  const h = chainHealth({ chain: 'base', unreachable: true, reason: 'x', prev: { status: 'behind', behindSince: '2026-10-05T00:00:00.000Z' }, now: T0 });
+  assert.strictEqual(h.behindSince, '2026-10-05T00:00:00.000Z');
+});
+
 console.log('\nscanCohorts');
 
 const at = (addr, fromBlock) => ({ vault: { address: addr }, fromBlock });

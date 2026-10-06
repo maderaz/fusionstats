@@ -13,6 +13,14 @@
 // Chains below the TVL floor are reported but never fail the run: a chain
 // with only dust on it should not page anyone.
 //
+// Behind is not by itself a failure. A vault back above the collector's TVL
+// floor resumes from the cursor it had when it dropped out: on Oct 6 that was
+// 8 days back, and a run that was catching it up, with every other Base vault
+// at the head, failed as "base not being collected". What fails now is a
+// chain that has been behind for more than MAX_BEHIND_HOURS of clock time
+// (catching up for too long), or one with a vault holding at least the floor
+// that this run asked about and could not move at all (stuck).
+//
 // A verdict only counts if THIS run wrote it. If the activity step crashed,
 // hit its timeout, or never ran the current code, the file still holds the
 // last good run's verdicts, or none at all, and a check that read those
@@ -59,12 +67,33 @@ function evaluate(chainHealth, tvlByChain, now = Date.now()) {
         failing: matters && (!collectorReported || !h || age > MAX_BEHIND_HOURS),
       };
     }
+    // How long the chain has been behind, from the collector's behindSince;
+    // a verdict without one (an older collector) is judged by its lag.
+    const since = h.behindSince ? Date.parse(h.behindSince) : NaN;
+    const behindHours = Number.isFinite(since) ? Math.max(0, (now - since) / 3.6e6) : null;
+    const stuck = (h.laggards || []).filter(l => l.stuck && (l.tvl || 0) >= TVL_FLOOR);
+    const tooLong = behindHours != null ? behindHours > MAX_BEHIND_HOURS : (h.lagHours || 0) > MAX_BEHIND_HOURS;
     const failing = matters && (h.status === 'stalled' || h.status === 'unreachable'
-      || (h.status === 'behind' && (h.lagHours || 0) > MAX_BEHIND_HOURS));
-    return { chain, tvl, matters, failing, ...h };
+      || (h.status === 'behind' && (tooLong || stuck.length > 0)));
+    return { chain, tvl, matters, failing, behindHours, stuck, ...h };
   });
   rows.collectorReported = collectorReported;
   return rows.sort((a, b) => b.tvl - a.tvl);
+}
+
+// Which vaults are behind, for how long the chain has been, and why.
+function note(r) {
+  const parts = [];
+  if (r.status === 'behind' || r.status === 'stalled') {
+    if (r.behindHours != null) parts.push(r.behindHours < 1 ? 'behind since this run' : `behind for ${Math.round(r.behindHours)}h`);
+    const l = r.laggards || [];
+    if (l.length) {
+      parts.push(l.slice(0, 2).map(x => `${x.name || x.address} ${x.lagHours}h${x.stuck ? ' (stuck)' : ''}`).join(', ')
+        + (l.length > 2 ? ` and ${l.length - 2} more` : ''));
+    }
+  }
+  if (r.reason) parts.push(String(r.reason).slice(0, 80));
+  return parts.join(' · ').replace(/\|/g, '/');
 }
 
 function main() {
@@ -76,8 +105,9 @@ function main() {
   const usd = (n) => '$' + Math.round(n).toLocaleString('en-US');
   const lines = ['| chain | tracked TVL | status | behind head | note |', '|---|---:|---|---:|---|'];
   for (const r of rows) {
-    lines.push(`| ${r.chain} | ${usd(r.tvl)} | ${r.failing ? '**' + r.status + '**' : r.status} | `
-      + `${r.lagHours == null ? '—' : r.lagHours + 'h'} | ${r.reason ? String(r.reason).slice(0, 80) : ''} |`);
+    const status = r.status === 'behind' && !r.failing ? 'catching up' : r.status;
+    lines.push(`| ${r.chain} | ${usd(r.tvl)} | ${r.failing ? '**' + status + '**' : status} | `
+      + `${r.lagHours == null ? '—' : r.lagHours + 'h'} | ${note(r)} |`);
   }
   let audit = '';
   try {
@@ -104,7 +134,10 @@ function main() {
       + 'commit being re-run (GitHub re-runs reuse the original commit; use **Run workflow** to run the current code).'
     : failing.length
       ? `## ❌ ${failing.length} chain${failing.length === 1 ? '' : 's'} not being collected`
-      : '## ✅ Every chain with real TVL is being collected';
+      : '## ✅ Every chain with real TVL is being collected'
+        + (rows.some(r => r.status === 'behind')
+          ? `\n\nCatching up: ${rows.filter(r => r.status === 'behind').map(r => `${r.chain} (${(r.laggards || []).length} vault${(r.laggards || []).length === 1 ? '' : 's'})`).join(', ')}.`
+          : '');
   const md = `${head}\n\n${lines.join('\n')}${audit}\n`;
   console.log(md);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
