@@ -1,0 +1,83 @@
+#!/usr/bin/env node
+'use strict';
+// Tests for collect-dao-fees.js against a node that answers as Fusion's fee
+// contracts do. Run: node collect-dao-fees.test.js
+
+const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const F = require('./collect-dao-fees.js');
+
+let passed = 0;
+async function test(name, fn) {
+  try { await fn(); console.log('  PASS  ' + name); passed++; }
+  catch (e) { console.log('  FAIL  ' + name + '\n        ' + e.message); process.exitCode = 1; }
+}
+
+const w = (x) => BigInt(x).toString(16).padStart(64, '0');
+const V = { apple: '0x31744e44d6af88225c1dbefbe5df8308faea641b', tezos: '0xde09e16675b667b6abb6d7910d6e009f630bcb96', old: '0x00000000000000000000000000000000000000c1', down: '0x00000000000000000000000000000000000000c2' };
+const ACC = { perf: '0x00000000000000000000000000000000000000a1', mgmt: '0x00000000000000000000000000000000000000a2', oldAcc: '0x00000000000000000000000000000000000000a3' };
+const MGR = { apple: '0x00000000000000000000000000000000000000b1', tezos: '0x00000000000000000000000000000000000000b2' };
+// vault → [perf account, perf bps, mgmt bps, fee manager, dao perf bps, dao mgmt bps]
+const CHAIN = {
+  [V.apple]: [ACC.perf, 700, 40, MGR.apple, 200, 30],
+  [V.tezos]: ['0x00000000000000000000000000000000000000a4', 200, 30, MGR.tezos, 200, 30],
+  [V.old]: [ACC.oldAcc, 1000, 100, null],
+};
+const accounts = {}; const managers = {};
+for (const [v, c] of Object.entries(CHAIN)) { if (c[3]) { accounts[c[0]] = c[3]; managers[c[3]] = [c[4], c[5]]; } }
+global.fetch = async (url, init) => {
+  const { id, params: [{ to, data }] } = JSON.parse(init.body);
+  const sel = data.slice(0, 10);
+  const ok = (result) => ({ ok: true, json: async () => ({ jsonrpc: '2.0', id, result }) });
+  if (to === V.down) return { ok: false, status: 503 };
+  const c = CHAIN[to];
+  if (c && sel === F.SEL.perfData) return ok('0x' + w(c[0]) + w(c[1]));
+  if (c && sel === F.SEL.mgmtData) return ok('0x' + w(ACC.mgmt) + w(c[2]) + w(1791000000));
+  if (accounts[to] && sel === F.SEL.feeManager) return ok('0x' + w(accounts[to]));
+  if (to === ACC.oldAcc) return ok('0x');   // a plain account: no code
+  if (managers[to] && sel === F.SEL.daoPerf) return ok('0x' + w(managers[to][0]));
+  if (managers[to] && sel === F.SEL.daoMgmt) return ok('0x' + w(managers[to][1]));
+  return { ok: true, json: async () => ({ jsonrpc: '2.0', id, error: { code: 3, message: 'execution reverted' } }) };
+};
+
+const IPOR = { vaults: [
+  { chainId: 8453, address: V.apple, name: 'Apple Carry Trade', tvl: 45503 },
+  { chainId: 8453, address: V.tezos, name: 'Nvidia Carry Trade Tezos', tvl: 1018790 },
+  { chainId: 1, address: V.old, name: 'Old vault', tvl: 20000 },
+  { chainId: 1, address: V.down, name: 'Unreachable', tvl: 50000 },
+  { chainId: 1, address: '0x00000000000000000000000000000000000000c3', name: 'Small', tvl: 900 },
+  { chainId: 747474, address: '0x00000000000000000000000000000000000000c4', name: 'Katana', tvl: 12288 },
+] };
+
+(async () => {
+  console.log('\ndao fees');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dao-fees-'));
+  const ipor = path.join(dir, 'ipor.json'), out = path.join(dir, 'out.json');
+  fs.writeFileSync(ipor, JSON.stringify(IPOR));
+  const log = console.log; const lines = []; console.log = (...a) => lines.push(a.join(' '));
+  await F.main({ out, ipor });
+  console.log = log;
+  const j = JSON.parse(fs.readFileSync(out, 'utf8'));
+  await test("a vault's own rates and the DAO's share of each, as percents", () => {
+    assert.deepStrictEqual([j.vaults[V.apple].perf, j.vaults[V.apple].daoPerf, j.vaults[V.apple].mgmt, j.vaults[V.apple].daoMgmt], [7, 2, 0.4, 0.3]);
+    assert.strictEqual(j.vaults[V.apple].feeManager, MGR.apple);
+  });
+  await test('a vault whose fee account is no FeeManager keeps its rates and no DAO share', () => {
+    assert.deepStrictEqual([j.vaults[V.old].perf, j.vaults[V.old].daoPerf, j.vaults[V.old].daoMgmt], [10, null, null]);
+  });
+  await test('only vaults above $10K, on chains with endpoints; an unreachable one is warned and left out', () => {
+    assert.deepStrictEqual(Object.keys(j.vaults).sort(), [V.apple, V.tezos, V.old].sort());
+    assert.ok(lines.some(l => /::warning::dao-fees: Unreachable/.test(l)));
+  });
+  await test('a vault unread this run keeps its last reading', async () => {
+    const prev = { readAt: 'x', vaults: { [V.down]: { chainId: 1, name: 'Unreachable', perf: 5, daoPerf: 2, mgmt: 0.5, daoMgmt: 0.3 } } };
+    fs.writeFileSync(out, JSON.stringify(prev));
+    console.log = () => {};
+    await F.main({ out, ipor });
+    console.log = log;
+    assert.strictEqual(JSON.parse(fs.readFileSync(out, 'utf8')).vaults[V.down].daoPerf, 2);
+  });
+  console.log(`\n${passed} passed${process.exitCode ? ', some FAILED' : ''}`);
+})();
