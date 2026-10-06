@@ -1148,8 +1148,26 @@
             .flatMap(([addr, stored]) => (vaultInfo[addr] ? [vaultInfo[addr].name] : stored))
             .map(spell).filter(Boolean))].sort()
         : [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
-      select.innerHTML = '<option value="">All products</option>'
-        + names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+      // Each product with its underlying token's mark (fusion-select.js
+      // data-token), as the chains have theirs.
+      const tokenOf = {};
+      const give = (name, sym) => { const n = spell(name); if (n && sym && !tokenOf[n]) tokenOf[n] = sym; };
+      Object.values(vaultInfo).forEach(v => give(v.name, v.symbol));
+      allEvents.forEach(e => give(e.vaultName, e.symbol));
+      // A product too small for the tracked list still has its token in the
+      // full vault list: by address, under every name its events were stored
+      // with, then by name.
+      const iporVaults = (lastIpor && lastIpor.vaults) || [];
+      const iporAt = {};
+      iporVaults.forEach(v => { if (v.address) iporAt[v.address.toLowerCase()] = v; });
+      if (recentMeta) Object.entries(recentMeta.eventVaults).forEach(([addr, stored]) => {
+        const v = iporAt[addr.toLowerCase()];
+        if (v) stored.forEach(n => give(n, v.token));
+      });
+      iporVaults.forEach(v => give(v.name, v.token));
+      const q = (t) => String(t).replace(/"/g, '&quot;');
+      select.innerHTML = '<option value="" data-glyph="all">All products</option>'
+        + names.map(n => `<option value="${q(n)}" data-token="${q(tokenOf[n] || n)}">${n}</option>`).join('');
       const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
       if (stored && names.includes(stored)) select.value = stored;
     }

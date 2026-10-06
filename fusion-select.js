@@ -9,6 +9,7 @@
 // selects, before the page's own script). An <option> can carry
 //   data-icon="/x.svg"   an image beside its name
 //   data-chain="base"    that network's mark (see CHAINS)
+//   data-token="USDC"    that token's mark (see TOKENS), or its first letter
 //   data-glyph="all"     the "every network" mark
 //   data-label="Base"    the name to show, when its text says more
 //   data-note="12"       a quiet note at the end of its row
@@ -28,6 +29,25 @@
     999: ['HyperEVM', 'hyperevm'], hyperevm: ['HyperEVM', 'hyperevm'],
     143: ['Monad', 'monad'], monad: ['Monad', 'monad'],
   };
+  // Token symbol, lower-cased → its mark (/icons/tokens, or a tokenised
+  // stock's in /stocks/icons). Wrapped and bridged forms share their asset's.
+  // No mark: a lettered badge.
+  const TOKENS = {
+    usdc: 'usdc', usdt: 'usdt', usdt0: 'usdt', 'usd\u20ae0': 'usdt', dai: 'dai', usde: 'usde', usdg: 'usdg', pyusd: 'pyusd',
+    crvusd: 'crvusd', eurc: 'eurc', crv: 'crv', cycrv: 'crv',
+    eth: 'eth', weth: 'weth', steth: 'steth', wsteth: 'wsteth', weeth: 'weeth', reth: 'reth', cbeth: 'cbeth',
+    btc: 'btc', 'btc.b': 'btc', wbtc: 'wbtc', cbbtc: 'cbbtc', pol: 'pol', xaut: 'xaut', xaut0: 'xaut',
+  };
+  const STOCKS = { googl: 'goog', googlc: 'goog', goog: 'goog', nvda: 'nvda', nvdac: 'nvda', aapl: 'aapl', aaplc: 'aapl',
+    meta: 'meta', metac: 'meta', coin: 'coin', coinc: 'coin', msft: 'msft', msftc: 'msft', amzn: 'amzn', amznc: 'amzn',
+    mstr: 'mstr', mstrc: 'mstr', tsla: 'tsla', tslac: 'tsla', sndk: 'sndk', sndkc: 'sndk', spcx: 'spcx', spcxc: 'spcx' };
+  function tokenIcon(sym) {
+    const k = String(sym || '').toLowerCase();
+    if (TOKENS[k]) return '/icons/tokens/' + TOKENS[k] + '.svg';
+    if (STOCKS[k]) return '/stocks/icons/' + STOCKS[k] + '.svg';
+    return null;
+  }
+
   const chainName = (id) => (CHAINS[id] ? CHAINS[id][0] : String(id || '').replace(/^./, c => c.toUpperCase()));
   // A network's mark: its file and whether it is drawn in black, or null.
   const chainIcon = (id) => (CHAINS[id] && CHAINS[id][1] ? { src: '/icons/chains/' + CHAINS[id][1] + '.svg', ink: !!CHAINS[id][2] } : null);
@@ -43,6 +63,11 @@
     const d = o.dataset;
     if (d.icon) return `<img class="fs-ic" src="${esc(d.icon)}" alt="" width="18" height="18" decoding="async">`;
     if (d.glyph === 'all') return ALL;
+    if (d.token != null) {
+      const src = tokenIcon(d.token);
+      if (src) return `<img class="fs-ic" src="${esc(src)}" alt="" width="18" height="18" decoding="async">`;
+      return d.token ? `<span class="fs-ic fs-mono" aria-hidden="true">${esc(String(d.token)[0].toUpperCase())}</span>` : '';
+    }
     if (d.chain != null) {
       const c = CHAINS[d.chain];
       if (c && c[1]) return `<img class="fs-ic${c[2] ? ' fs-ic-ink' : ''}" src="/icons/chains/${c[1]}.svg" alt="" width="18" height="18" decoding="async">`;
@@ -493,6 +518,7 @@
     enhanceAll: (root) => (root || document).querySelectorAll('select[data-fs]').forEach(enhance),
     chainName,
     chainIcon,
+    tokenIcon,
     close: () => close(false),
   };
   window.FusionSelect.enhanceAll();
