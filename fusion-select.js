@@ -12,7 +12,9 @@
 //   data-glyph="all"     the "every network" mark
 //   data-label="Base"    the name to show, when its text says more
 //   data-note="12"       a quiet note at the end of its row
-// FusionSelect.chainName(id) gives a network's display name.
+//   data-short="TVL"     a shorter name for the closed dropdown's cell
+// FusionSelect.chainName(id) gives a network's display name, and
+// FusionSelect.chainIcon(id) its mark ({ src, ink } or null).
 (function () {
   'use strict';
   if (window.FusionSelect) return;
@@ -27,6 +29,8 @@
     143: ['Monad', 'monad'], monad: ['Monad', 'monad'],
   };
   const chainName = (id) => (CHAINS[id] ? CHAINS[id][0] : String(id || '').replace(/^./, c => c.toUpperCase()));
+  // A network's mark: its file and whether it is drawn in black, or null.
+  const chainIcon = (id) => (CHAINS[id] && CHAINS[id][1] ? { src: '/icons/chains/' + CHAINS[id][1] + '.svg', ink: !!CHAINS[id][2] } : null);
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -251,7 +255,7 @@
   const ownerOf = (api) => api.btn.closest('label') || api.btn;
   const titleOf = (api) => {
     const own = api.btn.closest('label');
-    const t = own && own.querySelector('.filter-label');
+    const t = own && own.querySelector('.filter-label, .ui-filter-label');
     return (api.sel.getAttribute('aria-label') || (t ? t.textContent : '') || '').trim();
   };
 
@@ -464,7 +468,7 @@
 
     const sync = () => {
       const o = sel.options[sel.selectedIndex];
-      btn.innerHTML = o ? `<span class="fs-face">${iconHtml(o)}<span class="fs-text">${esc(labelOf(o))}</span></span>` : '';
+      btn.innerHTML = o ? `<span class="fs-face">${iconHtml(o)}<span class="fs-text">${esc(o.dataset.short || labelOf(o))}</span></span>` : '';
       btn.disabled = sel.disabled;
       if (current === api) renderList(true);
     };
@@ -488,6 +492,7 @@
     enhance,
     enhanceAll: (root) => (root || document).querySelectorAll('select[data-fs]').forEach(enhance),
     chainName,
+    chainIcon,
     close: () => close(false),
   };
   window.FusionSelect.enhanceAll();

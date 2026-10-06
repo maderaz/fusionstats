@@ -94,12 +94,23 @@ jobs:
         continue-on-error: true
         run: node tools/build-stocks-data.js
 
+      # Each vault's latest snapshot TVL, for the All Vaults page, which read
+      # the whole 11 MB history for one number a vault (tools/build-tvl-latest.js).
+      - name: Build the latest-TVL file
+        if: always()
+        continue-on-error: true
+        run: node tools/build-tvl-latest.js
+
       - name: Commit & push results
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f tvl-snapshots.json vault-deployments.json stocks-data.json 2>/dev/null || true
+          # One at a time: a single missing file makes `git add a b c` add none
+          # of them, and the snapshots would go uncommitted with it.
+          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json; do
+            [ -f "$f" ] && git add -f "$f"
+          done
           FILES=$(git diff --cached --name-only)
           if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
           MODE="${{ inputs.mode || 'scheduled' }}"
