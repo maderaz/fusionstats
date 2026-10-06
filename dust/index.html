@@ -93,9 +93,11 @@
       .tbar .grow { display: none; }
       .tbar .ui-seg { width: auto; }
       .vhead, .thead { display: none; }
+      /* The name runs over the share bar's column too: only the count is
+         beside it, so a short name is never cut for the bar below. */
       .vrow {
-        grid-template-columns: minmax(0, 1fr) auto;
-        grid-template-areas: "name cnt" "sub shr";
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas: "name name cnt" "sub shr shr";
         row-gap: 4px; padding: 11px 0; min-height: 0;
       }
       .vrow .vname { grid-area: name; }
@@ -184,7 +186,7 @@
     <section class="ui-section">
       <div class="ui-head">
         <h2 id="chartTitle">Dust deposits over time</h2>
-        <button type="button" class="ui-btn mark-btn" id="markBtn" aria-pressed="false" title="A line at July 9, when Fusion vaults were listed in the Base App">Base App listing</button>
+        <button type="button" class="ui-btn mark-btn" id="markBtn" aria-pressed="false" title="A line at July 9, when Fusion vaults were listed in the Base App"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 13.5v-11M5 3h6.5l-1.75 2.5L11.5 8H5"/></svg>Base App listing</button>
       </div>
       <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
     </section>
@@ -311,7 +313,11 @@
       const el = document.getElementById('chart');
       const { list, capped } = buckets(dust);
       state.buckets = list;
-      document.getElementById('chartTitle').textContent = 'Deposits under ' + fmtT(state.threshold) + ', ' + (state.grain === 'day' ? 'daily' : state.grain === 'week' ? 'weekly' : 'monthly') + (capped ? ', last 90 days' : '');
+      // The size is the title; the cadence a count beside it (the Bucket
+      // filter above says it too), so the title keeps its line on a phone.
+      document.getElementById('chartTitle').innerHTML = 'Deposits under ' + fmtT(state.threshold)
+        + '<span class="ui-count">' + (state.grain === 'day' ? 'daily' : state.grain === 'week' ? 'weekly' : 'monthly')
+        + (capped ? ', <span class="m-hide">last 90 days</span><span class="m-show">90d</span>' : '') + '</span>';
       if (!list.length) {
         if (window.Plotly && el.data) Plotly.purge(el);
         el.innerHTML = '<div class="ui-empty">No deposits under ' + fmtT(state.threshold) + '.</div>';

@@ -36,7 +36,9 @@
     .src-row .n { margin-top: 5px; font-size: 12px; color: var(--text-3); }
 
     /* ---------- Switch-ins: a table on a desktop, two lines on a phone ---------- */
-    .slist { --cols: 74px 112px 96px minmax(0, 1fr) 58px 80px 92px; }
+    /* The fixed columns as wide as what they hold (a wallet is 11 mono
+       characters), so the vault's name gets the rest. */
+    .slist { --cols: 74px 88px 96px minmax(0, 1fr) 52px 80px 92px; }
     .shead, .srow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 12px; }
     .shead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
     .shead .r, .srow .r { justify-self: end; text-align: right; }
@@ -67,6 +69,11 @@
     a.txlink:hover { border-color: currentColor; background: var(--bg-subtle); }
     span.txlink { opacity: 0.4; }
     .srow .meta { display: none; }
+    .srow .meta .gap-plus { display: none; }
+    @container (max-width: 345px) {
+      .srow .meta .gap-plus { display: inline; }
+      .srow .meta .gap-after { display: none; }
+    }
     .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
     .empty b { color: var(--text); font-weight: 600; }
 
@@ -90,7 +97,8 @@
       .srow .meta { grid-area: meta; display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; }
       .srow .meta .addr { font-size: 11.5px; }
       /* The match and the wallet always show; on the narrowest phones the
-         time after is what shortens. */
+         time after says itself shorter ("+5 min"), whole. (Should it still
+         not fit, it is what gives way.) */
       .srow .meta > * { flex-shrink: 0; }
       .srow .meta .gap-t { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
       .srow .txs { grid-area: txs; }
@@ -297,7 +305,7 @@
           <span class="from" title="${esc(from)}${s.src.chain ? ' · ' + esc(s.src.chain) : ''}">${s.src.chain ? UI.chain(s.src.chain) : ''}<span class="fname">${esc(from)}</span></span>
           <span class="gap">${fGap(s.gap)}</span>
           <span class="r match"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span class="tok">${fUsd(s.src.usdValue)} out</span></span>
-          <span class="meta"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span>·</span>${wallet}<span>·</span><span class="gap-t">${fGap(s.gap)} after</span></span>
+          <span class="meta"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span>·</span>${wallet}<span>·</span><span class="gap-t"><span class="gap-plus">+</span>${fGap(s.gap)}<span class="gap-after"> after</span></span></span>
           <span class="r txs">${txLink('in', exIn, s.dep.tx, s.dep.chain)}${txLink('out', exOut, s.src.tx, s.src.chain)}</span>
         </div>`;
       }).join('');

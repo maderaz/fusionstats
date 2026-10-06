@@ -21,11 +21,11 @@
   <style>
     .ui-section .ui-toolbar { margin-bottom: 14px; }
     .ui-chart { margin: 0 -4px; }
-    /* On a phone the two switches share a row, each as wide as its words. */
+    /* On a phone the two switches share a row, each as wide as its words,
+       when both fit whole; when they don't, each takes a row of its own. */
     @container (max-width: 700px) {
-      .ui-toolbar.pair { flex-wrap: nowrap; gap: 8px; }
-      .ui-toolbar.pair .ui-seg { width: auto; min-width: 0; }
-      .ui-toolbar.pair #metric { flex: 1 1 auto; }
+      .ui-toolbar.pair { gap: 8px; }
+      .ui-toolbar.pair .ui-seg { flex: 1 1 auto; width: auto; }
       .ui-toolbar.pair .ui-seg button { flex: 1 1 auto; padding: 0 6px; }
     }
     .ui-figure .v[title] { cursor: default; }
@@ -513,7 +513,7 @@
       tag.addEventListener('error', failed);
     });
     const CONFIG = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false };
-    const TITLES = { share: 'Fusion share of Morpho loans', fusion: 'Fusion borrowed on Morpho', loans: 'Morpho loans: Fusion and the rest' };
+    const TITLES = { share: 'Fusion share of Morpho loans', fusion: 'Fusion borrowed on Morpho', loans: 'All Morpho loans' };
     const OTHER = '#A8B8D8';
     let shown = [];            // the points drawn, the zero start included
 

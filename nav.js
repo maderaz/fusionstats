@@ -11,6 +11,8 @@
 (function () {
   // The pages, in three groups: the key pages, the insights that support
   // them, and tools. A group's label is its heading; the key pages need none.
+  // A page's short name is its tile's on the narrowest phones, where the full
+  // one won't fit on a line.
   // A folding group starts closed and remembers being opened; on one of its
   // own pages it is open, so the current page always shows.
   const GROUPS = [
@@ -30,7 +32,7 @@
       { href: '/tvl',                   label: 'TVL',            icon: 'tvl' },
       { href: '/address',               label: 'Address',        icon: 'address' },
       { href: '/spark',                 label: 'Spark',          icon: 'spark' },
-      { href: '/rebalance-methodology', label: 'Rebalance Docs', icon: 'docs' },
+      { href: '/rebalance-methodology', label: 'Rebalance Docs', icon: 'docs', short: 'Rebalance' },
       { href: '/logs',                  label: 'Logs',           icon: 'logs' },
       { href: '/video',                 label: 'Video',          icon: 'video' },
       { href: '/socials',               label: 'Socials',        icon: 'socials' },
@@ -423,6 +425,11 @@
         transition: background 0.12s, border-color 0.12s, transform 0.12s;
       }
       .fnav-tile .fnav-ic { width: 18px; height: 18px; }
+      .fnav-tile .fl-n { display: none; }
+      /* Small phones: a little less air in a tile, so its name keeps its line;
+         the narrowest take a page's short name. */
+      @media (max-width: 380px) { .fnav-tile { gap: 9px; padding: 0 12px; } }
+      @media (max-width: 352px) { .fnav-tile .fl-w { display: none; } .fnav-tile .fl-n { display: inline; } }
       .fnav-tile:active { transform: scale(0.98); background: var(--bg-hover, var(--bg-alt, rgba(127, 127, 127, 0.08))); }
       .fnav-tile:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 1px; }
       .fnav-tile.active { border-color: transparent; background: var(--accent-bg, rgba(132, 41, 255, 0.08)); color: var(--accent, #8429FF); font-weight: 600; }
@@ -487,7 +494,7 @@
   const tiles = SUBS.concat(MORE).map(g => `<div class="fnav-sheet-group" role="group" aria-label="${g.label}">`
       + `<div class="fnav-sheet-label">${g.label}</div><div class="fnav-tiles">`
       + g.pages.map(p => `<a class="fnav-tile${isActive(p.href) ? ' active' : ''}" href="${p.href}"${here(p)}>`
-          + `${icon(p.icon)}<span class="fnav-label">${p.label}</span></a>`).join('')
+          + `${icon(p.icon)}<span class="fnav-label">${p.short ? `<span class="fl-w">${p.label}</span><span class="fl-n">${p.short}</span>` : p.label}</span></a>`).join('')
       + `</div></div>`).join('');
 
   const THEME_SWITCH = `<div class="fnav-foot">

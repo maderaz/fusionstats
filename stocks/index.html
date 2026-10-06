@@ -36,14 +36,15 @@
     /* Fixed columns per width, so a divider only ever falls between two figures. */
     .stat-row {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(min-content, 1fr));
       row-gap: 24px;
       padding: 28px 0 32px;
     }
-    #concStats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #concStats { grid-template-columns: repeat(4, minmax(min-content, 1fr)); }
     .stat { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
     .stat:first-child { padding-left: 0; border-left: none; }
-    .stat .k { font-size: 13px; font-weight: 500; color: var(--text-3); }
+    /* A figure's name is one line: the columns are at least that wide. */
+    .stat .k { font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
     .stat .v {
       margin-top: 6px;
       font-size: clamp(20px, 2.4cqi, 28px);
@@ -54,7 +55,7 @@
     }
     #concStats { padding: 4px 0 26px; }
     /* Diversification: five small figures, each with its share underneath. */
-    .stat-row.divers { grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); padding: 2px 0 28px; }
+    .stat-row.divers { grid-template-columns: repeat(var(--n, 5), minmax(min-content, 1fr)); padding: 2px 0 28px; }
     .stat-row.divers .v { font-size: 22px; }
     .stat .s { margin-top: 2px; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
     /* Largest holders: one line a row. */
@@ -157,7 +158,9 @@
       -webkit-appearance: none;
               appearance: none;
     }
-    .filters .fs-trigger { display: flex; align-items: center; }
+    /* The chevron is fusion-select.js's own (.fs-chev), its glyph 3px inside
+       its box: right padding 3px under the left one. */
+    .filters .fs-trigger { display: flex; align-items: center; padding-right: 11px; }
     .filters select:focus-visible, .filters .fs-trigger:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 
     .seg {
@@ -213,6 +216,11 @@
     .xport-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
     .xport-btn:hover, .xport-btn[aria-expanded="true"] { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
     .xport-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* On a phone, Export and CSV are their icon (the word stays for screen
+       readers): the heading beside them keeps its line, as on every page. */
+    @container (max-width: 560px) {
+      .xport-btn { justify-content: center; width: 34px; padding: 0; gap: 0; font-size: 0; }
+    }
     .xport-menu {
       position: absolute;
       top: calc(100% + 6px);
@@ -460,20 +468,20 @@
     .bar-cell { display: block; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.75; }
 
     @container (max-width: 900px) {
-      .stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .stat-row { grid-template-columns: repeat(3, minmax(min-content, 1fr)); }
       .stat-row .stat:nth-child(3n + 1) { padding-left: 0; border-left: none; }
-      #concStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .stat-row.divers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      #concStats { grid-template-columns: repeat(2, minmax(min-content, 1fr)); }
+      .stat-row.divers { grid-template-columns: repeat(3, minmax(min-content, 1fr)); }
       #concStats .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       #concStats .stat:nth-child(odd) { padding-left: 0; border-left: none; }
     }
     @container (max-width: 560px) {
-      .stat-row, .stat-row.divers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat-row, .stat-row.divers { grid-template-columns: repeat(2, minmax(min-content, 1fr)); }
       .stat-row .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       .stat-row .stat:nth-child(odd) { padding-left: 0; border-left: none; }
       /* The 3-column rule above still matches the 4th figure; two columns
          want a divider on every even one. */
-      .stat-row .stat:nth-child(even) { padding-left: 20px; border-left: 1px solid var(--line); }
+      .stat-row .stat:nth-child(even) { padding-left: 20px; padding-right: 0; border-left: 1px solid var(--line); }
       /* Largest holders on a phone: logos without the ticker list, the
          address on one line and whose contract it is under it. */
       .holders-top .tickers { display: none; }
@@ -524,13 +532,24 @@
       .chart-toolbar > .seg button { flex: 1; height: 38px; padding: 0 8px; }
       .chart-hint { margin-left: 0; }
     }
+    /* The narrowest phones: a little less air either side of a divider. */
+    @container (max-width: 345px) {
+      .stat-row .stat:nth-child(odd) { padding-right: 14px; }
+      .stat-row .stat:nth-child(even) { padding-left: 14px; }
+    }
     @container (max-width: 560px) {
-      .filters { display: grid; grid-template-columns: 1fr 1fr; overflow: clip; }
-      .filter-group { min-width: 0; height: 48px; padding: 8px 12px 0; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
+      /* Two equal columns. Every cell draws its top and left hairline 1px
+         out: at the box's own edge that falls under the clip, so only the
+         lines between cells show. Inner corners are square, and the vault
+         cell gives up its desktop minimum for an equal half. */
+      .filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: clip; }
+      .filters .filter-group, .filters .filter-group:has(select[id$="Vault"]) {
+        min-width: 0; height: 49px; margin: -1px 0 0 -1px; padding: 9px 12px 0;
+        border-left: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: 0;
+      }
       .filter-label { font-size: 11px; gap: 4px; }
-      .filters select, .filters .fs-trigger { padding: 19px 26px 0 12px; font-size: 13.5px; background-position: right 10px center; }
-      .filter-group:nth-child(-n+2) { border-top: none; }
-      .filter-group:nth-child(2n) { border-left: 1px solid var(--line); }
+      .filters select, .filters .fs-trigger { padding: 20px 26px 0 12px; font-size: 13.5px; background-position: right 10px center; }
+      .filters .fs-trigger { padding-right: 9px; }
       .filter-group:last-child:nth-child(odd) { grid-column: span 2; }
       /* Pager: the range above, then Prev · Page n of N · Next, thumb-sized. */
       .pager { flex-direction: column; align-items: stretch; gap: 12px; }
