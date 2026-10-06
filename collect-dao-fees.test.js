@@ -16,14 +16,21 @@ async function test(name, fn) {
 }
 
 const w = (x) => BigInt(x).toString(16).padStart(64, '0');
-const V = { apple: '0x31744e44d6af88225c1dbefbe5df8308faea641b', tezos: '0xde09e16675b667b6abb6d7910d6e009f630bcb96', old: '0x00000000000000000000000000000000000000c1', down: '0x00000000000000000000000000000000000000c2' };
+const V = { apple: '0x31744e44d6af88225c1dbefbe5df8308faea641b', tezos: '0xde09e16675b667b6abb6d7910d6e009f630bcb96', old: '0x00000000000000000000000000000000000000c1', ethNew: '0x00000000000000000000000000000000000000c5', legacy: '0x00000000000000000000000000000000000000c6', stranger: '0x00000000000000000000000000000000000000c7', down: '0x00000000000000000000000000000000000000c2' };
 const ACC = { perf: '0x00000000000000000000000000000000000000a1', mgmt: '0x00000000000000000000000000000000000000a2', oldAcc: '0x00000000000000000000000000000000000000a3' };
-const MGR = { apple: '0x00000000000000000000000000000000000000b1', tezos: '0x00000000000000000000000000000000000000b2' };
+const MGR = { apple: '0x00000000000000000000000000000000000000b1', tezos: '0x00000000000000000000000000000000000000b2', ethNew: '0x00000000000000000000000000000000000000b3' };
+// The DAO's fee recipient, and an older treasury Safe with the same signers.
+const DAO = '0x00000000000000000000000000000000000000d1', TREASURY = '0x00000000000000000000000000000000000000d2', STRANGER = '0x00000000000000000000000000000000000000d3';
+const SIGNERS = ['0x00000000000000000000000000000000000000e2', '0x00000000000000000000000000000000000000e1'];
+const SAFES = { [DAO]: [4, SIGNERS], [TREASURY]: [4, SIGNERS.slice().reverse()], [STRANGER]: [2, SIGNERS] };
 // vault → [perf account, perf bps, mgmt bps, fee manager, dao perf bps, dao mgmt bps]
 const CHAIN = {
   [V.apple]: [ACC.perf, 700, 40, MGR.apple, 200, 30],
   [V.tezos]: ['0x00000000000000000000000000000000000000a4', 200, 30, MGR.tezos, 200, 30],
   [V.old]: [ACC.oldAcc, 1000, 100, null],
+  [V.ethNew]: ['0x00000000000000000000000000000000000000a5', 1000, 50, MGR.ethNew, 200, 30],
+  [V.legacy]: [TREASURY, 1000, 100, null],
+  [V.stranger]: [STRANGER, 1000, 100, null],
 };
 const accounts = {}; const managers = {};
 for (const [v, c] of Object.entries(CHAIN)) { if (c[3]) { accounts[c[0]] = c[3]; managers[c[3]] = [c[4], c[5]]; } }
@@ -34,11 +41,14 @@ global.fetch = async (url, init) => {
   if (to === V.down) return { ok: false, status: 503 };
   const c = CHAIN[to];
   if (c && sel === F.SEL.perfData) return ok('0x' + w(c[0]) + w(c[1]));
-  if (c && sel === F.SEL.mgmtData) return ok('0x' + w(ACC.mgmt) + w(c[2]) + w(1791000000));
+  if (c && sel === F.SEL.mgmtData) return ok('0x' + w(c[3] ? ACC.mgmt : c[0]) + w(c[2]) + w(1791000000));
   if (accounts[to] && sel === F.SEL.feeManager) return ok('0x' + w(accounts[to]));
   if (to === ACC.oldAcc) return ok('0x');   // a plain account: no code
   if (managers[to] && sel === F.SEL.daoPerf) return ok('0x' + w(managers[to][0]));
   if (managers[to] && sel === F.SEL.daoMgmt) return ok('0x' + w(managers[to][1]));
+  if (managers[to] && sel === F.SEL.daoRecipient) return ok('0x' + w(DAO));
+  if (SAFES[to] && sel === F.SEL.threshold) return ok('0x' + w(SAFES[to][0]));
+  if (SAFES[to] && sel === F.SEL.owners) return ok('0x' + w(32) + w(SAFES[to][1].length) + SAFES[to][1].map(w).join(''));
   return { ok: true, json: async () => ({ jsonrpc: '2.0', id, error: { code: 3, message: 'execution reverted' } }) };
 };
 
@@ -47,6 +57,9 @@ const IPOR = { vaults: [
   { chainId: 8453, address: V.tezos, name: 'Nvidia Carry Trade Tezos', tvl: 1018790 },
   { chainId: 1, address: V.old, name: 'Old vault', tvl: 20000 },
   { chainId: 1, address: V.down, name: 'Unreachable', tvl: 50000 },
+  { chainId: 1, address: V.ethNew, name: 'New Ethereum vault', tvl: 30000 },
+  { chainId: 1, address: V.legacy, name: 'IPOR legacy vault', tvl: 260000 },
+  { chainId: 1, address: V.stranger, name: 'Another vault', tvl: 40000 },
   { chainId: 1, address: '0x00000000000000000000000000000000000000c3', name: 'Small', tvl: 900 },
   { chainId: 747474, address: '0x00000000000000000000000000000000000000c4', name: 'Katana', tvl: 12288 },
 ] };
@@ -68,8 +81,14 @@ const IPOR = { vaults: [
     assert.deepStrictEqual([j.vaults[V.old].perf, j.vaults[V.old].daoPerf, j.vaults[V.old].daoMgmt], [10, null, null]);
   });
   await test('only vaults above $10K, on chains with endpoints; an unreachable one is warned and left out', () => {
-    assert.deepStrictEqual(Object.keys(j.vaults).sort(), [V.apple, V.tezos, V.old].sort());
+    assert.deepStrictEqual(Object.keys(j.vaults).sort(), [V.apple, V.tezos, V.old, V.ethNew, V.legacy, V.stranger].sort());
     assert.ok(lines.some(l => /::warning::dao-fees: Unreachable/.test(l)));
+  });
+  await test('an older vault paying a Safe signed by the DAO’s own signers counts in full', () => {
+    assert.deepStrictEqual([j.vaults[V.legacy].daoPerf, j.vaults[V.legacy].daoMgmt, j.vaults[V.legacy].daoVia], [10, 1, 'treasury']);
+  });
+  await test('one paying a Safe with other signers or threshold stays out', () => {
+    assert.deepStrictEqual([j.vaults[V.stranger].daoPerf, j.vaults[V.stranger].daoVia], [null, undefined]);
   });
   await test('a vault unread this run keeps its last reading', async () => {
     const prev = { readAt: 'x', vaults: { [V.down]: { chainId: 1, name: 'Unreachable', perf: 5, daoPerf: 2, mgmt: 0.5, daoMgmt: 0.3 } } };

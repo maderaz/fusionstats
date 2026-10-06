@@ -11,9 +11,19 @@
 // points (10000 = 100%); written as percents. (IPOR-Labs/ipor-fusion:
 // contracts/vaults/PlasmaVaultGovernance.sol, managers/fee/FeeManager.sol.)
 //
+// The DAO rates are fixed per vault when it is made (the factory's fee
+// package, or a business client's own), so the FeeManager's immutables are
+// the resolved figure, however they were chosen.
+//
+// Older vaults predate the FeeManager: their fee account is a plain wallet
+// that keeps the whole fee. When that wallet is the DAO's own fee recipient
+// (as the FeeManagers on that chain name it, getIporDaoFeeRecipientAddress),
+// or a Safe with the very same signers and threshold, the whole fee is the
+// DAO's (daoVia 'treasury'). Any other wallet is someone else's: null DAO
+// rates, and the page leaves the vault out and says how many.
+//
 // Every vault above $10K in ipor-vaults.json, on the chains with endpoints
-// here. A vault whose fee account is not a FeeManager's (older vaults) is
-// written with null DAO rates: the page leaves it out and says how many.
+// here.
 //
 //   node collect-dao-fees.js
 
@@ -35,6 +45,9 @@ const SEL = {
   feeManager: '0xea26266c',   // FEE_MANAGER()
   daoPerf: '0xcbc16b98',      // IPOR_DAO_PERFORMANCE_FEE()
   daoMgmt: '0xade9fb15',      // IPOR_DAO_MANAGEMENT_FEE()
+  daoRecipient: '0x12f6c6d6', // getIporDaoFeeRecipientAddress()
+  threshold: '0xe75235b8',    // getThreshold()  (Safe)
+  owners: '0xa0e67e2b',       // getOwners()     (Safe)
 };
 
 const words = (hex) => { const h = String(hex || '0x').replace(/^0x/, ''); const o = []; for (let i = 0; i + 64 <= h.length; i += 64) o.push(h.slice(i, i + 64)); return o; };
@@ -64,14 +77,42 @@ async function call(chainId, to, data) {
 async function readVault(v) {
   const id = Number(v.chainId), a = v.address.toLowerCase();
   const [perf, mgmt] = await Promise.all([call(id, a, SEL.perfData), call(id, a, SEL.mgmtData)]);
-  const out = { chainId: id, name: v.name, perf: pct(uintAt(perf, 1)), mgmt: pct(uintAt(mgmt, 1)), daoPerf: null, daoMgmt: null, feeManager: null };
-  const account = addrAt(perf, 0);
+  const out = { chainId: id, name: v.name, perf: pct(uintAt(perf, 1)), mgmt: pct(uintAt(mgmt, 1)), daoPerf: null, daoMgmt: null, feeManager: null,
+    perfAccount: addrAt(perf, 0), mgmtAccount: addrAt(mgmt, 0) };
+  const account = out.perfAccount;
   const manager = account && /[1-9a-f]/.test(account.slice(2)) ? addrAt(await call(id, account, SEL.feeManager)) : null;
   if (manager) {
-    const [dp, dm] = await Promise.all([call(id, manager, SEL.daoPerf), call(id, manager, SEL.daoMgmt)]);
-    Object.assign(out, { feeManager: manager, daoPerf: pct(uintAt(dp)), daoMgmt: pct(uintAt(dm)) });
+    const [dp, dm, rcpt] = await Promise.all([call(id, manager, SEL.daoPerf), call(id, manager, SEL.daoMgmt), call(id, manager, SEL.daoRecipient)]);
+    Object.assign(out, { feeManager: manager, daoPerf: pct(uintAt(dp)), daoMgmt: pct(uintAt(dm)), daoRecipient: addrAt(rcpt) });
   }
   return [a, out];
+}
+
+// A Safe's signers and threshold, as one comparable string; null for anything
+// that is not a Safe.
+async function safeKey(chainId, account) {
+  const [t, o] = await Promise.all([call(chainId, account, SEL.threshold), call(chainId, account, SEL.owners)]);
+  const n = uintAt(t), w = words(o);
+  if (!n || w.length < 3) return null;
+  const owners = w.slice(2, 2 + Number(BigInt('0x' + w[1]))).map(x => '0x' + x.slice(24)).sort();
+  return n + '/' + owners.join(',');
+}
+
+// Older vaults (no FeeManager): a fee whose account is the DAO's recipient,
+// or a Safe signed by exactly the DAO recipient's signers, is the DAO's whole.
+async function resolveTreasury(result) {
+  const daoBy = {};   // chainId → Set of DAO recipient addresses
+  for (const v of Object.values(result)) if (v.daoRecipient) (daoBy[v.chainId] = daoBy[v.chainId] || new Set()).add(v.daoRecipient);
+  const keys = {};
+  const keyOf = async (id, a) => { const k = id + ':' + a; if (!(k in keys)) keys[k] = await safeKey(id, a).catch(() => null); return keys[k]; };
+  for (const v of Object.values(result)) {
+    if (v.feeManager || !daoBy[v.chainId]) continue;
+    const dao = [...daoBy[v.chainId]];
+    const daoKeys = (await Promise.all(dao.map(a => keyOf(v.chainId, a)))).filter(Boolean);
+    const isDao = async (a) => !!a && (dao.includes(a) || daoKeys.includes(await keyOf(v.chainId, a)));
+    const [p, m] = await Promise.all([isDao(v.perfAccount), isDao(v.mgmtAccount)]);
+    if (p || m) Object.assign(v, { daoPerf: p ? v.perf : 0, daoMgmt: m ? v.mgmt : 0, daoVia: 'treasury' });
+  }
 }
 
 async function main({ out: OUT_FILE = OUT, ipor: IPOR_FILE = IPOR } = {}) {
@@ -91,9 +132,12 @@ async function main({ out: OUT_FILE = OUT, ipor: IPOR_FILE = IPOR } = {}) {
     });
   }
   if (!Object.keys(result).length) { console.log('::error::dao-fees: no vault read; left as it was'); process.exitCode = 1; return; }
+  await resolveTreasury(result);
+  for (const v of Object.values(result)) { delete v.perfAccount; delete v.mgmtAccount; }
   fs.writeFileSync(OUT_FILE, JSON.stringify({ readAt: new Date().toISOString(), floor: FLOOR, vaults: result }, null, 1) + '\n');
   const withDao = Object.values(result).filter(v => v.daoPerf != null).length;
-  console.log(`dao-fees.json: ${Object.keys(result).length} vaults, ${withDao} with the DAO's rates on-chain, ${failed} unread (kept from the last run)`);
+  const treasury = Object.values(result).filter(v => v.daoVia === 'treasury').length;
+  console.log(`dao-fees.json: ${Object.keys(result).length} vaults, ${withDao} with the DAO's rates on-chain (${treasury} paying the DAO's treasury directly), ${failed} unread (kept from the last run)`);
 }
 
 if (require.main === module) main().catch(e => { console.log('::error::dao-fees: ' + String(e.message || e).replace(/https?:\/\/\S+/g, '<url>')); process.exitCode = 1; });
