@@ -290,15 +290,17 @@
       border-radius: 12px;
     }
     .flow-bar-slot { position: relative; flex: 1; border-radius: 7px; transition: background 0.18s; }
+    /* Lean bars with no sharp corners: two fifths of the day's slot, the end
+       away from zero fully round, the end on it softened. */
     .flow-bar {
       position: absolute;
-      left: 20%;
-      right: 20%;
+      left: 30%;
+      right: 30%;
       min-height: 2px;
       transition: opacity 0.18s;
     }
-    .flow-bar.positive { bottom: calc(100% - var(--zero)); background: var(--pos-bar); border-radius: 4px 4px 1px 1px; }
-    .flow-bar.negative { top: var(--zero); background: var(--neg-bar); border-radius: 1px 1px 4px 4px; }
+    .flow-bar.positive { bottom: calc(100% - var(--zero)); background: var(--pos-bar); border-radius: 99px 99px 3px 3px; }
+    .flow-bar.negative { top: var(--zero); background: var(--neg-bar); border-radius: 3px 3px 99px 99px; }
     /* While a day is pointed at, it stays lit and the rest step back. */
     .flow-chart-bars.hv-live .flow-bar { opacity: 0.35; }
     .flow-chart-bars.hv-live .flow-bar-slot.on { background: var(--bg-subtle); }
@@ -316,7 +318,8 @@
       will-change: transform;
     }
     .hv-jump .hv-line, .hv-jump .hv-dot, .hv-jump .hv-bubble { transition: opacity 0.14s ease; }
-    .hv-line { width: 1px; height: 100%; background: var(--line-strong); }
+    /* A dashed cursor (3 on, 3 off) and a light card, as every chart has. */
+    .hv-line { width: 1px; height: 100%; background: repeating-linear-gradient(to bottom, var(--text-3) 0 3px, transparent 3px 6px); }
     .hv-dot {
       width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
       border-radius: 50%;
@@ -325,18 +328,21 @@
     }
     .hv-bubble {
       min-width: 128px;
-      padding: 9px 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line-strong);
       border-radius: 10px;
-      background: var(--tip-bg);
-      color: var(--tip-fg);
+      background: var(--bg);
+      color: var(--text);
       font: 400 12.5px/1.5 var(--sans);
       white-space: nowrap;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 12px 30px rgba(16, 16, 24, 0.12), 0 2px 6px rgba(16, 16, 24, 0.05);
     }
-    .hv-on .hv-line, .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
-    .hv-when { margin-bottom: 3px; font-size: 11.5px; opacity: 0.62; }
+    :root[data-theme="dark"] .hv-bubble { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+    .hv-on .hv-line { opacity: 0.7; }
+    .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
+    .hv-when { margin-bottom: 3px; font-size: 11.5px; color: var(--text-3); }
     .hv-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    .hv-k { display: flex; align-items: center; gap: 7px; opacity: 0.78; }
+    .hv-k { display: flex; align-items: center; gap: 7px; color: var(--text-2); }
     .hv-v { font-weight: 600; font-variant-numeric: tabular-nums; }
     .hv-sw { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
     .flow-chart-axis {
@@ -391,8 +397,7 @@
     }
     .filter-group:first-child { border-left: none; border-radius: 13px 0 0 13px; }
     .filter-group:last-child { border-radius: 0 13px 13px 0; }
-    /* Shares of the bar, sized so every value but the rare "— no events
-       yet" chain labels fits without truncating. */
+    /* Shares of the bar, sized so every value fits without truncating. */
     .filter-group:has(#filterAmount) { flex-grow: 0.95; }
     .filter-group:has(#filterProduct) { flex-grow: 1.1; }
     .filter-group:has(#filterChain) { flex-grow: 1.3; }
@@ -1142,14 +1147,31 @@
             .flatMap(([addr, stored]) => (vaultInfo[addr] ? [vaultInfo[addr].name] : stored))
             .map(spell).filter(Boolean))].sort()
         : [...new Set(allEvents.map(e => e.vaultName).filter(Boolean))].sort();
-      select.innerHTML = '<option value="">All products</option>'
-        + names.map(n => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+      // Each product with its underlying token's mark (fusion-select.js
+      // data-token), as the chains have theirs.
+      const tokenOf = {};
+      const give = (name, sym) => { const n = spell(name); if (n && sym && !tokenOf[n]) tokenOf[n] = sym; };
+      Object.values(vaultInfo).forEach(v => give(v.name, v.symbol));
+      allEvents.forEach(e => give(e.vaultName, e.symbol));
+      // A product too small for the tracked list still has its token in the
+      // full vault list: by address, under every name its events were stored
+      // with, then by name.
+      const iporVaults = (lastIpor && lastIpor.vaults) || [];
+      const iporAt = {};
+      iporVaults.forEach(v => { if (v.address) iporAt[v.address.toLowerCase()] = v; });
+      if (recentMeta) Object.entries(recentMeta.eventVaults).forEach(([addr, stored]) => {
+        const v = iporAt[addr.toLowerCase()];
+        if (v) stored.forEach(n => give(n, v.token));
+      });
+      iporVaults.forEach(v => give(v.name, v.token));
+      const q = (t) => String(t).replace(/"/g, '&quot;');
+      select.innerHTML = '<option value="" data-glyph="all">All products</option>'
+        + names.map(n => `<option value="${q(n)}" data-token="${q(tokenOf[n] || n)}">${n}</option>`).join('');
       const stored = localStorage.getItem(FILTER_PRODUCT_KEY) || current;
       if (stored && names.includes(stored)) select.value = stored;
     }
 
     let trackedVaults = [];
-    let chainsWithEvents = new Set();
 
     function populateChainFilter() {
       const select = document.getElementById('filterChain');
@@ -1158,18 +1180,15 @@
       const current = select.value;
       // All chains from tracked vaults
       const allChains = [...new Set(trackedVaults.map(v => v.chain || 'ethereum'))].sort();
-      chainsWithEvents = new Set(recentMeta ? recentMeta.eventChains : allEvents.map(e => e.chain || 'ethereum'));
       // Each network by name, with its mark (fusion-select.js) and how many
       // tracked vaults it has.
       const nameOf = (c) => (window.FusionSelect ? FusionSelect.chainName(c) : c);
       select.innerHTML = '<option value="" data-glyph="all">All chains</option>'
         + allChains.map(c => {
-          const hasEvents = chainsWithEvents.has(c);
           const count = trackedVaults.filter(v => (v.chain || 'ethereum') === c).length;
           const name = nameOf(c);
-          const label = hasEvents ? `${name} (${count})` : `${name} (${count}) — no events yet`;
-          const note = `${count} vault${count === 1 ? '' : 's'}${hasEvents ? '' : ' · no events yet'}`;
-          return `<option value="${c}" data-chain="${c}" data-label="${name}" data-note="${note}">${label}</option>`;
+          const note = `${count} vault${count === 1 ? '' : 's'}`;
+          return `<option value="${c}" data-chain="${c}" data-label="${name}" data-note="${note}">${name} (${count})</option>`;
         }).join('');
       if (current && allChains.includes(current)) select.value = current;
     }
@@ -1369,7 +1388,7 @@
         lastUpdatedAt = data.updatedAt;
         lastIporAt = ipor && ipor.updatedAt;
         if (ipor) lastIpor = ipor;
-        recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, eventChains: data.eventChains || [], coveredFrom: data.coveredFrom };
+        recentMeta = complete ? null : { eventVaults: data.eventVaults || {}, coveredFrom: data.coveredFrom };
         historyComplete = complete;
         olderLoadFailed = false;
         populateProductFilter();

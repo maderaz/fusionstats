@@ -68,12 +68,11 @@ test("IPOR's list above $1K counts as known, as on the page", () => {
   assert.deepStrictEqual(Object.keys(r.prices), ['WETH']);
 });
 
-test('lists every vault and chain that has ever had an event, with every stored name', () => {
+test('lists every vault that has ever had an event, with every stored name', () => {
   const r = buildRecent(data([ev(1), ev(400, { vaultName: 'Vault One (old name)' }),
-    ev(500, { vault: '0xv2', vaultName: 'Two', chain: undefined })]), null, { windowDays: 35, minEvents: 1 });
+    ev(500, { vault: '0xv2', vaultName: 'Two' })]), null, { windowDays: 35, minEvents: 1 });
   assert.deepStrictEqual(r.eventVaults['0xv1'], ['Vault One', 'Vault One (old name)']);
   assert.deepStrictEqual(r.eventVaults['0xv2'], ['Two']);
-  assert.deepStrictEqual(r.eventChains, ['base', 'ethereum']);   // no chain stored = Ethereum
 });
 
 test('only the newest events keep their hash in the main file; every hash is in the second, in order', () => {

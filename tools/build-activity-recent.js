@@ -18,7 +18,6 @@
 //                the page values an unpriced event with
 //   eventVaults  every vault with at least one event, and the names its events
 //                were stored under: the Product filter
-//   eventChains  chains with at least one event: the Chain filter's labels
 //   total        events in the full file
 //   txSplit      true: only the newest TX_INLINE events carry their
 //                transaction hash here
@@ -87,7 +86,6 @@ function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVE
 
   const prices = {};
   const eventVaults = {};
-  const eventChains = new Set();
   for (const e of events) {
     const v = known[e.vault];
     const sym = v ? v.symbol : e.symbol;
@@ -99,7 +97,6 @@ function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVE
       const names = eventVaults[e.vault] || (eventVaults[e.vault] = []);
       if (!names.includes(e.vaultName)) names.push(e.vaultName);
     } else if (!eventVaults[e.vault]) eventVaults[e.vault] = [];
-    eventChains.add(e.chain || 'ethereum');
   }
 
   const asOf = Math.floor(Date.parse(data.updatedAt || new Date().toISOString()) / 1000);
@@ -134,7 +131,6 @@ function buildRecent(data, ipor, { windowDays = WINDOW_DAYS, minEvents = MIN_EVE
     coveredFrom,
     prices,
     eventVaults,
-    eventChains: [...eventChains].sort(),
     txSplit: true,
     events: recent,
     tx,
