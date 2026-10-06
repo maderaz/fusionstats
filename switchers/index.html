@@ -11,9 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
+  <script src="/nav.js"></script>
   <script>
-    // The saved theme, before first paint.
-    try { if (localStorage.getItem('fusionstats_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   </script>
   <style>
     * { margin: 0; padding: 0; }
@@ -251,7 +250,6 @@
   </style>
 </head>
 <body>
-  <script src="/nav.js"></script>
 
   <div class="ui-page">
     <header class="ui-masthead">
@@ -263,12 +261,6 @@
           <span>Across all Fusion vault deposit/withdrawal events · synthetic (wrapper &amp; rebalance) flows excluded · matched by wallet + similar USD size.</span>
           <span id="updated"></span>
         </div>
-      </div>
-      <div class="ui-meta">
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
-          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
-        </button>
       </div>
     </header>
 
@@ -328,17 +320,6 @@
   </div>
 
   <script>
-    /* ---- theme (shared convention: localStorage 'fusionstats_theme') ---- */
-    (function () {
-      var saved = localStorage.getItem('fusionstats_theme');
-      if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      document.getElementById('themeToggle').addEventListener('click', function () {
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-        localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
-      });
-    })();
-
     /* ---- header info tooltips (floating; body-appended so nothing clips them) ---- */
     (function () {
       var tip = document.createElement('div'); tip.className = 'uk-tip'; document.body.appendChild(tip);

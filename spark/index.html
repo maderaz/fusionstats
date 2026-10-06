@@ -565,7 +565,6 @@
       <a href="/logs">Logs</a>
       <a href="/video">Video</a>
         <a href="/socials">Socials</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
@@ -587,16 +586,6 @@
   </div>
 
   <script>
-    // — Theme toggle (shared) —
-    const themeToggle = document.getElementById('themeToggle');
-    const saved = localStorage.getItem('fusionstats_theme');
-    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
-    });
-
     // — Constants —
     // Multiple RPCs for resilience — tried sequentially on failure
     const RPCS = [

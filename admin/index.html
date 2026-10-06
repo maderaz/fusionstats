@@ -260,7 +260,6 @@
     <header>
       <h1>Traffic</h1>
       <span class="sub" id="updatedLabel">loading…</span>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </header>
 
     <div id="dashboard" style="display:none">
@@ -349,24 +348,6 @@ GIST_ID       = abc123…  (the gist id)</pre>
   </div>
 
   <script>
-    (function() {
-      const saved = localStorage.getItem('fusionstats_theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-    const toggle = document.getElementById('themeToggle');
-    function syncIcon() {
-      toggle.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? '&#9788;' : '&#9790;';
-    }
-    syncIcon();
-    toggle.addEventListener('click', () => {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
-      syncIcon();
-    });
 
     function timeAgo(iso) {
       const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);

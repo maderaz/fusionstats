@@ -260,7 +260,6 @@
       <a href="/logs">Logs</a>
       <a href="/video">Video</a>
       <a href="/socials">Socials</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
@@ -602,31 +601,6 @@ Tell us if you recognize a protocol &mdash; we'll add it to the rules.`;</code><
     </div>
   </div>
 
-  <script>
-    (function() {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
 
-    const toggle = document.getElementById('themeToggle');
-    function syncIcon() {
-      toggle.innerHTML = document.documentElement.getAttribute('data-theme') === 'dark' ? '&#9788;' : '&#9790;';
-    }
-    syncIcon();
-    toggle.addEventListener('click', function() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-      }
-      syncIcon();
-    });
-  </script>
 </body>
 </html>

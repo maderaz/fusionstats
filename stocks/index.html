@@ -12,16 +12,16 @@
   <!-- Geist for the page; Poppins stays because the charts and PNG exports draw in it. -->
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
+  <script src="/nav.js"></script>
   <script>
-    // This page keeps its own theme choice (see applyTheme): apply it before first paint.
-    try { if (localStorage.getItem('fusionstats_stocks_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   </script>
   <style>
     * { margin: 0; padding: 0; }
     :root { --tint-strong: rgba(25, 23, 23, .13); }
     :root[data-theme="dark"] { --tint-strong: rgba(255, 255, 255, .14); }
-    /* Explicit choice only — the page does not follow the OS, because an export
-       taken in one theme should not change under someone else. */
+    /* The theme is the sidebar's (nav.js), an explicit choice that does not
+       follow the OS: an export taken in one theme should not change under
+       someone else. */
 
     #updated:empty { display: none; }
 
@@ -48,27 +48,123 @@
     #concStats { padding: 4px 0 20px; }
 
     /* ---------- Sections: no boxes, a hairline between ---------- */
-    .chart-card { padding: 32px 0 12px; border-top: 1px solid var(--line); }
-    .chart-section-title { margin-bottom: 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
-    .card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-    .card-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-    .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-    .panel-head-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .sub-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .chart-card { padding: 36px 0 28px; border-top: 1px solid var(--line); }
+    .card-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .chart-section-title { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+    .sub-title { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+    .sub-meta { font-size: 12.5px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
     .sub-note { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.2; color: var(--text-3); white-space: nowrap; }
     .muted-note { font-size: 12.5px; font-weight: 400; line-height: 1.6; color: var(--text-3); }
-    .chart-note, .holders-note { padding: 10px 0 4px; font-size: 12.5px; color: var(--text-3); }
-    .caveat { margin: 8px 0 24px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.6; color: var(--text-3); }
+    .chart-note, .holders-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .chart-note:empty, .holders-note:empty { display: none; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-    /* ---------- Toolbars: compact pills, the chosen one filled ---------- */
-    .chart-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
-    .chart-toolbar .group { display: flex; align-items: center; gap: 4px; }
-    .chart-toolbar .group-label { margin-right: 4px; font-size: 11.5px; font-weight: 500; color: var(--text-3); }
-    .chart-toolbar button, .chart-toolbar select, .flip button {
-      height: 30px;
-      padding: 0 11px;
+    /* ---------- Toolbars: Activity's filter bar ---------- */
+    /* A joined group of labelled cells — each a <label> whose select covers the
+       whole cell, the label text on top — and a switch beside it. */
+    .chart-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .filters {
+      flex: 1 1 auto;
+      display: flex;
+      min-width: 0;
+      max-width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: var(--bg);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
+    }
+    .filter-group {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 118px;
+      height: 54px;
+      padding: 9px 14px 0;
+      border-left: 1px solid var(--line);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .filter-group:first-child { border-left: none; border-radius: 13px 0 0 13px; }
+    .filter-group:last-child { border-radius: 0 13px 13px 0; }
+    .filter-group:only-child { border-radius: 13px; }
+    .filter-group:has(select[id$="Vault"]) { flex-grow: 2; min-width: 190px; }
+    .filter-group:hover, .filter-group:focus-within { background: var(--bg-subtle); }
+    .filter-label {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--text-2);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .filter-label .info-tip { pointer-events: auto; }
+    .filters select {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      padding: 21px 28px 0 14px;
+      border: none;
+      border-radius: inherit;
+      background: transparent var(--ui-chevron) no-repeat right 12px center;
+      font: 500 14px var(--sans);
+      color: var(--text);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+      outline: none;
+      -webkit-appearance: none;
+              appearance: none;
+    }
+    .filters select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+
+    .seg {
+      display: inline-flex;
+      flex-shrink: 0;
+      padding: 3px;
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 12px;
+      background: var(--bg-subtle);
+    }
+    .seg button {
+      height: 46px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      font: 500 13.5px var(--sans);
+      color: var(--text-2);
+      white-space: nowrap;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .seg button:hover { color: var(--text); }
+    .seg button.active {
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line);
+    }
+    .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* Beside a heading rather than a filter bar: the same switch, shorter. */
+    .seg-sm { border-radius: 11px; }
+    .seg-sm button { height: 30px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+    .chart-hint { margin-left: auto; font-size: 13px; color: var(--text-3); white-space: nowrap; }
+
+    /* ---------- Export: one button per section, its options in a menu ---------- */
+    .xport { position: relative; margin-left: auto; }
+    .xport-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 34px;
+      margin-left: auto;
+      padding: 0 13px 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
       background: var(--bg);
       color: var(--text-2);
       font: 500 13px var(--sans);
@@ -76,39 +172,172 @@
       cursor: pointer;
       transition: color 0.15s, background 0.15s, border-color 0.15s;
     }
-    .chart-toolbar select {
-      padding-right: 28px;
-      -webkit-appearance: none;
-              appearance: none;
-      background: var(--bg) var(--ui-chevron) no-repeat right 10px center;
-      color: var(--text);
-    }
-    .chart-toolbar button:hover, .chart-toolbar select:hover { color: var(--text); border-color: var(--line-strong); background-color: var(--bg-subtle); }
-    .chart-toolbar button.active { background: var(--text); border-color: var(--text); color: var(--bg); }
-    .chart-toolbar button:focus-visible, .chart-toolbar select:focus-visible, .flip button:focus-visible, .action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    /* Downloads: quiet, so the data stays the loudest thing on the page. Both
-       selectors on purpose: inside a toolbar the generic button rule above
-       out-specifies a bare .action-btn. */
-    .action-btn, .chart-toolbar .action-btn {
-      height: 30px;
-      padding: 0 12px;
+    .xport-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .xport-btn:hover, .xport-btn[aria-expanded="true"] { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
+    .xport-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .xport-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      z-index: 30;
+      width: 268px;
+      max-width: calc(100vw - 32px);
+      padding: 14px;
       border: 1px solid var(--line-strong);
-      border-radius: 8px;
+      border-radius: 14px;
       background: var(--bg);
-      color: var(--text);
+      box-shadow: 0 16px 40px rgba(16, 16, 24, 0.14);
+    }
+    .xport-menu[hidden] { display: none; }
+    .xport-k { margin: 0 0 7px; font-size: 11.5px; font-weight: 500; color: var(--text-2); }
+    .xport-k + .seg, .xport-opts { margin-bottom: 14px; }
+    .xport-menu .seg { display: flex; }
+    .xport-menu .seg button { flex: 1; height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 8px; }
+    .xport-opts { display: flex; flex-direction: column; gap: 2px; }
+    .xport-opt, .xport-check {
+      display: flex; align-items: center; gap: 9px;
+      min-height: 32px; padding: 0 8px; border-radius: 8px;
+      font-size: 13px; color: var(--text); cursor: pointer;
+    }
+    .xport-opt:hover, .xport-check:hover { background: var(--bg-subtle); }
+    .xport-opt input, .xport-check input { margin: 0; accent-color: var(--accent); cursor: pointer; }
+    .xport-check { margin: -6px 0 12px; }
+    .xport-go, .xport-item {
+      width: 100%; height: 36px;
+      border-radius: 10px;
       font: 500 13px var(--sans);
-      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+    .xport-go { border: 1px solid var(--text); background: var(--text); color: var(--bg); }
+    .xport-go:hover { opacity: 0.88; }
+    .xport-item { border: 1px solid var(--line-strong); background: var(--bg); color: var(--text); }
+    .xport-item:hover { background: var(--bg-subtle); }
+    .xport-sep { height: 1px; margin: 12px -14px; background: var(--line); }
+
+    /* ---------- Tips: Activity's ⓘ and one floating bubble (see script) ---------- */
+    .info-tip {
+      display: inline-block;
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      font-size: 0;                 /* the ⓘ stays in the text; the icon is drawn */
+      vertical-align: -2px;
+      color: var(--text-3);
+      background: currentColor;
+      -webkit-mask: var(--ui-i-mask) center / contain no-repeat;
+              mask: var(--ui-i-mask) center / contain no-repeat;
+      cursor: help;
+      outline: none;
+      transition: color 0.15s;
+    }
+    .info-tip:hover, .info-tip:focus-visible { color: var(--text); }
+    /* A label and its ⓘ as one unit. In a plain table cell the zero-size ⓘ
+       would drop to a line of its own; Activity's tips all sit in flex rows. */
+    .with-tip { display: inline-flex; align-items: center; gap: 4px; }
+    .stat .k { display: flex; align-items: center; gap: 5px; }
+    .tip-bubble {
+      position: fixed;
+      z-index: 200;
+      max-width: 290px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(3px);
+      transition: opacity 0.12s, transform 0.12s;
+    }
+    .tip-bubble.show { opacity: 1; transform: none; }
+
+    /* ---------- Collapsed explanations ---------- */
+    .ui-more { margin-top: 22px; border-top: 1px solid var(--line); }
+    .ui-more summary {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 14px 0 0;
+      font-size: 13px; font-weight: 500; color: var(--text-2);
+      list-style: none; cursor: pointer;
+    }
+    .ui-more summary::-webkit-details-marker { display: none; }
+    .ui-more summary::after {
+      content: ''; width: 12px; height: 12px;
+      background: var(--ui-chevron) center / 12px no-repeat;
+      transition: transform 0.15s;
+    }
+    .ui-more[open] summary::after { transform: rotate(180deg); }
+    .ui-more summary:hover { color: var(--text); }
+    .ui-more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .ui-more-body { max-width: 760px; padding-top: 10px; font-size: 13px; line-height: 1.65; color: var(--text-2); }
+    .ui-more-body p + p { margin-top: 10px; }
+    .ui-more-body strong { color: var(--text); font-weight: 600; }
+    .page-method { margin: 8px 0 24px; }
+
+    /* ---------- Pager: Activity's ---------- */
+    .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
+    .pg-range { font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .pg-ctrls, .pg-nums { display: flex; align-items: center; gap: 6px; }
+    .pg-of { display: none; }
+    .pg-step, .pg-num {
+      height: 34px; min-width: 34px;
+      border: 1px solid var(--line); border-radius: 9px;
+      background: var(--bg); color: var(--text);
+      font: 500 13px var(--sans); font-variant-numeric: tabular-nums;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
     }
-    .action-btn:hover, .chart-toolbar .action-btn:hover { background: var(--bg-subtle); border-color: var(--text-3); color: var(--text); }
-    .chart-hint { margin-left: auto; font-size: 12.5px; color: var(--text-3); }
+    .pg-num { padding: 0 10px; }
+    .pg-num.on { background: var(--text); border-color: var(--text); color: var(--bg); cursor: default; }
+    .pg-gap { padding: 0 2px; color: var(--text-3); }
+    .pg-step { display: inline-grid; place-items: center; padding: 0 9px; }
+    .pg-step::before { content: ''; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--chev) center / contain no-repeat; mask: var(--chev) center / contain no-repeat; }
+    .pg-step { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M10 3.5L5.5 8l4.5 4.5' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .pg-step.next { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3.5L10.5 8 6 12.5' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+    .pg-step:hover:not(:disabled), .pg-num:hover:not(.on) { background: var(--bg-subtle); border-color: var(--line-strong); }
+    .pg-step:disabled { opacity: 0.4; cursor: default; }
+    .pg-step:focus-visible, .pg-num:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-    /* Two-way switches (Gross in / Still here, Flows / Holders): Activity's segmented control. */
-    .flip { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg-subtle); }
-    .flip button { height: 28px; border: none; border-radius: 8px; background: transparent; }
-    .flip button:hover { color: var(--text); }
-    .flip button.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
+    /* ---------- Hover: a hairline, a dot per line, the tips' bubble ---------- */
+    /* Positioned by transform and eased, so they glide from point to point
+       instead of jumping; .hv-jump puts them in place without the ease when a
+       hover starts. */
+    .plot { position: relative; }
+    .plot .nsewdrag { cursor: default !important; }
+    .hv { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+    .hv-line, .hv-dot, .hv-bubble {
+      position: absolute; top: 0; left: 0;
+      opacity: 0;
+      transition: opacity 0.14s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: transform;
+    }
+    .hv-jump .hv-line, .hv-jump .hv-dot, .hv-jump .hv-bubble { transition: opacity 0.14s ease; }
+    .hv-line { width: 1px; background: var(--line-strong); }
+    .hv-dot {
+      width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 2.5px var(--bg), 0 1px 4px 2px rgba(16, 16, 24, 0.18);
+    }
+    .hv-bubble {
+      min-width: 128px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans);
+      white-space: nowrap;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    }
+    .hv-on .hv-line, .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
+    .hv-when { margin-bottom: 3px; font-size: 11.5px; opacity: 0.62; }
+    .hv-big { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+    .hv-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .hv-row + .hv-row { margin-top: 2px; }
+    .hv-k { display: flex; align-items: center; gap: 7px; opacity: 0.78; }
+    .hv-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .hv-sw { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
 
     /* ---------- Plots ---------- */
     /* Fixed height, dotted surface, no border. Matches /tvl. */
@@ -119,26 +348,10 @@
       background-size: 14px 14px;
       background-position: 0 100%;   /* bottom-anchored so dots don't slide on switch */
     }
-    .container[data-layout="compact"] .chart-card,
-    .container[data-layout="fourthree"] .chart-card,
-    .container[data-layout="widescreen"] .chart-card { margin-left: auto; margin-right: auto; }
-    .container[data-layout="compact"] .chart-card { max-width: 480px; }
-    .container[data-layout="fourthree"] .chart-card { max-width: 680px; }
-    .container[data-layout="widescreen"] .chart-card { max-width: 960px; }
-    /* height:auto must be reset alongside aspect-ratio or the base height wins */
-    .container[data-layout="compact"] .plot,
-    .container[data-layout="fourthree"] .plot,
-    .container[data-layout="widescreen"] .plot { height: auto; }
-    .container[data-layout="compact"] .plot { aspect-ratio: 1 / 1; }
-    .container[data-layout="fourthree"] .plot { aspect-ratio: 4 / 3; }
-    .container[data-layout="widescreen"] .plot { aspect-ratio: 16 / 9; }
 
     /* The ranking first, then the shape of it: they stack. */
-    .route-pie-block { margin: 28px 0 0; padding: 24px 0 0; border-top: 1px solid var(--line); }
+    .route-pie-block { margin: 30px 0 0; padding: 26px 0 0; border-top: 1px solid var(--line); }
     .plot-pie { height: 360px; max-width: 620px; margin: 0 auto; }
-    .container[data-layout="compact"] .plot-pie,
-    .container[data-layout="fourthree"] .plot-pie,
-    .container[data-layout="widescreen"] .plot-pie { aspect-ratio: auto; height: 360px; }
     .pie-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px 28px; max-width: 940px; margin: 18px auto 0; }
     .pie-legend .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
     .pie-legend .row .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -197,7 +410,6 @@
     }
     .debank:hover { background: #FF6B00; color: #FFF; }
     .loading { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--text-3); }
-    .more { padding: 14px 0; text-align: center; }
 
     /* A share bar in its own cell rather than a band smeared behind the row. */
     .share-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
@@ -251,6 +463,33 @@
       .stat-row .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       .stat-row .stat:nth-child(odd) { padding-left: 0; border-left: none; }
     }
+    /* Routes: roomier rows, each contract under its route's name. */
+    .route-table td { padding-top: 14px; padding-bottom: 14px; }
+    .route-name { display: flex; flex-direction: column; min-width: 0; }
+    .route-name .via { max-width: 340px; margin-top: 3px; overflow: hidden; font-size: 12.5px; color: var(--text-3); white-space: nowrap; text-overflow: ellipsis; }
+    .route-table th:first-child { min-width: 200px; }
+
+    /* Too narrow for the switch beside the filters: both take the full width. */
+    @container (max-width: 860px) {
+      .filters { flex-basis: 100%; }
+      .chart-toolbar > .seg { width: 100%; }
+      .chart-toolbar > .seg button { flex: 1; height: 38px; padding: 0 8px; }
+      .chart-hint { margin-left: 0; }
+    }
+    @container (max-width: 560px) {
+      .filters { display: grid; grid-template-columns: 1fr 1fr; overflow: clip; }
+      .filter-group { min-width: 0; height: 52px; border-left: none; border-top: 1px solid var(--line); border-radius: 0; }
+      .filter-group:nth-child(-n+2) { border-top: none; }
+      .filter-group:nth-child(2n) { border-left: 1px solid var(--line); }
+      .filter-group:last-child:nth-child(odd) { grid-column: span 2; }
+      /* Pager: the range above, then Prev · Page n of N · Next, thumb-sized. */
+      .pager { flex-direction: column; align-items: stretch; gap: 12px; }
+      .pg-range { text-align: center; }
+      .pg-nums { display: none; }
+      .pg-of { display: block; flex: 1; text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
+      .pg-step { height: 44px; padding: 0 16px; border-radius: 12px; }
+      .card-head { gap: 10px; }
+    }
     @media (max-width: 900px) { .two-up { grid-template-columns: 1fr; } }
     @media (max-width: 640px) {
       .plot { height: 240px; }
@@ -260,264 +499,207 @@
   </style>
 </head>
 <body>
-  <div class="container ui-page" data-layout="wide">
+  <div class="container ui-page">
     <header class="ui-masthead">
       <div>
-    <h1>Stocks</h1>
-    <p class="ui-lede">
-      Fusion vaults backed by <strong>tokenised equities</strong>. Vaults are identified by their underlying
-      token address rather than by name, so a new stock vault appears here automatically.
-    </p>
-    <div class="ui-status" id="updated"></div>
-      </div>
-      <div class="ui-meta">
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
-          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
-        </button>
+        <h1>Stocks</h1>
+        <p class="ui-lede">Fusion vaults backed by <strong>tokenised equities</strong>.</p>
+        <div class="ui-status" id="updated"></div>
       </div>
     </header>
 
     <div class="stat-row" id="stats"></div>
 
+    <!-- Every section: title (and a tip) left, export right; filters under it.
+         The export menus are filled in by buildExportMenus(). -->
+
     <!-- ---------- TVL ---------- -->
-    <div class="chart-card">
-      <div class="chart-section-title">TVL across stock vaults</div>
+    <section class="chart-card">
+      <div class="card-head">
+        <h2 class="chart-section-title">TVL</h2>
+        <div class="xport" data-png="tvlPng" data-csv="tvlCsv" data-csv-label="Datapoints as CSV"></div>
+      </div>
       <div class="chart-toolbar" id="tvlToolbar">
-        <div class="group">
-          <span class="group-label">Vault</span>
-          <select id="tvlVault"><option value="__all__">All stock vaults</option></select>
+        <div class="filters">
+          <label class="filter-group">
+            <span class="filter-label">Vault</span>
+            <select id="tvlVault"><option value="__all__">All stock vaults</option></select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Unit</span>
+            <select id="tvlUnit"><option value="usd">USD</option></select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Chart</span>
+            <select id="tvlType"><option value="line">Line</option><option value="bar">Bars</option></select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Scale <span class="info-tip" tabindex="0" data-tip="Applies to every chart on the page that can take a log axis. Deposits and exits cross zero, so they stay linear.">&#9432;</span></span>
+            <select id="scaleSel"><option value="linear">Linear</option><option value="log">Log</option></select>
+          </label>
         </div>
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-tvl-range="7">7d</button>
-          <button data-tvl-range="30">30d</button>
-          <button data-tvl-range="90" class="active">90d</button>
-          <button data-tvl-range="180">180d</button>
-          <button data-tvl-range="all">All</button>
+        <div class="seg" role="group" aria-label="Range">
+          <button data-tvl-range="7" type="button">7d</button>
+          <button data-tvl-range="30" type="button">30d</button>
+          <button data-tvl-range="90" class="active" type="button">90d</button>
+          <button data-tvl-range="180" type="button">180d</button>
+          <button data-tvl-range="all" type="button">All</button>
         </div>
-        <div class="group">
-          <span class="group-label">Unit</span>
-          <select id="tvlUnit"><option value="usd">USD</option></select>
-        </div>
-        <div class="group">
-          <span class="group-label">Type</span>
-          <button data-tvl-type="line" class="active">Line</button>
-          <button data-tvl-type="bar">Bar</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Scale</span>
-          <button data-scale="linear" class="active">Linear</button>
-          <button data-scale="log">Log</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Theme</span>
-          <button data-theme-set="light" class="active">Light</button>
-          <button data-theme-set="dark">Dark</button>
-        </div>
-        <div class="group">
-          <span class="group-label">View</span>
-          <select id="layoutSel">
-            <option value="wide">Wide</option>
-            <option value="widescreen">16:9</option>
-            <option value="fourthree">4:3</option>
-            <option value="compact">1:1</option>
-          </select>
-        </div>
-        <div class="group">
-          <span class="group-label">PNG</span>
-          <select data-png-style>
-            <option value="bare">Transparent, chart only</option>
-            <option value="clear">Transparent + headline</option>
-            <option value="titled">White + headline</option>
-          </select>
-        </div>
-        <label class="chart-toolbar" style="margin:0;gap:0.35rem;font-size:0.72rem;color:var(--text-body);cursor:pointer">
-          <input type="checkbox" data-png-dots checked style="cursor:pointer">Dots
-        </label>
-        <button class="action-btn" id="tvlPng" type="button">Download PNG</button>
-        <button class="action-btn" id="tvlCsv" type="button"
-                title="Every point behind the line as plotted, so the chart can be rebuilt from the numbers">
-          Download datapoints (.csv)</button>
       </div>
       <div class="plot" id="tvlPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="tvlNote"></div>
       <div id="unitsBreakdown" style="display:none"></div>
-    </div>
+    </section>
 
     <!-- ---------- WALLETS ---------- -->
-    <div class="chart-card">
-      <div class="chart-section-title">Wallets participating</div>
+    <section class="chart-card">
+      <div class="card-head">
+        <h2 class="chart-section-title">Wallets</h2>
+        <div class="xport" data-png="walPng"></div>
+      </div>
       <div class="chart-toolbar" id="walToolbar">
-        <div class="group">
-          <span class="group-label">Vault</span>
-          <select id="walVault"><option value="__all__">All stock vaults</option></select>
+        <div class="filters">
+          <label class="filter-group">
+            <span class="filter-label">Vault</span>
+            <select id="walVault"><option value="__all__">All stock vaults</option></select>
+          </label>
+          <label class="filter-group">
+            <span class="filter-label">Measure <span class="info-tip" tabindex="0" data-tip="Cumulative counts every wallet that has ever deposited. Active per day counts the distinct wallets that transacted that day.">&#9432;</span></span>
+            <select id="walMode"><option value="cumulative">Cumulative</option><option value="active">Active per day</option></select>
+          </label>
         </div>
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-wal-range="7">7d</button>
-          <button data-wal-range="30">30d</button>
-          <button data-wal-range="90" class="active">90d</button>
-          <button data-wal-range="180">180d</button>
-          <button data-wal-range="all">All</button>
+        <div class="seg" role="group" aria-label="Range">
+          <button data-wal-range="7" type="button">7d</button>
+          <button data-wal-range="30" type="button">30d</button>
+          <button data-wal-range="90" class="active" type="button">90d</button>
+          <button data-wal-range="180" type="button">180d</button>
+          <button data-wal-range="all" type="button">All</button>
         </div>
-        <div class="group">
-          <span class="group-label">Measure</span>
-          <button data-wal-mode="cumulative" class="active">Cumulative</button>
-          <button data-wal-mode="active">Active/day</button>
-        </div>
-        <span class="chart-hint">Cumulative counts every wallet that has ever deposited; active counts distinct wallets transacting that day.</span>
-        <div class="group">
-          <span class="group-label">PNG</span>
-          <select data-png-style>
-            <option value="bare">Transparent, chart only</option>
-            <option value="clear">Transparent + headline</option>
-            <option value="titled">White + headline</option>
-          </select>
-        </div>
-        <label class="chart-toolbar" style="margin:0;gap:0.35rem;font-size:0.72rem;color:var(--text-body);cursor:pointer">
-          <input type="checkbox" data-png-dots checked style="cursor:pointer">Dots
-        </label>
-        <button class="action-btn" id="walPng" type="button">Download PNG</button>
       </div>
       <div class="plot" id="walPlot"><div class="loading">Loading…</div></div>
-    </div>
+    </section>
 
     <!-- ---------- DEPOSIT & EXIT ACTIVITY ---------- -->
-    <div class="chart-card">
-      <div class="chart-section-title">Deposit and exit activity</div>
+    <section class="chart-card">
+      <div class="card-head">
+        <h2 class="chart-section-title">Daily flows <span class="info-tip" tabindex="0" data-tip="Deposits above the line, exits below in red; the line is the daily net. The range also sets the routes below.">&#9432;</span></h2>
+        <div class="xport" data-png="flowPng" data-csv="flowCsv" data-csv-label="Daily flows as CSV"></div>
+      </div>
       <div class="chart-toolbar" id="flowToolbar">
-        <div class="group">
-          <span class="group-label">Vault</span>
-          <select id="flowVault"><option value="__all__">All stock vaults</option></select>
+        <div class="filters">
+          <label class="filter-group">
+            <span class="filter-label">Vault</span>
+            <select id="flowVault"><option value="__all__">All stock vaults</option></select>
+          </label>
         </div>
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-flow-range="7">7d</button>
-          <button data-flow-range="30">30d</button>
-          <button data-flow-range="90" class="active">90d</button>
-          <button data-flow-range="all">All</button>
-        </div>
-        <div class="card-actions">
-          <button class="action-btn" id="flowPng" type="button">PNG</button>
-          <button class="action-btn" id="flowCsv" type="button">CSV</button>
+        <div class="seg" role="group" aria-label="Range">
+          <button data-flow-range="7" type="button">7d</button>
+          <button data-flow-range="30" type="button">30d</button>
+          <button data-flow-range="90" class="active" type="button">90d</button>
+          <button data-flow-range="all" type="button">All</button>
         </div>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.5rem">Inflows above the line, exits below in red.
-        The line is the daily net.</div>
       <div class="plot" id="flowPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="flowNote"></div>
-    </div>
+    </section>
 
     <!-- ---------- HOW PEOPLE GOT IN ---------- -->
-    <div class="chart-card">
+    <section class="chart-card">
       <div class="card-head">
-        <div class="chart-section-title" style="margin:0">How people got in</div>
-        <div class="card-actions"><button class="action-btn" id="routeCsv" type="button">CSV</button></div>
+        <h2 class="chart-section-title">How people got in <span class="info-tip" tabindex="0" data-tip="The contracts that brought money in: zaps, aggregators and referral wrappers that deposit for you, and autocompounders that deposit for themselves. Named from Basescan; anything unnamed keeps its address. Follows the range set for daily flows.">&#9432;</span></h2>
+        <div class="xport" data-csv="routeCsv" data-csv-label="Routes as CSV" data-png="piePng" data-png-label="Share chart" data-fixed-size="1"></div>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">Two kinds of contract bring money in: one that
-        pushes a deposit on your behalf — a zap, an aggregator, a referral wrapper — and one that deposits for
-        itself and holds the shares for its own depositors, which is what an autocompounder does. Both are counted
-        here. Each is named from Basescan; anything we cannot name keeps its address and says why.</div>
       <div id="routeTable"></div>
 
       <div class="route-pie-block">
         <div class="panel-head">
-          <div class="sub-title">Share by route</div>
-          <div class="panel-head-actions">
-            <div class="flip" id="pieMetric">
-              <button data-pie="gross" class="active" type="button">Gross in</button>
-              <button data-pie="here" type="button">Still here</button>
-            </div>
-            <button class="action-btn" id="piePng" type="button">PNG</button>
+          <h3 class="sub-title">Share by route</h3>
+          <div class="seg seg-sm" id="pieMetric" role="group" aria-label="Measure">
+            <button data-pie="gross" class="active" type="button">Gross in</button>
+            <button data-pie="here" type="button">Still here</button>
           </div>
         </div>
         <div class="plot plot-pie" id="routePie"><div class="loading">Loading…</div></div>
         <div id="routeLegend" class="pie-legend"></div>
       </div>
 
-      <div class="chart-note" id="routeNote"></div>
-    </div>
+      <details class="ui-more">
+        <summary>Methodology</summary>
+        <div class="ui-more-body" id="routeNote"></div>
+      </details>
+    </section>
 
     <!-- ---------- WHICH VAULT PERFORMED ---------- -->
-    <div class="chart-card">
-      <div class="chart-section-title">Which vault actually performed</div>
+    <section class="chart-card">
+      <div class="card-head">
+        <h2 class="chart-section-title">Performance <span class="info-tip" tabindex="0" data-tip="Price per share, indexed to 100 at the start of the range. Value held moves with every deposit; price per share moves only when the strategy earns.">&#9432;</span></h2>
+        <div class="xport" data-png="retPng" data-csv="retCsv" data-csv-label="Returns as CSV"></div>
+      </div>
       <div class="chart-toolbar" id="retToolbar">
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-ret-range="7">7d</button>
-          <button data-ret-range="30">30d</button>
-          <button data-ret-range="90" class="active">90d</button>
-          <button data-ret-range="all">All</button>
-        </div>
-        <div class="card-actions">
-          <button class="action-btn" id="retPng" type="button">PNG</button>
-          <button class="action-btn" id="retCsv" type="button">CSV</button>
+        <div class="seg" role="group" aria-label="Range">
+          <button data-ret-range="7" type="button">7d</button>
+          <button data-ret-range="30" type="button">30d</button>
+          <button data-ret-range="90" class="active" type="button">90d</button>
+          <button data-ret-range="all" type="button">All</button>
         </div>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.5rem">Measured on price per share, not on value held —
-        value moves whenever someone deposits, price only moves when the strategy earns.
-        Indexed to 100 at the start of the range.</div>
       <div class="plot" id="retPlot"><div class="loading">Loading…</div></div>
       <div id="retTable"></div>
-    </div>
+    </section>
 
     <!-- ---------- WHO HOLDS IT ---------- -->
-    <div class="chart-card">
+    <section class="chart-card">
       <div class="card-head">
-        <div class="chart-section-title" style="margin:0">Who holds it</div>
-        <div class="card-actions"><button class="action-btn" id="concCsv" type="button">CSV</button></div>
+        <h2 class="chart-section-title">Who holds it <span class="info-tip" tabindex="0" data-tip="Current balances, not deposit history. Wallets that have fully exited are not counted.">&#9432;</span></h2>
+        <button class="xport-btn" id="concCsv" type="button" title="Holders as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
       </div>
-      <div class="muted-note" style="margin:-0.35rem 0 0.75rem">Current balances, not deposit history.
-        Wallets that have fully exited are not counted.</div>
-      <div class="stat-row" id="concStats" style="margin:0 0 0.25rem"></div>
+      <div class="stat-row" id="concStats"></div>
       <div class="two-up">
         <div>
           <div class="panel-head">
-            <div class="sub-title">Diversification</div>
-            <div class="muted-note">how many companies each wallet holds</div>
+            <h3 class="sub-title">Diversification <span class="info-tip" tabindex="0" data-tip="How many companies each wallet holds.">&#9432;</span></h3>
           </div>
           <div id="diversTable"></div>
         </div>
         <div>
           <div class="panel-head">
-            <div class="sub-title">Largest holders</div>
-            <div class="muted-note">top 10 by value</div>
+            <h3 class="sub-title">Largest holders <span class="sub-meta">top 10</span></h3>
           </div>
           <div id="topHolders"></div>
         </div>
       </div>
       <div class="chart-note" id="concNote"></div>
-    </div>
+    </section>
 
     <!-- ---------- REFERENCE ---------- -->
-    <div class="chart-card">
+    <section class="chart-card">
       <div class="card-head">
-        <div class="chart-section-title" style="margin:0">Per company</div>
-        <div class="card-actions"><button class="action-btn" id="refCsv" type="button">CSV</button></div>
+        <h2 class="chart-section-title">Per company</h2>
+        <button class="xport-btn" id="refCsv" type="button" title="Per company as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
       </div>
       <div id="refTable"></div>
-    </div>
+    </section>
 
     <!-- ---------- LIVE FEED ---------- -->
-    <div class="chart-card">
-      <div class="chart-section-title" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
-        <span id="feedTitle">Deposits &amp; exits</span>
-        <span class="flip" id="viewFlip" role="tablist" aria-label="Table view">
+    <section class="chart-card">
+      <div class="card-head">
+        <h2 class="chart-section-title" id="feedTitle">Deposits &amp; exits</h2>
+        <div class="seg seg-sm" id="viewFlip" role="tablist" aria-label="Table view">
           <button data-view="flows" class="active" type="button">Flows</button>
           <button data-view="holders" type="button">Holders</button>
-        </span>
+        </div>
       </div>
       <div class="chart-toolbar" id="feedToolbar">
-        <div class="group">
-          <span class="group-label">Vault</span>
-          <select id="feedVault"><option value="__all__">All stock vaults</option></select>
+        <div class="filters">
+          <label class="filter-group">
+            <span class="filter-label">Vault</span>
+            <select id="feedVault"><option value="__all__">All stock vaults</option></select>
+          </label>
         </div>
-        <div class="group" id="feedTypeGroup">
-          <span class="group-label">Type</span>
-          <button data-feed-type="" class="active">All</button>
-          <button data-feed-type="deposit">Deposits</button>
-          <button data-feed-type="withdraw">Exits</button>
+        <div class="seg" id="feedTypeGroup" role="group" aria-label="Type">
+          <button data-feed-type="" class="active" type="button">All</button>
+          <button data-feed-type="deposit" type="button">Deposits</button>
+          <button data-feed-type="withdraw" type="button">Exits</button>
         </div>
         <span class="chart-hint" id="feedCount"></span>
       </div>
@@ -531,24 +713,27 @@
             <tbody id="feedBody"><tr><td colspan="6" class="loading">Loading…</td></tr></tbody>
           </table>
         </div>
-        <div class="more" id="feedMore"></div>
+        <div id="feedPager"></div>
       </div>
       <div id="holdersView" style="display:none">
         <div class="scroll"><table class="data-table" id="holdersTable"></table></div>
         <div class="holders-note" id="holdersNote"></div>
       </div>
-    </div>
+    </section>
 
-    <p class="caveat">
-      A vault counts as a stock vault when its underlying token address carries the tokenised-equity
-      prefix. Matching on the vault name would wrongly pull in the cbXRP, USDC and WETH carry vaults,
-      which are not equities. Vaults deployed but never funded stay listed with zero values.
-    </p>
+    <details class="ui-more page-method">
+      <summary>How stock vaults are found</summary>
+      <div class="ui-more-body">
+        <p>A vault counts as a stock vault when its underlying token address carries the tokenised-equity
+        prefix, so a new one appears here automatically. Matching on the vault name would wrongly pull in
+        the cbXRP, USDC and WETH carry vaults, which are not equities. Vaults deployed but never funded stay
+        listed with zero values.</p>
+      </div>
+    </details>
   </div>
 
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script defer src="/track.js"></script>
-  <script src="/nav.js"></script>
   <script src="/routes.js"></script>
   <script>
   (function () {
@@ -559,15 +744,9 @@
     // Snapshots whose block timestamp never resolved land on day 0; Fusion did
     // not exist before 2021, so anything older is bad data rather than history.
     const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
-    const FEED_PAGE = 25;
+    const FEED_PAGE = 10;
+    const ROUTE_PAGE = 5;
     const LAYOUT_KEY = 'fusionstats_stocks_layout';
-    const THEME_KEY = 'fusionstats_stocks_theme';
-
-    function applyTheme(t) {
-      S.theme = (t === 'dark') ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', S.theme);
-      try { localStorage.setItem(THEME_KEY, S.theme); } catch (e) {}
-    }
 
     // CSV of whatever is on screen. Values are written raw, not formatted —
     // a spreadsheet wants the number, not "$4.6K".
@@ -593,7 +772,7 @@
       vaults: [], snaps: {}, events: [], updatedAt: null,
       tvlVault: '__all__', tvlRange: '90', tvlType: 'line', tvlUnit: 'usd',
       walVault: '__all__', walRange: '90', walMode: 'cumulative',
-      feedVault: '__all__', feedType: '', feedLimit: FEED_PAGE,
+      feedVault: '__all__', feedType: '', feedPage: 0, routePage: 0,
       exportDots: true, pngStyle: 'bare', layout: 'wide',
       // new: analytics sections
       vaultSet: new Set(),
@@ -613,6 +792,8 @@
     const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const dstr = (ts) => ts ? new Date(ts * 1000).toISOString().slice(0, 10) : '—';
+    const tip = (t) => '<span class="info-tip" tabindex="0" data-tip="' + esc(t) + '">&#9432;</span>';
+    const withTip = (label, t) => '<span class="with-tip">' + label + tip(t) + '</span>';
     function timeAgo(ts) {
       const s = Math.floor(Date.now() / 1000 - ts);
       if (s < 60) return s + 's ago';
@@ -669,20 +850,101 @@
         paper_bgcolor: 'rgba(0,0,0,0)',
         font: { family: 'Poppins, -apple-system, sans-serif', color: body, size: 12 },
         xaxis: {
-          showgrid: false, linecolor: line, tickfont: { size: 11 }, type: 'date',
+          showgrid: false, linecolor: line, tickfont: { size: 11 }, type: 'date', showspikes: false,
           ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
         },
         yaxis: {
-          showgrid: false, linecolor: line, tickfont: { size: 11 }, tickformat: yFmt,
+          showgrid: false, linecolor: line, tickfont: { size: 11 }, tickformat: yFmt, showspikes: false,
           type: (allowLog && S.scale === 'log') ? 'log' : 'linear',
           rangemode: (allowLog && S.scale === 'log') ? 'normal' : 'tozero',
           ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
         },
         showlegend: false,
+        // The hover is the page's own (glide): Plotly only reports where it is,
+        // from anywhere across the plot, and a drag no longer zooms.
         hovermode: 'x unified',
+        hoverdistance: -1,
+        spikedistance: -1,
+        dragmode: false,
       };
     }
-    const CONFIG = { displayModeBar: false, responsive: true };
+    const CONFIG = { displayModeBar: false, responsive: true, doubleClick: false, scrollZoom: false, showTips: false };
+
+    // Traces report hover positions but draw no label of their own.
+    const quiet = (traces) => traces.map(t => { const q = Object.assign({}, t, { hoverinfo: 'none' }); delete q.hovertemplate; return q; });
+
+    // ---- Hover: the page's own, not Plotly's --------------------------------
+    // Plotly's label is a square box in its own font that jumps from point to
+    // point. This draws what the rest of the page looks like: a hairline that
+    // glides to the nearest point, a ringed dot on each line, and the ⓘ tips'
+    // bubble beside them. `describe(points)` returns the bubble's HTML.
+    function glide(id, describe) {
+      const gd = document.getElementById(id);
+      if (!gd || !gd._fullLayout || !gd.on) return;
+      let hv = gd.querySelector(':scope > .hv');
+      if (!hv) {
+        hv = document.createElement('div');
+        hv.className = 'hv';
+        hv.innerHTML = '<div class="hv-line"></div><div class="hv-dots"></div><div class="hv-bubble"></div>';
+        gd.appendChild(hv);
+      }
+      // Re-rendering re-attaches: drop the last pair rather than stack them.
+      if (gd.__hv) { gd.removeListener('plotly_hover', gd.__hv.on); gd.removeListener('plotly_unhover', gd.__hv.off); }
+      let live = false;
+      const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); };
+      const on = (ev) => {
+        const h = gd.querySelector(':scope > .hv');
+        const pts = (ev.points || []).filter(p => p.y != null && p.x != null);
+        if (!h || !pts.length) return off();
+        const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
+        const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));
+        if (!live) { h.classList.add('hv-jump'); }
+        const line = h.querySelector('.hv-line');
+        line.style.height = sz.h + 'px';
+        line.style.transform = 'translate(' + x + 'px,' + sz.t + 'px)';
+        // A dot where each line is; bars carry no dot.
+        const dots = h.querySelector('.hv-dots');
+        const lines = pts.filter(p => p.data.type !== 'bar');
+        while (dots.children.length < lines.length) dots.appendChild(Object.assign(document.createElement('span'), { className: 'hv-dot' }));
+        [...dots.children].forEach((d, i) => {
+          const p = lines[i];
+          if (!p) { d.style.display = 'none'; return; }
+          d.style.display = '';
+          d.style.color = (p.data.line && p.data.line.color) || (p.data.marker && p.data.marker.color) || 'currentColor';
+          d.style.transform = 'translate(' + x + 'px,' + (ya._offset + ya.l2p(ya.d2l(p.y))) + 'px)';
+        });
+        // The bubble beside the line, on whichever side has room, level with
+        // the pointer and kept inside the plot.
+        const b = h.querySelector('.hv-bubble');
+        b.innerHTML = describe(pts);
+        const bw = b.offsetWidth, bh = b.offsetHeight;
+        const right = x + 16 + bw <= sz.l + sz.w + 8;
+        const bx = right ? x + 16 : x - 16 - bw;
+        const top = gd.getBoundingClientRect().top;
+        const py = ev.event && ev.event.clientY != null ? ev.event.clientY - top : sz.t + sz.h / 3;
+        const by = Math.max(sz.t - 6, Math.min(py - bh / 2, sz.t + sz.h - bh + 6));
+        b.style.transform = 'translate(' + Math.max(0, bx) + 'px,' + by + 'px)';
+        h.classList.add('hv-on');
+        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
+      };
+      gd.on('plotly_hover', on);
+      gd.on('plotly_unhover', off);
+      gd.__hv = { on, off };
+      if (!gd.__hvLeave) { gd.addEventListener('mouseleave', () => gd.__hv && gd.__hv.off()); gd.__hvLeave = true; }
+    }
+    // The pieces bubbles are made of.
+    const hvWhen = (x, hourly) => {
+      // "2026-10-05", "2026-10-05 13:00" or with seconds: read field by field.
+      const m = String(x).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      const d = m ? new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))) : new Date(x);
+      const opts = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+      if (hourly) Object.assign(opts, { hour: '2-digit', minute: '2-digit', hour12: false });
+      // Plotly reports the axis's own wall-clock time; read back as UTC it prints as the axis does.
+      return '<div class="hv-when">' + d.toLocaleString('en-US', opts) + '</div>';
+    };
+    const hvRow = (color, label, value) => '<div class="hv-row"><span class="hv-k">'
+      + (color ? '<span class="hv-sw" style="background:' + color + '"></span>' : '') + esc(label)
+      + '</span><span class="hv-v">' + value + '</span></div>';
 
     // ---- daily TVL, forward-filled, one point per vault per day ----
     function tvlSeries(sel, range) {
@@ -799,7 +1061,9 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
-      Plotly.react('tvlPlot', [trace], baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG);
+      Plotly.react('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG);
+      glide('tvlPlot', (pts) => hvWhen(pts[0].x, stepFor(S.tvlRange) === HOUR_SEC)
+        + '<div class="hv-big">' + (usd ? fUsd(pts[0].y) : fNum(pts[0].y, 4) + ' ' + esc(unitLabel)) + '</div>');
       renderUnitsBreakdown();
 
       const chosen = vaultsFor(S.tvlVault);
@@ -841,7 +1105,9 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
-      Plotly.react('walPlot', [trace], baseLayout(',d', true), CONFIG);
+      Plotly.react('walPlot', quiet([trace]), baseLayout(',d', true), CONFIG);
+      glide('walPlot', (pts) => hvWhen(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US')
+        + '</div><div class="hv-when" style="margin:1px 0 0">' + (S.walMode === 'active' ? 'wallets active' : 'wallets in total') + '</div>');
     }
 
     function renderStats() {
@@ -862,7 +1128,7 @@
         ['Total value held', fUsd(tvl)],
         ['Stock units held', fNum(shares, 4)],
         ['Wallets holding', String(holders)],
-        ['Vaults', funded + ' funded · ' + (S.vaults.length - funded) + ' empty'],
+        ['Funded vaults', funded + ' of ' + S.vaults.length],
         ['Wallets ever in', String(everWallets.size)],
         ['Net flow', (net >= 0 ? '+' : '') + fUsd(net)],
       ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
@@ -874,7 +1140,10 @@
       if (S.feedType) evs = evs.filter(e => e.type === S.feedType);
       evs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       document.getElementById('feedCount').textContent = evs.length + ' events';
-      const shown = evs.slice(0, S.feedLimit);
+      const pages = Math.max(1, Math.ceil(evs.length / FEED_PAGE));
+      S.feedPage = Math.max(0, Math.min(S.feedPage, pages - 1));
+      const start = S.feedPage * FEED_PAGE;
+      const shown = evs.slice(start, start + FEED_PAGE);
       const body = document.getElementById('feedBody');
       body.innerHTML = shown.length ? shown.map(e => {
         const v = S.vaults.find(x => x.address === (e.vault || '').toLowerCase()) || {};
@@ -891,14 +1160,7 @@
           + '</tr>';
       }).join('') : '<tr><td colspan="6" class="loading">No events for this selection.</td></tr>';
 
-      const more = document.getElementById('feedMore');
-      more.innerHTML = evs.length > S.feedLimit
-        ? '<button class="action-btn" id="feedMoreBtn" type="button">Show ' + Math.min(FEED_PAGE, evs.length - S.feedLimit) + ' more</button>'
-        : (S.feedLimit > FEED_PAGE ? '<button class="action-btn" id="feedLessBtn" type="button">Collapse</button>' : '');
-      const mb = document.getElementById('feedMoreBtn');
-      if (mb) mb.onclick = () => { S.feedLimit += FEED_PAGE; renderFeed(); };
-      const lb = document.getElementById('feedLessBtn');
-      if (lb) lb.onclick = () => { S.feedLimit = FEED_PAGE; renderFeed(); };
+      document.getElementById('feedPager').innerHTML = pagerHtml('feed', evs.length, start, FEED_PAGE, 'events');
     }
 
     // ---- latest unit count per ticker ----
@@ -1239,12 +1501,12 @@
       const summed = rows.reduce((a, r) => a + r.usd, 0);
       const live = S.vaults.reduce((a, v) => a + (v.tvl || 0), 0);
       const gap = live > 0 ? (live - summed) / live * 100 : 0;
-      document.getElementById('holdersNote').textContent =
+      document.getElementById('holdersNote').innerHTML =
         rows.length + ' wallets · holdings sum to ' + fUsd(summed) + ' against ' + fUsd(live)
-        + ' live TVL (' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%). '
-        + 'Positions are net vault shares from deposit and withdrawal events, valued at the latest share '
-        + 'and asset price. Wallets that have fully exited are omitted. Shares moved directly between '
-        + 'wallets are not tracked.';
+        + ' live TVL (' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%) '
+        + tip('Positions are net vault shares from deposit and withdrawal events, valued at the latest share '
+            + 'and asset price. Wallets that have fully exited are omitted. Shares moved directly between '
+            + 'wallets are not tracked.');
     }
 
     // When a figure cannot be shown, say which piece is missing. "No data"
@@ -1281,7 +1543,15 @@
       // silently ignoring the control.
       const lay = baseLayout('$,.2s');
       lay.barmode = 'relative';
-      Plotly.react('flowPlot', traces, lay, CONFIG);
+      Plotly.react('flowPlot', quiet(traces), lay, CONFIG);
+      glide('flowPlot', (pts) => {
+        const by = (n) => (pts.find(p => p.data.name === n) || {}).y || 0;
+        const net = by('Net');
+        return hvWhen(pts[0].x)
+          + hvRow(ACCENT, 'Deposits', fUsd(by('Deposits')))
+          + hvRow(cssVar('--red'), 'Exits', fUsd(Math.abs(by('Exits'))))
+          + hvRow(cssVar('--text'), 'Net', (net >= 0 ? '+' : '−') + fUsd(Math.abs(net)));
+      });
       const tIn = pts.reduce((a, p) => a + p.inflow, 0), tOut = pts.reduce((a, p) => a + p.exit, 0);
       document.getElementById('flowNote').textContent =
         pts.length + ' active days · in ' + fUsd(tIn) + ' · out ' + fUsd(tOut)
@@ -1447,6 +1717,8 @@
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
         showlegend: false,
         font: { family: 'Poppins, -apple-system, sans-serif', color: cssVar('--text-body', '#70747A'), size: 12 },
+        hoverlabel: { bgcolor: cssVar('--tip-bg', '#111116'), bordercolor: cssVar('--tip-bg', '#111116'),
+                      font: { family: 'Geist, sans-serif', color: cssVar('--tip-fg', '#fff'), size: 12.5 } },
         annotations: [{
           text: '<b>' + fUsd(data.total) + '</b><br><span style="font-size:10px">'
                 + (S.pieMetric === 'here' ? 'still here' : 'gross in') + '</span>',
@@ -1459,6 +1731,17 @@
         + '<span class="label">' + esc(r.label) + '</span>'
         + '<span class="val">' + fUsd(r.usd) + '</span>'
         + '<span class="pct">' + (r.usd / data.total * 100).toFixed(1) + '%</span></div>').join('');
+    }
+
+    function paintRoutePage() {
+      const rows = S.routeRows || [];
+      const pages = Math.max(1, Math.ceil(rows.length / ROUTE_PAGE));
+      S.routePage = Math.max(0, Math.min(S.routePage, pages - 1));
+      const start = S.routePage * ROUTE_PAGE;
+      document.getElementById('routeTable').innerHTML =
+        '<div class="scroll"><table class="data-table route-table">' + S.routeHead + '<tbody>'
+        + rows.slice(start, start + ROUTE_PAGE).join('') + '</tbody></table></div>'
+        + pagerHtml('route', rows.length, start, ROUTE_PAGE, 'routes');
     }
 
     function renderRoutes() {
@@ -1478,14 +1761,20 @@
       // tables side by side: the interesting number is the ratio between them,
       // and a reader should not have to hold one ranking in their head while
       // reading the other.
-      document.getElementById('routeTable').innerHTML =
-        '<div class="scroll"><table class="data-table route-table"><thead><tr>'
-        + '<th>Route</th><th>Contract</th>'
+      // Gross inflow and what is still here belong in the same row, not in two
+      // tables side by side: the interesting number is the ratio between them,
+      // and a reader should not have to hold one ranking in their head while
+      // reading the other. Five routes a page; the contract sits under its
+      // route's name rather than in a column of its own.
+      S.routeHead = '<thead><tr>'
+        + '<th>Route</th>'
         + '<th class="num">Deposits</th><th class="num">Wallets</th>'
         + '<th class="num">Gross in</th><th class="num">Share of in</th>'
-        + '<th class="num">Still here</th><th class="num">Retained</th>'
-        + '</tr></thead><tbody>'
-        + totals.map(r => {
+        + '<th class="num">Still here</th><th class="num">' + withTip('Retained', 'What is still here divided by '
+        + 'what came in. A route that pumped money in and later left reads high on Gross in and low here. Above '
+        + '100%, the position is worth more than the dollars that bought it.') + '</th>'
+        + '</tr></thead>';
+      S.routeRows = totals.map(r => {
             const info = routeInfo(r.route);
             const here = stillHere[r.route] || 0;
             const retained = r.usd > 0 ? here / r.usd : null;
@@ -1495,18 +1784,17 @@
             // underlying equity moved. Flag it so it reads as a gain.
             const rTitle = retained != null && retained > 1.005
               ? ' title="Worth more than went in — the position gained value since deposit"' : '';
+            const via = r.contracts > 1
+              ? r.contracts + ' contracts' + (info.via === 'deployer' ? ', deployed by ' + esc(info.protocol) : '')
+              : esc(info.detail || '—');
             return '<tr>'
               + '<td><span class="name-cell"><span class="dot" style="background:' + S.routeColor[r.route] + '"></span>'
-              + '<span class="label">' + (info.named
+              + '<span class="route-name">' + (info.named
                   ? '<strong>' + esc(info.protocol) + '</strong>'
                   : '<a class="addr" href="https://basescan.org/address/' + r.route + '" target="_blank" rel="noopener">'
-                    + esc(info.protocol) + '</a>') + '</span></span></td>'
-              + '<td class="muted-note"'
-              + (info.reason ? ' title="' + esc(info.reason) + '"' : '') + '>'
-              + (r.contracts > 1
-                  ? r.contracts + ' contracts'
-                    + (info.via === 'deployer' ? ', deployed by ' + esc(info.protocol) : '')
-                  : esc(info.detail || '—')) + '</td>'
+                    + esc(info.protocol) + '</a>')
+              + '<span class="via"' + (info.reason ? ' title="' + esc(info.reason) + '"' : '') + '>' + via + '</span>'
+              + '</span></span></td>'
               + '<td class="num">' + r.n + '</td>'
               // Deliberately two lines: the number belongs under the Wallets
               // header, the qualifier contradicts that header, and letting the
@@ -1524,16 +1812,18 @@
               + (retained == null ? '—' : (retained * 100).toFixed(0) + '%'
                   + (retained > 1.005 ? ' <span class="muted-note">▲</span>' : '')) + '</td>'
               + '</tr>';
-          }).join('')
-        + (o.unattributed > 0.005
-            ? '<tr><td><span class="name-cell"><span class="dot" style="background:var(--text-secondary)"></span>'
-              + '<span class="label"><strong>Unattributed</strong></span></span></td>'
-              + '<td class="muted-note">holders with no deposit on record — arrived by transfer</td>'
+          })
+        .concat(o.unattributed > 0.005
+            ? ['<tr><td><span class="name-cell"><span class="dot" style="background:var(--text-secondary)"></span>'
+              + '<span class="route-name"><strong>Unattributed</strong>'
+              + '<span class="via">holders with no deposit on record — arrived by transfer</span></span></span></td>'
               + '<td class="num">—</td><td class="num">—</td><td class="num">—</td>'
               + '<td class="num">—</td><td class="num">' + fUsd(o.unattributed) + '</td>'
-              + '<td class="num">—</td></tr>'
-            : '')
-        + '</tbody></table></div>';
+              + '<td class="num">—</td></tr>']
+            : []);
+      // A new range is a new ranking: back to its top.
+      if (S.routeRange !== S.flowRange) { S.routeRange = S.flowRange; S.routePage = 0; }
+      paintRoutePage();
 
       const ri = (r) => routeInfo(r.route);
       const protocols = totals.filter(r => ri(r).kind === 'protocol');
@@ -1565,10 +1855,9 @@
       const custodial = totals.filter(r => r.selfOwned);
       const custodialNames = [...new Set(custodial.map(r => routeInfo(r.route).protocol))];
 
-      document.getElementById('routeNote').innerHTML =
-        '<strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
+      document.getElementById('routeNote').innerHTML = ('<p><strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
         + 'later exited reads high on <em>Gross in</em> and low here. That ratio is the reason both numbers share a row.'
-        + '<br>Protocols are identified from Basescan, not from a list we maintain by hand: '
+        + '</p><p>Protocols are identified from Basescan, not from a list we maintain by hand: '
         + bySource + ' from the contract\'s own verified source — storage namespaces, contract and interface names'
         + (byDeployer
             ? '; ' + byDeployer + ' from who deployed it, where the contract is a bare proxy that says nothing about '
@@ -1586,27 +1875,27 @@
         + (unnamed.length
             ? unnamed.length + (unnamed.length === 1 ? ' contract remains' : ' contracts remain') + ' unidentified ('
               + fUsd(unnamedUsd) + ', ' + (grossSum ? (unnamedUsd / grossSum * 100).toFixed(1) : '0')
-              + '% of inflow) — hover the contract column for why.'
+              + '% of inflow); hover a contract for why.'
             : 'Every contract on this list is accounted for.')
         + (seenVia.size
             ? ' ' + [...seenVia].join(', ') + ' appears only as a counterparty in those contracts\' transactions, '
               + 'which says how the money travelled, not who deposited it.'
             : '')
         + (custodialNames.length
-            ? '<br><strong>' + custodialNames.join(', ') + '</strong> '
+            ? '</p><p><strong>' + custodialNames.join(', ') + '</strong> '
               + (custodialNames.length === 1 ? 'holds its position' : 'hold their positions')
               + ' under ' + (custodialNames.length === 1 ? 'its' : 'their') + ' own addresses rather than routing to '
               + 'yours, which is why the wallet count there counts contracts and not people. How many depositors sit '
               + 'behind ' + (custodialNames.length === 1 ? 'it' : 'them') + ' is a question for '
               + (custodialNames.length === 1 ? 'that protocol\'s' : 'those protocols\'') + ' own books, not ours.'
             : '')
-        + '<br>Retained above 100% is not an error — the surviving position is worth more than the dollars that '
+        + '</p><p>Retained above 100% is not an error — the surviving position is worth more than the dollars that '
         + 'bought it, because the strategy earned and the underlying equity moved.'
-        + (absent.length ? '<br>Searched for and not found in this range: ' + absent.join(', ') + '.' : '')
+        + (absent.length ? '</p><p>Searched for and not found in this range: ' + absent.join(', ') + '.' : '')
         + (COVERAGE.minSelfDeposits
-            ? '<br>Every contract that deposited into these vaults has been checked. Elsewhere on the site the sweep '
+            ? '</p><p>Every contract that deposited into these vaults has been checked. Elsewhere on the site the sweep '
               + 'stops at addresses with fewer than ' + COVERAGE.minSelfDeposits + ' deposits of their own.'
-            : '');
+            : '')) + '</p>';
     }
 
     function renderReturns() {
@@ -1632,11 +1921,16 @@
       lay.showlegend = true;
       lay.legend = { orientation: 'h', y: -0.18, font: { size: 11 } };
       lay.yaxis.rangemode = 'normal';
-      Plotly.react('retPlot', traces, lay, CONFIG);
+      Plotly.react('retPlot', quiet(traces), lay, CONFIG);
+      glide('retPlot', (pts) => hvWhen(pts[0].x) + pts.slice().sort((a, b) => b.y - a.y)
+        .map(p => hvRow(p.data.line.color, p.data.name, p.y.toFixed(2))).join(''));
 
       document.getElementById('retTable').innerHTML =
         '<div class="scroll" style="margin-top:0.9rem"><table class="data-table"><thead><tr><th>Vault</th>'
-        + '<th class="num">Return</th><th class="num">Annualised</th>'
+        + '<th class="num">' + withTip('Return', 'Measured from the vault\'s first deposit. Before that its share '
+            + 'price is 1 by construction, which is an empty vault waiting, not performance.') + '</th>'
+        + '<th class="num">' + withTip('Annualised', 'Withheld below two weeks: a few days of noise should not '
+            + 'become a headline number.') + '</th>'
         + '<th class="num">Days funded</th></tr></thead><tbody>'
         + series.map((r, i) =>
             // The vault by name, linked to its page in the IPOR app; the
@@ -1656,20 +1950,29 @@
             // Truncated, not rounded: 13.95 days printed as "14.0" beside
             // "under 14d" read as a contradiction.
             + '<td class="num">' + (Math.floor(r.days * 10) / 10).toFixed(1) + '</td></tr>').join('')
-        + '</tbody></table></div>'
-        + '<div class="muted-note" style="margin-top:0.65rem">Each vault is measured from its first deposit — '
-        + 'before that its share price is 1 by construction, which is an empty vault waiting, not performance. '
-        + 'Annualised is withheld below two weeks: a few days of noise should not become a headline number.</div>';
+        + '</tbody></table></div>';
     }
 
     function renderConcentration() {
       const c = concentration();
       if (!c) { missing('concStats', 'No wallet currently holds a position, so there is nothing to concentrate.'); return; }
+      const pooled = c.rows.filter(r => knownProtocol(r.wallet));
+      const pooledUsd = pooled.reduce((a, r) => a + r.usd, 0);
+      const effTip = 'The inverse Herfindahl index: the number of equally-sized wallets this distribution actually '
+        + 'amounts to. ' + c.holders + ' holders came out as an effective ' + c.effective.toFixed(1)
+        + ', so a few wallets carry more than a flat headcount suggests.'
+        + (pooled.length
+            ? ' ' + pooled.length + ' of those ' + (pooled.length === 1 ? 'holders is a protocol contract' : 'holders are protocol contracts')
+              + ' (' + [...new Set(pooled.map(r => knownProtocol(r.wallet).protocol))].join(', ') + ', '
+              + fUsd(pooledUsd) + ', ' + (c.total ? (pooledUsd / c.total * 100).toFixed(1) : '0') + '% of value) '
+              + 'holding for their own depositors, so concentration reads higher than the spread of actual people, '
+              + 'by an amount this data cannot measure.'
+            : '');
       document.getElementById('concStats').innerHTML = [
         ['Holders', String(c.holders)],
         ['Largest wallet', fUsd(c.largest) + ' · ' + (c.largestShare * 100).toFixed(1) + '%'],
         ['Top 5 share', (c.top5Share * 100).toFixed(1) + '%'],
-        ['Effective holders', c.effective.toFixed(1)],
+        ['Effective holders ' + tip(effTip), c.effective.toFixed(1)],
       ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
 
       const d = diversification();
@@ -1710,20 +2013,7 @@
               }).join('') + '</td></tr>'; }).join('')
         + '</tbody></table></div>';
 
-      const pooled = c.rows.filter(r => knownProtocol(r.wallet));
-      const pooledUsd = pooled.reduce((a, r) => a + r.usd, 0);
-      document.getElementById('concNote').innerHTML =
-        'Effective holders is the inverse Herfindahl index: the number of equally-sized wallets this '
-        + 'distribution actually amounts to. ' + c.holders + ' holders came out as an effective '
-        + c.effective.toFixed(1) + ', so a few wallets carry more than a flat headcount suggests.'
-        + (pooled.length
-            ? ' Read that with one caveat: ' + pooled.length + ' of those '
-              + (pooled.length === 1 ? 'holders is a protocol contract' : 'holders are protocol contracts')
-              + ' (' + [...new Set(pooled.map(r => knownProtocol(r.wallet).protocol))].join(', ') + ', '
-              + fUsd(pooledUsd) + ', ' + (c.total ? (pooledUsd / c.total * 100).toFixed(1) : '0') + '% of value) '
-              + 'holding on behalf of their own depositors. Concentration here therefore reads higher than the '
-              + 'spread of actual people, by an amount this data cannot measure.'
-            : '');
+      document.getElementById('concNote').innerHTML = '';
     }
 
     function renderReference() {
@@ -1823,10 +2113,6 @@
       const opt = el && el.selectedOptions && el.selectedOptions[0];
       return opt ? opt.textContent.trim() : fallback;
     }
-    function activeLabel(scope, attr, fallback) {
-      const btn = document.querySelector('#' + scope + ' button[' + attr + '].active');
-      return btn ? btn.textContent.trim() : fallback;
-    }
 
     // What the headline says about each chart, read from live state so it can
     // never disagree with what is actually plotted.
@@ -1896,7 +2182,7 @@
           scope: [selLabel('tvlVault', 'All stock vaults'),
                   RANGE_LABEL[S.tvlRange] || S.tvlRange,
                   selLabel('tvlUnit', 'USD'),
-                  activeLabel('tvlToolbar', 'data-tvl-type', 'Line')].join('  ·  '),
+                  selLabel('tvlType', 'Line')].join('  ·  '),
           note: (document.getElementById('tvlNote') || {}).textContent || '',
         };
       }
@@ -1961,7 +2247,7 @@
           : wLast + ' wallets have deposited'),
         scope: [selLabel('walVault', 'All stock vaults'),
                 RANGE_LABEL[S.walRange] || S.walRange,
-                activeLabel('walToolbar', 'data-wal-mode', 'Cumulative')].join('  ·  '),
+                selLabel('walMode', 'Cumulative')].join('  ·  '),
         note: S.walMode === 'active'
           ? 'Distinct wallets transacting in each bucket.'
           : 'Every wallet that has ever deposited into a stock vault, counted once.',
@@ -2248,16 +2534,21 @@
       });
     }
 
+    // The shapes the Export menu offers, at display size (the file is 2×) —
+    // the sizes the page used to preview them at. "Page" is the chart as it
+    // stands on screen.
+    const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
+
     async function downloadPlot(id, slug, size) {
       const gd = document.getElementById(id);
       if (!gd || !gd.data) return;
       const stamp = new Date().toISOString().slice(0, 10);
-      // Charts export at their on-screen size so the picture matches the page.
-      // The donut is the exception: it lives in a narrow sidebar column, and
-      // inheriting ~310px would put the title and legend on a canvas too small
-      // to read them. It gets a size worth looking at instead.
-      const w = (size && size.width) || gd.clientWidth;
-      const h = (size && size.height) || gd.clientHeight;
+      // The chosen shape, or the on-screen size for "Page". The donut has its
+      // own: on screen it is narrow, and inheriting ~310px would put the title
+      // and legend on a canvas too small to read them.
+      const shape = !size && EXPORT_SHAPES[S.layout];
+      const w = (size && size.width) || (shape ? shape[0] : gd.clientWidth);
+      const h = (size && size.height) || (shape ? shape[1] : gd.clientHeight);
       const scale = 2;
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
@@ -2266,16 +2557,95 @@
                           'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id));
     }
 
+    // The export shape. It used to reshape the page itself as a preview, which
+    // narrowed every section out of line with the rest; now it is only the
+    // size of the file.
     function applyLayout(v) {
       S.layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'wide';
-      document.querySelector('.container').setAttribute('data-layout', S.layout);
       try { localStorage.setItem(LAYOUT_KEY, S.layout); } catch (e) {}
-      requestAnimationFrame(() => {
-        ['tvlPlot', 'walPlot'].forEach(id => {
-          const gd = document.getElementById(id);
-          if (gd && gd.data) { try { Plotly.Plots.resize(gd); } catch (e) {} }
-        });
+    }
+
+    // ---- Export menus ------------------------------------------------------
+    // One Export button per section, its PNG options in a menu. The options are
+    // page-wide (S.layout, S.pngStyle, S.exportDots): every menu shows the same
+    // choice, so it is not re-picked for every download.
+    const DL_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>';
+    function buildExportMenus() {
+      document.querySelectorAll('.xport').forEach((box, i) => {
+        const png = box.dataset.png, csv = box.dataset.csv, id = 'xm' + i;
+        const lower = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+        box.innerHTML =
+          '<button class="xport-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="' + id + '">'
+          + DL_ICON + 'Export</button>'
+          + '<div class="xport-menu" id="' + id + '" role="dialog" aria-label="Export" hidden>'
+          + (png
+              ? (box.dataset.fixedSize ? '' : '<div class="xport-k">Image size</div><div class="seg" data-x="layout">'
+                  + [['wide', 'Page'], ['widescreen', '16:9'], ['fourthree', '4:3'], ['compact', '1:1']]
+                      .map(([v, t]) => '<button type="button" data-v="' + v + '">' + t + '</button>').join('')
+                  + '</div>')
+                + '<div class="xport-k">Style</div><div class="xport-opts">'
+                + [['bare', 'Transparent, chart only'], ['clear', 'Transparent + headline'], ['titled', 'White + headline']]
+                    .map(([v, t]) => '<label class="xport-opt"><input type="radio" name="' + id + '-style" value="' + v
+                      + '" data-x="style">' + t + '</label>').join('')
+                + '</div>'
+                + '<label class="xport-check"><input type="checkbox" data-x="dots">Dotted background</label>'
+                + '<button class="xport-go" id="' + png + '" type="button">Download '
+                + (box.dataset.pngLabel ? lower(box.dataset.pngLabel) + ' as PNG' : 'PNG') + '</button>'
+              : '')
+          + (png && csv ? '<div class="xport-sep"></div>' : '')
+          + (csv ? '<button class="xport-item" id="' + csv + '" type="button">Download '
+                   + lower(box.dataset.csvLabel || 'CSV') + '</button>' : '')
+          + '</div>';
       });
+      const close = (keep) => document.querySelectorAll('.xport-menu').forEach(m => {
+        if (m === keep) return;
+        m.hidden = true;
+        m.parentElement.querySelector('.xport-btn').setAttribute('aria-expanded', 'false');
+      });
+      document.querySelectorAll('.xport').forEach(box => {
+        const btn = box.querySelector('.xport-btn'), menu = box.querySelector('.xport-menu');
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const opening = menu.hidden;
+          close(menu);
+          menu.hidden = !opening;
+          btn.setAttribute('aria-expanded', String(opening));
+        });
+        menu.addEventListener('click', (e) => e.stopPropagation());
+        // A download is the end of the errand: it closes its menu.
+        menu.querySelectorAll('.xport-go, .xport-item').forEach(b => b.addEventListener('click', () => close()));
+      });
+      document.addEventListener('click', () => close());
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    }
+
+    // Activity's pager: the range on the left, the pages on the right; on a
+    // phone, Prev · Page n of N · Next. `kind` names the data attribute the
+    // section's click handler listens for.
+    function pagerHtml(kind, total, start, size, noun) {
+      if (total <= size) return '';
+      const pages = Math.ceil(total / size), cur = Math.floor(start / size);
+      const show = [...new Set([0, cur - 1, cur, cur + 1, pages - 1])].filter(i => i >= 0 && i < pages).sort((a, b) => a - b);
+      let nums = '', last = -1;
+      show.forEach(i => {
+        if (last >= 0 && i - last > 1) nums += '<span class="pg-gap">…</span>';
+        nums += i === cur
+          ? '<button class="pg-num on" type="button" aria-current="page">' + (i + 1) + '</button>'
+          : '<button class="pg-num" type="button" data-' + kind + '-page="' + i + '">' + (i + 1) + '</button>';
+        last = i;
+      });
+      return '<div class="pager"><span class="pg-range">' + (start + 1) + '–' + Math.min(start + size, total)
+        + ' of ' + total + ' ' + noun + '</span><div class="pg-ctrls">'
+        + '<button class="pg-step" type="button" aria-label="Previous page" data-' + kind + '-page="prev"' + (cur === 0 ? ' disabled' : '') + '></button>'
+        + '<div class="pg-nums">' + nums + '</div>'
+        + '<span class="pg-of">Page ' + (cur + 1) + ' of ' + pages + '</span>'
+        + '<button class="pg-step next" type="button" aria-label="Next page" data-' + kind + '-page="next"' + (cur >= pages - 1 ? ' disabled' : '') + '></button>'
+        + '</div></div>';
+    }
+    // The page a pager click asks for, or null.
+    function pageFrom(btn, kind, cur) {
+      const v = btn.getAttribute('data-' + kind + '-page');
+      return v === 'prev' ? cur - 1 : v === 'next' ? cur + 1 : Number(v);
     }
 
     function wireButtons(scope, attr, apply) {
@@ -2305,10 +2675,45 @@
             + v.token + ' units</option>').join('');
     }
 
+    // One floating bubble serves every ⓘ. Positioned against the window, so a
+    // section edge or the screen edge never cuts an explanation off. Hover is
+    // for a mouse only (a lifted finger counts as leaving); a tap opens it.
+    (function infoTips() {
+      const bubble = document.createElement('div');
+      bubble.className = 'tip-bubble';
+      bubble.setAttribute('role', 'tooltip');
+      document.body.appendChild(bubble);
+      let current = null;
+      function show(el) {
+        current = el;
+        bubble.textContent = el.getAttribute('data-tip');
+        bubble.style.left = '0px'; bubble.style.top = '0px';
+        const r = el.getBoundingClientRect(), b = bubble.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        bubble.style.left = Math.min(Math.max(8, r.left + r.width / 2 - b.width / 2), vw - b.width - 8) + 'px';
+        bubble.style.top = (r.top - b.height - 8 >= 8 ? r.top - b.height - 8 : r.bottom + 8) + 'px';
+        bubble.classList.add('show');
+      }
+      function hide() { current = null; bubble.classList.remove('show'); }
+      const tipOf = (t) => (t && t.closest ? t.closest('.info-tip[data-tip]') : null);
+      document.addEventListener('pointerover', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const el = tipOf(e.target);
+        if (el) { if (el !== current) show(el); } else if (current) hide();
+      });
+      document.addEventListener('focusin', (e) => { const el = tipOf(e.target); if (el) show(el); });
+      document.addEventListener('focusout', (e) => { if (tipOf(e.target)) hide(); });
+      // Inside a filter cell a tap would also open the select; the tip is what was asked for.
+      document.addEventListener('click', (e) => {
+        const el = tipOf(e.target);
+        if (el) { e.preventDefault(); show(el); } else if (current) hide();
+      }, true);
+      window.addEventListener('scroll', () => { if (current) hide(); }, { passive: true });
+    })();
+
     (async function load() {
       try { const s = localStorage.getItem(LAYOUT_KEY); if (s && VALID_LAYOUTS.indexOf(s) >= 0) S.layout = s; } catch (e) {}
-      document.getElementById('layoutSel').value = S.layout;
-      applyLayout(S.layout);
+      buildExportMenus();
 
       const get = (n) => fetch('/' + n).then(r => r.ok ? r.json() : null).catch(() => null);
       const [iv, tv, act, rid] = await Promise.all([get('ipor-vaults.json'), get('tvl-snapshots.json'),
@@ -2376,24 +2781,31 @@
         renderTvl();
       });
       document.getElementById('walVault').addEventListener('change', function () { S.walVault = this.value; renderWallets(); });
-      document.getElementById('feedVault').addEventListener('change', function () { S.feedVault = this.value; S.feedLimit = FEED_PAGE; renderFeed(); });
+      document.getElementById('feedVault').addEventListener('change', function () { S.feedVault = this.value; S.feedPage = 0; renderFeed(); });
       wireButtons('tvlToolbar', 'data-tvl-range', v => { S.tvlRange = v; renderTvl(); });
-      wireButtons('tvlToolbar', 'data-tvl-type', v => { S.tvlType = v; renderTvl(); });
+      document.getElementById('tvlType').addEventListener('change', function () { S.tvlType = this.value; renderTvl(); });
       wireButtons('walToolbar', 'data-wal-range', v => { S.walRange = v; renderWallets(); });
-      wireButtons('walToolbar', 'data-wal-mode', v => { S.walMode = v; renderWallets(); });
-      wireButtons('feedToolbar', 'data-feed-type', v => { S.feedType = v; S.feedLimit = FEED_PAGE; renderFeed(); });
+      document.getElementById('walMode').addEventListener('change', function () { S.walMode = this.value; renderWallets(); });
+      wireButtons('feedToolbar', 'data-feed-type', v => { S.feedType = v; S.feedPage = 0; renderFeed(); });
+      // Pagers, delegated: their buttons are redrawn with every page.
+      document.getElementById('feedPager').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-feed-page]');
+        if (!b || b.disabled) return;
+        S.feedPage = pageFrom(b, 'feed', S.feedPage); renderFeed();
+      });
+      document.getElementById('routeTable').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-route-page]');
+        if (!b || b.disabled) return;
+        S.routePage = pageFrom(b, 'route', S.routePage); paintRoutePage();
+      });
       document.querySelectorAll('#viewFlip button').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#viewFlip button').forEach(b => b.classList.toggle('active', b === btn));
           applyView(btn.getAttribute('data-view'));
         });
       });
-      document.getElementById('layoutSel').addEventListener('change', function () { applyLayout(this.value); });
-      // The two toolbars carry the same export controls; keep them in lockstep
-      // and remember the choice, so it is not re-picked for every download.
+      // Every Export menu shows the same, remembered choice.
       const PNG_KEY = 'stocks_png_style', DOTS_KEY = 'stocks_png_dots';
-      const styleSels = [...document.querySelectorAll('select[data-png-style]')];
-      const dotBoxes  = [...document.querySelectorAll('input[data-png-dots]')];
       try {
         const sv = localStorage.getItem(PNG_KEY);
         if (PNG_STYLES.indexOf(sv) >= 0) S.pngStyle = sv;
@@ -2401,17 +2813,21 @@
         if (dv !== null) S.exportDots = dv === '1';
       } catch (e) {}
       const syncExportControls = () => {
-        styleSels.forEach(el => { el.value = S.pngStyle; });
-        dotBoxes.forEach(el => { el.checked = S.exportDots; });
+        document.querySelectorAll('[data-x="layout"] button').forEach(b => b.classList.toggle('active', b.dataset.v === S.layout));
+        document.querySelectorAll('input[data-x="style"]').forEach(r => { r.checked = r.value === S.pngStyle; });
+        document.querySelectorAll('input[data-x="dots"]').forEach(c => { c.checked = S.exportDots; });
       };
       syncExportControls();
-      styleSels.forEach(el => el.addEventListener('change', () => {
-        S.pngStyle = PNG_STYLES.indexOf(el.value) >= 0 ? el.value : 'bare';
+      document.querySelectorAll('[data-x="layout"] button').forEach(b => b.addEventListener('click', () => {
+        applyLayout(b.dataset.v); syncExportControls();
+      }));
+      document.querySelectorAll('input[data-x="style"]').forEach(r => r.addEventListener('change', () => {
+        S.pngStyle = PNG_STYLES.indexOf(r.value) >= 0 ? r.value : 'bare';
         try { localStorage.setItem(PNG_KEY, S.pngStyle); } catch (e) {}
         syncExportControls();
       }));
-      dotBoxes.forEach(el => el.addEventListener('change', () => {
-        S.exportDots = el.checked;
+      document.querySelectorAll('input[data-x="dots"]').forEach(c => c.addEventListener('change', () => {
+        S.exportDots = c.checked;
         try { localStorage.setItem(DOTS_KEY, S.exportDots ? '1' : '0'); } catch (e) {}
         syncExportControls();
       }));
@@ -2451,23 +2867,11 @@
       const repaintAll = () => {
         renderTvl(); renderWallets(); renderFlows(); renderReturns(); renderRoutePie();
       };
-      wireButtons('tvlToolbar', 'data-scale', v => { S.scale = v; repaintAll(); });
-      wireButtons('tvlToolbar', 'data-theme-set', v => { applyTheme(v); repaintAll(); });
-      try {
-        const t = localStorage.getItem(THEME_KEY);
-        if (t === 'dark' || t === 'light') {
-          applyTheme(t);
-          document.querySelectorAll('#tvlToolbar button[data-theme-set]').forEach(b =>
-            b.classList.toggle('active', b.getAttribute('data-theme-set') === t));
-        }
-      } catch (e) {}
-      // The masthead toggle presses the toolbar's Light / Dark buttons, so the
-      // two stay in step and the charts repaint exactly as they do from there.
-      document.getElementById('themeToggle').addEventListener('click', () => {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        const btn = document.querySelector('#tvlToolbar button[data-theme-set="' + next + '"]');
-        if (btn) btn.click();
-      });
+      document.getElementById('scaleSel').addEventListener('change', function () { S.scale = this.value; repaintAll(); });
+      // The theme is the nav's (the sidebar switch, nav.js); the charts and PNG
+      // exports follow it.
+      S.theme = window.FusionTheme ? window.FusionTheme.get() : 'light';
+      window.addEventListener('fusion:theme', (e) => { S.theme = e.detail.theme; repaintAll(); });
 
       // ---- CSV for every new dataset ----
       document.getElementById('flowCsv').addEventListener('click', () => {

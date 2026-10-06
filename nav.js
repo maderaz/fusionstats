@@ -76,6 +76,37 @@
     return path === href || path.startsWith(href + '/');
   };
 
+  // ---- Theme: one choice for the whole site ----------------------------------
+  // The sidebar's switch is the site's only theme control. The choice lives
+  // under one key. Pages used to keep their own — Stocks a second key, the older
+  // pages a third — so those are read once when this one is not set yet.
+  // A page with no dark styles says so with
+  //   <meta name="fusion-theme" content="light-only">
+  // ahead of this script: it stays light, and the switch is not offered there.
+  const THEME_KEY = 'fusionstats_theme';
+  const lightOnly = !!document.querySelector('meta[name="fusion-theme"][content="light-only"]');
+  function storedTheme() {
+    try {
+      const v = localStorage.getItem(THEME_KEY);
+      if (v === 'dark' || v === 'light') return v;
+      if (v === '') return 'light';                 // how Activity and its siblings wrote light
+      const old = localStorage.getItem('theme') || localStorage.getItem('fusionstats_stocks_theme');
+      if (old === 'dark' || old === 'light') return old;
+    } catch (e) {}
+    return 'light';
+  }
+  // Pages that draw in theme colours (charts) listen for 'fusion:theme'.
+  function applyTheme(t) {
+    const dark = t === 'dark' && !lightOnly;
+    if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    window.dispatchEvent(new CustomEvent('fusion:theme', { detail: { theme: dark ? 'dark' : 'light' } }));
+  }
+  applyTheme(storedTheme());
+  window.FusionTheme = {
+    get: () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'),
+  };
+
   const SIDEBAR_W = 220;
   const TOPBAR_H = 56;
 
@@ -205,6 +236,32 @@
     @media (prefers-reduced-motion: reduce) {
       .fnav-fold-body, .fnav-chev { transition: none; }
     }
+    /* Theme switch, at the foot of the sidebar: Activity's segmented control. */
+    .fnav-foot { margin-top: auto; padding: 18px 20px 6px; }
+    .fnav-theme {
+      display: flex; padding: 3px;
+      border: 1px solid var(--stroke, #e5e5e5); border-radius: 11px;
+      background: var(--bg-alt, var(--bg-subtle, rgba(127, 127, 127, 0.06)));
+    }
+    .fnav-theme button {
+      flex: 1;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 30px; padding: 0 8px;
+      border: none; border-radius: 8px;
+      background: transparent;
+      color: var(--text-body, #70747A);
+      font: 500 12.5px var(--fnav-font);
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .fnav-theme button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .fnav-theme button:hover { color: var(--text, #000); }
+    .fnav-theme button[aria-pressed="true"] {
+      background: var(--surface, #fff);
+      color: var(--text, #000);
+      box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--stroke, #e5e5e5);
+    }
+    .fnav-theme button:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 1px; }
     .fnav-badge {
       margin-left: auto;
       padding: 2px 6px;
@@ -269,6 +326,8 @@
       .fnav-links { padding: 4px 10px 24px; }
       .fnav-links a { height: 44px; gap: 12px; font-size: 15px; }   /* thumb-sized */
       .fnav-ic { width: 18px; height: 18px; }
+      .fnav-foot { padding: 18px 20px 24px; }
+      .fnav-theme button { height: 40px; font-size: 14px; }
       .fnav-fold-toggle { margin: -12px 0 -4px; padding: 12px 10px 10px; font-size: 12.5px; }
       .fnav-chev { width: 14px; height: 14px; }
     }
@@ -323,6 +382,12 @@
       <aside class="fnav-sidebar" id="fnav-aside">
         <a class="fnav-brand" href="/" aria-label="Fusion Stats home">${LOGO}</a>
         <nav class="fnav-links" aria-label="Pages">${links}</nav>
+        ${lightOnly ? '' : `<div class="fnav-foot">
+          <div class="fnav-theme" role="group" aria-label="Theme">
+            <button type="button" data-theme-pick="light" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>Light</button>
+            <button type="button" data-theme-pick="dark" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>Dark</button>
+          </div>
+        </div>`}
       </aside>
       <div class="fnav-scrim" id="fnav-scrim"></div>
     `;
@@ -341,6 +406,21 @@
     };
     burger.addEventListener('click', () => open(!aside.classList.contains('open')));
     // Folding groups: open or close, remember it, and bring an opened group into view.
+    // The theme switch: remembered for every page, and followed by other open
+    // tabs of the site.
+    const picks = aside.querySelectorAll('button[data-theme-pick]');
+    const showPick = () => picks.forEach(b =>
+      b.setAttribute('aria-pressed', String(b.dataset.themePick === window.FusionTheme.get())));
+    picks.forEach(b => b.addEventListener('click', () => {
+      try { localStorage.setItem(THEME_KEY, b.dataset.themePick); } catch (e) {}
+      applyTheme(b.dataset.themePick);
+      showPick();
+    }));
+    window.addEventListener('storage', (e) => {
+      if (e.key === THEME_KEY) { applyTheme(storedTheme()); showPick(); }
+    });
+    showPick();
+
     aside.querySelectorAll('.fnav-fold-toggle').forEach((btn) => {
       btn.addEventListener('click', () => {
         const fold = btn.closest('.fnav-fold');
