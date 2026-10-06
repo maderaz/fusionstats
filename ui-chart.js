@@ -82,7 +82,10 @@
     const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); };
     const on = (ev) => {
       const h = gd.querySelector(':scope > .hv');
-      const pts = (ev.points || []).filter(p => p.y != null && p.x != null && p.data.visible !== 'legendonly');
+      // A line's zero start (customdata 'anchor') shapes the line; it is not
+      // a reading, so the hover passes over it.
+      const pts = (ev.points || []).filter(p => p.y != null && p.x != null && p.data.visible !== 'legendonly'
+        && p.customdata !== 'anchor');
       if (!h || !pts.length) return off();
       const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
       const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));

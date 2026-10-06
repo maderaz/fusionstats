@@ -275,8 +275,13 @@
             hoverinfo: 'none',
           });
         } else {
+          // Data that begins inside the window rises from a zero the day
+          // before, instead of starting in mid-air. It is not a reading: the
+          // hover passes over it.
+          if (cutoff == null || cutoff < perChain[c][0].day) pts = [{ day: pts[0].day - 1, tvl: 0, anchor: true }].concat(pts);
           traces.push({
             x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => Math.max(0, p.tvl)),
+            customdata: pts.map(p => p.anchor ? 'anchor' : null),
             type: 'scatter', mode: 'lines', name: c, visible: cfg.visible ? true : 'legendonly',
             stackgroup: stack === 'on' ? 'tvl' : undefined,
             line: { color: cfg.color, width: cfg.width, shape, smoothing: shape === 'spline' ? 1.0 : undefined },
