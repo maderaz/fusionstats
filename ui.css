@@ -99,6 +99,15 @@ body {
   container-type: inline-size;
 }
 
+/* Chart tick labels keep a halo of the page colour: inside the plot on a
+   phone they sit over bars and lines, and stay legible there. */
+.js-plotly-plot .xtick text, .js-plotly-plot .ytick text {
+  paint-order: stroke fill;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 /* ---------- Masthead: title, what the page shows, data status ---------- */
 .ui-masthead {
   position: relative;
