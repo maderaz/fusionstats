@@ -12,16 +12,16 @@
   <!-- Geist for the page; Poppins stays because the charts and PNG exports draw in it. -->
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
+  <script src="/nav.js"></script>
   <script>
-    // This page keeps its own theme choice (see applyTheme): apply it before first paint.
-    try { if (localStorage.getItem('fusionstats_stocks_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
   </script>
   <style>
     * { margin: 0; padding: 0; }
     :root { --tint-strong: rgba(25, 23, 23, .13); }
     :root[data-theme="dark"] { --tint-strong: rgba(255, 255, 255, .14); }
-    /* Explicit choice only — the page does not follow the OS, because an export
-       taken in one theme should not change under someone else. */
+    /* The theme is the sidebar's (nav.js), an explicit choice that does not
+       follow the OS: an export taken in one theme should not change under
+       someone else. */
 
     #updated:empty { display: none; }
 
@@ -466,12 +466,6 @@
         <p class="ui-lede">Fusion vaults backed by <strong>tokenised equities</strong>.</p>
         <div class="ui-status" id="updated"></div>
       </div>
-      <div class="ui-meta">
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
-          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
-        </button>
-      </div>
     </header>
 
     <div class="stat-row" id="stats"></div>
@@ -700,7 +694,6 @@
 
   <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script defer src="/track.js"></script>
-  <script src="/nav.js"></script>
   <script src="/routes.js"></script>
   <script>
   (function () {
@@ -714,13 +707,6 @@
     const FEED_PAGE = 10;
     const ROUTE_PAGE = 5;
     const LAYOUT_KEY = 'fusionstats_stocks_layout';
-    const THEME_KEY = 'fusionstats_stocks_theme';
-
-    function applyTheme(t) {
-      S.theme = (t === 'dark') ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', S.theme);
-      try { localStorage.setItem(THEME_KEY, S.theme); } catch (e) {}
-    }
 
     // CSV of whatever is on screen. Values are written raw, not formatted —
     // a spreadsheet wants the number, not "$4.6K".
@@ -2745,16 +2731,10 @@
         renderTvl(); renderWallets(); renderFlows(); renderReturns(); renderRoutePie();
       };
       document.getElementById('scaleSel').addEventListener('change', function () { S.scale = this.value; repaintAll(); });
-      try {
-        const t = localStorage.getItem(THEME_KEY);
-        if (t === 'dark' || t === 'light') applyTheme(t);
-      } catch (e) {}
-      // The masthead toggle is the page's only theme control; the charts and
-      // PNG exports follow it.
-      document.getElementById('themeToggle').addEventListener('click', () => {
-        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-        repaintAll();
-      });
+      // The theme is the nav's (the sidebar switch, nav.js); the charts and PNG
+      // exports follow it.
+      S.theme = window.FusionTheme ? window.FusionTheme.get() : 'light';
+      window.addEventListener('fusion:theme', (e) => { S.theme = e.detail.theme; repaintAll(); });
 
       // ---- CSV for every new dataset ----
       document.getElementById('flowCsv').addEventListener('click', () => {

@@ -142,26 +142,7 @@ body {
   color: var(--text-2);
 }
 
-.theme-toggle {
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--bg);
-  color: var(--text-2);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-}
-.theme-toggle:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
-.theme-toggle svg { width: 15px; height: 15px; }
-.theme-toggle .sun, :root[data-theme="dark"] .theme-toggle .moon { display: none; }
-:root[data-theme="dark"] .theme-toggle .sun { display: block; }
-
-/* A quiet button that sits beside the theme toggle. */
+/* A quiet button for a masthead's controls. */
 .ui-ghost {
   display: inline-flex;
   align-items: center;
@@ -205,7 +186,4 @@ body {
   .ui-masthead h1 { font-size: 26px; }
   .ui-lede { font-size: 14px; }
   .ui-status, .ui-meta { font-size: 12.5px; }
-  /* The theme toggle takes the top-right corner, as on Activity. */
-  .ui-masthead h1 { padding-right: 44px; }
-  .ui-masthead .theme-toggle { position: absolute; top: 0; right: 0; }
 }

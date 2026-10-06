@@ -9,10 +9,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <script>
-    // Apply the saved theme before first paint so dark mode never flashes light.
-    try { if (localStorage.getItem('fusionstats_theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch {}
-  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -171,23 +167,6 @@
       padding-left: 14px;
       border-left: 1px solid var(--line-strong);
     }
-    .theme-toggle {
-      display: inline-grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      background: var(--bg);
-      color: var(--text-2);
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s, border-color 0.15s;
-    }
-    .theme-toggle:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
-    .theme-toggle svg { width: 15px; height: 15px; }
-    .theme-toggle .sun, [data-theme="dark"] .theme-toggle .moon { display: none; }
-    [data-theme="dark"] .theme-toggle .sun { display: block; }
-
     /* ---------- Info tips: one floating bubble (see script) ---------- */
     .info-tip {
       display: inline-block;
@@ -730,11 +709,10 @@
     @media (max-width: 480px) {
       .page { padding: 6px 16px 48px; }
       .masthead { gap: 12px; padding-bottom: 22px; }
-      .masthead h1 { font-size: 26px; padding-right: 44px; }
+      .masthead h1 { font-size: 26px; }
       .lede { font-size: 14px; }
       .mast-meta { font-size: 12.5px; }
       #vaultCount { padding-left: 0; border-left: none; }
-      .theme-toggle { position: absolute; top: 0; right: 0; }
     }
   </style>
   <script defer src="/track.js"></script>
@@ -757,10 +735,6 @@
           </button>
         </span>
         <span id="vaultCount" style="display:none"></span>
-        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
-          <svg class="moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>
-          <svg class="sun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>
-        </button>
       </div>
     </header>
 
@@ -847,16 +821,6 @@
   </div>
 
   <script>
-    // Theme
-    const themeToggle = document.getElementById('themeToggle');
-    const saved = localStorage.getItem('fusionstats_theme');
-    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-      localStorage.setItem('fusionstats_theme', isDark ? '' : 'dark');
-    });
-
     function formatAmount(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
       if (n >= 1e3) return n.toFixed(2);

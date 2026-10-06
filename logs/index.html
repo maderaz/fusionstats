@@ -314,7 +314,6 @@
       <a href="/logs" class="active">Logs</a>
       <a href="/video">Video</a>
         <a href="/socials">Socials</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">&#9790;</button>
     </nav>
 
     <header>
@@ -335,32 +334,6 @@
   </div>
 
   <script>
-    // Dark mode
-    (function() {
-      const saved = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-
-    document.getElementById('themeToggle').addEventListener('click', function() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      if (isDark) {
-        document.documentElement.removeAttribute('data-theme');
-        localStorage.setItem('theme', 'light');
-        this.innerHTML = '&#9790;';
-      } else {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', 'dark');
-        this.innerHTML = '&#9788;';
-      }
-    });
-
-    if (document.documentElement.getAttribute('data-theme') === 'dark') {
-      document.getElementById('themeToggle').innerHTML = '&#9788;';
-    }
-
     // Format helpers
     function formatUsd(v) {
       if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
