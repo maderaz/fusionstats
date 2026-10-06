@@ -1,590 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://ethereum-rpc.publicnode.com" crossorigin>
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['spark-holders.json', 'spark-rank-history.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spark wstETH — Fusion Stats</title>
+  <meta name="description" content="The IPOR stETH vault's looping position on SparkLend's wstETH market, read live: supplied, borrowed, health factor, leverage, and its rank among the market's suppliers.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <!-- Plotly draws the rank chart and nothing else: it loads alongside the page. -->
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script src="/nav.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16a34a;
-      --red: #dc2626;
-      --spark-orange: #F77725;
-      --spark-orange-bg: rgba(247, 119, 37, 0.10);
+    .ui-figure .v.pos { color: var(--pos); }
+    .ui-figure .v.watch { color: var(--amber); }
+    .ui-figure .v.neg { color: var(--neg); }
+    /* Two rows of figures: the vault's position, then the market. */
+    .figs-k { margin: 22px 0 -10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); }
+    .ui-figures.first { border-bottom: none; padding-bottom: 8px; }
+    .error-msg { padding: 28px 0; font-size: 14px; color: var(--neg); }
+    .error-msg small { display: block; margin-top: 6px; color: var(--text-3); font-size: 12.5px; word-break: break-word; }
+    .ui-chart { margin: 0 -4px; }
+    /* Holders: rank, who, balance, value, share. */
+    .hlist { --cols: 40px minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, 1fr) 72px; }
+    .hhead, .hrow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
+    .hhead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .hhead .r, .hrow .r { justify-self: end; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .hrow { min-height: 46px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .hrow > * { min-width: 0; }
+    .hrow .rk { color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .hrow .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hrow .who a { font: 12.5px var(--mono); color: var(--text-2); text-decoration: none; }
+    .hrow .who a:hover { color: var(--accent); }
+    .hrow .bal { font-weight: 600; }
+    .hrow.is-vault { background: linear-gradient(90deg, transparent, var(--accent-bg) 3%, var(--accent-bg) 97%, transparent); }
+    .hrow.is-vault .who { font-weight: 600; color: var(--accent); }
+    .note { margin-top: 16px; font-size: 12.5px; color: var(--text-3); }
+    .note a { color: var(--text-2); text-decoration: none; }
+    .note a:hover { color: var(--accent); }
+    @container (min-width: 701px) {
+      .ui-figures.first { padding-top: 22px; }
     }
-
-    [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
-      --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --green: #22c55e;
-      --red: #ef4444;
-      --spark-orange: #FF9147;
-      --spark-orange-bg: rgba(255, 145, 71, 0.15);
-    }
-
-    body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    .num-bold {
-      font-family: 'Source Sans 3', 'Source Sans Pro', sans-serif;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      position: relative;
-      top: 1px;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; }
-
-    .top-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
-    }
-
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-
-    header { margin-bottom: 2rem; }
-
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.25rem;
-      background: linear-gradient(90deg, var(--spark-orange), #FF5500);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    header p { color: var(--text-body); font-size: 0.875rem; }
-
-    .theme-toggle {
-      margin-left: auto;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    .theme-toggle:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Mobile holder cards (hidden on desktop) */
-    .holders-mobile { display: none; }
-
-    .holder-card-mobile {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-      margin-bottom: 0.6rem;
-    }
-
-    .holder-card-mobile.is-vault {
-      background: var(--spark-orange-bg);
-      border-color: var(--spark-orange);
-    }
-
-    .holder-card-mobile .hcm-top {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .holder-card-mobile .hcm-rank {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      font-weight: 600;
-    }
-
-    .holder-card-mobile .hcm-name {
-      font-size: 0.85rem;
-      color: var(--text);
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .holder-card-mobile .hcm-name a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .holder-card-mobile .hcm-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0.5rem;
-      font-size: 0.75rem;
-    }
-
-    .holder-card-mobile .hcm-stats .hcm-label {
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .holder-card-mobile .hcm-stats .hcm-val {
-      font-size: 0.8rem;
-      color: var(--text);
-    }
-
-    .info-box {
-      background: var(--spark-orange-bg);
-      border: 1px solid var(--spark-orange);
-      border-radius: 10px;
-      padding: 1rem 1.25rem;
-      font-size: 0.8rem;
-      color: var(--text-body);
-      line-height: 1.6;
-      margin-bottom: 1.5rem;
-    }
-
-    .info-box strong { color: var(--text); }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .stats-row-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    .stat-card .label {
-      font-size: 0.75rem;
-      color: var(--text-body);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-      font-weight: 500;
-    }
-
-    .stat-card .value {
-      font-size: 2rem;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-    }
-
-    .stat-card .value-sm {
-      font-size: 1.4rem;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-    }
-
-    .stat-card .sub {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 0.35rem;
-    }
-
-    .stat-card.highlight {
-      border-color: var(--spark-orange);
-      background: var(--spark-orange-bg);
-    }
-
-    .section-title {
-      font-size: 1rem;
-      font-weight: 500;
-      margin-bottom: 1rem;
-      color: var(--text);
-    }
-
-    .position-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .position-card h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    .position-card h2 .badge {
-      display: inline-block;
-      font-size: 0.65rem;
-      font-weight: 600;
-      color: var(--spark-orange);
-      background: var(--spark-orange-bg);
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      margin-left: 0.5rem;
-      vertical-align: middle;
-    }
-
-    .position-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0;
-    }
-
-    .position-cell {
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    .position-cell:nth-child(odd) {
-      border-right: 1px solid var(--stroke);
-    }
-
-    .position-cell .pos-label {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-
-    .position-cell .pos-value {
-      font-size: 1.25rem;
-      letter-spacing: -0.02em;
-    }
-
-    .position-cell .pos-sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
-
-    .rank-table {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .rank-table h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th {
-      text-align: left;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-      font-weight: 500;
-    }
-
-    td {
-      padding: 0.75rem 1.5rem;
-      font-size: 0.85rem;
-      border-bottom: 1px solid var(--stroke);
-      color: var(--text-body);
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    tr.is-vault {
-      background: var(--spark-orange-bg);
-    }
-
-    tr.is-vault td {
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    .addr-link {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .addr-link:hover { text-decoration: underline; }
-
-    .loading-msg {
-      text-align: center;
-      padding: 3rem;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-    }
-
-    .error-msg {
-      text-align: center;
-      padding: 2rem;
-      color: var(--red);
-      font-size: 0.85rem;
-    }
-
-    /* Rank history chart */
-    .rank-chart-card {
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .rank-chart-card h2 {
-      margin: 0 0 0.25rem 0;
-      font-size: 1rem;
-    }
-
-    .rank-chart-sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-bottom: 1rem;
-    }
-
-    .rank-chart-area {
-      display: flex;
-      align-items: stretch;
-      height: 200px;
-      gap: 0;
-    }
-
-    .rank-chart-y {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding-right: 0.75rem;
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-      text-align: right;
-      min-width: 32px;
-    }
-
-    .rank-chart-bars {
-      flex: 1;
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      position: relative;
-    }
-
-    .rank-bar-slot {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      height: 100%;
-      position: relative;
-    }
-
-    .rank-bar {
-      width: 6px;
-      border-radius: 3px;
-      background: linear-gradient(to top, var(--spark-orange), #FFB366);
-      transition: height 0.4s ease;
-    }
-
-    .rank-bar-slot:hover .rank-bar {
-      filter: brightness(1.15);
-    }
-
-    .rank-bar-tooltip {
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      white-space: nowrap;
-      z-index: 10;
-      pointer-events: none;
-      line-height: 1.5;
-    }
-
-    .rank-bar-slot:hover .rank-bar-tooltip {
-      display: block;
-    }
-
-    .rank-chart-x {
-      display: flex;
-      gap: 2px;
-      padding-left: 32px;
-      margin-top: 0.5rem;
-    }
-
-    .rank-chart-x span {
-      flex: 1;
-      text-align: center;
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-    }
-
-    .data-ts {
-      text-align: center;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
-
-      /* Top nav: horizontal scroll on narrow screens */
-      .top-nav {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-      }
-      .top-nav::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      .stats-row, .stats-row-3 { grid-template-columns: 1fr; }
-      .position-grid { grid-template-columns: 1fr; }
-      .position-cell:nth-child(odd) { border-right: none; }
-      .stat-card { padding: 1.1rem 1.2rem; }
-      .stat-card .value { font-size: 1.5rem; }
-      .stat-card .value-sm { font-size: 1.25rem; }
-      .info-box { padding: 0.85rem 1rem; font-size: 0.75rem; }
-
-      .position-card h2,
-      .rank-table h2 { padding: 1rem 1.1rem; font-size: 0.9rem; }
-      .position-cell { padding: 1rem 1.1rem; }
-      .position-cell .pos-value { font-size: 1.1rem; }
-
-      /* Swap holder table for stacked cards */
-      .rank-table { display: none; }
-      .holders-mobile { display: block; margin-bottom: 2rem; }
-
-      /* Rank chart scales down */
-      .rank-chart-card { padding: 1rem 0.9rem; }
-      .rank-chart-area { height: 150px; }
-      .rank-chart-y { min-width: 28px; font-size: 0.6rem; padding-right: 0.5rem; }
-      .rank-chart-x { padding-left: 28px; }
-      .rank-chart-x span { font-size: 0.55rem; }
+    @container (max-width: 700px) {
+      .hhead { display: none; }
+      .hrow { grid-template-columns: 30px minmax(0, 1fr) auto; grid-template-areas: "rk who bal" "rk val shr"; row-gap: 2px; padding: 10px 0; }
+      .hrow .rk { grid-area: rk; align-self: start; }
+      .hrow .who { grid-area: who; }
+      .hrow .bal { grid-area: bal; }
+      .hrow .val { grid-area: val; justify-self: start; font-size: 12.5px; color: var(--text-3); }
+      .hrow .shr { grid-area: shr; font-size: 12.5px; color: var(--text-3); }
     }
   </style>
   <script defer src="/track.js"></script>
-  <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <a href="/">Activity</a>
-      <a href="/all-vaults">All Vaults</a>
-      <a href="/tvl">TVL</a>
-      <a href="/dominance">Dominance</a>
-      <a href="/address">Address</a>
-      <a href="/spark" class="active">Spark</a>
-      <a href="/rebalance-methodology">Rebalance Docs</a>
-      <a href="/logs">Logs</a>
-      <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
-    </nav>
-
-    <header>
-      <h1>Spark wstETH Market</h1>
-      <p>Tracking IPOR stETH Looping Vault position on SparkLend wstETH market</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Spark wstETH</h1>
+        <p class="ui-lede">The IPOR stETH Ethereum vault loops on SparkLend: it supplies wstETH as collateral and borrows WETH against it. Its position, read live, and its rank among the market's wstETH suppliers.</p>
+        <div class="ui-status"><span id="loadingMsg">Fetching on-chain data from SparkLend…</span></div>
+      </div>
     </header>
-
-    <div class="info-box">
-      <strong>What is this?</strong> The IPOR stETH Ethereum vault runs a looping strategy on SparkLend —
-      supplying wstETH as collateral and borrowing WETH against it. This page tracks the vault's position
-      and its rank among the top suppliers on the wstETH market.
-    </div>
-
-    <div id="mainContent">
-      <div class="loading-msg" id="loadingMsg">Fetching on-chain data from SparkLend...</div>
-    </div>
-
     <div id="errorContent" style="display:none"></div>
+    <div id="mainContent"></div>
   </div>
 
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
   <script>
     // — Constants —
     // Multiple RPCs for resilience — tried sequentially on failure
@@ -807,7 +296,7 @@
 
       } catch (err) {
         console.error('Error loading Spark data:', err);
-        status.style.display = 'none';
+        status.textContent = 'SparkLend could not be read';
         const errDiv = document.getElementById('errorContent');
         errDiv.style.display = 'block';
         errDiv.innerHTML = `<div class="error-msg">
@@ -877,221 +366,113 @@
     }
 
     // — Rendering —
+    const esc = UI.esc;
+    const figure = (k, v, sub, cls) => '<div class="ui-figure"><div class="k">' + k + '</div><div class="v' + (cls ? ' ' + cls : '') + '">' + v + '</div><div class="s">' + (sub || '&nbsp;') + '</div></div>';
     function renderPage(d) {
-      const main = document.getElementById('mainContent');
-
-      const rateInfo = d.supplyApy !== null
-        ? `Supply APY ${d.supplyApy.toFixed(2)}% · Borrow ${d.borrowApy?.toFixed(2) || '—'}%`
-        : 'Rate data unavailable';
-
-      // Holder leaderboard rows (desktop table + mobile cards)
-      let holderRows = '';
-      let holderCards = '';
-      d.holders.forEach((h, i) => {
+      const hf = d.healthFactor;
+      const hfCls = hf > 2 ? 'pos' : hf > 1.5 ? 'watch' : 'neg';
+      const rows = d.holders.map((h, i) => {
         const isVault = h.addr.toLowerCase() === VAULT_ADDRESS.toLowerCase();
-        const cls = isVault ? ' class="is-vault"' : '';
         const name = h.label || shortAddr(h.addr);
-        const nameCell = isVault
-          ? '<strong>' + name + '</strong>'
-          : '<a href="https://etherscan.io/address/' + h.addr + '" target="_blank" rel="noopener" class="addr-link">' + name + '</a>';
-        holderRows += `<tr${cls}>
-          <td style="text-align:center">${i + 1}</td>
-          <td>${nameCell}</td>
-          <td class="num-bold" style="text-align:right">${formatEth(h.balance)}</td>
-          <td class="num-bold" style="text-align:right">${formatUsd(h.balance * d.wstethPrice)}</td>
-          <td style="text-align:right">${h.share.toFixed(2)}%</td>
-        </tr>`;
-        holderCards += `<div class="holder-card-mobile${isVault ? ' is-vault' : ''}">
-          <div class="hcm-top">
-            <span class="hcm-rank">#${i + 1}</span>
-            <span class="hcm-name">${nameCell}</span>
-          </div>
-          <div class="hcm-stats">
-            <div>
-              <div class="hcm-label">Balance</div>
-              <div class="hcm-val num-bold">${formatEth(h.balance)}</div>
-            </div>
-            <div>
-              <div class="hcm-label">Value</div>
-              <div class="hcm-val num-bold">${formatUsd(h.balance * d.wstethPrice)}</div>
-            </div>
-            <div>
-              <div class="hcm-label">Share</div>
-              <div class="hcm-val num-bold">${h.share.toFixed(2)}%</div>
-            </div>
-          </div>
-        </div>`;
-      });
-
-      main.innerHTML = `
-        <div class="stats-row-3">
-          <div class="stat-card">
-            <div class="label">wstETH Total Supplied</div>
-            <div class="value-sm num-bold">${formatEth(d.spWstethSupply)}</div>
-            <div class="sub">${formatUsd(d.spWstethSupply * d.wstethPrice)}</div>
-          </div>
-          <div class="stat-card highlight">
-            <div class="label">Vault Rank (spWSTETH holders)</div>
-            <div class="value-sm num-bold">#${d.vaultRank || '?'}</div>
-            <div class="sub">${d.vaultSharePct.toFixed(2)}% of total supply</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Rates</div>
-            <div class="value-sm num-bold">${d.supplyApy !== null ? d.supplyApy.toFixed(2) + '%' : '—'}</div>
-            <div class="sub">${rateInfo}</div>
-          </div>
-        </div>
-
-        <div class="position-card">
-          <h2>${VAULT_NAME} <span class="badge">SPARK POSITION</span></h2>
-          <div class="position-grid">
-            <div class="position-cell">
-              <div class="pos-label">wstETH Supplied</div>
-              <div class="pos-value num-bold">${formatEth(d.vaultWstethBal)}</div>
-              <div class="pos-sub">${formatUsd(d.vaultSupplyUsd)}</div>
-            </div>
-            <div class="position-cell">
-              <div class="pos-label">WETH Borrowed</div>
-              <div class="pos-value num-bold">${formatEth(d.vaultWethDebt)}</div>
-              <div class="pos-sub">${formatUsd(d.vaultBorrowUsd)}</div>
-            </div>
-            <div class="position-cell">
-              <div class="pos-label">Health Factor</div>
-              <div class="pos-value num-bold" style="color: ${d.healthFactor > 2 ? 'var(--green)' : d.healthFactor > 1.5 ? 'var(--spark-orange)' : 'var(--red)'}">
-                ${d.healthFactor > 100 ? '> 100' : d.healthFactor.toFixed(2)}
-              </div>
-              <div class="pos-sub">Liq. threshold ${d.liquidationThreshold.toFixed(0)}%</div>
-            </div>
-            <div class="position-cell">
-              <div class="pos-label">Leverage</div>
-              <div class="pos-value num-bold">${d.leverage.toFixed(2)}x</div>
-              <div class="pos-sub">Net equity ${formatUsd(d.vaultSupplyUsd - d.vaultBorrowUsd)}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="rank-chart-card">
-          <h2>Vault Rank History</h2>
-          <div class="rank-chart-sub" id="rankChartSub">Loading rank history...</div>
-          <div class="rank-chart-area">
-            <div class="rank-chart-y" id="rankChartY"></div>
-            <div class="rank-chart-bars" id="rankChartBars"></div>
-          </div>
-          <div class="rank-chart-x" id="rankChartX"></div>
-        </div>
-
-        ${holderRows ? `
-        <div class="rank-table">
-          <h2>Top spWSTETH Holders ${d.holdersUpdatedAt ? `<span style="font-size:0.7rem;color:var(--text-secondary);font-weight:400;margin-left:0.25rem">(list updated ${new Date(d.holdersUpdatedAt).toLocaleDateString()}, balances live)</span>` : ''} <a href="https://etherscan.io/token/${SP_WSTETH}#balances" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--spark-orange);font-weight:400;margin-left:0.5rem">Etherscan</a></h2>
-          <table>
-            <thead><tr>
-              <th style="text-align:center;width:3rem">#</th>
-              <th>Address</th>
-              <th style="text-align:right">Balance</th>
-              <th style="text-align:right">Value</th>
-              <th style="text-align:right">Share</th>
-            </tr></thead>
-            <tbody>${holderRows}</tbody>
-          </table>
-        </div>
-        <div class="holders-mobile">${holderCards}</div>
-        ` : ''}
-
-        <div class="data-ts">
-          Data fetched live from SparkLend contracts via public RPC
-          · <a href="https://app.spark.fi/markets/1/${WSTETH}" target="_blank" rel="noopener" style="color:var(--spark-orange)">View on Spark</a>
-          · Vault <a href="https://etherscan.io/address/${VAULT_ADDRESS}" target="_blank" rel="noopener" class="addr-link">${shortAddr(VAULT_ADDRESS)}</a>
-        </div>
-      `;
+        const who = isVault ? esc(name) : '<a href="https://etherscan.io/address/' + esc(h.addr) + '" target="_blank" rel="noopener" title="' + esc(h.addr) + '">' + esc(name) + '</a>';
+        return '<div class="hrow' + (isVault ? ' is-vault' : '') + '">'
+          + '<span class="rk">' + (i + 1) + '</span>'
+          + '<span class="who">' + who + '</span>'
+          + '<span class="r bal">' + formatEth(h.balance) + '</span>'
+          + '<span class="r val">' + formatUsd(h.balance * d.wstethPrice) + '</span>'
+          + '<span class="r shr">' + h.share.toFixed(2) + '%</span>'
+          + '</div>';
+      }).join('');
+      document.getElementById('mainContent').innerHTML =
+        '<div class="figs-k">The vault on Spark</div>'
+        + '<div class="ui-figures first" style="--n:4">'
+        + figure('Supplied', formatEth(d.vaultWstethBal) + ' wstETH', formatUsd(d.vaultSupplyUsd))
+        + figure('Borrowed', formatEth(d.vaultWethDebt) + ' WETH', formatUsd(d.vaultBorrowUsd))
+        + figure('Health factor', hf > 100 ? '> 100' : hf.toFixed(2), 'liquidation threshold ' + d.liquidationThreshold.toFixed(0) + '%', hfCls)
+        + figure('Leverage', d.leverage.toFixed(2) + 'x', 'net equity ' + formatUsd(d.vaultSupplyUsd - d.vaultBorrowUsd))
+        + '</div>'
+        + '<div class="figs-k">The wstETH market</div>'
+        + '<div class="ui-figures" style="--n:4">'
+        + figure('Vault rank', '#' + (d.vaultRank || '?'), d.vaultSharePct.toFixed(2) + '% of wstETH supplied')
+        + figure('wstETH supplied', formatEth(d.spWstethSupply), formatUsd(d.spWstethSupply * d.wstethPrice))
+        + figure('Supply APY', d.supplyApy !== null ? d.supplyApy.toFixed(2) + '%' : '—', 'wstETH')
+        + figure('Borrow APY', d.borrowApy != null ? d.borrowApy.toFixed(2) + '%' : '—', 'WETH')
+        + '</div>'
+        + '<section class="ui-section">'
+        + '<div class="ui-head"><h2>Vault rank over time<span class="ui-count" id="rankChartSub"></span></h2></div>'
+        + '<div class="ui-chart" id="rankChart"><div class="ui-empty">Loading the rank history…</div></div>'
+        + '</section>'
+        + (rows ? '<section class="ui-section">'
+          + '<div class="ui-head"><h2>Top wstETH suppliers<span class="ui-count">balances live' + (d.holdersUpdatedAt ? ', list of ' + esc(new Date(d.holdersUpdatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) : '') + '</span></h2>'
+          + '<a class="ui-btn" href="https://etherscan.io/token/' + SP_WSTETH + '#balances" target="_blank" rel="noopener">Etherscan ↗</a></div>'
+          + '<div class="hlist"><div class="hhead"><span>#</span><span>Supplier</span><span class="r">wstETH</span><span class="r">Value</span><span class="r">Share</span></div>'
+          + '<div id="holders">' + rows + '</div></div>'
+          + '<p class="note">Read live from SparkLend\'s contracts through public RPCs · <a href="https://app.spark.fi/markets/1/' + WSTETH + '" target="_blank" rel="noopener">View on Spark ↗</a> · vault <a href="https://etherscan.io/address/' + VAULT_ADDRESS + '" target="_blank" rel="noopener">' + shortAddr(VAULT_ADDRESS) + ' ↗</a></p>'
+          + '</section>' : '');
+      document.getElementById('loadingMsg').innerHTML = '<b>Live</b> from SparkLend · ' + d.holders.length + ' largest suppliers checked';
     }
 
-    // — Rank history chart —
+    // — Rank history: rank 1 at the top —
+    const plotlyReady = new Promise((resolve, reject) => {
+      if (window.Plotly) return resolve();
+      const tag = document.getElementById('plotlyJs');
+      tag.addEventListener('load', () => resolve());
+      tag.addEventListener('error', () => reject(new Error('the chart library (cdn.plot.ly) did not load')));
+    });
+    let rankPoints = null;
     async function loadRankChart() {
       try {
         const res = await fetch('../spark-rank-history.json');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const history = await res.json();
-        renderRankChart(history);
+        rankPoints = history.filter(e => e.rank != null).map(e => ({ time: new Date(e.t), rank: e.rank, balance: e.balance, share: e.share }));
+        await renderRankChart();
       } catch (e) {
-        const sub = document.getElementById('rankChartSub');
-        if (sub) sub.textContent = 'No rank history yet — run collect-spark-holders.js to start tracking.';
+        const el = document.getElementById('rankChart');
+        if (el) el.innerHTML = '<div class="ui-empty">No rank history yet — run collect-spark-holders.js to start tracking.</div>';
         log('Rank history unavailable: ' + e.message);
       }
     }
-
-    function renderRankChart(history) {
-      const sub = document.getElementById('rankChartSub');
-      const barsEl = document.getElementById('rankChartBars');
-      const yAxisEl = document.getElementById('rankChartY');
-      const xLabelsEl = document.getElementById('rankChartX');
-
-      if (!history.length || !barsEl) return;
-
-      const points = history
-        .filter(e => e.rank != null)
-        .map(e => ({ time: new Date(e.t), rank: e.rank, balance: e.balance, share: e.share, totalHolders: e.totalHolders }));
-
-      if (!points.length) {
-        sub.textContent = 'No rank data available yet.';
-        return;
-      }
-
-      // For rank chart: lower rank = better. Invert so rank 1 is tallest bar.
-      const maxRank = Math.max(...points.map(p => p.rank), 10);
-      const yMax = Math.ceil(maxRank / 5) * 5; // round up to nearest 5
-
-      // Y-axis labels (rank — inverted: top=1, bottom=maxRank)
-      yAxisEl.innerHTML = '';
-      const ticks = [1, Math.round(yMax * 0.25), Math.round(yMax * 0.5), Math.round(yMax * 0.75), yMax];
-      ticks.forEach(val => {
-        const span = document.createElement('span');
-        span.textContent = '#' + val;
-        span.style.lineHeight = '1';
-        yAxisEl.appendChild(span);
+    async function renderRankChart() {
+      const el = document.getElementById('rankChart');
+      if (!el || !rankPoints) return;
+      if (!rankPoints.length) { el.innerHTML = '<div class="ui-empty">No rank data available yet.</div>'; return; }
+      await plotlyReady;
+      el.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
+      const pts = rankPoints, accent = FusionChart.cssVar('--accent', '#8429FF');
+      const maxRank = Math.max(...pts.map(p => p.rank), 10);
+      const span = pts[pts.length - 1].time - pts[0].time;
+      const layout = {
+        autosize: true, margin: { l: 48, r: 16, t: 12, b: 40 },
+        plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: FusionChart.cssVar('--text-2', '#70747A'), size: 12 },
+        xaxis: { type: 'date', showgrid: false, linecolor: FusionChart.cssVar('--line', '#E5E5E5'), tickfont: { size: 11 }, tickformat: span > 330 * 86400000 ? "%b '%y" : '%b %d', showspikes: false },
+        // Rank 1 at the top, on a log scale: the vault sits around #10, and
+        // the days it left Spark (#330) stay on the chart without flattening
+        // the rest against its top.
+        yaxis: { type: 'log', showgrid: false, linecolor: FusionChart.cssVar('--line', '#E5E5E5'), tickfont: { size: 11 }, showspikes: false,
+                 range: [Math.log10(maxRank * 1.15), Math.log10(0.8)],
+                 tickvals: [1, 2, 5, 10, 20, 50, 100, 200, 500].filter(v => v <= maxRank * 1.15),
+                 ticktext: [1, 2, 5, 10, 20, 50, 100, 200, 500].filter(v => v <= maxRank * 1.15).map(v => '#' + v) },
+        showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
+      };
+      const trace = { type: 'scatter', mode: 'lines', x: pts.map(p => p.time), y: pts.map(p => p.rank), customdata: pts.map(p => p.balance),
+        line: { color: accent, width: 2.5, shape: 'hv' } };
+      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout), { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false });
+      FusionChart.glide(el, (hp) => {
+        const p = pts[hp[0].pointIndex != null ? hp[0].pointIndex : hp[0].pointNumber];
+        if (!p) return '';
+        // The stored share is not a percentage (the history was written with a
+        // total supply of 0), so the hover gives the rank and the balance.
+        return FusionChart.when(p.time.toISOString(), true) + '<div class="hv-big">Rank #' + p.rank + '</div>'
+          + FusionChart.row(null, 'Supplied', formatEth(p.balance) + ' wstETH');
       });
-
-      // Bars
-      barsEl.innerHTML = '';
-      points.forEach(p => {
-        const slot = document.createElement('div');
-        slot.className = 'rank-bar-slot';
-
-        const bar = document.createElement('div');
-        bar.className = 'rank-bar';
-        // Higher bar = better rank (rank 1 = 100%, rank maxRank = ~5%)
-        const pct = Math.max(5, ((yMax - p.rank + 1) / yMax) * 100);
-        bar.style.height = pct + '%';
-        slot.appendChild(bar);
-
-        // Tooltip
-        const tip = document.createElement('div');
-        tip.className = 'rank-bar-tooltip';
-        const timeStr = p.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-          + ' ' + p.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-        tip.innerHTML = `<strong>${timeStr}</strong><br>`
-          + `<span style="color:var(--spark-orange);font-weight:700;">Rank #${p.rank}</span><br>`
-          + `<span>Balance: ${formatEth(p.balance)} spWSTETH</span><br>`
-          + `<span>Share: ${p.share}%</span>`;
-        slot.appendChild(tip);
-
-        barsEl.appendChild(slot);
-      });
-
-      // X-axis labels
-      xLabelsEl.innerHTML = '';
-      const labelStep = Math.max(1, Math.floor(points.length / 8));
-      points.forEach((p, i) => {
-        const span = document.createElement('span');
-        if (i % labelStep === 0 || i === points.length - 1) {
-          span.textContent = p.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-        }
-        xLabelsEl.appendChild(span);
-      });
-
-      const spanHours = Math.round((points[points.length - 1].time - points[0].time) / 3600000);
-      const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
-      sub.textContent = `${points.length} data points · ${spanLabel} span · updated every 6h`;
+      const hours = Math.round(span / 3600000);
+      document.getElementById('rankChartSub').textContent = pts.length + ' readings over ' + (hours >= 24 ? Math.round(hours / 24) + ' days' : hours + ' hours') + ', about every 6h';
     }
+    window.addEventListener('fusion:theme', () => { renderRankChart(); });
+    FusionChart.onChange(() => { renderRankChart(); });
 
     // — Init —
     loadAll().then(() => loadRankChart());
