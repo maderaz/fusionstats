@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['dust-events.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dust Deposit Tracker — Fusion Stats</title>
@@ -9,586 +12,562 @@
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9C%A8</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui.css">
+  <!-- Plotly draws the chart and nothing else: it loads alongside the page. -->
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
   <script src="/nav.js"></script>
-  <script>
-  </script>
   <style>
-    * { margin: 0; padding: 0; }
-    a { color: inherit; text-decoration: none; }
-    .num { font-variant-numeric: tabular-nums; }
-    .mono { font-family: var(--mono); font-size: 12.5px; }
-    .datanote .dot { display: none; }
+    .ui-figure .v.accent { color: var(--accent); }
+    .ui-chart { margin: 0 -4px; height: 300px; }
+    .ui-chart .bars-hit { cursor: pointer; }
+    @container (max-width: 700px) { .ui-chart { height: 240px; } }
 
-    /* Base App listing: a toggle beside the theme button, and its line on the chart. */
-    .mkbtn.on { background: #0052FF; border-color: #0052FF; color: #fff; }
-    .markers { position: absolute; inset: 0 0 0 46px; z-index: 3; pointer-events: none; }
-    .marker { position: absolute; top: 0; bottom: 0; width: 2px; background: #0052FF; }
-    .marker .lbl {
-      position: absolute; top: 4px; right: 5px;
-      padding: 2px 7px;
-      border-radius: 6px;
-      background: #0052FF;
-      color: #fff;
-      font: 600 10.5px var(--sans);
-      white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0, 82, 255, 0.35);
-    }
+    /* The size, fine-tuned: a slider under the filters. */
+    .fine { display: flex; align-items: center; gap: 12px; margin: -4px 0 4px; font-size: 12.5px; color: var(--text-3); }
+    .fine input { flex: 1; min-width: 0; accent-color: var(--accent); }
+    .fine b { min-width: 72px; text-align: right; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-    /* ---------- Controls ---------- */
-    .controls { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 20px; padding: 24px 0 26px; }
-    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-    .field > label { display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 500; color: var(--text-2); }
-    .szval { margin-left: 4px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-    .seg {
-      display: inline-flex;
-      padding: 3px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--bg-subtle);
-    }
-    .seg button {
-      height: 38px;
-      padding: 0 13px;
-      border: none;
-      border-radius: 9px;
-      background: transparent;
-      color: var(--text-2);
-      font: 500 13.5px var(--sans);
-      white-space: nowrap;
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
-    }
-    .seg button:hover { color: var(--text); }
-    .seg button.on { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
-    .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-    .uk-slider { width: 100%; height: 16px; margin-top: 4px; accent-color: var(--accent); cursor: pointer; }
-    .slider-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    /* Base App listing: a toggle by the chart, a line on it. */
+    .mark-btn.on { background: #0052FF; border-color: #0052FF; color: #fff; }
 
-    /* ---------- Figures: as Activity's net inflow ---------- */
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      padding: 28px 0 32px;
-      border-top: 1px solid var(--line);
-    }
-    .card { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
-    .card:first-child { padding-left: 0; border-left: none; }
-    .card .k { font-size: 13px; font-weight: 500; color: var(--text-3); }
-    .card .v {
-      margin-top: 6px;
-      font-size: clamp(22px, 3cqi, 32px);
-      line-height: 1.1;
-      font-weight: 600;
-      letter-spacing: -0.035em;
-      font-variant-numeric: tabular-nums;
-    }
-    .card .v.accent { color: var(--accent); }
-    .card .sv { margin-top: 6px; font-size: 13px; color: var(--text-2); }
-
-    /* ---------- Sections: the chart, then the breakdown ---------- */
-    .panel { padding: 28px 0 0; border-top: 1px solid var(--line); }
-    .panel > .h {
-      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px;
-      margin-bottom: 14px;
-      font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text);
-    }
-    .panel > .h .muted { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
-    .chartcard { margin-bottom: 32px; }
-
-    .plot { position: relative; height: 300px; margin: 8px 0 0; }
-    .grid { position: absolute; inset: 0 0 0 46px; }
-    .gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
-    .gridline .gl {
-      position: absolute; left: -46px; width: 40px;
-      transform: translateY(-50%);
-      text-align: right;
-      font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums;
-    }
-    .bars { position: absolute; inset: 0 0 0 46px; z-index: 1; display: flex; align-items: flex-end; gap: 3px; }
-    .bar {
-      flex: 1 1 0; min-width: 0; min-height: 2px;
-      border-radius: 4px 4px 1px 1px;
-      background: var(--accent);
-      opacity: 0.85;
-      cursor: pointer;
-      transition: height 0.25s ease, opacity 0.15s;
-    }
-    .bars:hover .bar { opacity: 0.45; }
-    .bars .bar:hover { opacity: 1; }
-    .bar.sel { opacity: 1; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-    .xaxis { display: flex; margin: 10px 0 0 46px; }
-    .xtick { flex: 1 1 0; min-width: 0; overflow: hidden; text-align: center; white-space: nowrap; font-size: 11px; color: var(--text-3); }
-
-    /* Tabs, as a segmented switch. */
-    .tabs { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-subtle); }
-    .tab {
-      height: 34px; padding: 0 14px;
-      border: none; border-radius: 9px;
-      background: transparent;
-      color: var(--text-2);
-      font: 500 13.5px var(--sans);
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s, box-shadow 0.15s;
-    }
-    .tab:hover { color: var(--text); }
-    .tab.on { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08), 0 0 0 1px var(--line); }
-    .mini {
-      height: 30px; padding: 0 11px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--bg);
-      color: var(--text-2);
-      font: 500 12.5px var(--sans);
-      cursor: pointer;
-      transition: color 0.15s, background 0.15s, border-color 0.15s;
-    }
-    .mini:hover { color: var(--text); background: var(--bg-subtle); border-color: var(--line-strong); }
-    .periodchip {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 3px 5px 3px 11px;
-      border-radius: 999px;
-      background: var(--accent-bg);
-      color: var(--accent);
+    /* ---------- Breakdown: tabs, period, include / exclude ---------- */
+    .tbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin: 0 0 6px; }
+    .tbar .ui-seg button { height: 32px; padding: 0 14px; }
+    .tbar .cnt { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .tbar .grow { flex: 1; }
+    .mini { height: 30px; padding: 0 10px; font-size: 12.5px; border-radius: 9px; }
+    .period {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 28px; padding: 0 6px 0 10px;
+      border-radius: 999px; background: var(--accent-bg); color: var(--accent);
       font-size: 12.5px; font-weight: 500;
     }
-    .periodchip .x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; cursor: pointer; }
-    .periodchip .x:hover { background: var(--accent-bg); }
+    .period[hidden] { display: none; }
+    .period button { width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 12px; cursor: pointer; }
+    .period button:hover { background: rgba(132, 41, 255, 0.14); }
 
-    /* Tables: text on the page edge, rows highlight a little wider. */
-    .tscroll { margin: 0 -12px; overflow: hidden; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
-    thead th {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--line);
-      text-align: left;
-      font-size: 12px; font-weight: 500; color: var(--text-3);
-      white-space: nowrap;
-      cursor: pointer; user-select: none;
-      transition: color 0.15s;
-    }
-    thead th.r { text-align: right; }
-    thead th:hover { color: var(--text); }
-    thead th .ar { color: var(--accent); font-size: 11px; }
-    tbody td {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px;
-      vertical-align: middle;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr td { transition: background 0.1s; }
-    tbody tr:hover td { background: var(--bg-hover); }
-    td.r.mono { font-family: var(--sans); font-size: 14px; font-variant-numeric: tabular-nums; }
-    /* Transactions: USD bold as the common denominator; the token amount stays muted. */
-    #txRows td.r.mono:nth-child(4) { font-weight: 600; }
-    .vname { overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-    .chip { padding: 1px 7px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-2); font-size: 11px; text-transform: capitalize; }
-    .r { text-align: right; }
-    .shbar { display: inline-block; width: 34px; height: 6px; margin-left: 7px; overflow: hidden; vertical-align: middle; border-radius: 3px; background: var(--bg-subtle); }
-    .shbar > span { display: block; height: 100%; background: var(--accent); }
-    .empty { padding: 52px 20px; text-align: center; color: var(--text-3); }
-    .vc { display: inline-flex; align-items: center; gap: 9px; max-width: calc(100% - 34px); overflow: hidden; vertical-align: middle; cursor: pointer; }
-    .vck { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
-    .only { margin-left: 8px; vertical-align: middle; font-size: 12px; color: var(--accent); cursor: pointer; opacity: 0; transition: opacity 0.12s; }
-    tbody tr:hover .only { opacity: 1; }
-    .only:hover { text-decoration: underline; text-underline-offset: 3px; }
-    tbody tr.off td { opacity: 0.42; }
-    tbody tr.off:hover td { opacity: 0.7; }
-    .from { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .lnk { color: var(--text-2); transition: color 0.15s; }
-    .lnk:hover { color: var(--accent); }
-    .txarrow { color: var(--text-3); font-size: 14px; transition: color 0.15s; }
-    .txarrow:hover { color: var(--accent); }
+    /* Vaults: a table on a desktop, two lines on a phone. */
+    .vlist { --cols: minmax(0, 2.4fr) 92px minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.7fr) minmax(0, 1fr); }
+    .vhead, .vrow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
+    .vhead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .vhead button { justify-self: start; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+    .vhead button:hover, .vhead button.sorted { color: var(--text); }
+    .vhead .r, .vrow .r { justify-self: end; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .vrow { min-height: 52px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .vrow > * { min-width: 0; }
+    .vrow.off { opacity: 0.45; }
+    .vname { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .vname input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+    .vname label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; cursor: pointer; }
+    .vname .only { flex: none; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--text-3); font: 12px var(--sans); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s; }
+    .vrow:hover .only, .vname .only:focus-visible { opacity: 1; }
+    .vname .only:hover { color: var(--accent); }
+    .vrow .cnt { font-weight: 600; }
+    .vrow .sub { display: none; }
+    .shr { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+    .shr .bar { width: 56px; height: 5px; overflow: hidden; border-radius: 999px; background: var(--bg-subtle); }
+    .shr .bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
 
-    .uk-tip {
-      position: fixed; z-index: 9999;
-      max-width: 270px;
-      padding: 9px 12px;
-      border-radius: 10px;
-      background: var(--tip-bg);
-      color: var(--tip-fg);
-      font: 400 12.5px/1.5 var(--sans);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(3px);
-      transition: opacity 0.12s, transform 0.12s;
-    }
-    .uk-tip.show { opacity: 1; transform: none; }
-    .th-i {
-      display: inline-block;
-      width: 13px; height: 13px;
-      margin-left: 2px;
-      vertical-align: -2px;
-      overflow: hidden;
-      font-size: 0; font-style: normal;
-      color: var(--text-3);
-      background: currentColor;
-      -webkit-mask: var(--ui-i-mask) center / contain no-repeat;
-              mask: var(--ui-i-mask) center / contain no-repeat;
-      cursor: help;
-    }
-    .th-i:hover { color: var(--text); }
+    /* Transactions */
+    .tlist { --cols: 78px 112px minmax(0, 1fr) minmax(0, 0.9fr) 36px; }
+    .thead, .trow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
+    .thead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
+    .thead .r, .trow .r { justify-self: end; text-align: right; white-space: nowrap; }
+    .trow { min-height: 50px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .trow > * { min-width: 0; }
+    .trow .when { color: var(--text-2); white-space: nowrap; }
+    .trow a { color: inherit; text-decoration: none; }
+    .trow .addr { font: 12px var(--mono); color: var(--text-2); }
+    .trow a.addr:hover, .trow a.tx:hover { color: var(--accent); }
+    .trow .vault { display: flex; align-items: center; gap: 7px; }
+    .trow .vault .ui-chain > span:last-child { display: none; }
+    .trow .vault .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .trow .amt b { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .trow .amt span { margin-left: 4px; font-size: 12px; color: var(--text-3); }
+    .trow .tx { color: var(--text-3); font-size: 15px; }
+    .trow .meta { display: none; }
+    .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
 
-    @container (max-width: 900px) {
-      .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 24px; }
-      .card:nth-child(3n + 1) { padding-left: 0; border-left: none; }
-    }
-    @container (max-width: 640px) {
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .card:nth-child(3n + 1) { padding-left: 20px; border-left: 1px solid var(--line); }
-      .card:nth-child(odd) { padding-left: 0; border-left: none; }
-      .field { width: 100%; }
-      .seg { width: 100%; }
-      .seg button { flex: 1; padding: 0 6px; }
-      .tscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      table { min-width: 620px; }
+    @container (max-width: 700px) {
+      .tbar .grow { display: none; }
+      .tbar .ui-seg { width: auto; }
+      .vhead, .thead { display: none; }
+      .vrow {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "name cnt" "sub shr";
+        row-gap: 4px; padding: 11px 0; min-height: 0;
+      }
+      .vrow .vname { grid-area: name; }
+      .vrow .cnt { grid-area: cnt; }
+      .vrow .chain, .vrow .vol, .vrow .avg { display: none; }
+      .vrow .sub { grid-area: sub; display: block; padding-left: 25px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-3); }
+      .vrow .shr { grid-area: shr; }
+      .vname .only { opacity: 1; padding: 0 2px; }
+      .trow {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: "amt vault when" "meta meta tx";
+        row-gap: 4px; padding: 11px 0; min-height: 0;
+      }
+      .trow .amt { grid-area: amt; justify-self: start; }
+      .trow .amt span { display: none; }
+      .trow .vault { grid-area: vault; font-size: 13.5px; color: var(--text-2); }
+      .trow .when { grid-area: when; font-size: 12.5px; color: var(--text-3); }
+      .trow .wallet { display: none; }
+      .trow .meta { grid-area: meta; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-3); }
+      .trow .meta .addr { font-size: 11.5px; }
+      .trow .tx { grid-area: tx; }
     }
   </style>
+  <script defer src="/track.js"></script>
 </head>
 <body>
-
   <div class="ui-page">
     <header class="ui-masthead">
       <div>
         <h1>Dust Deposit Tracker</h1>
-        <p class="ui-lede">How many <b>small deposits</b> hit Fusion vaults over time. Pick a size threshold — the chart and breakdown update to count every deposit under it.</p>
-        <div class="ui-status datanote">
-          <span class="dot"></span>
-          <span>All Fusion vault deposits · synthetic (wrapper &amp; rebalance) flows excluded · USD value at deposit time.</span>
-          <span id="updated"></span><span id="zyfaiNote"></span>
-        </div>
-      </div>
-      <div class="ui-meta">
-        <button class="mkbtn ui-ghost" id="mkBtn">Show Base App Listing</button>
+        <p class="ui-lede">How many <b>small deposits</b> reach Fusion vaults over time. Pick a size: the chart and the breakdown count every deposit under it.</p>
+        <div class="ui-status" id="status">Loading…</div>
       </div>
     </header>
 
-    <div class="controls">
-      <div class="field">
-        <label>Deposit size <span class="szval" id="szVal">&lt; $1,000</span></label>
-        <div class="seg" id="segT">
-          <button data-t="100">&lt; $100</button>
-          <button data-t="1000" class="on">&lt; $1k</button>
-          <button data-t="5000">&lt; $5k</button>
-          <button data-t="10000">&lt; $10k</button>
-          <button data-t="20000">&lt; $20k</button>
+    <section class="ui-section">
+      <div class="ui-toolbar" style="margin-bottom:10px">
+        <div class="ui-filters" style="--cols: 2">
+          <label class="ui-filter">
+            <span class="ui-filter-label">Deposit size</span>
+            <select id="size" data-fs>
+              <option value="100">Under $100</option>
+              <option value="1000" selected>Under $1K</option>
+              <option value="5000">Under $5K</option>
+              <option value="10000">Under $10K</option>
+              <option value="20000">Under $20K</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Bucket</span>
+            <select id="grain" data-fs>
+              <option value="day">Daily</option>
+              <option value="week">Weekly</option>
+              <option value="month" selected>Monthly</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">Timeframe</span>
+            <select id="tf" data-fs>
+              <option value="1w">1 week</option>
+              <option value="1m">1 month</option>
+              <option value="mtd">Month to date</option>
+              <option value="all" selected>All</option>
+            </select>
+          </label>
+          <label class="ui-filter">
+            <span class="ui-filter-label">ZyfAI <span class="ui-tip" tabindex="0" data-tip="Deposits from ZyfAI (ERC-4337): its sender or owner is one of ZyfAI's routers or a wallet on ZyfAI's published list. Only shows just those; Exclude hides them, to see organic deposits.">ⓘ</span></span>
+            <select id="zyfai" data-fs>
+              <option value="all" selected>All</option>
+              <option value="only">Only</option>
+              <option value="exclude">Exclude</option>
+            </select>
+          </label>
         </div>
-        <input type="range" id="szSlider" class="uk-slider" min="0" max="10000" step="100" value="1000" aria-label="Deposit size threshold ($0–$10k)">
-        <div class="slider-scale"><span>$0</span><span>$5k</span><span>$10k</span></div>
       </div>
-      <div class="field">
-        <label>Bucket by</label>
-        <div class="seg sm" id="segG">
-          <button data-g="day">Daily</button>
-          <button data-g="week">Weekly</button>
-          <button data-g="month" class="on">Monthly</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Timeframe</label>
-        <div class="seg sm" id="segTF">
-          <button data-tf="1w">1W</button>
-          <button data-tf="1m">1M</button>
-          <button data-tf="mtd">MTD</button>
-          <button data-tf="all" class="on">All</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>ZyfAI <span style="color:var(--text-secondary);font-weight:400;text-transform:none;letter-spacing:0">(ERC-4337)</span> <i class="th-i" title="Deposits from ZyfAI — matched when the deposit's sender or owner is in ZyfAI's published EOA / smart-wallet list (per chain, kept fresh from their API). Only = show just ZyfAI; Exclude = hide ZyfAI to see organic deposits.">i</i></label>
-        <div class="seg sm" id="segZ">
-          <button data-z="all" class="on">All</button>
-          <button data-z="only">Only</button>
-          <button data-z="exclude">Exclude</button>
-        </div>
-      </div>
-    </div>
+      <div class="fine"><span>$0</span><input type="range" id="slider" min="0" max="10000" step="100" value="1000" aria-label="Deposit size, $0 to $10K"><span>$10K</span><b id="sizeVal">&lt; $1,000</b></div>
 
-    <div class="cards" id="cards"></div>
-
-    <div class="panel chartcard">
-      <div class="h"><span id="chartTitle">Dust deposits over time</span><span class="muted" id="chartSub"></span></div>
-      <div class="plot">
-        <div class="grid" id="grid"></div>
-        <div class="bars" id="bars"></div>
-        <div class="markers" id="markers"></div>
+      <div class="ui-figures" style="--n:4; border-bottom:none; padding-bottom: 6px">
+        <div class="ui-figure"><div class="k">Dust deposits</div><div class="v accent" id="fCount"></div><div class="s" id="fCountSub">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Share of all deposits</div><div class="v" id="fShare"></div><div class="s" id="fShareSub">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Dust volume</div><div class="v" id="fVol"></div><div class="s" id="fVolSub">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Wallets</div><div class="v" id="fWallets"></div><div class="s">made one</div></div>
       </div>
-      <div class="xaxis" id="xaxis"></div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <div class="h">
-        <div class="tabs">
-          <button class="tab on" data-v="vault">By vault</button>
-          <button class="tab" data-v="tx">Transactions</button>
+    <section class="ui-section">
+      <div class="ui-head">
+        <h2 id="chartTitle">Dust deposits over time</h2>
+        <button type="button" class="ui-btn mark-btn" id="markBtn" aria-pressed="false" title="A line at July 9, when Fusion vaults were listed in the Base App">Base App listing</button>
+      </div>
+      <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+    </section>
+
+    <section class="ui-section">
+      <div class="tbar">
+        <div class="ui-seg" id="view" role="group" aria-label="Breakdown">
+          <button type="button" data-v="vault" class="on">By vault</button>
+          <button type="button" data-v="tx">Transactions</button>
         </div>
-        <span style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
-          <span class="periodchip" id="periodChip" style="display:none"></span>
-          <span class="muted" id="tblCnt"></span>
-          <button class="mini" id="selAll">Include all</button><button class="mini" id="selNone">Exclude all</button>
-        </span>
+        <span class="period" id="period" hidden></span>
+        <span class="cnt" id="cnt"></span>
+        <span class="grow"></span>
+        <button type="button" class="ui-btn mini" id="selAll">Include all</button>
+        <button type="button" class="ui-btn mini" id="selNone">Exclude all</button>
       </div>
-      <div class="tscroll" id="vaultView">
-        <table>
-          <thead><tr>
-            <th data-s="name" style="width:38%">Vault</th>
-            <th data-s="chain" style="width:10%">Chain</th>
-            <th class="r" data-s="count" style="width:16%">Dust deposits</th>
-            <th class="r" data-s="usd" style="width:14%">Volume</th>
-            <th class="r" data-s="avg" style="width:10%">Avg size</th>
-            <th class="r" data-s="share" style="width:12%" title="What % of this vault's own deposits fall under the selected size.">% of vault</th>
-          </tr></thead>
-          <tbody id="rows"></tbody>
-        </table>
+      <div class="vlist" id="vaultView">
+        <div class="vhead">
+          <button type="button" data-s="name">Vault</button>
+          <button type="button" data-s="chain">Network</button>
+          <button type="button" class="r" data-s="count">Dust deposits</button>
+          <button type="button" class="r" data-s="usd">Volume</button>
+          <button type="button" class="r" data-s="avg">Avg size</button>
+          <button type="button" class="r" data-s="share" title="What share of this vault's own deposits fall under the size.">% of vault</button>
+        </div>
+        <div id="vaultRows"></div>
+        <div id="vaultPager"></div>
       </div>
-      <div class="tscroll" id="txView" style="display:none">
-        <table>
-          <thead><tr>
-            <th style="width:14%">When</th>
-            <th style="width:18%">Wallet</th>
-            <th style="width:34%">Vault</th>
-            <th class="r" style="width:22%">Amount</th>
-            <th class="r" style="width:12%">Tx</th>
-          </tr></thead>
-          <tbody id="txRows"></tbody>
-        </table>
+      <div class="tlist" id="txView" hidden>
+        <div class="thead"><span>When</span><span>Wallet</span><span>Vault</span><span class="r">Amount</span><span class="r">Tx</span></div>
+        <div id="txRows"></div>
+        <div id="txPager"></div>
       </div>
-    </div>
+    </section>
+
+    <details class="ui-more">
+      <summary>What is counted</summary>
+      <div>Every deposit into a Fusion vault, at its USD value when it was made, leaving out synthetic flows (wrappers and rebalances). A dust deposit is one under the chosen size; <b>Share of all deposits</b> sets them against every deposit with a USD value. A bar is a day, a week or a month; a click on one narrows the breakdown to it. Unticking a vault takes it out of the chart and the figures.</div>
+    </details>
   </div>
 
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
   <script>
-    /* floating tooltip (bars + header i) */
-    (function () {
-      var tip = document.createElement('div'); tip.className = 'uk-tip'; document.body.appendChild(tip);
-      function show(el){ var t = el.getAttribute('data-tip') || el.getAttribute('title'); if(!t) return;
-        if(el.hasAttribute('title')){ el.setAttribute('data-tip', t); el.removeAttribute('title'); }
-        tip.textContent = t; tip.classList.add('show');
-        var r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
-        tip.style.left = Math.max(8, Math.min(r.left + r.width/2 - tw/2, window.innerWidth - tw - 8)) + 'px';
-        tip.style.top = (r.top - th - 8 < 8 ? r.bottom + 8 : r.top - th - 8) + 'px'; }
-      function hide(){ tip.classList.remove('show'); }
-      document.addEventListener('mouseover', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],[title].th-i,.bar') : null; if(el) show(el); });
-      document.addEventListener('mouseout', function(e){ var el = e.target.closest ? e.target.closest('[data-tip],.th-i,.bar') : null; if(el) hide(); });
-    })();
+  (function () {
+    'use strict';
+    const EXPLORER = { ethereum: 'https://etherscan.io', base: 'https://basescan.org', arbitrum: 'https://arbiscan.io', avalanche: 'https://snowtrace.io', unichain: 'https://uniscan.xyz', plasma: 'https://plasmascan.to', ink: 'https://explorer.inkonchain.com', katana: 'https://explorer.katanarpc.com', tac: 'https://explorer.tac.build' };
+    const VAULT_PAGE = 20, TX_PAGE = 10;
+    const BASE_BLUE = '#0052FF';
+    const esc = UI.esc;
+    const state = { deposits: [], totalDeposits: 0, totalByVault: {}, vaultMeta: {}, threshold: 1000, grain: 'month', sort: { key: 'count', dir: -1 },
+      excluded: new Set(), view: 'vault', period: null, zyfai: 'all', since: 0, tf: 'all', showMarker: false, vaultPage: 1, txPage: 1, txLoad: null, buckets: [] };
 
-    var state = { deposits:[], totalByVault:{}, vaultMeta:{}, threshold:1000, grain:'month', sort:{key:'count',dir:-1}, excluded:new Set(), view:'vault', period:null, vcount:'', tcount:'', zyfai:'all', since:0, tf:'all', showMarker:false };
-    // ZyfAI (ERC-4337 / Pimlico) — router/executor addresses that call deposit() on behalf of users.
-    var ZYFAI = new Set(['0xaffd3c3cd06cf499deddf78b26868018a93f2c31','0x677251190c0cccc6e7e71c385b3ea660dfd89c00','0xea49d02c248b357b99670d9e9741f54f72df9cb3','0x9af838b8bb05269dac4f30a127f171d3cf76dac3','0x399502b8dc8a38e2cd2d670f4f40cc168c063585','0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db']);
-    function isZyfai(d){ return ZYFAI.has((d.sender||'').toLowerCase()) || ZYFAI.has((d.owner||'').toLowerCase()); }
-    function zyfaiOk(d){ return state.zyfai==='all' ? true : state.zyfai==='only' ? isZyfai(d) : !isZyfai(d); }
-    function included(a){ return !state.excluded.has(a); }
+    // ZyfAI: in the built file every deposit already carries its mark (z).
+    // Without that file the page marks them itself, as it did: ZyfAI's
+    // routers, then its published wallet list.
+    const ZYFAI = new Set(['0xaffd3c3cd06cf499deddf78b26868018a93f2c31', '0x677251190c0cccc6e7e71c385b3ea660dfd89c00', '0xea49d02c248b357b99670d9e9741f54f72df9cb3', '0x9af838b8bb05269dac4f30a127f171d3cf76dac3', '0x399502b8dc8a38e2cd2d670f4f40cc168c063585', '0xecd2bf892e2ee99cf2cbbc81f6877132e25e34db']);
+    const isZyfai = (d) => (d.z != null ? d.z === 1 : ZYFAI.has((d.sender || '').toLowerCase()) || ZYFAI.has((d.owner || '').toLowerCase()));
+    const zyfaiOk = (d) => (state.zyfai === 'all' ? true : state.zyfai === 'only' ? isZyfai(d) : !isZyfai(d));
+    const included = (a) => !state.excluded.has(a);
 
-    function fUsd(n){ if(n==null||isNaN(n)) return '—'; if(n>=1e9) return '$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(1)+'K'; return '$'+n.toFixed(n<10?2:0); }
-    function fNum(n){ return n.toLocaleString('en-US'); }
-    function shortAddr(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : ''; }
-    function fmtT(t){ return t>=1000 ? '$'+(t/1000)+'k' : '$'+t; }
-    function niceMax(m){ if(m<=5) return 5; var p=Math.pow(10,Math.floor(Math.log10(m))); var f=m/p; var n=f<=1?1:f<=2?2:f<=5?5:10; return n*p; }
+    function fUsd(n) { if (n == null || isNaN(n)) return '—'; if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K'; return '$' + n.toFixed(n < 10 ? 2 : 0); }
+    const fNum = (n) => n.toLocaleString('en-US');
+    const shortAddr = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
+    const fmtT = (t) => (t >= 1000 ? '$' + (t / 1000) + 'K' : '$' + t);
+    function fTok(n) { if (n == null) return ''; if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 }); if (n >= 1) return n.toFixed(3); return n.toFixed(5); }
+    function fWhen(ts) { const d = new Date(ts * 1000), a = Date.now() / 1000 - ts; const rel = a < 3600 ? Math.round(a / 60) + 'm ago' : a < 86400 ? Math.round(a / 3600) + 'h ago' : a < 2592000 ? Math.round(a / 86400) + 'd ago' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }); return { rel, abs: d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }; }
 
-    function monthKey(ts){ var d=new Date(ts*1000); return d.getFullYear()*12 + d.getMonth(); }
-    function monthLabel(k){ return new Date(Math.floor(k/12), k%12, 1).toLocaleDateString('en-US',{month:'short',year:'2-digit'}); }
-    function weekKey(ts){ return Math.floor(ts/604800); }
-    function weekLabel(k){ return new Date(k*604800*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
-    function dayKey(ts){ return Math.floor(ts/86400); }
-    function dayLabel(k){ return new Date(k*86400000).toLocaleDateString('en-US',{timeZone:'UTC',month:'short',day:'numeric'}); }
-    var EXPLORER = { ethereum:'https://etherscan.io', base:'https://basescan.org', arbitrum:'https://arbiscan.io', avalanche:'https://snowtrace.io', unichain:'https://uniscan.xyz', plasma:'https://plasmascan.to', ink:'https://explorer.inkonchain.com', katana:'https://explorer.katanarpc.com', tac:'https://explorer.tac.build' };
-    function fTok(n){ if(n==null) return ''; if(n>=1000) return n.toLocaleString('en-US',{maximumFractionDigits:0}); if(n>=1) return n.toFixed(3); return n.toFixed(5); }
-    function fWhen(ts){ var d=new Date(ts*1000), a=Date.now()/1000-ts; var rel=a<3600?Math.round(a/60)+'m ago':a<86400?Math.round(a/3600)+'h ago':a<2592000?Math.round(a/86400)+'d ago':d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}); return { rel:rel, abs:d.toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) }; }
-    function bucketKey(ts){ return state.grain==='day'?dayKey(ts):state.grain==='week'?weekKey(ts):monthKey(ts); }
-    function periodLabel(k){ return state.grain==='day'?dayLabel(k):state.grain==='week'?weekLabel(k):monthLabel(k); }
-    function inPeriod(d){ return state.period==null || bucketKey(d.timestamp)===state.period; }
+    // ---- periods: a day (UTC), a week, a month (local), as before ----
+    const monthKey = (ts) => { const d = new Date(ts * 1000); return d.getFullYear() * 12 + d.getMonth(); };
+    const monthLabel = (k) => new Date(Math.floor(k / 12), k % 12, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const monthStart = (k) => new Date(Math.floor(k / 12), k % 12, 1);
+    const weekKey = (ts) => Math.floor(ts / 604800);
+    const weekLabel = (k) => new Date(k * 604800 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const dayKey = (ts) => Math.floor(ts / 86400);
+    const dayLabel = (k) => new Date(k * 86400000).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+    const bucketKey = (ts) => (state.grain === 'day' ? dayKey(ts) : state.grain === 'week' ? weekKey(ts) : monthKey(ts));
+    const periodLabel = (k) => (state.grain === 'day' ? dayLabel(k) : state.grain === 'week' ? weekLabel(k) : monthLabel(k));
+    // Where a period's bar stands: its first day, as a local date (the chart
+    // reads dates in local time; a day's and a week's are counted in UTC).
+    const localDay = (ms) => { const u = new Date(ms); return new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate()); };
+    const periodStart = (k) => (state.grain === 'day' ? localDay(k * 86400000) : state.grain === 'week' ? localDay(k * 604800 * 1000) : monthStart(k));
+    const inPeriod = (d) => state.period == null || bucketKey(d.timestamp) === state.period;
 
-    function dustList(){ var t=state.threshold; return state.deposits.filter(function(d){ return d.usdValue < t && d.timestamp >= state.since && zyfaiOk(d); }); }
+    const dustList = () => { const t = state.threshold; return state.deposits.filter((d) => d.usdValue < t && d.timestamp >= state.since && zyfaiOk(d)); };
 
-    function renderCards(dust){
-      var vol=dust.reduce(function(s,d){return s+d.usdValue;},0);
-      var wallets={}; dust.forEach(function(d){ if(d.owner) wallets[d.owner.toLowerCase()]=1; });
-      var pct = state.deposits.length ? 100*dust.length/state.deposits.length : 0;
-      var cards=[
-        ['Dust deposits', fNum(dust.length), 'under '+fmtT(state.threshold), true],
-        ['Share of all deposits', pct.toFixed(1)+'%', 'of '+fNum(state.deposits.length)+' total', false],
-        ['Dust volume', fUsd(vol), 'combined USD', false],
-        ['Avg size', dust.length?fUsd(vol/dust.length):'—', 'per dust deposit', false],
-        ['Wallets', fNum(Object.keys(wallets).length), 'made a dust deposit', false]
-      ];
-      document.getElementById('cards').innerHTML = cards.map(function(c){
-        return '<div class="card"><div class="k">'+c[0]+'</div><div class="v'+(c[3]?' accent':'')+'">'+c[1]+'</div><div class="sv">'+c[2]+'</div></div>';
-      }).join('');
+    // ---- figures ----
+    function renderFigures(dust) {
+      const vol = dust.reduce((s, d) => s + d.usdValue, 0);
+      const wallets = {}; dust.forEach((d) => { if (d.owner) wallets[d.owner.toLowerCase()] = 1; });
+      const pct = state.totalDeposits ? 100 * dust.length / state.totalDeposits : 0;
+      document.getElementById('fCount').textContent = fNum(dust.length);
+      document.getElementById('fShare').textContent = pct.toFixed(1) + '%';
+      document.getElementById('fShareSub').textContent = 'of ' + fNum(state.totalDeposits);
+      document.getElementById('fVol').textContent = fUsd(vol);
+      document.getElementById('fVolSub').textContent = dust.length ? 'avg ' + fUsd(vol / dust.length) : ' ';
+      document.getElementById('fWallets').textContent = fNum(Object.keys(wallets).length);
     }
 
-    function renderChart(dust){
-      document.getElementById('markers').innerHTML='';
-      var keyFn = state.grain==='day'?dayKey:state.grain==='week'?weekKey:monthKey;
-      var labFn = state.grain==='day'?dayLabel:state.grain==='week'?weekLabel:monthLabel;
-      var m={}; dust.forEach(function(d){ var k=keyFn(d.timestamp); if(!m[k])m[k]={c:0,u:0}; m[k].c++; m[k].u+=d.usdValue; });
-      var keys=Object.keys(m).map(Number);
-      document.getElementById('chartTitle').textContent = 'Deposits under '+fmtT(state.threshold)+' · '+(state.grain==='day'?'daily':state.grain==='week'?'weekly':'monthly');
-      if(!keys.length){ document.getElementById('bars').innerHTML=''; document.getElementById('grid').innerHTML=''; document.getElementById('xaxis').innerHTML=''; document.getElementById('chartSub').textContent='no deposits'; return; }
-      var min=Math.min.apply(null,keys), max=Math.max.apply(null,keys);
-      var capped = state.grain==='day' && (max-min)>89; if(capped) min=max-89;
-      var buckets=[];
-      for(var k=min;k<=max;k++){ buckets.push({ key:k, label:labFn(k), c:m[k]?m[k].c:0, u:m[k]?m[k].u:0 }); }
-      var peak=Math.max.apply(null,buckets.map(function(b){return b.c;})), nm=niceMax(peak);
-      var nv=Object.keys(dust.reduce(function(o,d){o[d.vault]=1;return o;},{})).length;
-      var per = state.grain==='day'?'day':state.grain==='week'?'wk':'mo';
-      document.getElementById('chartSub').textContent = nv+' vault'+(nv===1?'':'s')+' · peak '+fNum(peak)+'/'+per+(capped?' · last 90 days':'');
-      document.getElementById('bars').innerHTML = buckets.map(function(b){
-        return '<div class="bar'+(b.key===state.period?' sel':'')+'" data-bk="'+b.key+'" data-tip="'+b.label+' — '+fNum(b.c)+' deposits · '+fUsd(b.u)+' · click to drill in" style="height:'+(b.c/nm*100)+'%"></div>'; }).join('');
-      document.getElementById('grid').innerHTML = [0,.25,.5,.75,1].map(function(f){
-        return '<div class="gridline" style="bottom:'+(f*100)+'%"><span class="gl">'+fNum(Math.round(nm*f))+'</span></div>'; }).join('');
-      var N=Math.ceil(buckets.length/12);
-      document.getElementById('xaxis').innerHTML = buckets.map(function(b,i){ return '<div class="xtick">'+((i%N===0)?b.label:'')+'</div>'; }).join('');
-      if(state.showMarker){
-        var _ts=Date.UTC(2026,6,9,12)/1000, _tkey=bucketKey(_ts), _ti=-1;
-        for(var _mi=0;_mi<buckets.length;_mi++){ if(buckets[_mi].key===_tkey){ _ti=_mi; break; } }
-        if(_ti>=0){
-          var _frac=0.5;
-          if(state.grain==='day') _frac=(_ts - _tkey*86400)/86400;
-          else if(state.grain==='week') _frac=(_ts - _tkey*604800)/604800;
-          else { var _yy=Math.floor(_tkey/12), _mm=_tkey%12; _frac=(_ts*1000 - Date.UTC(_yy,_mm,1))/(Date.UTC(_yy,_mm+1,1)-Date.UTC(_yy,_mm,1)); }
-          document.getElementById('markers').innerHTML='<div class="marker" style="left:'+((_ti+_frac)/buckets.length*100)+'%"><span class="lbl">Base App listing · Jul 9</span></div>';
-        }
+    // ---- chart ----
+    const plotlyReady = new Promise((resolve, reject) => {
+      if (window.Plotly) return resolve();
+      const tag = document.getElementById('plotlyJs');
+      tag.addEventListener('load', () => resolve());
+      tag.addEventListener('error', () => reject(new Error('the chart library (cdn.plot.ly) did not load')));
+    });
+    const CONFIG = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false, showTips: false };
+    function buckets(dust) {
+      const m = {}; dust.forEach((d) => { const k = bucketKey(d.timestamp); if (!m[k]) m[k] = { c: 0, u: 0 }; m[k].c++; m[k].u += d.usdValue; });
+      const keys = Object.keys(m).map(Number);
+      if (!keys.length) return { list: [], capped: false };
+      let min = Math.min(...keys); const max = Math.max(...keys);
+      const capped = state.grain === 'day' && (max - min) > 89; if (capped) min = max - 89;
+      const list = [];
+      for (let k = min; k <= max; k++) list.push({ key: k, label: periodLabel(k), c: m[k] ? m[k].c : 0, u: m[k] ? m[k].u : 0 });
+      return { list, capped };
+    }
+    async function renderChart(dust) {
+      const el = document.getElementById('chart');
+      const { list, capped } = buckets(dust);
+      state.buckets = list;
+      document.getElementById('chartTitle').textContent = 'Deposits under ' + fmtT(state.threshold) + ', ' + (state.grain === 'day' ? 'daily' : state.grain === 'week' ? 'weekly' : 'monthly') + (capped ? ', last 90 days' : '');
+      if (!list.length) {
+        if (window.Plotly && el.data) Plotly.purge(el);
+        el.innerHTML = '<div class="ui-empty">No deposits under ' + fmtT(state.threshold) + '.</div>';
+        return;
+      }
+      await plotlyReady;
+      el.querySelectorAll(':scope > .ui-empty').forEach((n) => n.remove());
+      const accent = FusionChart.cssVar('--accent', '#8429FF');
+      const dim = 'rgba(132, 41, 255, 0.35)';
+      const x = list.map((b) => periodStart(b.key));
+      const trace = {
+        type: 'bar', x, y: list.map((b) => b.c), customdata: list.map((b) => b.key),
+        marker: { color: list.map((b) => (state.period == null || b.key === state.period ? accent : dim)), cornerradius: 4, line: { width: 0 } },
+      };
+      const col = { font: FusionChart.cssVar('--text-2', '#70747A'), line: FusionChart.cssVar('--line', '#E5E5E5') };
+      const layout = {
+        autosize: true, margin: { l: 56, r: 16, t: 12, b: 40 },
+        plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: col.font, size: 12 },
+        xaxis: { type: 'date', showgrid: false, linecolor: col.line, tickfont: { size: 11 }, ticks: 'outside', ticklen: 8, tickcolor: 'rgba(0,0,0,0)', automargin: true, fixedrange: true,
+          tickformat: state.grain === 'month' ? "%b '%y" : '%b %d' },
+        yaxis: { showgrid: false, linecolor: col.line, tickfont: { size: 11 }, tickformat: ',d', rangemode: 'tozero', ticks: 'outside', ticklen: 10, tickcolor: 'rgba(0,0,0,0)', automargin: true, fixedrange: true },
+        bargap: list.length > 60 ? 0.12 : 0.22, showlegend: false,
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
+        shapes: [], annotations: [],
+      };
+      if (state.showMarker) {
+        // Fusion vaults listed in the Base App: Jul 9, 2026.
+        const at = new Date(Date.UTC(2026, 6, 9, 12));
+        layout.shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: at, x1: at, y0: 0, y1: 1, line: { color: BASE_BLUE, width: 2 } });
+        layout.annotations.push({ xref: 'x', yref: 'paper', x: at, y: 1, xanchor: 'right', yanchor: 'top', showarrow: false, text: 'Base App listing · Jul 9',
+          font: { color: '#fff', size: 10.5 }, bgcolor: BASE_BLUE, borderpad: 3 });
+      }
+      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout), CONFIG);
+      FusionChart.glide(el, (pts) => {
+        const b = list[pts[0].pointIndex != null ? pts[0].pointIndex : pts[0].pointNumber];
+        if (!b) return '';
+        return '<div class="hv-when">' + esc(b.label) + '</div><div class="hv-big">' + fNum(b.c) + ' deposits</div>'
+          + FusionChart.row(null, 'Volume', fUsd(b.u))
+          + '<div class="hv-when" style="margin:4px 0 0">' + (b.key === state.period ? 'tap again for every period' : 'tap to see its deposits') + '</div>';
+      });
+      if (!el.__click) {
+        el.on('plotly_click', (ev) => {
+          const p = ev.points && ev.points[0]; if (!p) return;
+          const b = state.buckets[p.pointIndex != null ? p.pointIndex : p.pointNumber]; if (!b) return;
+          state.period = state.period === b.key ? null : b.key;
+          if (state.period != null) state.view = 'tx';
+          state.txPage = 1; state.vaultPage = 1;
+          renderAll();
+        });
+        el.__click = true;
       }
     }
 
-    function renderTable(dust){
-      var m={}; dust.forEach(function(d){ var a=d.vault; if(!m[a])m[a]={count:0,usd:0}; m[a].count++; m[a].usd+=d.usdValue; });
-      var rows=Object.keys(m).map(function(a){ var meta=state.vaultMeta[a]||{}; var t=state.totalByVault[a]||0;
-        return { addr:a, name:meta.name||shortAddr(a), chain:meta.chain||'', count:m[a].count, usd:m[a].usd, avg:m[a].usd/m[a].count, share:t?m[a].count/t:0 }; });
-      var s=state.sort; rows.sort(function(a,b){ var x=a[s.key], y=b[s.key];
-        if(typeof x==='string') return s.dir*x.localeCompare(y); return s.dir*(x-y); });
-      var inc=rows.filter(function(r){ return included(r.addr); }).length;
-      state.vcount = inc+' of '+rows.length+' vault'+(rows.length===1?'':'s')+' shown';
-      var tb=document.getElementById('rows');
-      if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty">No deposits under '+fmtT(state.threshold)+'.</div></td></tr>'; return; }
-      tb.innerHTML = rows.map(function(r){ var off=!included(r.addr);
-        return '<tr'+(off?' class="off"':'')+'>'+
-          '<td><label class="vc"><input type="checkbox" class="vck" data-a="'+r.addr+'"'+(off?'':' checked')+'><span class="vname" title="'+r.name+'">'+r.name+'</span></label><a class="only" data-a="'+r.addr+'">only</a></td>'+
-          '<td><span class="chip">'+r.chain+'</span></td>'+
-          '<td class="r mono">'+fNum(r.count)+'</td>'+
-          '<td class="r mono">'+fUsd(r.usd)+'</td>'+
-          '<td class="r mono">'+fUsd(r.avg)+'</td>'+
-          '<td class="r mono">'+Math.round(r.share*100)+'%<span class="shbar"><span style="width:'+Math.round(r.share*100)+'%"></span></span></td>'+
-        '</tr>'; }).join('');
-      // header sort arrows
-      Array.prototype.forEach.call(document.querySelectorAll('thead th'), function(th){
-        var k=th.getAttribute('data-s'); th.querySelector('.ar') && th.querySelector('.ar').remove();
-        if(k===s.key){ var sp=document.createElement('span'); sp.className='ar'; sp.textContent=s.dir<0?' ↓':' ↑'; th.appendChild(sp); }
+    // ---- by vault ----
+    function vaultRows(dust) {
+      const m = {}; dust.forEach((d) => { const a = d.vault; if (!m[a]) m[a] = { count: 0, usd: 0 }; m[a].count++; m[a].usd += d.usdValue; });
+      const rows = Object.keys(m).map((a) => { const meta = state.vaultMeta[a] || {}; const t = state.totalByVault[a] || 0;
+        return { addr: a, name: meta.name || shortAddr(a), chain: meta.chain || '', count: m[a].count, usd: m[a].usd, avg: m[a].usd / m[a].count, share: t ? m[a].count / t : 0 }; });
+      const s = state.sort;
+      rows.sort((a, b) => { const x = a[s.key], y = b[s.key]; if (typeof x === 'string') return s.dir * x.localeCompare(y); return s.dir * (x - y); });
+      return rows;
+    }
+    function renderVaults(dust) {
+      const rows = vaultRows(dust);
+      const inc = rows.filter((r) => included(r.addr)).length;
+      state.vcount = rows.length === inc ? fNum(rows.length) + ' vault' + (rows.length === 1 ? '' : 's') : inc + ' of ' + rows.length + ' vaults';
+      const box = document.getElementById('vaultRows');
+      if (!rows.length) { box.innerHTML = '<div class="empty">No deposits under ' + fmtT(state.threshold) + '.</div>'; document.getElementById('vaultPager').innerHTML = ''; return; }
+      const last = Math.max(1, Math.ceil(rows.length / VAULT_PAGE));
+      state.vaultPage = Math.min(Math.max(1, state.vaultPage), last);
+      box.innerHTML = rows.slice((state.vaultPage - 1) * VAULT_PAGE, state.vaultPage * VAULT_PAGE).map((r) => {
+        const off = !included(r.addr), id = 'v' + r.addr.slice(2, 12);
+        const pct = Math.round(r.share * 100);
+        return `<div class="vrow${off ? ' off' : ''}">
+          <span class="vname"><input type="checkbox" id="${id}" data-a="${esc(r.addr)}"${off ? '' : ' checked'}><label for="${id}" title="${esc(r.name)}">${esc(r.name)}</label><button type="button" class="only" data-a="${esc(r.addr)}" title="Show only this vault">only</button></span>
+          <span class="chain">${r.chain ? UI.chain(r.chain) : ''}</span>
+          <span class="r cnt">${fNum(r.count)}</span>
+          <span class="r vol">${fUsd(r.usd)}</span>
+          <span class="r avg">${fUsd(r.avg)}</span>
+          <span class="r shr" title="${pct}% of this vault's deposits"><span class="bar"><i style="width:${pct}%"></i></span>${pct}%</span>
+          <span class="sub">${r.chain ? esc(FusionSelect.chainName(r.chain)) + ' · ' : ''}${fUsd(r.usd)}</span>
+        </div>`;
+      }).join('');
+      document.getElementById('vaultPager').innerHTML = UI.pager({ total: rows.length, page: state.vaultPage, size: VAULT_PAGE, noun: 'vaults' });
+      document.querySelectorAll('.vhead button').forEach((b) => {
+        const on = b.dataset.s === state.sort.key;
+        b.classList.toggle('sorted', on);
+        b.textContent = b.textContent.replace(/ [↑↓]$/, '') + (on ? (state.sort.dir < 0 ? ' ↓' : ' ↑') : '');
       });
     }
 
-    function renderTx(list){
-      var rows=list.slice().sort(function(a,b){ return b.timestamp-a.timestamp; });
-      state.tcount = fNum(rows.length)+' transaction'+(rows.length===1?'':'s');
-      var tb=document.getElementById('txRows');
-      if(!rows.length){ tb.innerHTML='<tr><td colspan="5"><div class="empty">No deposits under '+fmtT(state.threshold)+(state.period!=null?' in '+periodLabel(state.period):'')+' for the selected vaults.</div></td></tr>'; return; }
-      tb.innerHTML = rows.slice(0,500).map(function(d){
-        var ex=EXPLORER[d.chain]||'', meta=state.vaultMeta[d.vault]||{}, w=fWhen(d.timestamp);
-        var wl = ex && d.owner ? '<a class="lnk mono" href="'+ex+'/address/'+d.owner+'" target="_blank" rel="noopener" title="'+d.owner+'">'+shortAddr(d.owner)+'</a>' : '<span class="mono" title="'+(d.owner||'')+'">'+shortAddr(d.owner||'')+'</span>';
-        var tx = ex ? '<a class="txarrow" href="'+ex+'/tx/'+d.tx+'" target="_blank" rel="noopener" title="View tx on '+d.chain+'">↗</a>' : '';
-        return '<tr>'+
-          '<td><span title="'+w.abs+'">'+w.rel+'</span></td>'+
-          '<td>'+wl+'</td>'+
-          '<td><span class="from"><span class="vname" title="'+(meta.name||'')+'">'+(meta.name||shortAddr(d.vault))+'</span><span class="chip">'+(d.chain||'')+'</span></span></td>'+
-          '<td class="r mono">'+fUsd(d.usdValue)+' <span style="color:var(--text-secondary);font-weight:400">· '+fTok(d.assets)+' '+(d.symbol||'')+'</span></td>'+
-          '<td class="r">'+tx+'</td>'+
-        '</tr>'; }).join('') + (rows.length>500?'<tr><td colspan="5"><div class="empty" style="padding:14px">Showing 500 of '+fNum(rows.length)+' — narrow by vault or period.</div></td></tr>':'');
+    // ---- transactions ----
+    function renderTx(list) {
+      const rows = list.slice().sort((a, b) => b.timestamp - a.timestamp);
+      state.tcount = fNum(rows.length) + ' deposit' + (rows.length === 1 ? '' : 's');
+      const box = document.getElementById('txRows');
+      if (!rows.length) {
+        box.innerHTML = '<div class="empty">No deposits under ' + fmtT(state.threshold) + (state.period != null ? ' in ' + esc(periodLabel(state.period)) : '') + ' for the selected vaults.</div>';
+        document.getElementById('txPager').innerHTML = '';
+        return;
+      }
+      const last = Math.max(1, Math.ceil(rows.length / TX_PAGE));
+      state.txPage = Math.min(Math.max(1, state.txPage), last);
+      box.innerHTML = rows.slice((state.txPage - 1) * TX_PAGE, state.txPage * TX_PAGE).map((d) => {
+        const ex = EXPLORER[d.chain] || '', meta = state.vaultMeta[d.vault] || {}, w = fWhen(d.timestamp);
+        const wallet = ex && d.owner
+          ? `<a class="addr" href="${ex}/address/${esc(d.owner)}" target="_blank" rel="noopener" title="${esc(d.owner)}">${shortAddr(d.owner)}</a>`
+          : `<span class="addr" title="${esc(d.owner || '')}">${shortAddr(d.owner || '')}</span>`;
+        const tx = ex && d.tx ? `<a class="tx" href="${ex}/tx/${esc(d.tx)}" target="_blank" rel="noopener" title="View tx on ${esc(d.chain)}">↗</a>` : '<span class="tx" style="opacity:.35">↗</span>';
+        const tok = fTok(d.assets) + ' ' + esc(d.symbol || '');
+        return `<div class="trow">
+          <span class="when" title="${esc(w.abs)}">${w.rel}</span>
+          <span class="wallet">${wallet}</span>
+          <span class="vault" title="${esc(meta.name || '')}">${d.chain ? UI.chain(d.chain) : ''}<span class="nm">${esc(meta.name || shortAddr(d.vault))}</span></span>
+          <span class="r amt"><b>${fUsd(d.usdValue)}</b><span>${tok}</span></span>
+          <span class="r tx-cell">${tx}</span>
+          <span class="meta">${wallet} · ${tok}</span>
+        </div>`;
+      }).join('');
+      document.getElementById('txPager').innerHTML = UI.pager({ total: rows.length, page: state.txPage, size: TX_PAGE, noun: 'deposits' });
+      if (state.txLoad) state.txLoad();
     }
 
-    function renderPeriodChip(){
-      var chip=document.getElementById('periodChip');
-      if(state.period==null){ chip.style.display='none'; chip.innerHTML=''; return; }
-      chip.style.display=''; chip.innerHTML='<b>'+periodLabel(state.period)+'</b><span class="x" title="Clear timeframe">✕</span>';
+    function applyView() {
+      const tx = state.view === 'tx';
+      document.getElementById('vaultView').hidden = tx;
+      document.getElementById('txView').hidden = !tx;
+      document.querySelectorAll('#view button').forEach((b) => b.classList.toggle('on', b.dataset.v === state.view));
+      document.getElementById('cnt').textContent = tx ? state.tcount : state.vcount;
+      const p = document.getElementById('period');
+      p.hidden = state.period == null;
+      p.innerHTML = state.period == null ? '' : esc(periodLabel(state.period)) + '<button type="button" title="Every period" aria-label="Clear the period">✕</button>';
     }
 
-    function applyView(){
-      document.getElementById('vaultView').style.display = state.view==='tx'?'none':'';
-      document.getElementById('txView').style.display = state.view==='tx'?'':'none';
-      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){ t.classList.toggle('on', t.getAttribute('data-v')===state.view); });
-      document.getElementById('tblCnt').textContent = state.view==='tx' ? state.tcount : state.vcount;
-    }
-
-    function renderAll(){
-      var base=dustList();
-      var inc=base.filter(function(d){ return included(d.vault); });
-      renderChart(inc);
-      var incP=inc.filter(inPeriod);
-      renderCards(incP);
+    function renderAll() {
+      const base = dustList();
+      const inc = base.filter((d) => included(d.vault));
+      renderChart(inc).catch((e) => { document.getElementById('chart').innerHTML = '<div class="ui-error">' + esc(e.message || e) + '</div>'; });
+      const incP = inc.filter(inPeriod);
+      renderFigures(incP);
       renderTx(incP);
-      renderTable(base.filter(inPeriod));
-      // ZyfAI share of the current threshold+vault+period scope (independent of the All/Only/Exclude mode)
-      var scope = state.deposits.filter(function(d){ return d.usdValue<state.threshold && d.timestamp>=state.since && included(d.vault) && inPeriod(d); });
-      var zc = scope.filter(isZyfai).length;
-      document.getElementById('zyfaiNote').textContent = scope.length ? ' · ZyfAI ~'+Math.round(100*zc/scope.length)+'% of deposits' : '';
-      renderPeriodChip();
+      renderVaults(base.filter(inPeriod));
+      // ZyfAI's share of what the size, vaults and period take in, whatever the ZyfAI switch says.
+      const scope = state.deposits.filter((d) => d.usdValue < state.threshold && d.timestamp >= state.since && included(d.vault) && inPeriod(d));
+      const zc = scope.filter(isZyfai).length;
+      document.getElementById('fCountSub').textContent = scope.length ? 'ZyfAI ~' + Math.round(100 * zc / scope.length) + '% of them' : ' ';
       applyView();
     }
 
-    function wireSeg(id, attr, cast, apply){
-      document.getElementById(id).addEventListener('click', function(e){ var b=e.target.closest('button'); if(!b) return;
-        Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){ x.classList.toggle('on', x===b); });
-        apply(cast(b.getAttribute(attr))); });
-    }
-    function setSize(v, fromSlider){
+    // ---- controls ----
+    function setSize(v, fromSlider) {
       state.threshold = v;
-      document.getElementById('szVal').textContent = '< $' + v.toLocaleString();
-      if(!fromSlider){ document.getElementById('szSlider').value = Math.min(v, 10000); }
-      Array.prototype.forEach.call(document.querySelectorAll('#segT button'), function(b){ b.classList.toggle('on', +b.getAttribute('data-t') === v); });
+      document.getElementById('sizeVal').textContent = '< $' + v.toLocaleString();
+      if (!fromSlider) document.getElementById('slider').value = Math.min(v, 10000);
+      const sel = document.getElementById('size');
+      // A size set by the slider shows as its own option.
+      [...sel.options].filter((o) => o.dataset.custom).forEach((o) => { if (+o.value !== v) o.remove(); });
+      if (![...sel.options].some((o) => +o.value === v)) {
+        const o = new Option('Under $' + v.toLocaleString(), String(v)); o.dataset.custom = '1';
+        const after = [...sel.options].find((x) => +x.value > v); sel.insertBefore(o, after || null);
+      }
+      if (sel.value !== String(v)) sel.value = String(v);
+      state.vaultPage = 1; state.txPage = 1;
       renderAll();
     }
-    document.getElementById('segT').addEventListener('click', function(e){ var b=e.target.closest('button'); if(b) setSize(+b.getAttribute('data-t'), false); });
-    document.getElementById('szSlider').addEventListener('input', function(){ setSize(+this.value, true); });
-    document.getElementById('szVal').textContent = '< $' + state.threshold.toLocaleString();
-    wireSeg('segG','data-g', String, function(v){ state.grain=v; state.period=null; renderAll(); });
-    function tfSince(tf){ var now=Date.now()/1000;
-      if(tf==='1w') return now-7*86400;
-      if(tf==='1m') return now-30*86400;
-      if(tf==='mtd'){ var n=new Date(); return new Date(n.getFullYear(), n.getMonth(), 1).getTime()/1000; }
-      return 0; }
-    wireSeg('segTF','data-tf', String, function(v){ state.tf=v; state.since=tfSince(v); state.period=null; renderAll(); });
-    wireSeg('segZ','data-z', String, function(v){ state.zyfai=v; renderAll(); });
-    document.getElementById('mkBtn').addEventListener('click', function(){
+    document.getElementById('size').addEventListener('change', (e) => setSize(+e.target.value, false));
+    document.getElementById('slider').addEventListener('input', (e) => setSize(+e.target.value, true));
+    document.getElementById('grain').addEventListener('change', (e) => { state.grain = e.target.value; state.period = null; renderAll(); });
+    function tfSince(tf) {
+      const now = Date.now() / 1000;
+      if (tf === '1w') return now - 7 * 86400;
+      if (tf === '1m') return now - 30 * 86400;
+      if (tf === 'mtd') { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1).getTime() / 1000; }
+      return 0;
+    }
+    document.getElementById('tf').addEventListener('change', (e) => { state.tf = e.target.value; state.since = tfSince(state.tf); state.period = null; state.vaultPage = 1; state.txPage = 1; renderAll(); });
+    document.getElementById('zyfai').addEventListener('change', (e) => { state.zyfai = e.target.value; state.vaultPage = 1; state.txPage = 1; renderAll(); });
+    document.getElementById('markBtn').addEventListener('click', (e) => {
       state.showMarker = !state.showMarker;
-      this.classList.toggle('on', state.showMarker);
-      this.textContent = state.showMarker ? 'Hide Base App Listing' : 'Show Base App Listing';
+      e.currentTarget.classList.toggle('on', state.showMarker);
+      e.currentTarget.setAttribute('aria-pressed', String(state.showMarker));
       renderAll();
     });
-    document.querySelector('#vaultView thead').addEventListener('click', function(e){ var th=e.target.closest('th'); if(!th) return;
-      var k=th.getAttribute('data-s'); if(!k) return;
-      if(state.sort.key===k) state.sort.dir*=-1; else state.sort={key:k, dir:(k==='name'||k==='chain')?1:-1};
-      renderTable(dustList().filter(inPeriod)); applyView(); });
+    document.querySelector('.vhead').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-s]'); if (!b) return;
+      const k = b.dataset.s;
+      if (state.sort.key === k) state.sort.dir *= -1; else state.sort = { key: k, dir: (k === 'name' || k === 'chain') ? 1 : -1 };
+      state.vaultPage = 1;
+      renderVaults(dustList().filter(inPeriod)); applyView();
+    });
+    const vrows = document.getElementById('vaultRows');
+    vrows.addEventListener('change', (e) => {
+      const ck = e.target.closest('input[data-a]'); if (!ck) return;
+      if (ck.checked) state.excluded.delete(ck.dataset.a); else state.excluded.add(ck.dataset.a);
+      renderAll();
+    });
+    vrows.addEventListener('click', (e) => {
+      const only = e.target.closest('.only'); if (!only) return;
+      state.excluded.clear(); Object.keys(state.vaultMeta).forEach((x) => { if (x !== only.dataset.a) state.excluded.add(x); });
+      renderAll();
+    });
+    document.getElementById('selAll').addEventListener('click', () => { state.excluded.clear(); renderAll(); });
+    document.getElementById('selNone').addEventListener('click', () => { Object.keys(state.vaultMeta).forEach((x) => state.excluded.add(x)); renderAll(); });
+    document.getElementById('view').addEventListener('click', (e) => { const b = e.target.closest('button[data-v]'); if (!b) return; state.view = b.dataset.v; applyView(); if (state.view === 'tx' && state.txLoad) state.txLoad(); });
+    document.getElementById('period').addEventListener('click', (e) => { if (e.target.closest('button')) { state.period = null; renderAll(); } });
+    UI.onPage(document.getElementById('vaultPager'), (n) => { state.vaultPage = n; renderVaults(dustList().filter(inPeriod)); });
+    UI.onPage(document.getElementById('txPager'), (n) => { state.txPage = n; renderTx(dustList().filter((d) => included(d.vault)).filter(inPeriod)); });
+    const repaint = () => { if (window.Plotly && document.getElementById('chart').data) renderChart(dustList().filter((d) => included(d.vault))); };
+    window.addEventListener('fusion:theme', repaint);
+    FusionChart.onChange(repaint);
 
-    /* per-vault include / exclude / isolate */
-    var rowsEl = document.getElementById('rows');
-    rowsEl.addEventListener('change', function(e){ var ck=e.target.closest('.vck'); if(!ck) return;
-      var a=ck.getAttribute('data-a'); if(ck.checked) state.excluded.delete(a); else state.excluded.add(a); renderAll(); });
-    rowsEl.addEventListener('click', function(e){ var only=e.target.closest('.only'); if(!only) return; e.preventDefault();
-      var a=only.getAttribute('data-a'); state.excluded.clear(); Object.keys(state.vaultMeta).forEach(function(x){ if(x!==a) state.excluded.add(x); }); renderAll(); });
-    document.getElementById('selAll').addEventListener('click', function(){ state.excluded.clear(); renderAll(); });
-    document.getElementById('selNone').addEventListener('click', function(){ Object.keys(state.vaultMeta).forEach(function(x){ state.excluded.add(x); }); renderAll(); });
-
-    /* tab switch + chart-bar timeframe drill-in */
-    document.querySelector('.tabs').addEventListener('click', function(e){ var t=e.target.closest('.tab'); if(!t) return; state.view=t.getAttribute('data-v'); applyView(); });
-    document.getElementById('bars').addEventListener('click', function(e){ var bar=e.target.closest('.bar'); if(!bar) return;
-      var bk=Number(bar.getAttribute('data-bk')); state.period=(state.period===bk?null:bk); if(state.period!=null) state.view='tx'; renderAll(); });
-    document.getElementById('periodChip').addEventListener('click', function(e){ if(e.target.closest('.x')){ state.period=null; renderAll(); } });
-
-    (function load(){
-      fetch('activity-events.json').then(function(r){ return r.json(); }).then(function(d){
-        var ev=d.events||[];
-        state.deposits = ev.filter(function(e){ return e.type==='deposit' && e.usdValue>0 && e.synthetic!==true; });
-        ev.forEach(function(e){ if(e.type==='deposit' && e.synthetic!==true){ state.totalByVault[e.vault]=(state.totalByVault[e.vault]||0)+1; }
-          if(!state.vaultMeta[e.vault]) state.vaultMeta[e.vault]={ name:e.vaultName||shortAddr(e.vault), chain:e.chain }; });
-        if(d.updatedAt){ var u=new Date(d.updatedAt); document.getElementById('updated').innerHTML='· updated <b>'+u.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>'; }
+    // ---- data: the deposits the page can count (tools/build-dust-events.js),
+    // their hashes when the transaction list first opens; the whole files
+    // before that one exists ----
+    const getJson = (f) => fetch(f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    function setStatus(updatedAt) {
+      document.getElementById('status').innerHTML = updatedAt
+        ? 'Events to <b>' + esc(new Date(updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })) + '</b>'
+        : '';
+    }
+    (async function load() {
+      const d = await getJson('/dust-events.json');
+      if (d && Array.isArray(d.events) && Array.isArray(d.vaults)) {
+        state.deposits = d.events.map((r) => ({ vault: d.vaults[r[0]][0], owner: r[1] == null ? null : d.owners[r[1]], z: r[2],
+          timestamp: r[3], usdValue: r[4], assets: r[5], symbol: r[6], chain: r[7] }));
+        state.totalDeposits = d.totalDeposits;
+        d.vaults.forEach(([a, name, chain, n]) => { state.vaultMeta[a] = { name: name || shortAddr(a), chain }; state.totalByVault[a] = n; });
+        // The hashes, once: when the transaction list is first shown.
+        let asked = false;
+        state.txLoad = () => {
+          if (asked || state.view !== 'tx') return;
+          asked = true;
+          getJson('/dust-events-tx.json').then((t) => {
+            if (!t || t.updatedAt !== d.updatedAt || !Array.isArray(t.tx) || t.tx.length !== state.deposits.length) return;
+            state.deposits.forEach((e, i) => { e.tx = t.tx[i]; });
+            state.txLoad = null;
+            renderTx(dustList().filter((x) => included(x.vault)).filter(inPeriod));
+          });
+        };
+        setStatus(d.updatedAt);
         renderAll();
-        // Widen the ZyfAI match set with their published wallet/EOA list (seed file, kept fresh by collect-zyfai.js).
-        fetch('zyfai-wallets.json').then(function(r){ return r.ok ? r.json() : null; }).then(function(z){
-          if(z && Array.isArray(z.addresses) && z.addresses.length){ z.addresses.forEach(function(a){ ZYFAI.add((a||'').toLowerCase()); }); renderAll(); }
-        }).catch(function(){});
-      }).catch(function(err){ document.getElementById('cards').innerHTML='<div class="card" style="grid-column:1/-1;color:var(--red)">Couldn\'t load activity data. '+err+'</div>'; });
+        return;
+      }
+      // Until the file exists: every event, and ZyfAI's wallet list, as before.
+      const full = await getJson('/activity-events.json');
+      if (!full) { document.getElementById('status').innerHTML = '<span style="color:var(--neg)">Couldn\'t load the activity data.</span>'; return; }
+      const ev = full.events || [];
+      state.deposits = ev.filter((e) => e.type === 'deposit' && e.usdValue > 0 && e.synthetic !== true);
+      state.totalDeposits = state.deposits.length;
+      ev.forEach((e) => {
+        if (e.type === 'deposit' && e.synthetic !== true) state.totalByVault[e.vault] = (state.totalByVault[e.vault] || 0) + 1;
+        if (!state.vaultMeta[e.vault]) state.vaultMeta[e.vault] = { name: e.vaultName || shortAddr(e.vault), chain: e.chain };
+      });
+      setStatus(full.updatedAt);
+      renderAll();
+      const z = await getJson('/zyfai-wallets.json');
+      if (z && Array.isArray(z.addresses) && z.addresses.length) { z.addresses.forEach((a) => ZYFAI.add((a || '').toLowerCase())); renderAll(); }
     })();
+  })();
   </script>
 </body>
 </html>

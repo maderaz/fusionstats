@@ -105,6 +105,14 @@ jobs:
         continue-on-error: true
         run: node tools/build-switch-events.js
 
+      # What the Dust Tracker counts: every deposit under $20K, already marked
+      # ZyfAI's or not from zyfai-wallets.json, ~290 KB over the wire instead
+      # of every event and ZyfAI's 1.7 MB list (tools/build-dust-events.js);
+      # the hashes beside it, fetched when its transaction list opens.
+      - name: Build the Dust Tracker's deposits
+        continue-on-error: true
+        run: node tools/build-dust-events.js
+
       - name: Commit & push data files
         run: |
           git config user.name "github-actions[bot]"
@@ -116,6 +124,8 @@ jobs:
           [ -f tvl-daily.json ] && git add -f tvl-daily.json || true
           [ -f switch-events.json ] && git add -f switch-events.json || true
           [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true
+          [ -f dust-events.json ] && git add -f dust-events.json || true
+          [ -f dust-events-tx.json ] && git add -f dust-events-tx.json || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest
