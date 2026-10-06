@@ -975,9 +975,10 @@
            over the daily chart. A phone stacks them. -->
       <div class="ov" id="charts2">
         <div class="ov-half">
-          <div class="figs">
+          <div class="figs figs-3">
             <div class="stat-card fig-tvl"><div class="label">TVL <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></div><div class="value" id="tvlValue"></div></div>
-            <div class="stat-card fig-earn"><div class="label">Annualized earnings <span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO takes in fees over a year at today's TVL and APY, from every vault above $10K (99.9% of TVL): its share of each vault's management fee on the TVL, and of its performance fee on the yield before fees. Fee terms read on-chain per vault; dollar values from IPOR's API, which prices ETH, BTC and the rest.">&#9432;</span></div><div class="value earn" id="earnValue"></div></div>
+            <div class="stat-card fig-earn"><div class="label">DAO earnings <span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></div><div class="value earn" id="earnValue"></div></div>
+            <div class="stat-card fig-curator"><div class="label">Curator earnings <span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></div><div class="value earn" id="curatorValue"></div></div>
           </div>
           <div id="tvlWeekly" class="flow-chart">
             <div class="flow-chart-header">
@@ -1696,19 +1697,25 @@
     // and APY are IPOR's, already in dollars at its ETH, BTC and other prices.
     const EARN_FLOOR = 10000;
     let daoFees, daoFeesLoad = null;
+    // The same for the vaults' own curators and operators: the rest of each
+    // fee, what the vault charges less the DAO's part (the FeeManager's
+    // recipients). A vault paying the DAO's treasury directly has none.
     function earnings(vaults, fees) {
-      let mgmt = 0, perf = 0, count = 0, missing = 0;
+      const dao = { mgmt: 0, perf: 0 }, cur = { mgmt: 0, perf: 0 };
+      let count = 0, missing = 0;
       for (const v of vaults) {
         if (!(v.tvl > EARN_FLOOR)) continue;
         const f = fees[String(v.address).toLowerCase()];
         if (!f || f.daoMgmt == null || f.daoPerf == null) { missing++; continue; }
         const net = Number(v.apy) / 100;
         const gross = net > 0 ? (net + f.mgmt / 100) / (1 - f.perf / 100) : 0;
-        mgmt += v.tvl * f.daoMgmt / 100;
-        perf += v.tvl * gross * f.daoPerf / 100;
+        dao.mgmt += v.tvl * f.daoMgmt / 100;
+        dao.perf += v.tvl * gross * f.daoPerf / 100;
+        cur.mgmt += v.tvl * Math.max(0, f.mgmt - f.daoMgmt) / 100;
+        cur.perf += v.tvl * gross * Math.max(0, f.perf - f.daoPerf) / 100;
         count++;
       }
-      return { total: mgmt + perf, mgmt, perf, count, missing };
+      return { dao: Object.assign(dao, { total: dao.mgmt + dao.perf }), curator: Object.assign(cur, { total: cur.mgmt + cur.perf }), count, missing };
     }
     function renderEarnings(vaults) {
       const el = document.getElementById('earnValue');
@@ -1716,17 +1723,21 @@
         if (!daoFeesLoad) daoFeesLoad = getJson('dao-fees.json').then((f) => { daoFees = f && f.vaults ? f : null; renderEarnings(vaults); });
         return;
       }
-      if (!daoFees) { el.textContent = '—'; return; }
+      const cel = document.getElementById('curatorValue');
+      if (!daoFees) { el.textContent = '—'; cel.textContent = '—'; return; }
       const e = earnings(vaults, daoFees.vaults);
-      el.textContent = e.count ? compactUsd(e.total) : '—';
-      const tip = document.getElementById('earnTip');
-      if (tip && e.count) {
-        tip.setAttribute('data-tip', `What the IPOR DAO takes in fees over a year at today's TVL and APY, from the ${e.count} vaults above $10K: `
-          + `${compactUsd(e.mgmt)} from its share of their management fees, on the TVL, and ${compactUsd(e.perf)} from its share of their `
-          + `performance fees, on the yield before fees. Fee terms read on-chain from each vault (${String(daoFees.readAt || '').slice(0, 10)}); `
-          + `dollar values from IPOR's API, which prices ETH, BTC and the rest.`);
-        tips.update(tip);
-      }
+      el.textContent = e.count ? compactUsd(e.dao.total) : '—';
+      cel.textContent = e.count ? compactUsd(e.curator.total) : '—';
+      if (!e.count) return;
+      const when = String(daoFees.readAt || '').slice(0, 10);
+      const tail = ` Fee terms read on-chain from each vault (${when}); dollar values from IPOR's API, which prices ETH, BTC and the rest.`;
+      const say = (id, text) => { const tip = document.getElementById(id); if (tip) { tip.setAttribute('data-tip', text + tail); tips.update(tip); } };
+      say('earnTip', `Annualized IPOR DAO earnings: what the DAO takes in fees over a year at today's TVL and APY, from the ${e.count} vaults above $10K: `
+        + `${compactUsd(e.dao.mgmt)} from its share of their management fees, on the TVL, and ${compactUsd(e.dao.perf)} from its share of their `
+        + `performance fees, on the yield before fees.`);
+      say('curatorTip', `Annualized curator earnings: what the vaults' own curators and operators take in fees over a year at today's TVL and APY, `
+        + `from the same ${e.count} vaults: ${compactUsd(e.curator.mgmt)} in management fees and ${compactUsd(e.curator.perf)} in performance fees, `
+        + `each vault's fee less the DAO's part.`);
     }
 
     // What each chart's bars stand for, for their hovers: per bar, its label,
