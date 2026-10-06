@@ -712,6 +712,7 @@
       /* Pager: the range above, then Prev · Page n of N · Next, thumb-sized. */
       .pager { flex-direction: column; align-items: stretch; gap: 12px; padding-top: 16px; }
       .pg-range { text-align: center; }
+      .pg-span { display: none; }   /* "Page n of N" below already says where you are */
       .pg-nums { display: none; }
       .pg-of { display: block; flex: 1; text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
       .pg-ctrls { gap: 10px; }
@@ -1118,7 +1119,7 @@
         ? ' since ' + new Date(recentMeta.coveredFrom * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
         : '';
       const fmt = (n) => n.toLocaleString('en-US');
-      const range = total ? `${fmt(start + 1)}–${fmt(end)} of ${fmt(total)}${since}` : '';
+      const range = total ? `<span class="pg-span">${fmt(start + 1)}–${fmt(end)} of </span>${fmt(total)} events${since}` : '';
       const pageOf = `Page ${fmt(currentPage)} of ${fmt(last)}`;
       return `<nav class="pager" aria-label="Pages">
         <span class="pg-range">${range}</span>
@@ -1635,7 +1636,12 @@
         const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
         const nameAttr = String(name).replace(/"/g, '&quot;');
-        const amount = `${amountText(e, whole)} <span class="sym">${sym}</span>`;
+        // A dollar stablecoin's amount reads the same as its USD value: the
+        // symbol alone says which coin it was (the amount is in its title).
+        const pegged = estUsd != null && e.assets > 0 && Math.abs(estUsd / e.assets - 1) < 0.005;
+        const amount = pegged
+          ? `<span class="sym" title="${amountText(e, whole)} ${sym}">${sym}</span>`
+          : `${amountText(e, whole)} <span class="sym">${sym}</span>`;
         const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
         // Arrow in, arrow out; the word stays DEPOSIT / WITHDRAW in the text.
         // The link waits for the row's transaction hash (see attachTx); the

@@ -89,6 +89,9 @@
     .muted-note { font-size: 12.5px; font-weight: 400; line-height: 1.6; color: var(--text-3); }
     .chart-note, .holders-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
     .chart-note:empty, .holders-note:empty { display: none; }
+    /* The TVL note ("31 points … ends at $778.6K") restates the figure at the
+       top; it is kept for the exported image's caption, not shown. */
+    #tvlNote { display: none; }
     .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
     /* ---------- Toolbars: Activity's filter bar ---------- */
@@ -390,7 +393,6 @@
     .pie-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px 28px; max-width: 940px; margin: 18px auto 0; }
     .pie-legend .row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
     .pie-legend .row .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pie-legend .row .val { flex: 0 0 auto; color: var(--text-2); font-variant-numeric: tabular-nums; }
     .pie-legend .row .pct { flex: 0 0 3.4rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 
     /* ---------- Tables: Activity's headings and rows ---------- */
@@ -442,11 +444,6 @@
     .debank:hover { background: #FF6B00; color: #FFF; }
     .loading { padding: 40px 20px; text-align: center; font-size: 13px; color: var(--text-3); }
 
-    /* A share bar in its own cell rather than a band smeared behind the row. */
-    .share-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-    .share-track { flex: 0 0 58px; height: 5px; overflow: hidden; border-radius: 999px; background: var(--bg-subtle); }
-    .share-fill { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
-    .share-pct { min-width: 3.1rem; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
 
     /* A colour that ties a row to its series, as the legend does. */
     .dot { display: inline-block; flex: 0 0 8px; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; vertical-align: middle; }
@@ -505,10 +502,9 @@
       .holders-top .tag { display: flex; width: fit-content; margin: 4px 0 0; }
       .holders-top .rank { width: 26px; }
 
-      /* A phone: less said, more shown. The subtitle and the chart's
-         sampling note step aside; the figures pack into a tight grid. */
+      /* A phone: less said, more shown. The subtitle steps aside; the
+         figures pack into a tight grid. */
       .ui-masthead .ui-lede { display: none; }
-      #tvlNote { display: none; }
       .stat-row { row-gap: 0; padding: 14px 0 18px; }
       .stat-row .stat { padding-top: 12px; padding-bottom: 12px; }
       .stat-row .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
@@ -520,8 +516,8 @@
       #routeTable th:nth-child(n+5), #routeTable td:nth-child(n+5),
       #retTable th:nth-child(4), #retTable td:nth-child(4),
       #refTable th:nth-child(2), #refTable td:nth-child(2),
-      #refTable th:nth-child(3), #refTable td:nth-child(3),
-      #refTable th:nth-child(n+6), #refTable td:nth-child(n+6),
+      #refTable th:nth-child(n+5), #refTable td:nth-child(n+5),
+      #refTable tr.zero,
       #flowsView th:nth-child(3), #flowsView td:nth-child(3),
       #flowsView th:nth-child(6), #flowsView td:nth-child(6) { display: none; }
       .route-table th:first-child { min-width: 0; }
@@ -556,6 +552,7 @@
       /* Pager: the range above, then Prev · Page n of N · Next, thumb-sized. */
       .pager { flex-direction: column; align-items: stretch; gap: 12px; }
       .pg-range { text-align: center; }
+      .pg-span { display: none; }   /* "Page n of N" below already says where you are */
       .pg-nums { display: none; }
       .pg-of { display: block; flex: 1; text-align: center; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }
       .pg-step { height: 44px; padding: 0 16px; border-radius: 12px; }
@@ -1279,7 +1276,8 @@
       let evs = S.events.filter(e => addrs[(e.vault || '').toLowerCase()]);
       if (S.feedType) evs = evs.filter(e => e.type === S.feedType);
       evs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      document.getElementById('feedCount').textContent = evs.length + ' events';
+      // The pager says how many; without one (a page or less) this does.
+      document.getElementById('feedCount').textContent = evs.length > FEED_PAGE ? '' : evs.length + ' event' + (evs.length === 1 ? '' : 's');
       const pages = Math.max(1, Math.ceil(evs.length / FEED_PAGE));
       S.feedPage = Math.max(0, Math.min(S.feedPage, pages - 1));
       const start = S.feedPage * FEED_PAGE;
@@ -1381,12 +1379,8 @@
             + '</span></td>'
             + '<td class="num">' + fUsd(r.tvl) + '</td>'
             + '<td class="num">' + (shareOf(r) * 100).toFixed(1) + '%</td></tr>').join('')
-        + (rows.length < 2 ? '' : '<tr class="total"><td>Total <span style="color:var(--text-secondary);font-weight:400;font-size:0.72rem">'
-        + rows.length + ' vault' + (rows.length === 1 ? '' : 's')
-        + (byUnits ? ' · units are share counts across different equities, not a like-for-like sum' : '')
-        + '</span></td>'
-        + '<td class="num">' + (byUnits ? fNum(totUnits, 4) : '—') + '</td>'
-        + '<td class="num">' + fUsd(totTvl) + '</td><td class="num">100%</td></tr>')
+        // No total row: it was "Total value held" and "Stock units held"
+        // from the figures at the top, again.
         + '</tbody></table></div>'
         + (empty.length
             ? '<div class="muted-note" style="margin-top:0.5rem">Also tracked, holding nothing right now: '
@@ -1693,11 +1687,14 @@
           + hvRow(cssVar('--red'), 'Exits', fUsd(Math.abs(by('Exits'))))
           + hvRow(cssVar('--text'), 'Net', (net >= 0 ? '+' : '−') + fUsd(Math.abs(net)));
       }));
+      // Totals for one vault, which nothing else on the page gives. For all of
+      // them the net is a figure at the top and what came in is the centre of
+      // the ring below: not said a third time.
       const tIn = pts.reduce((a, p) => a + p.inflow, 0), tOut = pts.reduce((a, p) => a + p.exit, 0);
-      document.getElementById('flowNote').textContent =
-        pts.length + ' active days · in ' + fUsd(tIn) + ' · out ' + fUsd(tOut)
-        + ' · net ' + fUsd(tIn - tOut)
-        + (S.scale === 'log' ? ' · log scale does not apply to a series that crosses zero' : '');
+      const notes = [];
+      if (S.flowVault !== '__all__') notes.push('in ' + fUsd(tIn) + ' · out ' + fUsd(tOut) + ' · net ' + fUsd(tIn - tOut));
+      if (S.scale === 'log') notes.push('log scale does not apply to a series that crosses zero');
+      document.getElementById('flowNote').textContent = notes.join(' · ');
     }
 
     // Slot 5 was #7C3AED, a second purple a ΔE of 3.3 from slot 0 — the sixth
@@ -1757,12 +1754,6 @@
         + '<img src="' + url + '" alt="" '
         + 'onerror="this.closest(\'.tok-badge\').classList.add(\'no-icon\')">'
         + dot + '</span>';
-    }
-    function shareCell(frac) {
-      const pct = Math.max(0, Math.min(1, frac || 0)) * 100;
-      return '<td class="num"><span class="share-cell">'
-        + '<span class="share-track"><span class="share-fill" style="width:' + pct.toFixed(1) + '%"></span></span>'
-        + '<span class="share-pct">' + pct.toFixed(1) + '%</span></span></td>';
     }
     // The vault's own page in the IPOR app — the same URL every other page on
     // the site uses.
@@ -1867,11 +1858,11 @@
         }],
       }, CONFIG);
 
+      // The key: each route and its share. The dollars are in the table above.
       document.getElementById('routeLegend').innerHTML = data.rows.map(r =>
         '<div class="row"><span class="dot" style="background:' + r.color + '"></span>'
         + '<span class="label">' + esc(r.label) + '</span>'
-        + '<span class="val">' + fUsd(r.usd) + '</span>'
-        + '<span class="pct">' + (r.usd / data.total * 100).toFixed(1) + '%</span></div>').join('');
+        + '<span class="pct" title="' + fUsd(r.usd) + '">' + (r.usd / data.total * 100).toFixed(1) + '%</span></div>').join('');
     }
 
     function paintRoutePage() {
@@ -1910,7 +1901,7 @@
       S.routeHead = '<thead><tr>'
         + '<th>Route</th>'
         + '<th class="num">Deposits</th><th class="num">Wallets</th>'
-        + '<th class="num">Gross in</th><th class="num">Share of in</th>'
+        + '<th class="num">Gross in</th>'
         + '<th class="num">Still here</th><th class="num">' + withTip('Retained', 'What is still here divided by '
         + 'what came in. A route that pumped money in and later left reads high on Gross in and low here. Above '
         + '100%, the position is worth more than the dollars that bought it.') + '</th>'
@@ -1947,7 +1938,6 @@
                     + (r.wallets === 1 ? '' : 's') + '</span></td>'
                   : '<td class="num">' + r.wallets + '</td>')
               + '<td class="num">' + fUsd(r.usd) + '</td>'
-              + shareCell(grossSum ? r.usd / grossSum : 0)
               + '<td class="num">' + (here > 0.005 ? fUsd(here) : '—') + '</td>'
               + '<td class="num ' + rClass + '"' + rTitle + '>'
               + (retained == null ? '—' : (retained * 100).toFixed(0) + '%'
@@ -1959,7 +1949,7 @@
               + '<span class="route-name"><strong>Unattributed</strong>'
               + '<span class="via">holders with no deposit on record — arrived by transfer</span></span></span></td>'
               + '<td class="num">—</td><td class="num">—</td><td class="num">—</td>'
-              + '<td class="num">—</td><td class="num">' + fUsd(o.unattributed) + '</td>'
+              + '<td class="num">' + fUsd(o.unattributed) + '</td>'
               + '<td class="num">—</td></tr>']
             : []);
       // A new range is a new ranking: back to its top.
@@ -2118,9 +2108,9 @@
               + 'holding for their own depositors, so concentration reads higher than the spread of actual people, '
               + 'by an amount this data cannot measure.'
             : '');
+      // Not the holder count (a figure at the top) nor the largest wallet (the
+      // first row of the list below): what neither of them says.
       document.getElementById('concStats').innerHTML = [
-        ['Holders', String(c.holders)],
-        ['Largest wallet', fUsd(c.largest) + ' · ' + (c.largestShare * 100).toFixed(1) + '%'],
         ['Top 5 share', (c.top5Share * 100).toFixed(1) + '%'],
         ['Effective holders ' + tip(effTip), c.effective.toFixed(1)],
       ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
@@ -2201,14 +2191,15 @@
                      wallets: g.wallets.size, sp: g.sp, vaults: g.vaults.length }))
         .sort((a, b) => b.usd - a.usd);
       document.getElementById('refTable').innerHTML =
+        // No value column: the TVL table above has it, vault by vault. This
+        // one is the reference: token, shares, holders, contract.
         '<div class="scroll"><table class="data-table"><thead><tr><th>Company</th><th>Token</th><th class="num">Shares held</th>'
-        + '<th class="num">Value</th><th class="num">Wallets</th><th class="num">Underlying / share</th><th>Contract</th></tr></thead><tbody>'
+        + '<th class="num">Wallets</th><th class="num">Underlying / share</th><th>Contract</th></tr></thead><tbody>'
         + rows.map((r, i) =>
-            '<tr>' + nameCell(companyOf(r.v.name, r.token), seriesColor(i), null, r.token)
+            '<tr' + (r.usd > 0 ? '' : ' class="zero"') + '>' + nameCell(companyOf(r.v.name, r.token), seriesColor(i), null, r.token)
             + '<td><span class="ticker">' + r.token + '</span>'
             + (r.vaults > 1 ? '<span class="muted-note"> · ' + r.vaults + ' vaults</span>' : '') + '</td>'
             + '<td class="num">' + (r.units ? fNum(r.units, 4) : '—') + '</td>'
-            + '<td class="num">' + fUsd(r.usd) + '</td>'
             + '<td class="num">' + (r.wallets || '—') + '</td>'
             + '<td class="num">' + (r.sp ? fNum(r.sp, 6) : '<span class="muted-note">no priced event yet</span>') + '</td>'
             + '<td><a class="addr" href="https://basescan.org/address/' + r.v.address + '" target="_blank" rel="noopener">'
@@ -2790,8 +2781,8 @@
           : '<button class="pg-num" type="button" data-' + kind + '-page="' + i + '">' + (i + 1) + '</button>';
         last = i;
       });
-      return '<div class="pager"><span class="pg-range">' + (start + 1) + '–' + Math.min(start + size, total)
-        + ' of ' + total + ' ' + noun + '</span><div class="pg-ctrls">'
+      return '<div class="pager"><span class="pg-range"><span class="pg-span">' + (start + 1) + '–' + Math.min(start + size, total)
+        + ' of </span>' + total + ' ' + noun + '</span><div class="pg-ctrls">'
         + '<button class="pg-step" type="button" aria-label="Previous page" data-' + kind + '-page="prev"' + (cur === 0 ? ' disabled' : '') + '></button>'
         + '<div class="pg-nums">' + nums + '</div>'
         + '<span class="pg-of">Page ' + (cur + 1) + ' of ' + pages + '</span>'
