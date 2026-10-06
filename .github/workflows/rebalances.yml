@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 60      # 1h cap; well under GHA's 6h hard limit
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # the branch as it is now, never a re-run's stale commit (see collect.yml)
 
       - uses: actions/setup-node@v4
         with:

@@ -42,6 +42,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The branch as it is now, not the commit this run was created on.
+          # A re-run keeps its run's original commit, so it started from that
+          # commit's data files and pushed its result over everything collected
+          # since: on Oct 5 a re-run of #3077 put Base back from 12:27 to 09:52.
+          # Every workflow that commits data checks out the same way.
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v4
         with:

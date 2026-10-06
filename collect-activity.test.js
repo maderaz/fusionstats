@@ -175,6 +175,17 @@ test('vaults far behind get their own pass, after the current ones', () => {
   assert.deepStrictEqual(names(out), [[A, B], [C]]);
 });
 
+test('a vault a little behind is not lumped in with ones far behind it', () => {
+  const D = '0xddd', E = '0xeee';
+  const out = scanCohorts([at(D, 52133980), at(A, 52206926), at(C, 52202286), at(E, 52133980), at(B, 52206926)], 2000);
+  assert.deepStrictEqual(names(out), [[A, B], [C], [D, E]]);
+});
+
+test('a pass spans at most one gap from its most advanced vault', () => {
+  // 1000 apart each: A and B fit together, C would stretch the pass to 2000.
+  assert.deepStrictEqual(names(scanCohorts([at(A, 10000), at(B, 9000), at(C, 8000)], 1500)), [[A, B], [C]]);
+});
+
 test('nothing to scan is no passes', () => {
   assert.deepStrictEqual(scanCohorts([], 2000), []);
 });
