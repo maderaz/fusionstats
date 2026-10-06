@@ -8,8 +8,10 @@
 // Exact values are what the hover is for.
 //
 //   layout = FusionChart.fit(layout)    a copy of layout, fitted to the screen
-//   FusionChart.compact()               true on a phone
-//   FusionChart.onChange(fn)            fn() when the screen crosses that width
+//   FusionChart.compact()               true on a phone: the page's content
+//                                       column (.ui-page) 560px or narrower,
+//                                       where its CSS goes to the phone layout
+//   FusionChart.onChange(fn)            fn() when the column crosses that width
 //                                       (a phone turned sideways): redraw
 //
 // Exports draw the layout as it was before fit(), whatever the screen: keep
@@ -18,8 +20,19 @@
   'use strict';
   if (window.FusionChart) return;
 
-  const mq = window.matchMedia('(max-width: 560px)');
-  const compact = () => mq.matches;
+  // The column, not the window, as the page's CSS (@container on .ui-page):
+  // at a 600px window the column, less the page's margins, is 552px, and the
+  // tables are already in their phone layout. Without a .ui-page, the window.
+  const PHONE = 560;
+  const mq = window.matchMedia('(max-width: ' + PHONE + 'px)');
+  let page = null;
+  function column() {
+    if (!page || !page.isConnected) page = document.querySelector('.ui-page');
+    if (!page) return null;
+    const cs = getComputedStyle(page);
+    return page.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  }
+  const compact = () => { const w = column(); return w == null ? mq.matches : w <= PHONE; };
   const cssVar = (name, fallback) =>
     (getComputedStyle(document.documentElement).getPropertyValue(name) || fallback || '').trim() || fallback;
   const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -54,9 +67,27 @@
     return out;
   }
 
+  // Listeners hear of it when compact() flips, whether the window or only the
+  // column changed (the column is watched once the page has one).
   const listeners = [];
-  const changed = () => listeners.forEach(fn => { try { fn(); } catch (e) {} });
-  if (mq.addEventListener) mq.addEventListener('change', changed); else if (mq.addListener) mq.addListener(changed);
+  let was = null, watching = null;
+  function check() {
+    const now = compact();
+    if (was === null || now === was) { was = now; return; }
+    was = now;
+    listeners.forEach(fn => { try { fn(); } catch (e) {} });
+  }
+  function watch() {
+    check();
+    if (watching || !window.ResizeObserver) return;
+    const el = document.querySelector('.ui-page');
+    if (!el) return;
+    watching = new ResizeObserver(check);
+    watching.observe(el);
+  }
+  if (mq.addEventListener) mq.addEventListener('change', check); else if (mq.addListener) mq.addListener(check);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+  const onChange = (fn) => { listeners.push(fn); watch(); };
 
-  window.FusionChart = { fit, compact, onChange: (fn) => listeners.push(fn) };
+  window.FusionChart = { fit, compact, onChange };
 })();
