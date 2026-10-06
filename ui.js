@@ -10,6 +10,7 @@
 //                                  Activity's pager; its buttons carry data-page
 //   UI.onPage(el, fn)              fn(page) when a pager button in el is used
 //   UI.tip(text)                   an ⓘ whose text shows in the bubble
+//   UI.csv(name, rows)             download rows (arrays) as name.csv
 //
 // The ⓘ bubble needs nothing more: any .ui-tip[data-tip] on the page opens it
 // on hover (mouse), tap (touch) or focus (keyboard).
@@ -121,5 +122,31 @@
   }
   if (document.body) tips(); else document.addEventListener('DOMContentLoaded', tips);
 
-  window.UI = { esc, usd, num, short, ago, chain, pager, onPage, tip };
+  // Export menus (<details class="ui-export">): one open at a time; a click
+  // outside or Escape closes it; a size or a checkbox in one shows in all.
+  document.addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('ui-export') || !d.open) return;
+    document.querySelectorAll('details.ui-export[open]').forEach(o => { if (o !== d) o.open = false; });
+  }, true);
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('details.ui-export[open]').forEach(d => { if (!d.contains(e.target)) d.open = false; });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('details.ui-export[open]').forEach(d => { d.open = false; d.querySelector('summary').focus(); });
+  });
+
+  // Write a CSV and hand it over as a download.
+  function csv(name, rows) {
+    const cell = (v) => (v == null ? '' : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v));
+    const blob = new Blob([rows.map(r => r.map(cell).join(',')).join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  window.UI = { esc, usd, num, short, ago, chain, pager, onPage, tip, csv };
 })();

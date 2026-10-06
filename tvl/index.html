@@ -1,560 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['tvl-daily.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="fusion-theme" content="light-only">
   <title>TVL — Fusion Stats</title>
+  <meta name="description" content="Total value locked across Fusion vaults, by network and in total, rebuilt day by day from on-chain snapshots.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <!-- Plotly draws the charts and nothing else: it loads alongside the page. -->
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script src="/nav.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    .ui-section .ui-toolbar { margin-bottom: 14px; }
+    .chart-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .ui-chart { margin: 0 -4px; }
+    .ui-figure .k .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-    :root {
-      --tint-strong: rgba(25,23,23,.13);
-      --bg: #FFFFFF;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --stroke-light: #F0F0F0;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-    }
-
-    body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-    }
-
-    .container { max-width: 1280px; margin: 0 auto; }
-
-    .top-nav {
-      display: flex;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-      align-items: center;
-    }
-    .top-nav-links {
-      display: flex;
-      gap: 0.25rem;
-      flex: 1;
-      min-width: 0;
-      align-items: center;
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      scrollbar-width: none;
-    }
-    .top-nav-links::-webkit-scrollbar { display: none; }
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
-    }
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-
-    header { margin-bottom: 1.5rem; }
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    header p {
-      color: var(--text-body);
-      font-size: 0.875rem;
-      margin-top: 0.35rem;
-    }
-
-    .num-bold {
-      font-family: 'Source Sans 3', sans-serif;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 0.6rem;
-      margin-bottom: 1.25rem;
-    }
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 0.8rem 0.9rem;
-    }
-    .stat-card .label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--text-secondary);
-      margin-bottom: 0.3rem;
-      display: flex;
-      align-items: center;
-    }
-    .stat-card .value {
-      font-family: 'Source Sans 3', sans-serif;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      font-size: 1.1rem;
-    }
-    .chain-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      margin-right: 6px;
-    }
-
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1rem 1rem 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .chart-toolbar {
-      display: flex;
-      gap: 0.6rem;
-      align-items: center;
-      margin-bottom: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .chart-toolbar .group {
-      display: flex;
-      gap: 0.25rem;
-      align-items: center;
-    }
-    .chart-toolbar .group-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--text-secondary);
-      margin-right: 0.35rem;
-    }
-    .chart-toolbar button {
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.35rem 0.7rem;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      border-radius: 6px;
+    /* Networks: one chip each, its colour and today's TVL; a press hides it. */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 7px;
+      height: 32px; padding: 0 12px 0 10px;
+      border: 1px solid var(--line); border-radius: 999px;
+      background: var(--bg); color: var(--text);
+      font: 500 13px var(--sans); white-space: nowrap;
       cursor: pointer;
-      transition: all 0.15s;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
     }
-    .chart-toolbar button:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-    .chart-toolbar button.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-    .chart-hint {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-left: auto;
-    }
-    .chart-toolbar .action-btn {
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.35rem 0.85rem;
-      border: 1px solid var(--accent);
-      background: var(--accent);
-      color: #fff;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: opacity 0.15s;
-    }
-    .chart-toolbar .action-btn:hover { opacity: 0.85; color: #fff; border-color: var(--accent); }
-    .chart-section-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-      letter-spacing: -0.01em;
-      margin-bottom: 0.6rem;
-    }
+    .chip:hover { background: var(--bg-subtle); border-color: var(--line-strong); }
+    .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+    .chip .v { color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+    .chip[aria-pressed="false"] { opacity: 0.45; }
+    .chip[aria-pressed="false"] .dot { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--text-3); }
+    .chip.all { color: var(--text-2); }
+    .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-    .network-panel {
-      border-top: 1px solid var(--stroke);
-      border-bottom: 1px solid var(--stroke);
-      padding: 0.75rem 0 0.85rem;
-      margin-bottom: 0.85rem;
-    }
-    .network-panel-header {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--text-secondary);
-      margin-bottom: 0.6rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .network-panel-header button.reset-styles {
-      font-family: inherit;
-      font-size: 0.65rem;
-      padding: 0.2rem 0.5rem;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      border-radius: 5px;
-      cursor: pointer;
-      letter-spacing: 0;
-      text-transform: none;
-    }
-    .network-panel-header button.reset-styles:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-    .network-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 0.4rem 1rem;
-    }
-    .network-row {
-      display: grid;
-      grid-template-columns: auto auto 1fr auto;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.25rem 0;
-    }
-    .network-row.hidden .chain-name,
-    .network-row.hidden .width-slider {
-      opacity: 0.4;
-    }
-    .network-row input[type="checkbox"] {
-      width: 14px;
-      height: 14px;
-      accent-color: var(--accent);
-      cursor: pointer;
-      margin: 0;
-    }
-    .network-row input[type="color"] {
-      width: 22px;
-      height: 22px;
-      border: 1px solid var(--stroke);
-      border-radius: 5px;
-      cursor: pointer;
-      padding: 0;
-      background: transparent;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-    .network-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-    .network-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
-    .network-row input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
-    .network-row .chain-name {
-      font-size: 0.78rem;
-      color: var(--text);
-      font-weight: 500;
-    }
-    .network-row .width-slider {
-      width: 80px;
-      accent-color: var(--accent);
-      cursor: pointer;
-    }
-    .network-row .width-readout {
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-      font-variant-numeric: tabular-nums;
-      min-width: 1.5ch;
-      text-align: right;
-    }
-    .network-row .width-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
+    /* Line colours and widths, folded away under the chart. */
+    .styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px 20px; }
+    .style-row { display: flex; align-items: center; gap: 10px; height: 36px; font-size: 13.5px; }
+    .style-row input[type="color"] { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 7px; background: none; cursor: pointer; }
+    .style-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .style-row input[type="range"] { width: 90px; accent-color: var(--accent); }
+    .style-row .w { width: 30px; font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .styles-foot { margin-top: 10px; }
 
-    /* Plot surfaces are a fixed height, not viewport-relative. These were
-       210vh / 1350px, so on a 1440px-tall screen the main chart rendered
-       3024px tall and got taller the bigger the display — unusable. Height
-       now comes from the aspect preset below, never from the viewport. */
-    #tvlChart, #totalTvlChart {
-      width: 100%;
-      height: 340px;
-      background-image: radial-gradient(circle, var(--tint-strong) 1px, transparent 1.4px);
-      background-size: 14px 14px;
-      background-position: 0 100%;   /* anchored bottom so dots don't slide on switch */
-    }
-
-    /* Aspect presets — page level, so every chart keeps the same shape. */
-    .container[data-layout="compact"]    .chart-card,
-    .container[data-layout="fourthree"]  .chart-card,
-    .container[data-layout="widescreen"] .chart-card { margin-left: auto; margin-right: auto; }
-    .container[data-layout="compact"]    .chart-card { max-width: 480px; }
-    .container[data-layout="fourthree"]  .chart-card { max-width: 680px; }
-    .container[data-layout="widescreen"] .chart-card { max-width: 960px; }
-    /* height:auto must be reset alongside aspect-ratio or the base height wins */
-    .container[data-layout="compact"]    #tvlChart,
-    .container[data-layout="compact"]    #totalTvlChart,
-    .container[data-layout="fourthree"]  #tvlChart,
-    .container[data-layout="fourthree"]  #totalTvlChart,
-    .container[data-layout="widescreen"] #tvlChart,
-    .container[data-layout="widescreen"] #totalTvlChart { height: auto; }
-    .container[data-layout="compact"]    #tvlChart,
-    .container[data-layout="compact"]    #totalTvlChart { aspect-ratio: 1 / 1; }
-    .container[data-layout="fourthree"]  #tvlChart,
-    .container[data-layout="fourthree"]  #totalTvlChart { aspect-ratio: 4 / 3; }
-    .container[data-layout="widescreen"] #tvlChart,
-    .container[data-layout="widescreen"] #totalTvlChart { aspect-ratio: 16 / 9; }
-
-    .caveat {
-      font-size: 0.72rem;
-      color: var(--text-secondary);
-      padding: 0.75rem 0.25rem 0;
-      line-height: 1.55;
-    }
-    .caveat code {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.68rem;
-      background: rgba(0,0,0,0.04);
-      padding: 1px 5px;
-      border-radius: 3px;
-    }
-
-    .loading {
-      padding: 4rem 1rem;
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-    }
-
-    .data-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      margin-top: 1rem;
-    }
-    .data-card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.85rem 1rem;
-      border-bottom: 1px solid var(--stroke);
-      font-size: 0.85rem;
-      font-weight: 500;
-    }
-    .data-card-count {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      font-weight: 400;
-      margin-left: 0.4rem;
-    }
-    .data-card-header button {
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.4rem 0.9rem;
-      border: 1px solid var(--accent);
-      background: var(--accent);
-      color: #fff;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: opacity 0.15s;
-    }
-    .data-card-header button:hover { opacity: 0.85; }
-    .data-table-wrap {
-      max-height: 360px;
-      overflow-y: auto;
-    }
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.78rem;
-    }
-    .data-table thead th {
-      position: sticky;
-      top: 0;
-      background: var(--surface);
-      color: var(--text-secondary);
-      font-weight: 500;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      text-align: left;
-      padding: 0.55rem 1rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-    .data-table th.num, .data-table td.num {
-      text-align: right;
-      font-family: 'Source Sans 3', sans-serif;
-      font-variant-numeric: tabular-nums;
-    }
-    .data-table tbody td {
-      padding: 0.45rem 1rem;
-      border-bottom: 1px solid var(--stroke-light);
-      color: var(--text);
-    }
-    .data-table tbody tr:last-child td { border-bottom: none; }
-    .data-table tbody tr:hover td { background: rgba(132, 41, 255, 0.04); }
-
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      #tvlChart, #totalTvlChart { height: 240px; }
-      .top-nav a { padding: 0.4rem 0.8rem; }
-      .chart-hint { display: none; }
+    .base-table td.num { font-weight: 500; }
+    @container (max-width: 700px) {
+      .ui-section .ui-toolbar .ui-seg { width: 100%; }
+      .ui-filters.net { --cols: 4; }
+      .chip { height: 30px; padding: 0 10px 0 9px; font-size: 12.5px; }
     }
   </style>
   <script defer src="/track.js"></script>
-  <script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
-  <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <div class="top-nav-links">
-        <a href="/">Activity</a>
-        <a href="/all-vaults">All Vaults</a>
-        <a href="/tvl" class="active">TVL</a>
-        <a href="/dominance">Dominance</a>
-        <a href="/address">Address</a>
-        <a href="/spark">Spark</a>
-        <a href="/rebalance-methodology">Rebalance Docs</a>
-        <a href="/logs">Logs</a>
-        <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>TVL</h1>
+        <p class="ui-lede">Total value locked across Fusion vaults, rebuilt day by day from on-chain snapshots.</p>
+        <div class="ui-status" id="status"></div>
       </div>
-    </nav>
-
-    <header>
-      <h1>TVL</h1>
-      <p>Total Value Locked across Fusion vaults. The top chart aggregates every network into a single bar; the breakdown below splits TVL by chain. Drag on either chart to zoom, double-click to reset.</p>
     </header>
 
-    <div id="statsRow" class="stats-row"></div>
-
-    <div class="chart-card">
-      <div class="chart-section-title">Total — all networks</div>
-      <div class="chart-toolbar" id="totalToolbar">
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-total-range="30">30d</button>
-          <button data-total-range="90">90d</button>
-          <button data-total-range="180">180d</button>
-          <button data-total-range="365">1y</button>
-          <button data-total-range="all" class="active">All</button>
-        </div>
-        <label class="action-btn" style="display:inline-flex;align-items:center;gap:0.35rem;cursor:pointer"
-               title="Draw the dotted background into exported PNGs">
-          <input type="checkbox" id="exportDotsToggle" checked style="margin:0;cursor:pointer">Dots in PNG
-        </label>
-        <button id="downloadTotalPng" class="action-btn" type="button">Download PNG</button>
-        <button id="downloadTotalPng43" class="action-btn" type="button">Download 4:3</button>
-        <button id="downloadTotalPngSquare" class="action-btn" type="button">Download 1:1</button>
-        <button id="downloadTotalCsv" class="action-btn" type="button"
-                title="The bars as numbers — the selected range at the chart's cadence (weekly on 180d, 1y and All)">
-          Download datapoints (.csv)</button>
-      </div>
-      <div id="totalTvlChart"><div class="loading">Loading data…</div></div>
+    <div class="ui-figures" style="--n:4" id="figures">
+      <div class="ui-figure"><div class="k">Total TVL</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">&nbsp;</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">&nbsp;</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">&nbsp;</div><div class="v"></div><div class="s">&nbsp;</div></div>
     </div>
 
-    <div class="chart-card">
-      <div class="chart-section-title">By network</div>
-      <div class="chart-toolbar" id="networkToolbar">
-        <div class="group">
-          <span class="group-label">Range</span>
-          <button data-range="30">30d</button>
-          <button data-range="90">90d</button>
-          <button data-range="180" class="active">180d</button>
-          <button data-range="365">1y</button>
-          <button data-range="all">All</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Y-axis</span>
-          <button data-scale="linear" class="active">Linear</button>
-          <button data-scale="log">Log</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Type</span>
-          <button data-type="line" class="active">Line</button>
-          <button data-type="bar">Bar</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Curve</span>
-          <button data-shape="linear" class="active">Sharp</button>
-          <button data-shape="spline">Smooth</button>
-        </div>
-        <div class="group">
-          <span class="group-label">Stack</span>
-          <button data-stack="off" class="active">Off</button>
-          <button data-stack="on">On</button>
-        </div>
-        <span class="chart-hint">Drag a chart region to zoom · double-click resets</span>
-        <button id="downloadChartPng" class="action-btn" type="button">Download PNG</button>
-        <div class="group">
-          <span class="group-label">View</span>
-          <select id="layoutSel" class="action-btn" title="Aspect preset for both charts"
-                  style="padding:0.35rem 0.5rem;cursor:pointer">
-            <option value="wide">Wide</option>
-            <option value="widescreen">16:9</option>
-            <option value="fourthree">4:3</option>
-            <option value="compact">1:1</option>
-          </select>
+    <section class="ui-section" id="totalSec">
+      <div class="ui-head">
+        <h2>Total</h2>
+        <details class="ui-export">
+          <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+          <div class="ui-menu">
+            <div class="ui-menu-k">Image size</div>
+            <div class="ui-seg" data-size="total">
+              <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="43">4:3</button><button type="button" data-v="square">1:1</button>
+            </div>
+            <label class="ui-check"><input type="checkbox" data-dots checked> Dot grid in the image</label>
+            <div class="ui-menu-actions">
+              <button type="button" class="ui-btn primary" id="totalPng">Download PNG</button>
+              <button type="button" class="ui-btn" id="downloadTotalCsv" title="The bars as numbers: the selected range at the chart's cadence">Download CSV</button>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="ui-toolbar">
+        <div class="ui-seg" id="totalRange" role="group" aria-label="Range">
+          <button type="button" data-total-range="30">30d</button>
+          <button type="button" data-total-range="90">90d</button>
+          <button type="button" data-total-range="180">180d</button>
+          <button type="button" data-total-range="365">1y</button>
+          <button type="button" data-total-range="all" class="on">All</button>
         </div>
       </div>
-      <div class="network-panel" id="networkPanel" style="display:none">
-        <div class="network-panel-header">
-          <span>Networks</span>
-          <button class="reset-styles" id="toggleAllNetworks" type="button">Unselect all</button>
-          <button class="reset-styles" id="resetStyles" type="button">Reset colors &amp; widths</button>
-        </div>
-        <div class="network-grid" id="networkGrid"></div>
-      </div>
-      <div id="tvlChart"><div class="loading">Loading data…</div></div>
-    </div>
+      <div class="ui-chart" id="totalTvlChart"><div class="ui-empty">Loading…</div></div>
+      <p class="chart-note" id="totalNote"></p>
+    </section>
 
-    <div class="caveat">
-      <strong>Method:</strong> each vault's TVL is its real on-chain <code>totalAssets()</code> measured at every snapshot block (<code>tvl-snapshots.json</code>) and forward-filled between snapshots, summed per chain per day. Snapshots above a per-vault sanity bound (over 50× the vault's own median, or ≥ $2B) are dropped as decimals/price parse errors. Vaults the snapshot indexer hasn't reached yet (small, newer) are held flat at their <code>ipor-vaults.json</code> API value. The right edge equals the current Total TVL above. Negative values clamped to zero.
-    </div>
+    <section class="ui-section" id="netSec">
+      <div class="ui-head">
+        <h2>By network</h2>
+        <details class="ui-export">
+          <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+          <div class="ui-menu">
+            <div class="ui-menu-k">Image size</div>
+            <div class="ui-seg" data-size="net">
+              <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="widescreen">16:9</button><button type="button" data-v="fourthree">4:3</button><button type="button" data-v="compact">1:1</button>
+            </div>
+            <label class="ui-check"><input type="checkbox" data-dots checked> Dot grid in the image</label>
+            <div class="ui-menu-actions">
+              <button type="button" class="ui-btn primary" id="downloadChartPng">Download PNG</button>
+            </div>
+          </div>
+        </details>
+      </div>
+      <div class="ui-toolbar">
+        <div class="ui-filters net" style="--cols: 4">
+          <label class="ui-filter"><span class="ui-filter-label">Chart</span>
+            <select id="netType" data-fs><option value="line">Line</option><option value="bar">Bars</option></select></label>
+          <label class="ui-filter"><span class="ui-filter-label">Stack</span>
+            <select id="netStack" data-fs><option value="off">Off</option><option value="on">On</option></select></label>
+          <label class="ui-filter"><span class="ui-filter-label">Scale</span>
+            <select id="netScale" data-fs><option value="linear">Linear</option><option value="log">Log</option></select></label>
+          <label class="ui-filter"><span class="ui-filter-label">Curve</span>
+            <select id="netShape" data-fs><option value="linear">Sharp</option><option value="spline">Smooth</option></select></label>
+        </div>
+        <div class="ui-seg" id="netRange" role="group" aria-label="Range">
+          <button type="button" data-range="30">30d</button>
+          <button type="button" data-range="90">90d</button>
+          <button type="button" data-range="180" class="on">180d</button>
+          <button type="button" data-range="365">1y</button>
+          <button type="button" data-range="all">All</button>
+        </div>
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="Networks"></div>
+      <div class="ui-chart" id="tvlChart"><div class="ui-empty">Loading…</div></div>
+      <p class="chart-note m-hide">Drag across a chart to zoom in; double-click to zoom back out.</p>
+      <details class="ui-more" id="styleBox">
+        <summary>Line colours and widths</summary>
+        <div>
+          <div class="styles" id="styles"></div>
+          <div class="styles-foot"><button type="button" class="ui-btn" id="resetStyles">Reset colours and widths</button></div>
+        </div>
+      </details>
+    </section>
 
-    <div class="data-card" id="baseDataCard" style="display:none">
-      <div class="data-card-header">
-        <span>Base network — daily TVL <span class="data-card-count" id="baseDataCount"></span></span>
-        <button id="downloadBaseCsv" type="button">Download CSV</button>
+    <section class="ui-section" id="baseSec" hidden>
+      <div class="ui-head">
+        <h2>Base, day by day<span class="ui-count" id="baseDataCount"></span></h2>
+        <button type="button" class="ui-btn" id="downloadBaseCsv"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
       </div>
-      <div class="data-table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Date</th><th class="num">TVL (USD)</th></tr></thead>
-          <tbody id="baseDataBody"></tbody>
-        </table>
-      </div>
-    </div>
+      <table class="ui-table base-table">
+        <thead><tr><th>Date</th><th class="num">TVL (USD)</th></tr></thead>
+        <tbody id="baseDataBody"></tbody>
+      </table>
+      <div id="basePager"></div>
+    </section>
+
+    <details class="ui-more">
+      <summary>Methodology</summary>
+      <div>Each vault's TVL is its real on-chain <code>totalAssets()</code> measured at every snapshot block (<code>tvl-snapshots.json</code>) and forward-filled between snapshots, summed per chain per day. Snapshots above a per-vault sanity bound (over 50× the vault's own median, or ≥ $2B) are dropped as decimals/price parse errors. Vaults the snapshot indexer hasn't reached yet (small, newer) are held flat at their <code>ipor-vaults.json</code> API value. The right edge equals the current Total TVL above. Negative values clamped to zero.</div>
+    </details>
   </div>
 
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script src="/tvl-series.js"></script>
   <script>
+  (function () {
     const CHAIN_COLORS = {
       ethereum:  '#627EEA',
       base:      '#0052FF',
@@ -573,8 +198,8 @@
       fraxtal:   '#374151',
     };
     const DEFAULT_COLOR = '#8429FF';
-    const DAY_SEC = 86400;
-    const DAY_MS = DAY_SEC * 1000;
+    const { DAY_MS } = TvlSeries;
+    const chainName = (c) => FusionSelect.chainName(c);
 
     function fmtUsd(v) {
       if (v == null || !isFinite(v)) return '—';
@@ -585,125 +210,29 @@
       return `$${v.toFixed(0)}`;
     }
 
-    async function loadData() {
-      const [vaultsRes, snapRes] = await Promise.all([
-        fetch('/ipor-vaults.json'),
-        fetch('/tvl-snapshots.json').catch(() => null),
-      ]);
-      if (!vaultsRes.ok) throw new Error(`ipor-vaults.json HTTP ${vaultsRes.status}`);
-      const vaultsJson = await vaultsRes.json();
-      let snapJson = null;
-      try { if (snapRes && snapRes.ok) snapJson = await snapRes.json(); } catch {}
-      return {
+    const getJson = (f) => fetch(f).then(r => (r.ok ? r.json() : null)).catch(() => null);
+
+    // TVL per network per day: tvl-daily.json carries it ready
+    // (tools/build-tvl-daily.js, the same tvl-series.js code); before that file
+    // exists the page builds it from the vault list and every snapshot.
+    async function loadState() {
+      const daily = await getJson('/tvl-daily.json');
+      if (daily && daily.perChain) return { state: TvlSeries.unpack(daily), updatedAt: daily.updatedAt, snapshotsAt: daily.snapshotsUpdatedAt };
+      const [vaultsJson, snapJson] = await Promise.all([getJson('/ipor-vaults.json'), getJson('/tvl-snapshots.json')]);
+      if (!vaultsJson) throw new Error('ipor-vaults.json did not load');
+      const state = TvlSeries.buildSeries({
         vaults: vaultsJson.vaults || [],
         snapshots: snapJson && snapJson.vaults ? snapJson.vaults : {},
         anchorTs: new Date(vaultsJson.updatedAt || Date.now()).getTime() / 1000,
-      };
-    }
-
-    // Sanity bounds for a snapshot's tvlUsd. HARD_CAP catches catastrophic
-    // decimals/price parse errors (a vault cached with the wrong decimals can
-    // read 1e9–1e12). On top of that, per vault we reject points above 50× the
-    // vault's own non-zero median — this kills decimals glitches (e.g. a stray
-    // $1.1B "Tanken WETH" point whose median is ~$0) while preserving genuine
-    // historical highs (e.g. Reservoir ETH Yield really held ~$16M for weeks).
-    const HARD_CAP = 2e9;
-
-    function median(arr) {
-      if (!arr.length) return 0;
-      const s = [...arr].sort((a, b) => a - b);
-      const m = s.length >> 1;
-      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-    }
-
-    // Real per-vault daily TVL from on-chain snapshots: drop bad points, then
-    // forward-fill from the vault's first snapshot to anchorDay. Returns a
-    // Map(day -> tvlUsd), or null if the vault has no usable snapshot.
-    function vaultDailySnapshots(snap) {
-      const pts = (snap.snapshots || [])
-        .filter(s => typeof s.tvlUsd === 'number' && s.tvlUsd >= 0 && s.tvlUsd < HARD_CAP)
-        .map(s => ({ day: s.day != null ? s.day : Math.floor(s.timestamp / DAY_SEC), tvl: s.tvlUsd }))
-        // A handful of snapshots carry day 0 because their block timestamp never
-        // resolved. Forward-filling from 1970 stretched the axis across five
-        // decades, and bucketing smeared those points into a phantom bar around
-        // Jan 1971. Fusion did not exist before 2021, so anything older is bad
-        // data, not history.
-        .filter(s => s.day >= MIN_VALID_DAY);
-      if (!pts.length) return null;
-      const cap = Math.max(median(pts.map(p => p.tvl).filter(x => x > 0)) * 50, 1e6);
-      const kept = pts.filter(p => p.tvl <= cap).sort((a, b) => a.day - b.day);
-      if (!kept.length) return null;
-      const byDay = new Map();
-      for (const p of kept) byDay.set(p.day, p.tvl); // last write per day wins
-      return byDay;
-    }
-
-    // Historical TVL comes from the real on-chain snapshot time-series, summed
-    // per chain per day. The right edge (anchorDay) equals the per-vault values
-    // the stat card sums, so chart and "Total TVL" agree exactly.
-    function buildSeries({ vaults, snapshots, anchorTs }) {
-      const anchorDay = Math.floor(anchorTs / DAY_SEC);
-      const chainByAddr = {};
-      for (const v of vaults) chainByAddr[(v.address || '').toLowerCase()] = v.chain || 'ethereum';
-
-      const perChainDaily = {}; // chain -> Map(day -> tvl)
-      const addDay = (c, d, val) => {
-        let m = perChainDaily[c];
-        if (!m) { m = new Map(); perChainDaily[c] = m; }
-        m.set(d, (m.get(d) || 0) + val);
-      };
-
-      // 1) Snapshot-covered vaults: forward-fill their real history.
-      const covered = new Set();
-      let minDay = anchorDay;
-      for (const [addr, snap] of Object.entries(snapshots || {})) {
-        const byDay = vaultDailySnapshots(snap);
-        if (!byDay) continue;
-        covered.add(addr.toLowerCase());
-        const days = [...byDay.keys()].sort((a, b) => a - b);
-        if (days[0] < minDay) minDay = days[0];
-        const c = chainByAddr[addr.toLowerCase()] || 'ethereum';
-        let i = 0, cur = byDay.get(days[0]);
-        for (let d = days[0]; d <= anchorDay; d++) {
-          while (i < days.length && days[i] <= d) { cur = byDay.get(days[i]); i++; }
-          addDay(c, d, cur);
-        }
-      }
-
-      // 2) Vaults the snapshot indexer hasn't reached yet (small, newer): no
-      //    history available, so hold their API tvl flat across the window.
-      for (const v of vaults) {
-        const a = (v.address || '').toLowerCase();
-        if (covered.has(a) || !(v.tvl > 0)) continue;
-        const c = v.chain || 'ethereum';
-        for (let d = minDay; d <= anchorDay; d++) addDay(c, d, v.tvl);
-      }
-
-      // 3) Densify into the {day,tvl}[] shape the chart functions expect.
-      const perChain = {};
-      const currentByChain = {};
-      for (const [c, m] of Object.entries(perChainDaily)) {
-        const points = [];
-        let last = 0;
-        for (let d = minDay; d <= anchorDay; d++) {
-          last = m.has(d) ? m.get(d) : last;
-          points.push({ day: d, tvl: last });
-        }
-        perChain[c] = points;
-        currentByChain[c] = m.get(anchorDay) || 0;
-      }
-
-      return { perChain, currentByChain, anchorDay, minDay };
+      });
+      return { state, updatedAt: vaultsJson.updatedAt, snapshotsAt: snapJson && snapJson.updatedAt };
     }
 
     // Chains to render (sorted big→small by current TVL, with ≥$1K peak in any window)
     function chartChains(state) {
       const { perChain, currentByChain } = state;
       return Object.keys(perChain)
-        .filter(c => {
-          const peak = Math.max(...perChain[c].map(p => p.tvl), 0);
-          return peak > 1000;
-        })
+        .filter(c => Math.max(...perChain[c].map(p => p.tvl), 0) > 1000)
         .sort((a, b) => (currentByChain[b] || 0) - (currentByChain[a] || 0));
     }
 
@@ -721,7 +250,6 @@
       }
       return [...buckets.values()].sort((a, b) => a.day - b.day);
     }
-
     function bucketDaysFor(range) {
       if (range === '30') return 1;
       if (range === '90') return 3;
@@ -730,10 +258,8 @@
 
     function makeTraces(state, range, stack, chainConfig, type, shape) {
       const { perChain, anchorDay } = state;
-      let cutoff = null;
-      if (range !== 'all') cutoff = anchorDay - parseInt(range, 10);
+      const cutoff = range !== 'all' ? anchorDay - parseInt(range, 10) : null;
       const bDays = type === 'bar' ? bucketDaysFor(range) : 1;
-
       const traces = [];
       for (const c of chartChains(state)) {
         let pts = perChain[c];
@@ -741,130 +267,115 @@
         if (!pts.length) continue;
         if (bDays > 1) pts = bucketize(pts, bDays);
         const cfg = chainConfig[c];
-
         if (type === 'bar') {
           traces.push({
-            x: pts.map(p => new Date(p.day * DAY_MS)),
-            y: pts.map(p => Math.max(0, p.tvl)),
-            type: 'bar',
-            name: c,
-            visible: cfg.visible ? true : 'legendonly',
-            marker: {
-              color: cfg.color,
-              cornerradius: cfg.width,
-              line: { width: 0 },
-            },
-            hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
+            x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => Math.max(0, p.tvl)),
+            type: 'bar', name: c, visible: cfg.visible ? true : 'legendonly',
+            marker: { color: cfg.color, cornerradius: cfg.width, line: { width: 0 } },
+            hoverinfo: 'none',
           });
         } else {
           traces.push({
-            x: pts.map(p => new Date(p.day * DAY_MS)),
-            y: pts.map(p => Math.max(0, p.tvl)),
-            type: 'scatter',
-            mode: 'lines',
-            name: c,
-            visible: cfg.visible ? true : 'legendonly',
+            x: pts.map(p => new Date(p.day * DAY_MS)), y: pts.map(p => Math.max(0, p.tvl)),
+            type: 'scatter', mode: 'lines', name: c, visible: cfg.visible ? true : 'legendonly',
             stackgroup: stack === 'on' ? 'tvl' : undefined,
             line: { color: cfg.color, width: cfg.width, shape, smoothing: shape === 'spline' ? 1.0 : undefined },
-            hovertemplate: `<b>${c}</b>: %{y:$,.0f}<extra></extra>`,
+            hoverinfo: 'none',
           });
         }
       }
       return traces;
     }
 
-    function makeLayout(scale, type, stack) {
+    // Axis colours follow the theme on screen; an export always draws the
+    // light ones (it lands on a white slide whatever theme it was taken in).
+    function axisColors(forExport) {
+      return forExport
+        ? { font: '#70747A', line: '#E5E5E5' }
+        : { font: FusionChart.cssVar('--text-2', '#70747A'), line: FusionChart.cssVar('--line', '#E5E5E5') };
+    }
+
+    // Dates on the x axis: day and month within a half year; month and year
+    // beyond it, where "Jan 01" would otherwise come round twice.
+    const dateTicks = (range) => (range === 'all' || range === '365' ? "%b '%y" : '%b %d');
+
+    function makeLayout(scale, type, stack, forExport, range) {
+      const col = axisColors(forExport);
       return {
         autosize: true,
-        margin: { l: 96, r: 40, t: 26, b: 78 },   // room between axes and data
-        // Transparent so the container's CSS dot grid is the scale cue.
-        // An opaque canvas painted straight over it, and Plotly's own dashed
-        // major+minor gridlines on top made the old crosshair look.
+        margin: { l: 96, r: 40, t: 26, b: 78 },
+        // Transparent so the box's dot grid is the scale cue.
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: {
-          family: 'Poppins, -apple-system, sans-serif',
-          color: '#70747A',
-          size: 12,
-        },
+        font: { family: 'Geist, -apple-system, sans-serif', color: col.font, size: 12 },
         xaxis: {
-          showgrid: false,
-          gridcolor: '#C8C8C8',
-          griddash: 'dot',
-          gridwidth: 1,
-          linecolor: '#E5E5E5',
-          tickfont: { size: 11 },
-          type: 'date',
-          fixedrange: false,
-          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
-          minor: {
-            showgrid: false,
-            gridcolor: '#E0E0E0',
-            griddash: 'dot',
-            gridwidth: 1,
-            nticks: 6,
-          },
+          showgrid: false, linecolor: col.line, tickfont: { size: 11 }, type: 'date', fixedrange: false,
+          tickformat: dateTicks(range),
+          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true, showspikes: false,
         },
         yaxis: {
-          showgrid: false,
-          gridcolor: '#C8C8C8',
-          griddash: 'dot',
-          gridwidth: 1,
-          linecolor: '#E5E5E5',
-          tickfont: { size: 11 },
+          showgrid: false, linecolor: col.line, tickfont: { size: 11 },
           ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
           tickformat: '$,.2s',
           type: scale === 'log' ? 'log' : 'linear',
           rangemode: scale === 'log' ? 'normal' : 'tozero',
-          fixedrange: false,
-          minor: {
-            showgrid: false,
-            gridcolor: '#E0E0E0',
-            griddash: 'dot',
-            gridwidth: 1,
-            nticks: 4,
-          },
+          fixedrange: false, showspikes: false,
         },
         barmode: type === 'bar' && stack === 'on' ? 'stack' : 'group',
         bargap: 0.18,
         bargroupgap: 0.04,
         showlegend: false,
-        hovermode: 'x unified',
-        dragmode: 'zoom',
+        // The hover is the page's own (glide); a drag zooms on a desktop, and
+        // scrolls the page on a phone.
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
       };
     }
 
     const CONFIG = {
       responsive: true,
-      displaylogo: false,
-      modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
+      displayModeBar: false,
       scrollZoom: false,
       doubleClick: 'reset',
+      showTips: false,
     };
 
-    function renderStats(currentByChain) {
-      const row = document.getElementById('statsRow');
-      const total = Object.values(currentByChain).reduce((a, b) => a + b, 0);
-      const chains = Object.entries(currentByChain)
-        .filter(([, t]) => t > 1000)
-        .sort((a, b) => b[1] - a[1]);
-      let html = `
-        <div class="stat-card">
-          <div class="label">Total TVL</div>
-          <div class="value num-bold">${fmtUsd(total)}</div>
-        </div>`;
-      for (const [c, t] of chains) {
-        const color = CHAIN_COLORS[c] || DEFAULT_COLOR;
-        html += `
-          <div class="stat-card">
-            <div class="label"><span class="chain-dot" style="background:${color}"></span>${c}</div>
-            <div class="value num-bold">${fmtUsd(t)}</div>
-          </div>`;
-      }
-      row.innerHTML = html;
+    // ---- Drawing: Plotly arrives on its own; charts draw once it has ----
+    const plotlyReady = new Promise((resolve, reject) => {
+      if (window.Plotly) return resolve();
+      const tag = document.getElementById('plotlyJs');
+      tag.addEventListener('load', () => resolve());
+      tag.addEventListener('error', () => reject(new Error('the chart library (cdn.plot.ly) did not load')));
+    });
+    // On screen, the layout fitted to the screen (ui-chart.js); the layout as
+    // built is kept on the element for the exports.
+    function plot(id, traces, layout, describe) {
+      const gd = document.getElementById(id);
+      gd.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
+      gd.__wideLayout = layout;
+      return Plotly.react(gd, traces, FusionChart.fit(layout), CONFIG).then(() => FusionChart.glide(gd, describe));
     }
 
-    // Base network data table + CSV download
+    // ---- Figures: total, then the three biggest networks ----
+    function renderStats(currentByChain) {
+      const total = Object.values(currentByChain).reduce((a, b) => a + b, 0);
+      const chains = Object.entries(currentByChain).filter(([, t]) => t > 1000).sort((a, b) => b[1] - a[1]);
+      const figs = document.querySelectorAll('#figures .ui-figure');
+      figs[0].querySelector('.v').textContent = fmtUsd(total);
+      figs[0].querySelector('.s').textContent = 'across ' + chains.length + ' networks';
+      for (let i = 1; i < figs.length; i++) {
+        const c = chains[i - 1];
+        if (!c) { figs[i].hidden = true; continue; }
+        const color = CHAIN_COLORS[c[0]] || DEFAULT_COLOR;
+        figs[i].querySelector('.k').innerHTML = `<span class="dot" style="background:${color}"></span>${UI.esc(chainName(c[0]))}`;
+        figs[i].querySelector('.v').textContent = fmtUsd(c[1]);
+        figs[i].querySelector('.s').textContent = (total > 0 ? (c[1] / total * 100).toFixed(1) : '0.0') + '% of TVL';
+      }
+    }
+
+    // ---- Base, day by day ----
+    const BASE_PAGE = 15;
+    let basePage = 1;
     function baseSeries() {
       const pts = (state && state.perChain && state.perChain.base) || [];
       // Newest first, clamp negatives, daily granularity
@@ -873,27 +384,40 @@
         tvl: Math.max(0, p.tvl),
       }));
     }
-
     function renderBaseTable() {
       const rows = baseSeries();
-      const card = document.getElementById('baseDataCard');
-      const body = document.getElementById('baseDataBody');
-      const count = document.getElementById('baseDataCount');
-      if (!rows.length) { card.style.display = 'none'; return; }
-      card.style.display = '';
-      count.textContent = `(${rows.length} days)`;
-      body.innerHTML = rows.map(r => `
-        <tr><td>${r.date}</td><td class="num">$${r.tvl.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td></tr>
-      `).join('');
+      const sec = document.getElementById('baseSec');
+      if (!rows.length) { sec.hidden = true; return; }
+      sec.hidden = false;
+      document.getElementById('baseDataCount').textContent = rows.length + ' days';
+      const last = Math.max(1, Math.ceil(rows.length / BASE_PAGE));
+      basePage = Math.min(Math.max(1, basePage), last);
+      document.getElementById('baseDataBody').innerHTML = rows.slice((basePage - 1) * BASE_PAGE, basePage * BASE_PAGE).map(r =>
+        `<tr><td>${r.date}</td><td class="num">$${r.tvl.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td></tr>`).join('');
+      document.getElementById('basePager').innerHTML = UI.pager({ total: rows.length, page: basePage, size: BASE_PAGE, noun: 'days' });
+    }
+    function downloadBaseCsv() {
+      const rows = baseSeries();
+      if (!rows.length) return;
+      const lines = ['date,tvl_usd'];
+      for (const r of rows) lines.push(`${r.date},${r.tvl.toFixed(2)}`);
+      saveText(lines.join('\n'), `fusion-tvl-base-${stamp()}.csv`, 'text/csv;charset=utf-8');
+    }
+    const stamp = () => new Date().toISOString().slice(0, 10);
+    function saveText(text, name, type) {
+      const url = URL.createObjectURL(new Blob([text], { type }));
+      const a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
     }
 
-    // A CSS dot grid is not in the exported pixels, and the previous fix put
-    // dashed gridlines back for downloads — which is the ruled look again, and
-    // over a transparent PNG it picked up whatever colour sat behind it. So the
-    // export is composed instead: solid card background, the dot grid redrawn
-    // by hand, then the transparent Plotly render on top.
-    let exportDots = true;   // toggled from the toolbar
-
+    // ---- PNG export ----
+    // A CSS dot grid is not in the exported pixels, so the export is
+    // composed: the dot grid redrawn by hand (when chosen), then the
+    // transparent Plotly render on top. No background: it drops onto any
+    // deck or doc.
+    let exportDots = true;
     function composeExport(pngUrl, w, h, filename) {
       return new Promise((resolve) => {
         const img = new Image();
@@ -901,17 +425,11 @@
           const cv = document.createElement('canvas');
           cv.width = w; cv.height = h;
           const c = cv.getContext('2d');
-          // No background fill. The export is transparent: dots, axes and the
-          // series only, so it drops onto any deck or doc without a white slab
-          // behind it. A solid card was the wrong call last round.
           if (exportDots) {
             // Pitch scales with the export so the dots read as texture rather
             // than noise at 2x, matching the 14px on-screen grid.
             const pitch = Math.max(14, Math.round(w / 96));
             c.fillStyle = '#191717';
-            // A touch stronger than the 0.13 used on screen: there the dots sit
-            // on an opaque card, here they have to read against whatever the
-            // image is dropped onto.
             c.globalAlpha = 0.18;
             for (let y = h - pitch / 2; y > 0; y -= pitch) {
               for (let x = pitch / 2; x < w; x += pitch) {
@@ -935,33 +453,37 @@
       });
     }
 
-    // Snapshot the chart as transparent-background PNG (axes + gridlines kept).
-    // Temporarily swaps paper/plot bg to transparent so the exported pixels in
-    // those regions are alpha=0; restores them after the download.
-    async function downloadChartPng() {
-      const gd = document.getElementById('tvlChart');
-      const origPaper = (gd.layout && gd.layout.paper_bgcolor) || 'rgba(0,0,0,0)';
-      const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || 'rgba(0,0,0,0)';
-      try {
-        // Render the chart itself with no background at all, so the composed
-        // canvas underneath supplies the card colour and the dot grid.
-        await Plotly.relayout(gd, {
-          paper_bgcolor: 'rgba(0,0,0,0)',
-          plot_bgcolor:  'rgba(0,0,0,0)',
-        });
-        const stamp = new Date().toISOString().slice(0, 10);
-        const w = gd.clientWidth, h = gd.clientHeight, scale = 2;
-        // Pass display size + scale:2 (NOT width*2 + scale:1), or Plotly renders
-        // bigger while keeping the layout's font sizes.
-        const url = await Plotly.toImage(gd, { format: 'png', width: w, height: h, scale });
-        await composeExport(url, w * scale, h * scale, `fusion-tvl-${stamp}.png`);
-      } finally {
-        await Plotly.relayout(gd, { paper_bgcolor: origPaper, plot_bgcolor: origPlot });
+    // The export's layout: the chart's own, light, at the current zoom.
+    function exportLayout(gd) {
+      const lay = JSON.parse(JSON.stringify(gd.__wideLayout || gd.layout));
+      const col = axisColors(true);
+      lay.font = Object.assign({}, lay.font, { color: col.font });
+      for (const ax of ['xaxis', 'yaxis']) {
+        if (!lay[ax]) continue;
+        lay[ax].linecolor = col.line;
+        const live = gd._fullLayout && gd._fullLayout[ax];
+        if (live && gd.layout[ax] && gd.layout[ax].autorange === false) { lay[ax].range = live.range.slice(); lay[ax].autorange = false; }
       }
+      return lay;
     }
 
-    // Total TVL series: sum of all chains per day, bucketized to match the
-    // selected range so bars are readable (1d/3d/7d like the by-chain chart).
+    // By network: the chosen shape, at display size (the file is 2×).
+    const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
+    const SIZE_KEY = 'fusionstats_tvl_layout';
+    const VALID_SIZES = ['wide', 'widescreen', 'fourthree', 'compact'];
+    let netSize = 'wide';
+    async function downloadChartPng() {
+      const gd = document.getElementById('tvlChart');
+      if (!gd.data) return;
+      const shape = EXPORT_SHAPES[netSize];
+      const w = shape ? shape[0] : gd.clientWidth, h = shape ? shape[1] : gd.clientHeight, scale = 2;
+      // Display size + scale:2 (not width*2 + scale:1), or Plotly keeps the
+      // layout's font sizes and the labels come out half-size.
+      const url = await Plotly.toImage({ data: gd.data, layout: exportLayout(gd) }, { format: 'png', width: w, height: h, scale });
+      await composeExport(url, w * scale, h * scale, `fusion-tvl-${stamp()}.png`);
+    }
+
+    // ---- Total ----
     const TOTAL_BAR_COLOR = '#8429FF';
     let curTotalRange = 'all';
 
@@ -982,7 +504,7 @@
       return pts;
     }
 
-    function totalTvlTraceLayout(range) {
+    function totalTvlTraceLayout(range, forExport) {
       const pts = totalTvlSeries(range);
       const trace = {
         x: pts.map(p => new Date(p.day * DAY_MS)),
@@ -990,34 +512,28 @@
         type: 'bar',
         name: 'Total TVL',
         marker: { color: TOTAL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
-        hovertemplate: `<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>`,
+        hoverinfo: 'none',
       };
+      const col = axisColors(forExport);
       const layout = {
         autosize: true,
-        margin: { l: 96, r: 40, t: 26, b: 78 },   // room between axes and data
-        // Transparent so the container's CSS dot grid is the scale cue.
-        // An opaque canvas painted straight over it, and Plotly's own dashed
-        // major+minor gridlines on top made the old crosshair look.
+        margin: { l: 96, r: 40, t: 26, b: 78 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, -apple-system, sans-serif', color: '#70747A', size: 12 },
+        font: { family: 'Geist, -apple-system, sans-serif', color: col.font, size: 12 },
         xaxis: {
-          showgrid: false, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          linecolor: '#E5E5E5', tickfont: { size: 11 }, type: 'date', tickformat: '%b %d',
-          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
-          minor: { showgrid: false, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 6 },
+          showgrid: false, linecolor: col.line, tickfont: { size: 11 }, type: 'date', tickformat: dateTicks(range),
+          ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true, showspikes: false,
         },
         yaxis: {
-          showgrid: false, gridcolor: '#C8C8C8', griddash: 'dot', gridwidth: 1,
-          linecolor: '#E5E5E5', tickfont: { size: 11 }, tickformat: '$,.2s',
+          showgrid: false, linecolor: col.line, tickfont: { size: 11 }, tickformat: '$,.2s',
           rangemode: 'tozero', ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)',
-          automargin: true,
-          minor: { showgrid: false, gridcolor: '#E0E0E0', griddash: 'dot', gridwidth: 1, nticks: 4 },
+          automargin: true, showspikes: false,
         },
         bargap: 0.18,
         showlegend: false,
-        hovermode: 'x',
-        dragmode: 'zoom',
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
       };
       return { trace, layout };
     }
@@ -1052,7 +568,7 @@
         margin: { l: 150, r: 46, t: 42, b: 112 },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Poppins, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
+        font: { family: 'Geist, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
         xaxis: {
           showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
           tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
@@ -1070,67 +586,41 @@
       return { trace, layout };
     }
 
+    function totalNote() {
+      const b = bucketDaysFor(curTotalRange);
+      document.getElementById('totalNote').textContent = b === 7
+        ? 'Weekly bars: each is the TVL on the last day of its week.'
+        : b === 3 ? 'A bar every 3 days: each is the TVL on the last of them.' : 'A bar a day.';
+    }
     function redrawTotal() {
       const { trace, layout } = totalTvlTraceLayout(curTotalRange);
-      Plotly.react('totalTvlChart', [trace], layout, CONFIG);
+      totalNote();
+      return plot('totalTvlChart', [trace], layout, (pts) => FusionChart.when(pts[0].x)
+        + '<div class="hv-big">' + fmtUsd(pts[0].y) + '</div>');
     }
 
-    // PNG export. 'wide' snapshots the live chart at on-screen proportions.
-    // 'square' re-renders the live chart as a 1080×1080 figure (honouring the
-    // current zoom window, down-sampled bars, large fonts), captures it, then
-    // restores the on-screen view.
+    // PNG of the total: 'wide' at the on-screen proportions; 4:3 and 1:1 as
+    // their own large-type figures, within the current zoom window.
+    let totalSize = 'wide';
     async function downloadTotalPng(aspect) {
-      const stamp = new Date().toISOString().slice(0, 10);
       const gd = document.getElementById('totalTvlChart');
-
+      if (!gd.data) return;
       if (aspect === 'square' || aspect === '43') {
         const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
         const ratioSlug = aspect === '43' ? '4x3' : '1x1';
         let visibleDays = null;
         try {
           const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
-          if (xr && xr.length === 2) {
-            visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
-          }
+          if (xr && xr.length === 2) visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
         } catch {}
         const { trace, layout } = totalTvlSquareFigure(curTotalRange, visibleDays);
-        const savedData = gd.data, savedLayout = gd.layout;
-        try {
-          await Plotly.react(gd, [trace], layout, CONFIG);
-          const url = await Plotly.toImage(gd, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
-          await composeExport(url, dims.w * 2, dims.h * 2, `fusion-total-tvl-${ratioSlug}-${stamp}.png`);
-        } finally {
-          await Plotly.react(gd, savedData, savedLayout, CONFIG);
-        }
+        const url = await Plotly.toImage({ data: [trace], layout }, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
+        await composeExport(url, dims.w * 2, dims.h * 2, `fusion-total-tvl-${ratioSlug}-${stamp()}.png`);
         return;
       }
-
-      const origPaper = (gd.layout && gd.layout.paper_bgcolor) || '#FFFFFF';
-      const origPlot  = (gd.layout && gd.layout.plot_bgcolor)  || '#FFFFFF';
-      try {
-        await Plotly.relayout(gd, {
-          paper_bgcolor: 'rgba(0,0,0,0)',
-          plot_bgcolor:  'rgba(0,0,0,0)',
-          'xaxis.showgrid': false,
-          'yaxis.showgrid': false,
-          'xaxis.minor.showgrid': false,
-          'yaxis.minor.showgrid': false,
-        });
-        const _w = gd.clientWidth, _h = gd.clientHeight;
-        const _url = await Plotly.toImage(gd, { format: 'png', width: _w, height: _h, scale: 2 });
-        await composeExport(_url, _w * 2, _h * 2, `fusion-total-tvl-${stamp}.png`);
-      } finally {
-        // Restore the on-screen look: dots, not gridlines. Putting showgrid
-        // back to true here would undo the dot grid after the first export.
-        await Plotly.relayout(gd, {
-          paper_bgcolor: origPaper,
-          plot_bgcolor:  origPlot,
-          'xaxis.showgrid': false,
-          'yaxis.showgrid': false,
-          'xaxis.minor.showgrid': false,
-          'yaxis.minor.showgrid': false,
-        });
-      }
+      const w = gd.clientWidth, h = gd.clientHeight;
+      const url = await Plotly.toImage({ data: gd.data, layout: exportLayout(gd) }, { format: 'png', width: w, height: h, scale: 2 });
+      await composeExport(url, w * 2, h * 2, `fusion-total-tvl-${stamp()}.png`);
     }
 
     // The total chart's bars as numbers: the selected range at the chart's own
@@ -1145,70 +635,11 @@
       const iso = (d) => new Date(d * DAY_MS).toISOString().slice(0, 10);
       const lines = ['period_start,tvl_as_of,total_tvl_usd'];
       for (const p of pts) lines.push(`${iso(p.day)},${iso(p.asOf != null ? p.asOf : p.day)},${p.tvl.toFixed(2)}`);
-      const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const stamp = new Date().toISOString().slice(0, 10);
       const range = curTotalRange === 'all' ? 'all' : `${curTotalRange}d`;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `fusion-total-tvl-${cadence}-${range}-${stamp}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveText(lines.join('\n') + '\n', `fusion-total-tvl-${cadence}-${range}-${stamp()}.csv`, 'text/csv;charset=utf-8');
     }
 
-    function downloadBaseCsv() {
-      const rows = baseSeries();
-      if (!rows.length) return;
-      const lines = ['date,tvl_usd'];
-      for (const r of rows) lines.push(`${r.date},${r.tvl.toFixed(2)}`);
-      const csv = lines.join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const stamp = new Date().toISOString().slice(0, 10);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `fusion-tvl-base-${stamp}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    // Days-since-epoch floor for a believable data point (2021-01-01).
-    const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
-    // Aspect preset. Validated on read so a stale or hand-edited value cannot
-    // put the page into an undefined layout.
-    const LAYOUT_KEY = 'fusionstats_tvl_layout';
-    const VALID_LAYOUTS = ['wide', 'widescreen', 'fourthree', 'compact'];
-    function applyChartLayout(v) {
-      const layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'wide';
-      document.querySelector('.container').setAttribute('data-layout', layout);
-      try { localStorage.setItem(LAYOUT_KEY, layout); } catch (e) {}
-      // Plotly gets there on its own via ResizeObserver, but a frame late,
-      // which reads as lag on click.
-      requestAnimationFrame(() => {
-        ['tvlChart', 'totalTvlChart'].forEach((id) => {
-          const gd = document.getElementById(id);
-          if (gd && gd.data) { try { Plotly.Plots.resize(gd); } catch (e) {} }
-        });
-      });
-    }
-    (function initLayout() {
-      let saved = 'wide';
-      try { saved = localStorage.getItem(LAYOUT_KEY) || 'wide'; } catch (e) {}
-      if (VALID_LAYOUTS.indexOf(saved) < 0) saved = 'wide';
-      document.addEventListener('DOMContentLoaded', () => {
-        const sel = document.getElementById('layoutSel');
-        if (sel) {
-          sel.value = saved;
-          sel.addEventListener('change', function () { applyChartLayout(this.value); });
-        }
-        applyChartLayout(saved);
-      });
-    })();
-
+    // ---- By network ----
     let state = null;
     let curRange = '180';
     let curScale = 'linear';
@@ -1217,226 +648,175 @@
     let curShape = 'linear'; // 'linear' = sharp segments, 'spline' = smooth curve (line mode only)
     // Per-chain user-tweakable config (color, line width / corner radius, visibility)
     let chainConfig = {};
-
-    function defaultConfig(chain) {
-      return {
-        color: CHAIN_COLORS[chain] || DEFAULT_COLOR,
-        width: 2,
-        visible: true,
-      };
-    }
-
+    const defaultConfig = (chain) => ({ color: CHAIN_COLORS[chain] || DEFAULT_COLOR, width: 2, visible: true });
     function initChainConfig() {
       chainConfig = {};
-      for (const c of chartChains(state)) {
-        chainConfig[c] = defaultConfig(c);
-      }
+      for (const c of chartChains(state)) chainConfig[c] = defaultConfig(c);
     }
+
+    const netDescribe = (pts) => FusionChart.when(pts[0].x) + pts.slice()
+      .filter(p => p.data.visible !== 'legendonly')
+      .sort((a, b) => b.y - a.y)
+      .map(p => FusionChart.row((p.data.line && p.data.line.color) || (p.data.marker && p.data.marker.color), chainName(p.data.name), fmtUsd(p.y)))
+      .join('');
 
     // Full redraw (rebuilds traces + layout). resetAxes forces Plotly to
     // recompute autorange — used when visibility / range / scale / stack changes
-    // so the y-axis snaps to the visible chains (e.g. hide ethereum, base goes
-    // into the spotlight).
+    // so the y-axis snaps to the visible chains.
     function redraw({ resetAxes = false } = {}) {
       const traces = makeTraces(state, curRange, curStack, chainConfig, curType, curShape);
-      const layout = makeLayout(curScale, curType, curStack);
-      if (resetAxes) {
-        layout.xaxis.autorange = true;
-        layout.yaxis.autorange = true;
-      }
-      Plotly.react('tvlChart', traces, layout, CONFIG);
+      const layout = makeLayout(curScale, curType, curStack, false, curRange);
+      if (resetAxes) { layout.xaxis.autorange = true; layout.yaxis.autorange = true; }
+      return plot('tvlChart', traces, layout, netDescribe);
     }
 
-    // Cheap style-only update for color or width: uses restyle so the
-    // user's current zoom/pan view is preserved. The width slider routes to
-    // line.width in line mode, marker.cornerradius in bar mode.
-    function restyleChainColor(chain, color) {
+    // Cheap style-only update for colour or width: restyle keeps the user's
+    // zoom. The width routes to line.width in line mode, marker.cornerradius
+    // in bar mode.
+    function restyleChain(chain, patchLine, patchBar) {
       const idx = chartChains(state).indexOf(chain);
       if (idx < 0) return;
-      const patch = curType === 'bar'
-        ? { 'marker.color': color }
-        : { 'line.color': color };
-      Plotly.restyle('tvlChart', patch, [idx]);
-    }
-    function restyleChainWidth(chain, w) {
-      const idx = chartChains(state).indexOf(chain);
-      if (idx < 0) return;
-      const patch = curType === 'bar'
-        ? { 'marker.cornerradius': w }
-        : { 'line.width': w };
-      Plotly.restyle('tvlChart', patch, [idx]);
+      Plotly.restyle('tvlChart', curType === 'bar' ? patchBar : patchLine, [idx]);
     }
 
-    // The toggle-all button says what it will do next, so it has to follow
-    // individual checkbox changes too.
-    function syncToggleAllLabel() {
-      const btn = document.getElementById('toggleAllNetworks');
-      if (!btn || !state) return;
+    function renderChips() {
       const chains = chartChains(state);
+      const box = document.getElementById('chips');
       const anyVisible = chains.some(c => chainConfig[c] && chainConfig[c].visible);
-      btn.textContent = anyVisible ? 'Unselect all' : 'Select all';
-    }
-
-    function renderNetworkPanel() {
-      const chains = chartChains(state);
-      const panel = document.getElementById('networkPanel');
-      const grid = document.getElementById('networkGrid');
-      if (!chains.length) {
-        panel.style.display = 'none';
-        return;
-      }
-      panel.style.display = '';
-      const widthUnit = curType === 'bar' ? '' : 'px';
-      grid.innerHTML = chains.map(c => {
+      box.innerHTML = chains.map(c => {
         const cfg = chainConfig[c];
-        const tvl = fmtUsd(state.currentByChain[c] || 0);
-        return `
-          <div class="network-row${cfg.visible ? '' : ' hidden'}" data-chain="${c}">
-            <input type="checkbox" data-role="visible" ${cfg.visible ? 'checked' : ''} aria-label="Show ${c}">
-            <input type="color" data-role="color" value="${cfg.color}" aria-label="${c} color">
-            <span class="chain-name">${c} <span style="color:var(--text-secondary);font-weight:400;font-size:0.7rem;margin-left:0.4rem">${tvl}</span></span>
-            <span class="width-wrap">
-              <input type="range" min="1" max="8" step="1" value="${cfg.width}" data-role="width" class="width-slider" aria-label="${c} width">
-              <span class="width-readout">${cfg.width}${widthUnit}</span>
-            </span>
-          </div>`;
+        return `<button type="button" class="chip" data-chain="${UI.esc(c)}" aria-pressed="${cfg.visible}" title="Show or hide ${UI.esc(chainName(c))}">`
+          + `<span class="dot" style="background:${cfg.color}"></span>${UI.esc(chainName(c))}<span class="v">${fmtUsd(state.currentByChain[c] || 0)}</span></button>`;
+      }).join('') + `<button type="button" class="chip all" id="toggleAllNetworks">${anyVisible ? 'Hide all' : 'Show all'}</button>`;
+    }
+
+    function renderStyles() {
+      const chains = chartChains(state);
+      const unit = curType === 'bar' ? '' : 'px';
+      document.getElementById('styles').innerHTML = chains.map(c => {
+        const cfg = chainConfig[c];
+        return `<div class="style-row" data-chain="${UI.esc(c)}">
+          <input type="color" data-role="color" value="${cfg.color}" aria-label="${UI.esc(chainName(c))} colour">
+          <span class="name">${UI.esc(chainName(c))}</span>
+          <input type="range" min="1" max="8" step="1" value="${cfg.width}" data-role="width" aria-label="${UI.esc(chainName(c))} ${curType === 'bar' ? 'corner radius' : 'line width'}">
+          <span class="w">${cfg.width}${unit}</span>
+        </div>`;
       }).join('');
-
-      syncToggleAllLabel();
-
-      grid.querySelectorAll('.network-row').forEach(row => {
-        const chain = row.dataset.chain;
-        const cbx = row.querySelector('[data-role="visible"]');
-        const col = row.querySelector('[data-role="color"]');
-        const wid = row.querySelector('[data-role="width"]');
-        const readout = row.querySelector('.width-readout');
-
-        cbx.addEventListener('change', () => {
-          chainConfig[chain].visible = cbx.checked;
-          row.classList.toggle('hidden', !cbx.checked);
-          syncToggleAllLabel();
-          // Visibility change → re-autorange so the remaining lines fill the chart.
-          redraw({ resetAxes: true });
-        });
-        col.addEventListener('input', () => {
-          chainConfig[chain].color = col.value;
-          restyleChainColor(chain, col.value);
-        });
-        wid.addEventListener('input', () => {
-          const w = parseInt(wid.value, 10);
-          chainConfig[chain].width = w;
-          readout.textContent = w + (curType === 'bar' ? '' : 'px');
-          restyleChainWidth(chain, w);
-        });
-      });
     }
 
-    function resetAllStyles() {
-      for (const c of Object.keys(chainConfig)) {
-        chainConfig[c] = defaultConfig(c);
-      }
-      renderNetworkPanel();
-      redraw({ resetAxes: true });
-    }
-
-    function bindToolbar() {
-      const wire = (sel, varSet) => {
-        document.querySelectorAll(sel + ' button').forEach(btn => {
-          btn.addEventListener('click', () => {
-            varSet(btn.dataset);
-            document.querySelectorAll(sel + ' button').forEach(b => b.classList.toggle('active', b === btn));
-            redraw({ resetAxes: true });
-          });
-        });
-      };
-      wire('#networkToolbar .group:nth-child(1)', (d) => curRange = d.range);
-      wire('#networkToolbar .group:nth-child(2)', (d) => curScale = d.scale);
-      // group 3 = Type. Custom handler so we also re-render the network panel
-      // (its width-slider label changes from "px" to "" in bar mode).
-      document.querySelectorAll('#networkToolbar .group:nth-child(3) button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          curType = btn.dataset.type;
-          document.querySelectorAll('#networkToolbar .group:nth-child(3) button').forEach(b => b.classList.toggle('active', b === btn));
-          renderNetworkPanel();
-          redraw({ resetAxes: true });
-        });
+    function bindControls() {
+      // Total range.
+      document.getElementById('totalRange').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-total-range]');
+        if (!b) return;
+        curTotalRange = b.dataset.totalRange;
+        document.querySelectorAll('#totalRange button').forEach(x => x.classList.toggle('on', x === b));
+        redrawTotal();
       });
-      // group 4 = Curve (line shape). Restyle-only so user zoom is preserved.
-      document.querySelectorAll('#networkToolbar .group:nth-child(4) button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          curShape = btn.dataset.shape;
-          document.querySelectorAll('#networkToolbar .group:nth-child(4) button').forEach(b => b.classList.toggle('active', b === btn));
-          if (curType === 'line') {
-            Plotly.restyle('tvlChart', {
-              'line.shape': curShape,
-              'line.smoothing': curShape === 'spline' ? 1.0 : null,
-            });
-          }
-          // In bar mode the shape is a no-op visually, but we still track it so
-          // a later switch back to Line uses the user's chosen curve.
-        });
-      });
-      wire('#networkToolbar .group:nth-child(5)', (d) => curStack = d.stack);
-      document.getElementById('resetStyles').addEventListener('click', resetAllStyles);
-
-      // One click to clear every network, and one to bring them all back.
-      // Unchecking 15+ boxes by hand to isolate one chain was the only way.
-      document.getElementById('toggleAllNetworks').addEventListener('click', function () {
-        const chains = chartChains(state);
-        const anyVisible = chains.some(c => chainConfig[c] && chainConfig[c].visible);
-        chains.forEach(c => { if (chainConfig[c]) chainConfig[c].visible = !anyVisible; });
-        this.textContent = anyVisible ? 'Select all' : 'Unselect all';
-        renderNetworkPanel();
+      // By-network range and the four dropdowns.
+      document.getElementById('netRange').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-range]');
+        if (!b) return;
+        curRange = b.dataset.range;
+        document.querySelectorAll('#netRange button').forEach(x => x.classList.toggle('on', x === b));
         redraw({ resetAxes: true });
       });
-
-      // Total chart toolbar (scoped to #totalToolbar so it doesn't collide
-      // with the by-network selectors above).
-      document.querySelectorAll('#totalToolbar button[data-total-range]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          curTotalRange = btn.dataset.totalRange;
-          document.querySelectorAll('#totalToolbar button[data-total-range]')
-            .forEach(b => b.classList.toggle('active', b === btn));
-          redrawTotal();
-        });
+      document.getElementById('netScale').addEventListener('change', (e) => { curScale = e.target.value; redraw({ resetAxes: true }); });
+      document.getElementById('netStack').addEventListener('change', (e) => { curStack = e.target.value; redraw({ resetAxes: true }); });
+      document.getElementById('netType').addEventListener('change', (e) => { curType = e.target.value; renderStyles(); redraw({ resetAxes: true }); });
+      // Curve: a restyle, so the zoom stays. In bar mode it is kept for later.
+      document.getElementById('netShape').addEventListener('change', (e) => {
+        curShape = e.target.value;
+        if (curType === 'line') Plotly.restyle('tvlChart', { 'line.shape': curShape, 'line.smoothing': curShape === 'spline' ? 1.0 : null });
       });
-      const dotsToggle = document.getElementById('exportDotsToggle');
-      if (dotsToggle) {
-        exportDots = dotsToggle.checked;
-        dotsToggle.addEventListener('change', () => { exportDots = dotsToggle.checked; });
-      }
-      document.getElementById('downloadTotalPng').addEventListener('click', () => downloadTotalPng('wide'));
-      document.getElementById('downloadTotalPng43').addEventListener('click', () => downloadTotalPng('43'));
-      document.getElementById('downloadTotalPngSquare').addEventListener('click', () => downloadTotalPng('square'));
+      // A chip shows or hides its network; the last chip does all of them.
+      document.getElementById('chips').addEventListener('click', (e) => {
+        const b = e.target.closest('.chip');
+        if (!b) return;
+        const chains = chartChains(state);
+        if (b.id === 'toggleAllNetworks') {
+          const anyVisible = chains.some(c => chainConfig[c] && chainConfig[c].visible);
+          chains.forEach(c => { if (chainConfig[c]) chainConfig[c].visible = !anyVisible; });
+        } else {
+          const c = b.dataset.chain;
+          chainConfig[c].visible = !chainConfig[c].visible;
+        }
+        renderChips();
+        redraw({ resetAxes: true });
+      });
+      // Colours and widths.
+      const styles = document.getElementById('styles');
+      styles.addEventListener('input', (e) => {
+        const row = e.target.closest('.style-row');
+        if (!row) return;
+        const c = row.dataset.chain;
+        if (e.target.dataset.role === 'color') {
+          chainConfig[c].color = e.target.value;
+          restyleChain(c, { 'line.color': e.target.value }, { 'marker.color': e.target.value });
+          renderChips();
+        } else if (e.target.dataset.role === 'width') {
+          const w = parseInt(e.target.value, 10);
+          chainConfig[c].width = w;
+          row.querySelector('.w').textContent = w + (curType === 'bar' ? '' : 'px');
+          restyleChain(c, { 'line.width': w }, { 'marker.cornerradius': w });
+        }
+      });
+      document.getElementById('resetStyles').addEventListener('click', () => {
+        for (const c of Object.keys(chainConfig)) chainConfig[c] = defaultConfig(c);
+        renderChips(); renderStyles(); redraw({ resetAxes: true });
+      });
+      // Export menus: size, dot grid (shared by both), downloads.
+      try { const s = localStorage.getItem(SIZE_KEY); if (VALID_SIZES.indexOf(s) >= 0) netSize = s; } catch (e) {}
+      const syncMenus = () => {
+        document.querySelectorAll('.ui-seg[data-size="net"] button').forEach(b => b.classList.toggle('on', b.dataset.v === netSize));
+        document.querySelectorAll('.ui-seg[data-size="total"] button').forEach(b => b.classList.toggle('on', b.dataset.v === totalSize));
+        document.querySelectorAll('input[data-dots]').forEach(c => { c.checked = exportDots; });
+      };
+      document.querySelectorAll('.ui-seg[data-size] button').forEach(b => b.addEventListener('click', () => {
+        if (b.closest('[data-size]').dataset.size === 'net') {
+          netSize = b.dataset.v;
+          try { localStorage.setItem(SIZE_KEY, netSize); } catch (e) {}
+        } else totalSize = b.dataset.v;
+        syncMenus();
+      }));
+      document.querySelectorAll('input[data-dots]').forEach(c => c.addEventListener('change', () => { exportDots = c.checked; syncMenus(); }));
+      syncMenus();
+      document.getElementById('totalPng').addEventListener('click', () => downloadTotalPng(totalSize));
       document.getElementById('downloadTotalCsv').addEventListener('click', downloadTotalCsv);
+      document.getElementById('downloadChartPng').addEventListener('click', downloadChartPng);
+      document.getElementById('downloadBaseCsv').addEventListener('click', downloadBaseCsv);
+      UI.onPage(document.getElementById('basePager'), (n) => { basePage = n; renderBaseTable(); });
+      // Theme and screen width change the axes: draw again.
+      const repaint = () => { if (window.Plotly && state) { redrawTotal(); redraw(); } };
+      window.addEventListener('fusion:theme', repaint);
+      FusionChart.onChange(repaint);
     }
 
     (async function () {
       try {
-        const data = await loadData();
-        state = buildSeries(data);
+        const loaded = await loadState();
+        state = loaded.state;
         initChainConfig();
         renderStats(state.currentByChain);
-        renderNetworkPanel();
+        renderChips();
+        renderStyles();
         renderBaseTable();
-        document.getElementById('downloadBaseCsv').addEventListener('click', downloadBaseCsv);
-        document.getElementById('downloadChartPng').addEventListener('click', downloadChartPng);
-        // Total TVL chart (rendered first, sits above the by-network chart)
-        const totalTL = totalTvlTraceLayout(curTotalRange);
-        Plotly.newPlot('totalTvlChart', [totalTL.trace], totalTL.layout, CONFIG);
-        // By-network chart
-        Plotly.newPlot(
-          'tvlChart',
-          makeTraces(state, curRange, curStack, chainConfig, curType, curShape),
-          makeLayout(curScale, curType, curStack),
-          CONFIG
-        );
-        bindToolbar();
+        totalNote();
+        const when = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
+        const parts = [];
+        if (loaded.snapshotsAt) parts.push('Snapshots to <b>' + UI.esc(when(loaded.snapshotsAt)) + '</b>');
+        if (loaded.updatedAt) parts.push('vault list <b>' + UI.esc(when(loaded.updatedAt)) + '</b>');
+        document.getElementById('status').innerHTML = parts.join(' · ');
+        bindControls();
+        await plotlyReady;
+        await redrawTotal();
+        await redraw();
       } catch (e) {
-        document.getElementById('tvlChart').innerHTML =
-          `<div class="loading">Failed to load: ${String(e.message || e)}</div>`;
+        console.error(e);
+        document.getElementById('tvlChart').innerHTML = `<div class="ui-error">Failed to load: ${UI.esc(String(e.message || e))}</div>`;
       }
     })();
+  })();
   </script>
 </body>
 </html>

@@ -101,6 +101,12 @@ jobs:
         continue-on-error: true
         run: node tools/build-tvl-latest.js
 
+      # TVL per network per day for the TVL page (tools/build-tvl-daily.js).
+      - name: Build the TVL page's daily file
+        if: always()
+        continue-on-error: true
+        run: node tools/build-tvl-daily.js
+
       - name: Commit & push results
         if: always()
         run: |
@@ -108,7 +114,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # One at a time: a single missing file makes `git add a b c` add none
           # of them, and the snapshots would go uncommitted with it.
-          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json; do
+          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json; do
             [ -f "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)
@@ -144,6 +150,7 @@ jobs:
             # The Stocks file is cut from these snapshots and whatever events
             # just landed (collect.yml): cut it again from both.
             node tools/build-stocks-data.js && git add -f stocks-data.json || true
+            node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "$MSG"
