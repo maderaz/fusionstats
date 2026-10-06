@@ -24,12 +24,19 @@ jobs:
       - name: Fetch ZyfAI wallets
         run: node collect-zyfai.js
 
+      # The Dust Tracker reads its deposits already marked ZyfAI's or not
+      # (tools/build-dust-events.js): mark them again with this list.
+      - name: Rebuild the Dust Tracker's deposits
+        continue-on-error: true
+        run: node tools/build-dust-events.js
+
       - name: Commit & push
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add zyfai-wallets.json
+          for f in dust-events.json dust-events-tx.json; do [ -f "$f" ] && git add -f "$f"; done
           # Generated data never merges cleanly and never should: the freshest
           # generation supersedes whatever is on the remote. Rebasing it lands
           # in a conflict, and `|| true` then hides that, leaving the repo mid-
@@ -51,6 +58,9 @@ jobs:
             git fetch origin "$BRANCH"
             git checkout -B "$BRANCH" "origin/$BRANCH"
             for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            # The deposits again, from this list and the remote's events.
+            node tools/build-dust-events.js || true
+            for f in dust-events.json dust-events-tx.json; do [ -f "$f" ] && git add -f "$f"; done
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "Update zyfai-wallets.json [skip ci]"
