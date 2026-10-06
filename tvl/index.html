@@ -36,7 +36,6 @@
     }
     .chip:hover { background: var(--bg-subtle); border-color: var(--line-strong); }
     .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
-    .chip .v { color: var(--text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
     .chip[aria-pressed="false"] { opacity: 0.45; }
     .chip[aria-pressed="false"] .dot { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--text-3); }
     .chip.all { color: var(--text-2); }
@@ -51,7 +50,6 @@
     .style-row .w { width: 30px; font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
     .styles-foot { margin-top: 10px; }
 
-    .base-table td.num { font-weight: 500; }
     @container (max-width: 700px) {
       .ui-section .ui-toolbar .ui-seg { width: 100%; }
       .ui-filters.net { --cols: 4; }
@@ -121,6 +119,7 @@
             <label class="ui-check"><input type="checkbox" data-dots checked> Dot grid in the image</label>
             <div class="ui-menu-actions">
               <button type="button" class="ui-btn primary" id="downloadChartPng">Download PNG</button>
+              <button type="button" class="ui-btn" id="downloadNetCsv" title="A row a day in the range, a column per network">Download CSV</button>
             </div>
           </div>
         </details>
@@ -154,18 +153,6 @@
           <div class="styles-foot"><button type="button" class="ui-btn" id="resetStyles">Reset colours and widths</button></div>
         </div>
       </details>
-    </section>
-
-    <section class="ui-section" id="baseSec" hidden>
-      <div class="ui-head">
-        <h2>Base, day by day<span class="ui-count" id="baseDataCount"></span></h2>
-        <button type="button" class="ui-btn" id="downloadBaseCsv"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
-      </div>
-      <table class="ui-table base-table">
-        <thead><tr><th>Date</th><th class="num">TVL (USD)</th></tr></thead>
-        <tbody id="baseDataBody"></tbody>
-      </table>
-      <div id="basePager"></div>
     </section>
 
     <details class="ui-more">
@@ -378,35 +365,25 @@
       }
     }
 
-    // ---- Base, day by day ----
-    const BASE_PAGE = 15;
-    let basePage = 1;
-    function baseSeries() {
-      const pts = (state && state.perChain && state.perChain.base) || [];
-      // Newest first, clamp negatives, daily granularity
-      return pts.slice().reverse().map(p => ({
-        date: new Date(p.day * DAY_MS).toISOString().slice(0, 10),
-        tvl: Math.max(0, p.tvl),
-      }));
-    }
-    function renderBaseTable() {
-      const rows = baseSeries();
-      const sec = document.getElementById('baseSec');
-      if (!rows.length) { sec.hidden = true; return; }
-      sec.hidden = false;
-      document.getElementById('baseDataCount').textContent = rows.length + ' days';
-      const last = Math.max(1, Math.ceil(rows.length / BASE_PAGE));
-      basePage = Math.min(Math.max(1, basePage), last);
-      document.getElementById('baseDataBody').innerHTML = rows.slice((basePage - 1) * BASE_PAGE, basePage * BASE_PAGE).map(r =>
-        `<tr><td>${r.date}</td><td class="num">$${r.tvl.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td></tr>`).join('');
-      document.getElementById('basePager').innerHTML = UI.pager({ total: rows.length, page: basePage, size: BASE_PAGE, noun: 'days' });
-    }
-    function downloadBaseCsv() {
-      const rows = baseSeries();
-      if (!rows.length) return;
-      const lines = ['date,tvl_usd'];
-      for (const r of rows) lines.push(`${r.date},${r.tvl.toFixed(2)}`);
-      saveText(lines.join('\n'), `fusion-tvl-base-${stamp()}.csv`, 'text/csv;charset=utf-8');
+    // ---- By network, as numbers ----
+    // The chart's days in the range, one row each, and a column per network
+    // (every network the chart has, shown or hidden). It replaces the Base
+    // table, which was the chart's Base line again, 800 rows of it.
+    function downloadNetCsv() {
+      if (!state) return;
+      const { perChain, anchorDay } = state;
+      const cutoff = curRange !== 'all' ? anchorDay - parseInt(curRange, 10) : null;
+      const chains = chartChains(state);
+      if (!chains.length) return;
+      const iso = (d) => new Date(d * DAY_MS).toISOString().slice(0, 10);
+      const lines = ['date,' + chains.map(c => c + '_tvl_usd').join(',')];
+      // Every network's series runs day by day over the same days.
+      perChain[chains[0]].forEach((p, i) => {
+        if (cutoff != null && p.day < cutoff) return;
+        lines.push(iso(p.day) + ',' + chains.map(c => Math.max(0, perChain[c][i].tvl).toFixed(2)).join(','));
+      });
+      const range = curRange === 'all' ? 'all' : `${curRange}d`;
+      saveText(lines.join('\n') + '\n', `fusion-tvl-by-network-${range}-${stamp()}.csv`, 'text/csv;charset=utf-8');
     }
     const stamp = () => new Date().toISOString().slice(0, 10);
     function saveText(text, name, type) {
@@ -691,7 +668,7 @@
       box.innerHTML = chains.map(c => {
         const cfg = chainConfig[c];
         return `<button type="button" class="chip" data-chain="${UI.esc(c)}" aria-pressed="${cfg.visible}" title="Show or hide ${UI.esc(chainName(c))}">`
-          + `<span class="dot" style="background:${cfg.color}"></span>${UI.esc(chainName(c))}<span class="v">${fmtUsd(state.currentByChain[c] || 0)}</span></button>`;
+          + `<span class="dot" style="background:${cfg.color}"></span>${UI.esc(chainName(c))}</button>`;
       }).join('') + `<button type="button" class="chip all" id="toggleAllNetworks">${anyVisible ? 'Hide all' : 'Show all'}</button>`;
     }
 
@@ -789,8 +766,7 @@
       document.getElementById('totalPng').addEventListener('click', () => downloadTotalPng(totalSize));
       document.getElementById('downloadTotalCsv').addEventListener('click', downloadTotalCsv);
       document.getElementById('downloadChartPng').addEventListener('click', downloadChartPng);
-      document.getElementById('downloadBaseCsv').addEventListener('click', downloadBaseCsv);
-      UI.onPage(document.getElementById('basePager'), (n) => { basePage = n; renderBaseTable(); });
+      document.getElementById('downloadNetCsv').addEventListener('click', downloadNetCsv);
       // Theme and screen width change the axes: draw again.
       const repaint = () => { if (window.Plotly && state) { redrawTotal(); redraw(); } };
       window.addEventListener('fusion:theme', repaint);
@@ -805,7 +781,6 @@
         renderStats(state.currentByChain);
         renderChips();
         renderStyles();
-        renderBaseTable();
         totalNote();
         const when = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : null;
         const parts = [];
