@@ -216,7 +216,7 @@
     }
 
     @keyframes shimmer { to { background-position: -200% 0; } }
-    .shimmer, #statsRow:empty, #tvlStat:empty, .flow-chart-bars:empty::after {
+    .shimmer, #statsRow:empty, .stat-card .value:empty, .flow-chart-bars:empty::after {
       background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--line) 50%, var(--bg-subtle) 100%);
       background-size: 200% 100%;
       animation: shimmer 1.4s linear infinite;
@@ -224,26 +224,25 @@
 
     /* ---------- Overview: TVL and net inflow, then the daily chart ---------- */
     .overview { padding: 28px 0 32px; border-top: 1px solid var(--line); }
-    /* TVL now, then net inflow over three windows: one row of four figures
-       with a divider between each, under two headings. */
-    .figures { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
-    .fig-flow > .label, .fig-flow .stat-card:first-child { padding-left: 28px; }
-    .fig-flow .stat-card:first-child { border-left: 1px solid var(--line); }
-    .stats-row.stats-one { grid-template-columns: minmax(0, 1fr); }
-    #tvlStat:empty { display: block; height: 70px; border-radius: 12px; }
-    .stat-card .value.tvl { color: var(--text); }
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      margin-top: 18px;
-    }
+    /* Two halves, each its figures over its chart: TVL and what Fusion earns
+       over the TVL chart; the net flow over three windows over the daily
+       chart. Across a desktop the five figures read as one row; a phone
+       stacks the halves. */
+    .ov { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 44px; }
+    .ov-half { min-width: 0; display: flex; flex-direction: column; }
+    .figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .figs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #statsRow:empty { display: block; height: 70px; border-radius: 12px; }
-    .stat-card { padding: 0 28px; border-left: 1px solid var(--line); min-width: 0; }
+    .stat-card { padding: 0 22px; border-left: 1px solid var(--line); min-width: 0; }
     .stat-card:first-child { padding-left: 0; border-left: none; }
-    .stat-card .label { color: var(--text-3); }
+    .ov-half + .ov-half .stat-card:first-child { margin-left: -22px; padding-left: 22px; border-left: 1px solid var(--line); }
+    .stat-card .label { display: flex; align-items: center; gap: 5px; color: var(--text-3); white-space: nowrap; }
+    .stat-card .value:empty { height: 1.05em; width: 70%; border-radius: 8px; }
+    .stat-card .value.earn { color: var(--pos); }
     .stat-card .value {
       margin-top: 6px;
-      font-size: clamp(20px, 4cqi, 40px);
+      font-size: clamp(20px, 3cqi, 32px);
+      color: var(--text);
       line-height: 1.05;
       font-weight: 600;
       letter-spacing: -0.04em;
@@ -251,14 +250,9 @@
     }
 
     .flow-chart { margin-top: 32px; }
-    /* TVL growth by the week and the daily net flow: half the width each,
-       one above the other on a phone. Without the TVL file, the flow chart
-       takes the whole row. */
-    .charts2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px; margin-top: 32px; }
-    .charts2 > .flow-chart { min-width: 0; margin-top: 0; }
-    .charts2.one { grid-template-columns: minmax(0, 1fr); }
-    .charts2 .flow-chart-bars { gap: 3px; }
-    .charts2 .flow-bar { left: 22%; right: 22%; }
+    .ov-half .flow-chart { margin-top: 30px; }
+    .ov .flow-chart-bars { gap: 3px; }
+    .ov .flow-bar { left: 22%; right: 22%; }
     /* Weekly TVL: one colour, from a zero line at the bottom. */
     .flow-chart-bars.tvl-bars { --zero: 100%; }
     .flow-bar.tvl { bottom: 0; background: var(--accent); border-radius: 99px 99px 3px 3px; }
@@ -884,25 +878,24 @@
       .m-show.tip-slot { display: inline-flex; align-items: center; }
 
       .overview { padding: 18px 0 22px; }
-      /* The four figures in one 2×2 grid, without the headings over them
-         (each figure names itself): TVL · Net 24h / Net 7d · Net 30d. */
-      .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .fig, .fig > .stats-row:not(:empty) { display: contents; }
-      .fig > .label { display: none; }
-      #tvlStat:empty, #statsRow:empty { height: 58px; margin: 0; }
-      .figures .stat-card { padding: 0 0 12px; border-left: none; }
-      #statsRow > .stat-card:nth-child(odd) { padding-left: 16px; border-left: 1px solid var(--line); }
-      #statsRow > .stat-card:nth-child(n+2) { padding-top: 12px; border-top: 1px solid var(--line); padding-bottom: 0; }
+      /* TVL | Annualized earnings, the TVL chart; 24h | 7d | 30d, the
+         daily net flow. */
+      .ov { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+      .stat-card { padding: 0 14px; }
+      .stat-card:first-child { padding-left: 0; }
+      .ov-half + .ov-half .stat-card:first-child { margin-left: 0; padding-left: 0; border-left: none; }
       .stat-card .value { margin-top: 4px; font-size: clamp(20px, 7cqi, 28px); letter-spacing: -0.035em; }
+      .figs-3 .stat-card .value { font-size: clamp(16px, 5.6cqi, 22px); }
+      #statsRow:empty { height: 52px; }
       /* The chart: its dates in its header, no axis row under it. */
       .flow-chart { margin-top: 20px; }
       .flow-chart-header { margin-bottom: 10px; }
       .flow-chart-axis { display: none; }
       .flow-chart-bars { height: 120px; gap: 2px; }
       .flow-bar { left: 14%; right: 14%; }
-      .charts2 { grid-template-columns: minmax(0, 1fr); gap: 26px; margin-top: 20px; }
-      .charts2 .flow-chart-bars { gap: 2px; }
-      .charts2 .flow-bar { left: 14%; right: 14%; }
+      .ov-half .flow-chart { margin-top: 16px; }
+      .ov .flow-chart-bars { gap: 2px; }
+      .ov .flow-bar { left: 14%; right: 14%; }
 
       .feed { padding-top: 26px; }
       .feed-tools { gap: 10px; }
@@ -978,38 +971,39 @@
     </header>
 
     <section id="overview" class="overview">
-      <div class="figures">
-        <div class="fig fig-tvl">
-          <span class="label">TVL <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></span>
-          <div id="tvlStat" class="stats-row stats-one"></div>
-        </div>
-        <div class="fig fig-flow">
-          <span class="label">Net inflow <span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
-          <div id="statsRow" class="stats-row"></div>
-        </div>
-      </div>
-      <!-- TVL growth by the week beside the daily net flow, half each. -->
-      <div class="charts2" id="charts2">
-        <div id="tvlWeekly" class="flow-chart">
-          <div class="flow-chart-header">
-            <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault at the end of each week, from the vaults' on-chain snapshots, as the TVL page draws it. This week's bar is today's TVL, the figure above.">&#9432;</span></span>
-            <span class="flow-chart-range"><span class="m-hide">weekly, last <span id="tvlRangeLabel">26w</span></span><span class="m-show" id="tvlRangeSpan"></span></span>
+      <!-- Two halves: TVL and what it earns over the TVL chart, the net flow
+           over the daily chart. A phone stacks them. -->
+      <div class="ov" id="charts2">
+        <div class="ov-half">
+          <div class="figs">
+            <div class="stat-card fig-tvl"><div class="label">TVL <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></div><div class="value" id="tvlValue"></div></div>
+            <div class="stat-card fig-earn"><div class="label">Annualized earnings <span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO takes in fees over a year at today's TVL and APY, from every vault above $10K (99.9% of TVL): its share of each vault's management fee on the TVL, and of its performance fee on the yield before fees. Fee terms read on-chain per vault; dollar values from IPOR's API, which prices ETH, BTC and the rest.">&#9432;</span></div><div class="value earn" id="earnValue"></div></div>
           </div>
-          <div class="flow-chart-bars tvl-bars" id="tvlWeeklyBars"></div>
-          <div class="flow-chart-axis">
-            <span id="tvlWeeklyStart"></span>
-            <span>today</span>
+          <div id="tvlWeekly" class="flow-chart">
+            <div class="flow-chart-header">
+              <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault at the end of each week, from the vaults' on-chain snapshots, as the TVL page draws it. This week's bar is today's TVL, the figure above.">&#9432;</span></span>
+              <span class="flow-chart-range"><span class="m-hide">weekly, last <span id="tvlRangeLabel">26w</span></span><span class="m-show" id="tvlRangeSpan"></span></span>
+            </div>
+            <div class="flow-chart-bars tvl-bars" id="tvlWeeklyBars"></div>
+            <div class="flow-chart-axis">
+              <span id="tvlWeeklyStart"></span>
+              <span>today</span>
+            </div>
           </div>
         </div>
-        <div id="flowChart" class="flow-chart">
-          <div class="flow-chart-header">
-            <span class="flow-chart-title label">Daily net flow</span>
-            <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
-          </div>
-          <div class="flow-chart-bars" id="flowChartBars"></div>
-          <div class="flow-chart-axis">
-            <span id="flowChartStart"></span>
-            <span id="flowChartEnd"></span>
+        <div class="ov-half">
+          <div class="figs figs-3" id="statsRow"></div>
+          <span hidden id="flowTip"><span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
+          <div id="flowChart" class="flow-chart">
+            <div class="flow-chart-header">
+              <span class="flow-chart-title label">Daily net flow</span>
+              <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
+            </div>
+            <div class="flow-chart-bars" id="flowChartBars"></div>
+            <div class="flow-chart-axis">
+              <span id="flowChartStart"></span>
+              <span id="flowChartEnd"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -1665,44 +1659,74 @@
     // Net inflow per window. The "Net inflow" heading and its explanation sit
     // once above the three values (see #overview); until this runs the row
     // shows a loading shimmer.
+    // Net inflow over three windows, in the page's ink: the sign says which
+    // way it went. The ⓘ rides on the first.
     function renderStats(s) {
       const row = document.getElementById('statsRow');
-
-      // On a phone the four figures share one 2×2 grid without the headings
-      // above them, so each says what it is: "Net 24h", with the heading's ⓘ.
-      const tip = document.querySelector('.fig-flow > .label .info-tip');
-      function flowCard(label, val, withTip) {
-        const color = val >= 0 ? 'var(--pos)' : 'var(--neg)';
-        return `<div class="stat-card">
-          <div class="label"><span class="m-show">Net</span><span>${label}</span>${withTip && tip ? `<span class="m-show tip-slot">${tip.outerHTML}</span>` : ''}</div>
-          <div class="value num-bold" style="color:${color}">${formatUsdCompact(val)}</div>
+      const tip = document.querySelector('#flowTip .info-tip');
+      const card = (label, val, withTip) => `<div class="stat-card">
+          <div class="label">Net ${label}${withTip && tip ? tip.outerHTML : ''}</div>
+          <div class="value num-bold">${formatUsdCompact(val)}</div>
         </div>`;
-      }
-
-      row.innerHTML = flowCard('24h', s.net24h, true)
-        + flowCard('7d', s.net7d)
-        + flowCard('30d', s.net30d);
+      row.innerHTML = card('24h', s.net24h, true) + card('7d', s.net7d) + card('30d', s.net30d);
       document.getElementById('overview').style.display = '';
     }
 
+    const compactUsd = (v) => (v >= 1e9 ? '$' + (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : '$' + (v / 1e3).toFixed(1) + 'K');
+
     // TVL now: every vault's TVL as IPOR's API reports it, summed — from the
-    // vault list already loaded for the filters. Without that list, nothing.
+    // vault list already loaded for the filters. Without that list, a dash.
     let lastTvlTotal = 0;
     function renderTvl(ipor) {
-      const el = document.getElementById('tvlStat');
       const vaults = (ipor && ipor.vaults) || [];
       const total = vaults.reduce((a, v) => a + (v.tvl > 0 ? v.tvl : 0), 0);
       lastTvlTotal = total;
       if (tvlDaily) renderTvlWeekly(); else loadTvlWeekly();
-      if (!(total > 0)) { el.closest('.fig').hidden = true; return; }
-      el.closest('.fig').hidden = false;
-      const text = total >= 1e9 ? '$' + (total / 1e9).toFixed(2) + 'B'
-        : total >= 1e6 ? '$' + (total / 1e6).toFixed(2) + 'M'
-        : '$' + (total / 1e3).toFixed(1) + 'K';
-      const tip = document.querySelector('.fig-tvl > .label .info-tip');
-      el.innerHTML = `<div class="stat-card"><div class="label"><span class="m-hide">now</span>`
-        + `<span class="m-show">TVL</span>${tip ? `<span class="m-show tip-slot">${tip.outerHTML}</span>` : ''}</div>
-        <div class="value num-bold tvl">${text}</div></div>`;
+      document.getElementById('tvlValue').textContent = total > 0 ? compactUsd(total) : '—';
+      renderEarnings(vaults);
+    }
+
+    // Annualized earnings: what the IPOR DAO takes from Fusion's vaults in a
+    // year at today's TVL and APY, from every vault above $10K (99.9% of TVL).
+    // Per vault: its share of the management fee, on the TVL; and its share of
+    // the performance fee, on the yield before fees. IPOR's APY is what
+    // depositors keep, so the yield before fees is (APY + management fee) /
+    // (1 - performance fee); a vault losing money pays no performance fee.
+    // The fee terms are each vault's own, read on-chain (dao-fees.json); TVL
+    // and APY are IPOR's, already in dollars at its ETH, BTC and other prices.
+    const EARN_FLOOR = 10000;
+    let daoFees, daoFeesLoad = null;
+    function earnings(vaults, fees) {
+      let mgmt = 0, perf = 0, count = 0, missing = 0;
+      for (const v of vaults) {
+        if (!(v.tvl > EARN_FLOOR)) continue;
+        const f = fees[String(v.address).toLowerCase()];
+        if (!f || f.daoMgmt == null || f.daoPerf == null) { missing++; continue; }
+        const net = Number(v.apy) / 100;
+        const gross = net > 0 ? (net + f.mgmt / 100) / (1 - f.perf / 100) : 0;
+        mgmt += v.tvl * f.daoMgmt / 100;
+        perf += v.tvl * gross * f.daoPerf / 100;
+        count++;
+      }
+      return { total: mgmt + perf, mgmt, perf, count, missing };
+    }
+    function renderEarnings(vaults) {
+      const el = document.getElementById('earnValue');
+      if (daoFees === undefined) {
+        if (!daoFeesLoad) daoFeesLoad = getJson('dao-fees.json').then((f) => { daoFees = f && f.vaults ? f : null; renderEarnings(vaults); });
+        return;
+      }
+      if (!daoFees) { el.textContent = '—'; return; }
+      const e = earnings(vaults, daoFees.vaults);
+      el.textContent = e.count ? compactUsd(e.total) : '—';
+      const tip = document.getElementById('earnTip');
+      if (tip && e.count) {
+        tip.setAttribute('data-tip', `What the IPOR DAO takes in fees over a year at today's TVL and APY, from the ${e.count} vaults above $10K: `
+          + `${compactUsd(e.mgmt)} from its share of their management fees, on the TVL, and ${compactUsd(e.perf)} from its share of their `
+          + `performance fees, on the yield before fees. Fee terms read on-chain from each vault (${String(daoFees.readAt || '').slice(0, 10)}); `
+          + `dollar values from IPOR's API, which prices ETH, BTC and the rest.`);
+        tips.update(tip);
+      }
     }
 
     // What each chart's bars stand for, for their hovers: per bar, its label,
@@ -1712,7 +1736,10 @@
 
     // One hairline, one dot and one bubble glide to the nearest bar — the
     // pointer anywhere over the chart picks one — and that bar stays lit
-    // while the rest step back. Tap on a touch screen; tap elsewhere to close.
+    // while the rest step back. On a touch screen a finger slid across the
+    // bars carries them along (the chart keeps sideways moves, the page still
+    // scrolls up and down); lifted, the last bar stays lit until a tap
+    // elsewhere.
     function glideBars(bars, itemsOf) {
       let live = false;
       const hide = () => {
@@ -1748,7 +1775,8 @@
         h.classList.add('hv-on');
         if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
       }
-      bars.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') show(e.clientX); });
+      bars.style.touchAction = 'pan-y';
+      bars.addEventListener('pointermove', (e) => show(e.clientX));
       bars.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hide(); });
       bars.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(e.clientX); });
       document.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !bars.contains(e.target)) hide(); });

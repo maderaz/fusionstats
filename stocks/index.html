@@ -1058,6 +1058,8 @@
       gd.on('plotly_unhover', off);
       gd.__hv = { on, off };
       if (!gd.__hvLeave) { gd.addEventListener('mouseleave', () => gd.__hv && gd.__hv.off()); gd.__hvLeave = true; }
+      // A finger slid across it carries the hover (ui-chart.js touch).
+      if (window.FusionChart && FusionChart.touch) FusionChart.touch(gd);
       // The dots fitted to the plot, the dates under it (ui-chart.js).
       if (window.FusionChart && FusionChart.frame) FusionChart.frame(gd);
     }

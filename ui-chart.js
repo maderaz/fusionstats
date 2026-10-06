@@ -22,6 +22,7 @@
 //   FusionChart.onChange(fn)            fn() when the column crosses that width
 //                                       (a phone turned sideways): redraw
 //   FusionChart.glide(gd, describe)     the page's own hover (see below)
+//   FusionChart.touch(gd)               a finger slid across the plot moves it
 //   FusionChart.quiet(traces)           traces that report hovers, draw none
 //   FusionChart.soft(traces)            the marks drawn soft and lean (below)
 //   FusionChart.png(fig, { width, height, dots, filename })
@@ -539,8 +540,35 @@
     gd.on('plotly_hover', on);
     gd.on('plotly_unhover', off);
     gd.__hv = { on, off };
+    touch(gd);
     if (!gd.__hvLeave) { gd.addEventListener('mouseleave', () => gd.__hv && gd.__hv.off()); gd.__hvLeave = true; }
     frame(gd);
+  }
+
+  // A finger slid across the plot moves the hover with it: Plotly on its own
+  // answers a tap and then holds that point until the next one. The chart
+  // keeps sideways moves; up and down still scroll the page.
+  function touch(gd) {
+    if (!gd || gd.__hvTouch) return;
+    gd.__hvTouch = true;
+    gd.style.touchAction = 'pan-y';
+    // Plotly hovers only on a mouse moving over its plot: the finger's
+    // position is handed to it as one, kept inside the plot.
+    const follow = (e) => {
+      if (e.pointerType !== 'touch' || !gd._fullLayout) return;
+      const drag = gd.querySelector('.nsewdrag');
+      if (!drag) return;
+      const r = drag.getBoundingClientRect();
+      const clientX = Math.max(r.left + 1, Math.min(r.right - 1, e.clientX));
+      const clientY = Math.max(r.top + 1, Math.min(r.bottom - 1, e.clientY));
+      drag.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, cancelable: true, clientX, clientY, view: window }));
+    };
+    gd.addEventListener('pointerdown', follow);
+    gd.addEventListener('pointermove', follow);
+    // Plotly's own touch handling would take the finger for a drag and drop
+    // the hover: the touch stops at the chart, the pointer events above do
+    // the work.
+    for (const t of ['touchstart', 'touchmove', 'touchend']) gd.addEventListener(t, (e) => e.stopPropagation(), { capture: true, passive: true });
   }
 
   // A CSS colour with its alpha set ('rgb(1, 2, 3)' or '#rrggbb').
@@ -603,5 +631,5 @@
     }));
   }
 
-  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, glide, frame, when, row, cssVar, png };
+  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, glide, touch, frame, when, row, cssVar, png };
 })();
