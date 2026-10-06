@@ -1,724 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://api.morpho.org" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
   <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['history.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Morpho Dominance — Fusion Stats</title>
+  <meta name="description" content="How much of all Morpho lending on Ethereum is borrowed by Fusion vaults: the share now, over time, and vault by vault.">
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <!-- Plotly draws the chart and nothing else: it loads alongside the page. -->
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script src="/nav.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-light: #A37FFF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --green: #16a34a;
-      --red: #dc2626;
+    .ui-section .ui-toolbar { margin-bottom: 14px; }
+    .ui-chart { margin: 0 -4px; }
+    /* On a phone the two switches share a row, each as wide as its words. */
+    @container (max-width: 700px) {
+      .ui-toolbar.pair { flex-wrap: nowrap; gap: 8px; }
+      .ui-toolbar.pair .ui-seg { width: auto; min-width: 0; }
+      .ui-toolbar.pair #metric { flex: 1 1 auto; }
+      .ui-toolbar.pair .ui-seg button { flex: 1 1 auto; padding: 0 6px; }
     }
+    .ui-figure .v[title] { cursor: default; }
 
-    [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
-      --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-light: #B89AFF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --green: #22c55e;
-      --red: #ef4444;
-    }
-
-    body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-      transition: background 0.3s, color 0.3s;
-    }
-
-    .num-bold {
-      font-family: 'Source Sans 3', 'Source Sans Pro', sans-serif;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      position: relative;
-      top: 1px;
-    }
-
-    .container { max-width: 960px; margin: 0 auto; }
-
-    header { margin-bottom: 2rem; }
-
-    header h1 {
-      font-size: 1.5rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.25rem;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    header p { color: var(--text-body); font-size: 0.875rem; }
-
-    .stats-row {
+    /* ---------- Vaults: a table on a desktop, two lines on a phone ---------- */
+    .dlist { --cols: minmax(0, 2.3fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.3fr); }
+    .dhead, .drow {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-    }
-
-    .stat-card .label {
-      font-size: 0.75rem;
-      color: var(--text-body);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-      font-weight: 500;
-    }
-
-    .stat-card .value {
-      font-size: 2rem;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-    }
-
-    .stat-card .sub {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-top: 0.35rem;
-    }
-
-    .share-banner {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-      display: flex;
+      grid-template-columns: var(--cols);
       align-items: center;
-      justify-content: space-between;
+      column-gap: 16px;
     }
-
-    .share-banner .share-label {
-      font-size: 0.875rem;
-      color: var(--text-body);
-      white-space: nowrap;
+    .dhead {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 500; color: var(--text-3);
     }
-
-    .share-banner .share-value {
-      font-size: 1.5rem;
-      color: var(--accent);
-      white-space: nowrap;
-    }
-
-    .ath-atl-row {
-      display: flex;
-      justify-content: center;
-      gap: 2rem;
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: -0.75rem;
-      margin-bottom: 2rem;
-    }
-
-    .ath-atl-row .ath-atl-item {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .ath-atl-row .ath-atl-item .ath-atl-label {
-      font-weight: 500;
-      letter-spacing: 0.04em;
-    }
-
-    .share-banner .share-bar-outer {
-      flex: 1;
-      margin: 0 1.5rem;
-      height: 8px;
-      background: var(--bg-alt);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .share-banner .share-bar-inner {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-
-    .vault-table {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-
-    .vault-table h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th {
-      text-align: left;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--stroke);
-      font-weight: 500;
-    }
-
-    td {
-      padding: 0.875rem 1.5rem;
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--stroke);
-      color: var(--text-body);
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--accent-bg); }
-
-    .vault-name { font-weight: 500; color: var(--text); }
-
-    .vault-address {
-      color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 400;
-    }
-
-    .vault-address a {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    .vault-address a:hover {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .bar-cell { display: flex; align-items: center; gap: 0.75rem; }
-
-    .bar-bg {
-      flex: 1; height: 6px;
-      background: var(--bg-alt); border-radius: 3px; overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 3px; transition: width 0.3s;
-    }
-
-    .bar-value { min-width: 4rem; text-align: right; color: var(--text); }
-
-    .loading {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      text-align: center;
-      padding: 2rem;
-    }
-
-    .error-msg { color: var(--red); font-size: 0.8rem; }
-
-    .info-box {
-      background: var(--accent-bg);
-      border: 1px solid rgba(132, 41, 255, 0.2);
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      font-size: 0.8rem;
-      color: var(--text-body);
-      line-height: 1.6;
-      margin-bottom: 2rem;
-    }
-
-    .info-box strong { color: var(--text); }
-
-    .debug-log {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-    }
-
-    .debug-log h2 {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      margin-bottom: 0.75rem;
-    }
-
-    .debug-log pre {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      line-height: 1.6;
-      color: var(--text-body);
-      max-height: 300px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      overflow: visible;
-    }
-
-    .chart-card h2 {
-      font-size: 1rem;
-      font-weight: 500;
-      margin-bottom: 0.25rem;
-    }
-
-    .chart-legend {
-      display: flex;
-      gap: 1.25rem;
-      justify-content: flex-end;
-      margin-bottom: 1rem;
-      font-size: 0.75rem;
-      color: var(--text-body);
-    }
-
-    .chart-legend span {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .chart-legend .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 3px;
-      display: inline-block;
-    }
-
-    .chart-area {
-      display: flex;
-      align-items: stretch;
-      height: 260px;
-      gap: 0;
-    }
-
-    .chart-y-axis {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding-right: 0.75rem;
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-      font-family: 'Source Sans 3', sans-serif;
-      text-align: right;
-      min-width: 48px;
-    }
-
-    .chart-y-axis span {
-      line-height: 1;
-    }
-
-    .chart-bars-container {
-      flex: 1;
-      display: flex;
-      align-items: flex-end;
-      gap: 2px;
-      position: relative;
-      min-width: 0;
-      overflow: visible;
-    }
-
-    .chart-bar-slot {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      height: 100%;
-      position: relative;
-    }
-
-    .chart-bar-track {
-      width: 6px;
-      background: #A8B8D8;
-      border-radius: 3px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      position: relative;
-      transition: height 0.4s ease;
-    }
-
-    .chart-bar-fill {
-      width: 100%;
-      border-radius: 3px;
-      background: linear-gradient(to top, var(--accent), var(--accent-end));
-      transition: height 0.4s ease;
-      position: relative;
-      z-index: 1;
-    }
-
-    .chart-bar-slot:hover .chart-bar-fill {
-      filter: brightness(1.15);
-    }
-
-    .chart-x-labels {
-      flex: 1;
-      display: flex;
-      gap: 2px;
-    }
-
-    .chart-x-row {
-      display: flex;
-      gap: 2px;
-      padding-left: 48px;
-      margin-top: 0.5rem;
-      overflow: hidden;
-    }
-
-    .chart-x-row span {
-      flex: 1;
-      text-align: center;
-      font-size: 0.6rem;
-      color: var(--text-secondary);
-      font-family: 'Source Sans 3', sans-serif;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
-    }
-
-    .chart-sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 0.75rem;
-    }
-
-    .chart-bar-tooltip {
-      display: none;
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.85);
-      color: #fff;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      white-space: nowrap;
-      z-index: 10;
-      pointer-events: none;
-      line-height: 1.5;
-    }
-
-    .chart-bar-slot:hover .chart-bar-tooltip,
-    .chart-bar-slot.active .chart-bar-tooltip {
-      display: block;
-    }
-
-    .top-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .top-nav a {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-body);
-      text-decoration: none;
-      padding: 0.4rem 1rem;
-      border-radius: 6px;
-      border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-
-    .top-nav a:hover {
-      color: var(--accent);
-      border-color: var(--stroke);
-    }
-
-    .top-nav a.active {
-      color: var(--accent);
-      background: var(--accent-bg);
-      border-color: var(--accent);
-    }
-
-    .theme-toggle {
-      margin-left: auto;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-      transition: background 0.2s, border-color 0.2s;
-    }
-
-    .theme-toggle:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* Mobile vault cards (hidden on desktop) */
-    .vaults-mobile { display: none; }
-
-    .vault-card-mobile {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 12px;
-      padding: 1rem 1.1rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .vault-card-mobile .vcm-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--text);
-      margin-bottom: 0.15rem;
-    }
-
-    .vault-card-mobile .vcm-addr {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.75rem;
-      word-break: break-all;
-    }
-
-    .vault-card-mobile .vcm-addr a {
-      color: var(--text-secondary);
-      text-decoration: none;
-    }
-
-    .vault-card-mobile .vcm-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem 1rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .vault-card-mobile .vcm-stat-label {
-      font-size: 0.65rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 0.15rem;
-    }
-
-    .vault-card-mobile .vcm-stat-value {
-      font-size: 0.9rem;
-      color: var(--text);
-    }
-
-    .vault-card-mobile .vcm-share-row {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-    }
-
-    .vault-card-mobile .vcm-share-row .bar-bg {
-      flex: 1;
-      height: 6px;
-      background: var(--bg-alt);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .vault-card-mobile .vcm-share-row .bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      border-radius: 3px;
-    }
-
-    .vault-card-mobile .vcm-share-row .vcm-share-pct {
-      min-width: 3.5rem;
-      text-align: right;
-      color: var(--text);
-      font-size: 0.85rem;
-    }
-
-    @media (max-width: 640px) {
-      body { padding: 0.75rem; }
-      h1 { font-size: 1.65rem; }
-      header p { font-size: 0.8rem; }
-
-      /* Top nav: horizontal scroll on narrow screens */
-      .top-nav {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+    .dhead .num, .drow .num { justify-self: end; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .drow { min-height: 60px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .drow:hover { background: linear-gradient(90deg, transparent, var(--bg-subtle) 4%, var(--bg-subtle) 96%, transparent); }
+    .drow .name { min-width: 0; }
+    .drow .name b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text); }
+    .drow .name .ui-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .drow .addr { color: var(--text-2); }
+    .drow .addr a { color: inherit; text-decoration: none; }
+    .drow .addr a:hover { color: var(--accent); }
+    .drow .borrow { font-weight: 600; }
+    .drow .coll { color: var(--text-2); }
+    .drow .none { color: var(--text-3); font-weight: 400; }
+    .drow .meta { display: none; }
+    .share { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .share .bar { flex: 1; min-width: 24px; height: 6px; border-radius: 3px; background: var(--bg-subtle); overflow: hidden; }
+    .share .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+    .share .pct { min-width: 44px; text-align: right; font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--text); }
+    /* Vaults without a Morpho position: dimmed, and folded until asked for. */
+    .drow.idle { opacity: 0.5; }
+    .dlist:not(.all) .drow.idle { display: none; }
+    .dmore { margin-top: 14px; }
+    .dlist + .dmore[hidden] { display: none; }
+    @container (max-width: 700px) {
+      .dhead { display: none; }
+      .drow {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "name borrow" "meta share";
+        row-gap: 5px;
+        min-height: 0;
+        padding: 12px 0;
       }
-      .top-nav::-webkit-scrollbar { display: none; }
-      .top-nav a { flex-shrink: 0; padding: 0.4rem 0.8rem; }
-      .top-nav .theme-toggle { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      .stats-row { grid-template-columns: 1fr; }
-      .share-banner { flex-direction: column; gap: 0.75rem; text-align: center; padding: 1rem 1.1rem; }
-      .share-banner .share-bar-outer { margin: 0; width: 100%; }
-      .stat-card { padding: 1.1rem 1.2rem; }
-      .stat-card .value { font-size: 1.6rem; }
-      .info-box { padding: 0.85rem 1rem; font-size: 0.75rem; }
-
-      /* Swap vault table for stacked cards */
-      .vault-table { display: none; }
-      .vaults-mobile { display: block; margin-bottom: 2rem; }
-
-      /* Chart scales down */
-      .chart-card { padding: 1rem 0.9rem; }
-      .chart-area { height: 180px; }
-      .chart-y-axis { min-width: 34px; font-size: 0.55rem; padding-right: 0.4rem; }
-      .chart-x-row { padding-left: 34px; overflow: hidden; }
-      .chart-x-row span { font-size: 0.5rem; }
-      .chart-legend { gap: 0.75rem; font-size: 0.65rem; flex-wrap: wrap; }
-      .chart-bars-container { gap: 1px; }
-      .chart-bar-track { width: 3px; }
-
-      .debug-log { padding: 1rem; }
-      .debug-log pre { font-size: 0.65rem; max-height: 220px; }
+      .drow:hover { background: none; }
+      .drow .name { grid-area: name; }
+      .drow .name .ui-sub, .drow .addr, .drow .coll { display: none; }
+      .drow .borrow { grid-area: borrow; font-size: 15px; }
+      .drow .meta { display: block; grid-area: meta; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text-3); }
+      .drow .share { grid-area: share; width: 116px; gap: 8px; }
+      .share .pct { min-width: 40px; font-size: 12.5px; color: var(--text-2); }
+      .dmore { width: 100%; height: 44px; border-radius: 12px; }
     }
+
+    .log { max-height: 320px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-all; font: 12px/1.6 var(--mono); color: var(--text-2); }
   </style>
   <script defer src="/track.js"></script>
-  <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <nav class="top-nav">
-      <a href="/">Activity</a>
-      <a href="/all-vaults">All Vaults</a>
-      <a href="/tvl">TVL</a>
-      <a href="/dominance" class="active">Dominance</a>
-      <a href="/address">Address</a>
-      <a href="/spark">Spark</a>
-      <a href="/rebalance-methodology">Rebalance Docs</a>
-      <a href="/logs">Logs</a>
-      <a href="/video">Video</a>
-        <a href="/socials">Socials</a>
-    </nav>
-
-    <header>
-      <h1>Fusion Stats</h1>
-      <p>Tracking IPOR Fusion vault borrowing activity on Morpho protocol, Ethereum Mainnet</p>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Morpho Dominance</h1>
+        <p class="ui-lede">How much of all Morpho lending on Ethereum is borrowed by Fusion vaults.</p>
+        <div class="ui-status" id="status">Loading…</div>
+      </div>
     </header>
 
-    <div class="info-box">
-      <strong>What is this?</strong> IPOR Fusion vaults borrow money from Morpho lending markets.
-      This page shows how much of all Morpho lending is coming from Fusion vaults.
-      The numbers update every hour automatically. The table below breaks it down vault by vault.
+    <div class="ui-figures" style="--n:4" id="figures">
+      <div class="ui-figure"><div class="k">Fusion share <span class="ui-tip" tabindex="0" data-tip="What Fusion vaults borrow on Morpho, as a share of everything borrowed on Morpho's listed Ethereum markets.">ⓘ</span></div><div class="v" id="fShare"></div><div class="s" id="fShareSub">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">Fusion borrowed</div><div class="v" id="fBorrowed"></div><div class="s" id="fBorrowedSub">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">All Morpho loans</div><div class="v" id="fTotal"></div><div class="s" id="fTotalSub">&nbsp;</div></div>
+      <div class="ui-figure"><div class="k">Fusion collateral</div><div class="v" id="fColl"></div><div class="s" id="fCollSub">&nbsp;</div></div>
     </div>
 
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="label">Total Morpho Loans on Mainnet</div>
-        <div class="value num-bold" id="totalLoans">—</div>
-        <div class="sub" id="totalLoansSub">loading...</div>
+    <section class="ui-section" id="histSec">
+      <div class="ui-head">
+        <h2 id="chartTitle">Fusion share of Morpho loans</h2>
+        <details class="ui-export">
+          <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+          <div class="ui-menu">
+            <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
+            <div class="ui-menu-actions">
+              <button type="button" class="ui-btn primary" id="chartPng">Download PNG</button>
+              <button type="button" class="ui-btn" id="chartCsv" title="Every reading in the range: time, all Morpho loans, Fusion borrowed, share">Download CSV</button>
+            </div>
+          </div>
+        </details>
       </div>
-      <div class="stat-card">
-        <div class="label">Fusion Borrowed on Morpho Mainnet</div>
-        <div class="value num-bold" id="fusionBorrowed">—</div>
-        <div class="sub" id="fusionBorrowedSub">loading...</div>
+      <div class="ui-toolbar pair">
+        <div class="ui-seg" id="metric" role="group" aria-label="Measure">
+          <button type="button" data-m="share" class="on">Share</button>
+          <button type="button" data-m="fusion"><span class="m-hide">Fusion borrowed</span><span class="m-show">Borrowed</span></button>
+          <button type="button" data-m="loans"><span class="m-hide">All Morpho loans</span><span class="m-show">All loans</span></button>
+        </div>
+        <div class="ui-seg" id="range" role="group" aria-label="Range">
+          <button type="button" data-r="7">7d</button>
+          <button type="button" data-r="30">30d</button>
+          <button type="button" data-r="90">90d</button>
+          <button type="button" data-r="all" class="on">All</button>
+        </div>
       </div>
-    </div>
+      <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+    </section>
 
-    <div class="share-banner">
-      <span class="share-label">Fusion Share of Morpho Demand<br><span style="font-size: 0.7rem; color: var(--text-secondary);">Ethereum Mainnet · <span id="dataTimestamp">loading...</span></span></span>
-      <div class="share-bar-outer">
-        <div class="share-bar-inner" id="shareBar" style="width: 0%"></div>
+    <section class="ui-section" id="vaultSec">
+      <div class="ui-head">
+        <h2>Vault by vault</h2>
+        <button type="button" class="ui-btn" id="vaultCsv" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
       </div>
-      <span class="share-value num-bold" id="shareValue">—</span>
-    </div>
-    <div class="ath-atl-row" id="shareAthAtl"></div>
-
-    <div class="chart-card">
-      <h2>Morpho Loans — Fusion vs Rest</h2>
-      <div class="chart-legend">
-        <span><span class="dot" style="background: linear-gradient(135deg, var(--accent), var(--accent-end));"></span> Fusion Borrowed</span>
-        <span><span class="dot" style="background: #A8B8D8;"></span> Other Morpho Loans</span>
+      <div class="dlist" id="vaults">
+        <div class="dhead"><span>Vault</span><span>Address</span><span class="num">Borrowed</span><span class="num">Collateral</span><span class="num">Share of Fusion</span></div>
+        <div id="vaultRows"><div class="ui-empty">Asking Morpho about each vault…</div></div>
       </div>
-      <div class="chart-area">
-        <div class="chart-y-axis" id="chartYAxis"></div>
-        <div class="chart-bars-container" id="chartBars"></div>
+      <button type="button" class="ui-btn dmore" id="showIdle" hidden></button>
+    </section>
+
+    <details class="ui-more">
+      <summary>How it's measured</summary>
+      <div>
+        <p style="margin:0 0 8px"><b>All Morpho loans</b> is <code>borrowAssetsUsd</code> summed over Morpho's listed markets on Ethereum (the 1,000 largest by borrow), and <b>Fusion borrowed</b> the same across the Morpho positions of the vaults listed above. The share is one over the other. Both come from the Morpho API, asked from this page and kept for 15 minutes.</p>
+        <p style="margin:0">The chart's history is recorded by the collector about every hour: each reading for the last 7 days, a daily average before that. It checks every vault in <code>vaults.json</code>, which is not quite the list above, so the newest reading and the figures can differ a little.</p>
       </div>
-      <div class="chart-x-row" id="chartXLabels"></div>
-      <div class="chart-sub" id="chartSub">Loading history...</div>
-    </div>
-
-    <div class="vault-table">
-      <h2>Fusion Vaults on Mainnet</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Vault</th>
-            <th>Borrowed on Morpho</th>
-            <th>Collateral on Morpho</th>
-            <th style="width: 25%">Share</th>
-          </tr>
-        </thead>
-        <tbody id="vaultTableBody">
-          <tr><td colspan="4" class="loading">Querying Morpho API for vault positions...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="vaults-mobile" id="vaultsMobile"></div>
-
-    <div class="debug-log">
-      <h2>API Log</h2>
-      <pre id="debugLog">Initializing...</pre>
-    </div>
+    </details>
+    <details class="ui-more">
+      <summary>API log</summary>
+      <div><pre class="log" id="debugLog">Initializing...</pre></div>
+    </details>
   </div>
 
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
   <script>
+  (function () {
     const MORPHO_API = 'https://api.morpho.org/graphql';
-    const HISTORY_FILE = '../history.json';
 
-    // Hardcoded vault list for client-side Morpho queries.
-    // The full factory list (90+ vaults) overwhelms the Morpho API from the browser.
+    // The vaults this page asks Morpho about. All 150-odd factory vaults at
+    // once overwhelm the Morpho API from a browser; the collector checks
+    // those for the history.
     const FUSION_VAULTS = [
       { address: '0xb8a451107a9f87fde481d4d686247d6e43ed715e', name: 'IPOR stETH Ethereum' },
       { address: '0x3b3bdaa4462851621818d2cebc835e077587147a', name: 'K3 Leveraged syrupUSDT Strategy' },
@@ -745,13 +195,24 @@
       { address: '0xdab31950ddcc814c49e6bbd5153dd2062e44f368', name: 'Tesseract Managed BTC' },
     ];
 
+    const esc = UI.esc;
+    const full = (v) => '$' + Math.round(v || 0).toLocaleString('en-US');
+    const pct = (v, d = 2) => (isFinite(v) ? v.toFixed(d) : '0.00') + '%';
+    const shortAddr = (a) => a.slice(0, 6) + '...' + a.slice(-4);
+    // A time today is just the time; another day's comes with its date.
+    const stamp = (d) => (d.toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)
+      ? d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }) + ' UTC'
+      : utc(d));
+    const utc = (d, withYear) => d.toLocaleString('en-US', Object.assign({ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }, withYear ? { year: 'numeric' } : {})) + ' UTC';
+    const dayOf = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+
+    // ---- API log: every request and its answer, as before ----
     const debugLines = [];
     function log(msg) {
       const ts = new Date().toLocaleTimeString();
       debugLines.push(`[${ts}] ${msg}`);
       document.getElementById('debugLog').textContent = debugLines.join('\n');
     }
-
     function formatUsd(value) {
       if (value >= 1e9) return `$${(value / 1e9).toFixed(value % 1e9 === 0 ? 0 : 1).replace(/\.0$/, '')}B`;
       if (value >= 1e8) return `$${(value / 1e9).toFixed(1)}B`;
@@ -760,15 +221,8 @@
       return `$${value.toFixed(0)}`;
     }
 
-    function formatUsdFull(value) {
-      return '$' + Math.round(value).toLocaleString('en-US');
-    }
-
-    function shortAddr(addr) {
-      return addr.slice(0, 6) + '...' + addr.slice(-4);
-    }
-
-    // Fetch total Morpho mainnet borrow
+    // ---- Morpho API ----
+    // Everything borrowed on the listed Ethereum markets.
     async function fetchTotalMainnetLoans() {
       log('Fetching total Morpho mainnet loans...');
       const res = await fetch(MORPHO_API, {
@@ -803,7 +257,7 @@
       return { total, fetched: items.length, countTotal: pageInfo.countTotal };
     }
 
-    // Fetch Morpho positions for a single vault address
+    // One vault's Morpho positions.
     async function fetchVaultMorphoPositions(vault) {
       const label = vault.name || shortAddr(vault.address);
       log(`Querying ${label} (${shortAddr(vault.address)}) [${vault.source}]...`);
@@ -834,435 +288,412 @@
         })
       });
       const json = await res.json();
-
+      const none = { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
       if (json.errors) {
         log(`  ${label}: Error — ${json.errors[0]?.message}`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
+        return none;
       }
-
       const user = json.data?.userByAddress;
       if (!user || !user.marketPositions || user.marketPositions.length === 0) {
         log(`  ${label}: No Morpho positions`);
-        return { vault, positions: [], totalBorrowed: 0, totalCollateral: 0, totalSupplied: 0, markets: [] };
+        return none;
       }
-
-      const positions = user.marketPositions.filter(p => {
-        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
-        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
-        const collateral = p.state?.collateralUsd || 0;
-        return borrowed > 0 || supplied > 0 || collateral > 0;
-      });
-
-      const totalBorrowed = positions.reduce((sum, p) =>
-        sum + (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0), 0);
-      const totalCollateral = positions.reduce((sum, p) =>
-        sum + (p.state?.collateralUsd || 0), 0);
-      const totalSupplied = positions.reduce((sum, p) =>
-        sum + (p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0), 0);
-
-      // Derive a descriptive name from the markets this vault touches
-      const marketPairs = positions
-        .filter(p => (p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0) > 0 || (p.state?.collateralUsd || 0) > 0)
+      const borrowOf = (p) => p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
+      const supplyOf = (p) => p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
+      const collOf = (p) => p.state?.collateralUsd || 0;
+      const positions = user.marketPositions.filter(p => borrowOf(p) > 0 || supplyOf(p) > 0 || collOf(p) > 0);
+      const totalBorrowed = positions.reduce((s, p) => s + borrowOf(p), 0);
+      const totalCollateral = positions.reduce((s, p) => s + collOf(p), 0);
+      const totalSupplied = positions.reduce((s, p) => s + supplyOf(p), 0);
+      // The markets it borrows in or posts collateral to, as collateral/loan.
+      const pairs = positions
+        .filter(p => borrowOf(p) > 0 || collOf(p) > 0)
         .map(p => `${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}`);
-      const uniquePairs = [...new Set(marketPairs)];
-
       log(`  ${label}: ${positions.length} positions — borrowed=${formatUsd(totalBorrowed)}, collateral=${formatUsd(totalCollateral)}, supplied=${formatUsd(totalSupplied)}`);
       positions.forEach(p => {
-        const borrowed = p.state?.borrowAssetsUsd || p.borrowAssetsUsd || 0;
-        const collateral = p.state?.collateralUsd || 0;
-        const supplied = p.state?.supplyAssetsUsd || p.supplyAssetsUsd || 0;
-        if (borrowed > 0 || collateral > 0 || supplied > 0) {
-          log(`    ${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}: borrow=${formatUsd(borrowed)}, coll=${formatUsd(collateral)}, supply=${formatUsd(supplied)}`);
-        }
+        log(`    ${p.market.collateralAsset?.symbol || '?'}/${p.market.loanAsset?.symbol || '?'}: borrow=${formatUsd(borrowOf(p))}, coll=${formatUsd(collOf(p))}, supply=${formatUsd(supplyOf(p))}`);
       });
-
-      return { vault, positions, totalBorrowed, totalCollateral, totalSupplied, markets: uniquePairs };
+      return { vault, positions, totalBorrowed, totalCollateral, totalSupplied, markets: [...new Set(pairs)] };
     }
 
-    // Query vaults in batches to avoid rate limits
+    // Seven at a time, so the API does not turn us away.
     async function fetchAllVaultPositions(vaults, batchSize = 7) {
       const results = [];
       for (let i = 0; i < vaults.length; i += batchSize) {
         const batch = vaults.slice(i, i + batchSize);
         log(`Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(vaults.length / batchSize)}: querying ${batch.length} vaults...`);
-        const batchResults = await Promise.all(batch.map(v => fetchVaultMorphoPositions(v)));
-        results.push(...batchResults);
+        results.push(...await Promise.all(batch.map(fetchVaultMorphoPositions)));
       }
       return results;
     }
 
-    // init() is no longer used — data fetching + rendering moved to run()/renderDashboard()
-
-    // --- History chart (CSS bars, matching share-banner style) ---
-
-    async function loadHistory() {
-      let history = [];
+    // ---- The last answer, kept: drawn at once on the next visit ----
+    // Under 15 minutes old it is used as it is; older, it is drawn while a
+    // fresh answer is fetched, so the page is never empty while it waits.
+    const CACHE_KEY = 'fusionstats_cache';
+    const CACHE_TTL = 15 * 60 * 1000;
+    const CACHE_MAX = 3 * 86400000;
+    function readCache() {
       try {
-        const res = await fetch(HISTORY_FILE + '?t=' + Date.now());
-        if (res.ok) history = await res.json();
-      } catch (e) { /* file doesn't exist yet */ }
-      return history;
+        const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+        if (!c || !c.loansData || !Array.isArray(c.vaultResults) || !(Date.now() - c.ts < CACHE_MAX)) return null;
+        return c;
+      } catch { return null; }
+    }
+    function writeCache(loansData, vaultResults) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), loansData, vaultResults })); } catch { /* full or blocked */ }
     }
 
-    function renderChart(history, liveData) {
-      const sub = document.getElementById('chartSub');
-      const barsEl = document.getElementById('chartBars');
-      const yAxisEl = document.getElementById('chartYAxis');
-      const xLabelsEl = document.getElementById('chartXLabels');
+    // ---- State ----
+    let history = [];          // the collector's readings
+    let live = null;           // { ts, loansData, vaultResults, fromCache }
+    let liveError = null;
+    let refreshing = false;
+    let metric = 'share', range = 'all';
 
-      if (history.length === 0 && !liveData) {
-        sub.textContent = 'No historical data yet. Run the collector (node collect.js) to start tracking.';
-        return;
-      }
+    const sumOf = (rs, k) => rs.reduce((s, r) => s + (r[k] || 0), 0);
+    function liveTotals() {
+      if (!live) return null;
+      const rs = live.vaultResults;
+      const borrowed = sumOf(rs, 'totalBorrowed');
+      return {
+        ts: live.ts, total: live.loansData.total, borrowed,
+        collateral: sumOf(rs, 'totalCollateral'), supplied: sumOf(rs, 'totalSupplied'),
+        share: live.loansData.total > 0 ? borrowed / live.loansData.total * 100 : 0,
+        borrowing: rs.filter(r => r.totalBorrowed > 0).length,
+        withPositions: rs.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0).length,
+      };
+    }
 
-      // Build data points from ALL history entries (no 24h limit)
-      const dataPoints = history
+    // The readings to draw: the collector's, and the live one when the last
+    // reading is over half an hour older than it.
+    function readings() {
+      const pts = history
         .filter(e => (e.totalLoans || 0) > 0)
         .map(e => ({
           time: new Date(e.timestamp),
           borrowed: e.fusionBorrowed || e.fusionBorrowInMarkets || 0,
           totalLoans: e.totalLoans || 0,
+          // Readings older than a week are averaged into one a day, dated noon.
+          daily: /T12:00:00\.000Z$/.test(e.timestamp),
         }));
-
-      // Append live data if not already covered
-      if (liveData && liveData.totalLoans > 0) {
-        const lastTime = dataPoints.length > 0 ? dataPoints[dataPoints.length - 1].time.getTime() : 0;
-        if (Date.now() - lastTime > 30 * 60 * 1000) {
-          dataPoints.push({
-            time: new Date(),
-            borrowed: liveData.fusionBorrowed,
-            totalLoans: liveData.totalLoans,
-          });
-        }
+      const t = liveTotals();
+      if (t && t.total > 0) {
+        const last = pts.length ? pts[pts.length - 1].time.getTime() : 0;
+        if (t.ts - last > 30 * 60 * 1000) pts.push({ time: new Date(t.ts), borrowed: t.borrowed, totalLoans: t.total, live: true });
       }
-
-      // Figure out how many bars fit in the current chart width.
-      // Read the actual container width and divide by (bar width + gap).
-      // Falls back to 80 when the container isn't laid out yet.
-      const containerWidth = barsEl.clientWidth || barsEl.parentElement?.clientWidth || 0;
-      const isNarrow = window.matchMedia('(max-width: 640px)').matches;
-      const barPitch = isNarrow ? 4 : 8; // track width + gap
-      const fitBars = containerWidth > 0
-        ? Math.max(10, Math.floor(containerWidth / barPitch))
-        : 80;
-      const MAX_BARS = Math.min(80, fitBars);
-      if (dataPoints.length > MAX_BARS) {
-        dataPoints.splice(0, dataPoints.length - MAX_BARS);
-      }
-
-      const maxTotal = Math.max(...dataPoints.map(s => s.totalLoans), 1);
-
-      // Y-axis labels (5 ticks)
-      yAxisEl.innerHTML = '';
-      const ticks = 5;
-      for (let i = ticks; i >= 0; i--) {
-        const val = (maxTotal / ticks) * i;
-        const span = document.createElement('span');
-        span.textContent = formatUsd(val);
-        yAxisEl.appendChild(span);
-      }
-
-      // Bars — render only data points (no empty slots)
-      barsEl.innerHTML = '';
-      dataPoints.forEach(s => {
-        const slot = document.createElement('div');
-        slot.className = 'chart-bar-slot';
-
-        const track = document.createElement('div');
-        track.className = 'chart-bar-track';
-
-        const trackPct = Math.min(100, (s.totalLoans / maxTotal) * 100);
-        track.style.height = trackPct + '%';
-
-        const fillPct = s.borrowed > 0
-          ? Math.min(100, (s.borrowed / s.totalLoans) * 100)
-          : 0;
-
-        const fill = document.createElement('div');
-        fill.className = 'chart-bar-fill';
-        fill.style.height = fillPct + '%';
-        track.appendChild(fill);
-
-        slot.appendChild(track);
-
-        // Tooltip
-        const share = (s.borrowed / s.totalLoans * 100).toFixed(2);
-        const tip = document.createElement('div');
-        tip.className = 'chart-bar-tooltip';
-        const timeStr = s.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-          + ' ' + s.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-        tip.innerHTML = `<strong>${timeStr}</strong><br>`
-          + `<span style="color:#A78BFA;font-weight:700;">Fusion: ${formatUsdFull(s.borrowed)} (${share}%)</span><br>`
-          + `<span style="color:#A8B8D8;">Other: ${formatUsdFull(s.totalLoans - s.borrowed)}</span><br>`
-          + `<span style="color:#fff;font-weight:700;">Total: ${formatUsdFull(s.totalLoans)}</span>`;
-        slot.appendChild(tip);
-
-        barsEl.appendChild(slot);
-      });
-
-      // X-axis labels — show evenly spaced labels
-      xLabelsEl.innerHTML = '';
-      const labelStep = Math.max(1, Math.floor(dataPoints.length / 8));
-      dataPoints.forEach((s, i) => {
-        const span = document.createElement('span');
-        if (i % labelStep === 0 || i === dataPoints.length - 1) {
-          span.textContent = s.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-            + ' ' + s.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
-        }
-        xLabelsEl.appendChild(span);
-      });
-
-      const dataCount = dataPoints.length;
-      const oldest = dataPoints[0].time;
-      const newest = dataPoints[dataPoints.length - 1].time;
-      const spanHours = Math.round((newest - oldest) / 3600000);
-      const spanLabel = spanHours >= 24 ? `${Math.round(spanHours / 24)}d` : `${spanHours}h`;
-      sub.textContent = `${dataCount} data points · ${spanLabel} span · updated every 30 min`;
+      for (const p of pts) p.share = p.totalLoans > 0 ? p.borrowed / p.totalLoans * 100 : 0;
+      return pts;
     }
 
-    // Tap-to-show tooltips on touch devices (attached once, not per render)
-    (function() {
-      const barsEl = document.getElementById('chartBars');
-      barsEl.addEventListener('click', function(e) {
-        const slot = e.target.closest('.chart-bar-slot');
-        if (!slot) return;
-        const wasActive = slot.classList.contains('active');
-        barsEl.querySelectorAll('.chart-bar-slot.active').forEach(s => s.classList.remove('active'));
-        if (!wasActive) slot.classList.add('active');
-      });
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('.chart-bars-container')) {
-          barsEl.querySelectorAll('.chart-bar-slot.active').forEach(s => s.classList.remove('active'));
-        }
-      });
-    })();
-
-    // --- LocalStorage cache (15 min TTL) ---
-    const CACHE_KEY = 'fusionstats_cache';
-    const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-
-    function getCachedData() {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const cached = JSON.parse(raw);
-        if (Date.now() - cached.ts > CACHE_TTL) return null;
-        return cached;
-      } catch { return null; }
+    // ---- Status line ----
+    function renderStatus() {
+      const parts = [];
+      if (live) {
+        parts.push(live.fromCache
+          ? `<b>Cached</b> ${esc(UI.ago(live.ts / 1000))}`
+          : `<b>Live</b> ${esc(stamp(new Date(live.ts)))}`);
+      }
+      if (refreshing) parts.push('asking Morpho…');
+      if (liveError) parts.push(`<span style="color:var(--neg)">Morpho did not answer (${esc(liveError)})</span>`);
+      const last = history.length ? history[history.length - 1] : null;
+      if (last) parts.push((!live && liveError ? 'figures from the collector at ' : 'history to ') + esc(stamp(new Date(last.timestamp))));
+      document.getElementById('status').innerHTML = parts.join(' · ') || 'Loading…';
     }
 
-    function setCachedData(loansData, vaultResults) {
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          ts: Date.now(),
-          loansData,
-          vaultResults
-        }));
-      } catch { /* storage full or unavailable */ }
+    // ---- Figures ----
+    function setFig(id, text, title) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      if (title) el.title = title; else el.removeAttribute('title');
     }
-
-    async function renderDashboard(loansData, vaultResults, fromCache) {
-      // Total Morpho Loans
-      document.getElementById('totalLoans').textContent = formatUsdFull(loansData.total);
-      const cacheLabel = fromCache ? ' · cached' : ' · live';
-      document.getElementById('totalLoansSub').textContent =
-        `${loansData.fetched}/${loansData.countTotal} markets` + cacheLabel;
-
-      // Aggregate Fusion borrowed
-      const activeVaults = vaultResults.filter(r => r.totalBorrowed > 0);
-      const withPositions = vaultResults.filter(r => r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0);
-      const fusionTotalBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
-      const fusionTotalCollateral = vaultResults.reduce((sum, r) => sum + r.totalCollateral, 0);
-      const fusionTotalSupplied = vaultResults.reduce((sum, r) => sum + r.totalSupplied, 0);
-
-      document.getElementById('fusionBorrowed').textContent = formatUsdFull(fusionTotalBorrowed);
-      document.getElementById('fusionBorrowedSub').textContent =
-        fusionTotalBorrowed > 0
-          ? `${activeVaults.length} vault${activeVaults.length !== 1 ? 's' : ''} borrowing · collateral: ${formatUsdFull(fusionTotalCollateral)}`
-          : `checked ${FUSION_VAULTS.length} vaults · no Morpho borrows found`;
-
-      // Share
-      const share = loansData.total > 0 ? (fusionTotalBorrowed / loansData.total * 100) : 0;
-      document.getElementById('shareValue').textContent = share.toFixed(2) + '%';
-      document.getElementById('shareBar').style.width = share + '%';
-
-      // ATH / ATL from history
-      const athAtlEl = document.getElementById('shareAthAtl');
-      try {
-        const hist = await loadHistory();
-        const shares = hist
-          .filter(e => (e.totalLoans || 0) > 0)
-          .map(e => ({
-            pct: ((e.fusionBorrowed || e.fusionBorrowInMarkets || 0) / e.totalLoans) * 100,
-            time: new Date(e.timestamp),
-          }));
-        // Include current live value
-        if (share > 0) shares.push({ pct: share, time: new Date() });
-        if (shares.length > 0) {
-          const ath = shares.reduce((a, b) => b.pct > a.pct ? b : a);
-          const nonZero = shares.filter(s => s.pct > 0);
-          const atl = nonZero.length > 0 ? nonZero.reduce((a, b) => b.pct < a.pct ? b : a) : null;
-          const dateFmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-          let html = `<span class="ath-atl-item"><span class="ath-atl-label">ATH</span> <strong style="color:var(--green)">${ath.pct.toFixed(2)}%</strong> <span style="font-size:0.65rem">${dateFmt(ath.time)}</span></span>`;
-          if (atl) {
-            html += `<span class="ath-atl-item"><span class="ath-atl-label">ATL</span> <strong style="color:var(--red)">${atl.pct.toFixed(2)}%</strong> <span style="font-size:0.65rem">${dateFmt(atl.time)}</span></span>`;
-          }
-          athAtlEl.innerHTML = html;
-        }
-      } catch (e) { /* no history yet */ }
-
-      // Data timestamp
-      const dataTs = fromCache ? new Date(getCachedData()?.ts || Date.now()) : new Date();
-      document.getElementById('dataTimestamp').textContent = dataTs.toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-        timeZone: 'UTC'
-      }) + ' UTC';
-
-      // Vault table
-      const tbody = document.getElementById('vaultTableBody');
-      tbody.innerHTML = '';
-      const mobileContainer = document.getElementById('vaultsMobile');
-      if (mobileContainer) mobileContainer.innerHTML = '';
-
-      const sorted = vaultResults.slice().sort((a, b) => {
-        const aActive = a.totalBorrowed > 0 || a.totalCollateral > 0 || a.totalSupplied > 0 ? 1 : 0;
-        const bActive = b.totalBorrowed > 0 || b.totalCollateral > 0 || b.totalSupplied > 0 ? 1 : 0;
-        if (bActive !== aActive) return bActive - aActive;
-        return b.totalBorrowed - a.totalBorrowed || b.totalSupplied - a.totalSupplied;
-      });
-      const maxBorrowed = sorted[0]?.totalBorrowed || 1;
-
-      sorted.forEach(r => {
-        const vaultShare = fusionTotalBorrowed > 0
-          ? (r.totalBorrowed / fusionTotalBorrowed * 100) : 0;
-        const hasPosition = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
-        const marketsLabel = r.markets.length > 0 ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplier' : '—');
-        const displayName = r.vault.private
-          ? 'Fusion Vault (Private)'
-          : (r.vault.name || ('Fusion Vault' + (r.vault.source === 'beta' ? ' [beta]' : '')));
-        const tr = document.createElement('tr');
-        if (!hasPosition) tr.style.opacity = '0.5';
-        tr.innerHTML = `
-          <td>
-            <div class="vault-name">${displayName}</div>
-            <div class="vault-address">
-              <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-              · ${hasPosition ? marketsLabel : 'no Morpho positions'}
-            </div>
-          </td>
-          <td class="num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</td>
-          <td class="num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</td>
-          <td>
-            <div class="bar-cell">
-              <div class="bar-bg"><div class="bar-fill" style="width: ${maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0}%"></div></div>
-              <span class="bar-value num-bold">${vaultShare.toFixed(1)}%</span>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-
-        // Mobile card
-        if (mobileContainer) {
-          const card = document.createElement('div');
-          card.className = 'vault-card-mobile';
-          if (!hasPosition) card.style.opacity = '0.5';
-          const sharePct = maxBorrowed > 0 ? (r.totalBorrowed / maxBorrowed) * 100 : 0;
-          card.innerHTML = `
-            <div class="vcm-name">${displayName}</div>
-            <div class="vcm-addr">
-              <a href="https://etherscan.io/address/${r.vault.address}" target="_blank">${shortAddr(r.vault.address)}</a>
-              · ${hasPosition ? marketsLabel : 'no Morpho positions'}
-            </div>
-            <div class="vcm-stats">
-              <div>
-                <div class="vcm-stat-label">Borrowed</div>
-                <div class="vcm-stat-value num-bold">${hasPosition ? formatUsd(r.totalBorrowed) : '—'}</div>
-              </div>
-              <div>
-                <div class="vcm-stat-label">Collateral</div>
-                <div class="vcm-stat-value num-bold">${hasPosition ? formatUsd(r.totalCollateral) : '—'}</div>
-              </div>
-            </div>
-            <div class="vcm-share-row">
-              <div class="bar-bg"><div class="bar-fill" style="width: ${sharePct}%"></div></div>
-              <span class="vcm-share-pct num-bold">${vaultShare.toFixed(1)}%</span>
-            </div>
-          `;
-          mobileContainer.appendChild(card);
-        }
-      });
-
-      log(fromCache ? '=== LOADED FROM CACHE ===' : '=== FRESH DATA ===');
-      log(`Total Morpho Loans (mainnet): ${formatUsd(loansData.total)}`);
-      log(`Fusion Borrowed on Morpho Mainnet:    ${formatUsd(fusionTotalBorrowed)}`);
-      log(`Fusion Collateral on Morpho:  ${formatUsd(fusionTotalCollateral)}`);
-      log(`Fusion Supplied to Morpho:    ${formatUsd(fusionTotalSupplied)}`);
-      log(`Fusion Share of Morpho Demand: ${share.toFixed(4)}%`);
-      log(`Vaults checked: ${FUSION_VAULTS.length}`);
-      log(`Vaults with Morpho positions: ${withPositions.length}`);
-      log(`Vaults actively borrowing:    ${activeVaults.length}`);
-      if (fromCache) {
-        const age = Math.round((Date.now() - getCachedData()?.ts) / 1000);
-        log(`Cache age: ${age}s (TTL: ${CACHE_TTL / 1000}s)`);
+    function renderFigures() {
+      const t = liveTotals();
+      // Without an answer from Morpho, the collector's last reading stands in.
+      const last = history.length ? history[history.length - 1] : null;
+      if (!t && !(liveError && last)) return;
+      const f = t || {
+        total: last.totalLoans, borrowed: last.fusionBorrowed || 0, collateral: last.fusionCollateral || 0,
+        share: last.totalLoans > 0 ? (last.fusionBorrowed || 0) / last.totalLoans * 100 : 0,
+      };
+      setFig('fShare', pct(f.share), (f.share).toFixed(4) + '%');
+      setFig('fBorrowed', UI.usd(f.borrowed), full(f.borrowed));
+      setFig('fTotal', UI.usd(f.total), full(f.total));
+      setFig('fColl', UI.usd(f.collateral), full(f.collateral));
+      const ext = extremes();
+      const sub = document.getElementById('fShareSub');
+      sub.textContent = ext ? `ATH ${pct(ext.ath.share)}` + (ext.atl ? ` · ATL ${pct(ext.atl.share)}` : '') : 'of Morpho loans';
+      sub.title = ext ? `All-time high ${pct(ext.ath.share)} on ${dayOf(ext.ath.time)}` + (ext.atl ? `; low ${pct(ext.atl.share)} on ${dayOf(ext.atl.time)}` : '') : '';
+      if (t) {
+        document.getElementById('fBorrowedSub').textContent = t.borrowed > 0
+          ? `${t.borrowing} of ${live.vaultResults.length} vaults borrowing`
+          : `checked ${live.vaultResults.length} vaults · none borrowing`;
+        const ld = live.loansData;
+        document.getElementById('fTotalSub').textContent = (ld.fetched < ld.countTotal ? `${ld.fetched} of ${ld.countTotal}` : `${ld.countTotal}`) + ' markets';
+        document.getElementById('fCollSub').textContent = 'posted on Morpho';
+      } else {
+        for (const id of ['fBorrowedSub', 'fTotalSub', 'fCollSub']) document.getElementById(id).textContent = "collector's reading";
       }
     }
 
-    function getLiveDataForChart(loansData, vaultResults) {
-      const fusionBorrowed = vaultResults.reduce((sum, r) => sum + r.totalBorrowed, 0);
-      return { fusionBorrowed, totalLoans: loansData.total };
+    // All-time high and low of the share, the live reading included.
+    function extremes() {
+      const shares = history
+        .filter(e => (e.totalLoans || 0) > 0)
+        .map(e => ({ share: ((e.fusionBorrowed || e.fusionBorrowInMarkets || 0) / e.totalLoans) * 100, time: new Date(e.timestamp) }));
+      const t = liveTotals();
+      if (t && t.share > 0) shares.push({ share: t.share, time: new Date(t.ts) });
+      if (!shares.length) return null;
+      const ath = shares.reduce((a, b) => (b.share > a.share ? b : a));
+      const nonZero = shares.filter(s => s.share > 0);
+      const atl = nonZero.length ? nonZero.reduce((a, b) => (b.share < a.share ? b : a)) : null;
+      return { ath, atl };
     }
 
-    // Cache the latest history + liveData so resize handlers can re-render
-    // the bar chart with a new bar count without refetching anything.
-    let _lastHistory = [];
-    let _lastLiveData = null;
-    let _resizeTimer = null;
-    window.addEventListener('resize', () => {
-      clearTimeout(_resizeTimer);
-      _resizeTimer = setTimeout(() => {
-        if (_lastHistory.length > 0 || _lastLiveData) {
-          renderChart(_lastHistory, _lastLiveData);
-        }
-      }, 150);
-    });
-
-    async function run() {
-      const history = await loadHistory();
-
-      const cached = getCachedData();
-      if (cached) {
-        log('Using cached data (< 15 min old). Skipping API calls.');
-        _lastHistory = history;
-        _lastLiveData = getLiveDataForChart(cached.loansData, cached.vaultResults);
-        renderChart(_lastHistory, _lastLiveData);
-        await renderDashboard(cached.loansData, cached.vaultResults, true);
+    // ---- Vault by vault ----
+    let showIdle = false;
+    function sortedResults() {
+      const active = (r) => (r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0 ? 1 : 0);
+      return live.vaultResults.slice().sort((a, b) => (active(b) - active(a)) || (b.totalBorrowed - a.totalBorrowed) || (b.totalSupplied - a.totalSupplied));
+    }
+    function renderVaults() {
+      const box = document.getElementById('vaultRows');
+      const more = document.getElementById('showIdle');
+      if (!live) {
+        if (liveError) box.innerHTML = `<div class="ui-error">Morpho did not answer, so there is nothing to show vault by vault. ${esc(liveError)}</div>`;
+        more.hidden = true;
         return;
       }
+      const rows = sortedResults();
+      const fusionTotal = sumOf(rows, 'totalBorrowed');
+      const maxBorrowed = rows[0] ? rows[0].totalBorrowed : 0;
+      let idle = 0;
+      box.innerHTML = rows.map(r => {
+        const has = r.totalBorrowed > 0 || r.totalCollateral > 0 || r.totalSupplied > 0;
+        if (!has) idle++;
+        const share = fusionTotal > 0 ? r.totalBorrowed / fusionTotal * 100 : 0;
+        const width = maxBorrowed > 0 ? r.totalBorrowed / maxBorrowed * 100 : 0;
+        const what = has ? (r.markets.length ? r.markets.join(', ') : (r.totalSupplied > 0 ? 'supplies ' + UI.usd(r.totalSupplied) : '—')) : 'no Morpho positions';
+        const name = r.vault.name || 'Fusion Vault';
+        const money = (v) => (has && v > 0 ? `<span title="${full(v)}">${UI.usd(v)}</span>` : '<span class="none">—</span>');
+        return `<div class="drow${has ? '' : ' idle'}" data-addr="${esc(r.vault.address)}">
+          <div class="name"><b title="${esc(name)}">${esc(name)}</b><span class="ui-sub" title="${esc(what)}">${esc(what)}</span></div>
+          <div class="addr ui-mono"><a href="https://etherscan.io/address/${esc(r.vault.address)}" target="_blank" rel="noopener" title="${esc(r.vault.address)}">${esc(UI.short(r.vault.address))}</a></div>
+          <div class="num borrow">${money(r.totalBorrowed)}</div>
+          <div class="num coll">${money(r.totalCollateral)}</div>
+          <div class="meta">${esc(what)}${has && r.totalCollateral > 0 ? ' · coll. ' + UI.usd(r.totalCollateral) : ''}</div>
+          <div class="share"${r.totalBorrowed > 0 ? ` title="${share.toFixed(1)}% of what Fusion borrows"><span class="bar"><i style="width:${width.toFixed(2)}%"></i></span><span class="pct">${share.toFixed(1)}%</span>` : '>'}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('vaults').classList.toggle('all', showIdle);
+      more.hidden = idle === 0;
+      more.textContent = showIdle ? 'Hide the vaults without a Morpho position' : `Show ${idle} vault${idle === 1 ? '' : 's'} without a Morpho position`;
+      document.getElementById('vaultCsv').disabled = false;
+    }
+    function downloadVaultCsv() {
+      if (!live) return;
+      const rows = sortedResults();
+      const fusionTotal = sumOf(rows, 'totalBorrowed');
+      UI.csv(`fusion-morpho-vaults-${new Date().toISOString().slice(0, 10)}.csv`, [
+        ['vault', 'address', 'borrowed_usd', 'collateral_usd', 'supplied_usd', 'share_of_fusion_pct', 'markets'],
+        ...rows.map(r => [r.vault.name || '', r.vault.address, r.totalBorrowed.toFixed(2), r.totalCollateral.toFixed(2), r.totalSupplied.toFixed(2),
+          (fusionTotal > 0 ? r.totalBorrowed / fusionTotal * 100 : 0).toFixed(4), r.markets.join(' ')]),
+      ]);
+    }
 
+    // ---- Chart ----
+    const plotlyReady = new Promise((resolve, reject) => {
+      if (window.Plotly) return resolve();
+      const tag = document.getElementById('plotlyJs');
+      tag.addEventListener('load', () => resolve());
+      tag.addEventListener('error', () => reject(new Error('the chart library (cdn.plot.ly) did not load')));
+    });
+    const CONFIG = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false };
+    const TITLES = { share: 'Fusion share of Morpho loans', fusion: 'Fusion borrowed on Morpho', loans: 'Morpho loans: Fusion and the rest' };
+    const OTHER = '#A8B8D8';
+    let shown = [];            // the points drawn, the zero start included
+
+    function windowed() {
+      const all = readings();
+      if (range === 'all') return { pts: all, startsInside: all.length > 0 };
+      const cutoff = Date.now() - parseInt(range, 10) * 86400000;
+      const pts = all.filter(p => p.time.getTime() >= cutoff);
+      return { pts, startsInside: pts.length > 0 && pts.length === all.length };
+    }
+    function axisColors(forExport) {
+      return forExport
+        ? { font: '#70747A', line: '#E5E5E5' }
+        : { font: FusionChart.cssVar('--text-2', '#70747A'), line: FusionChart.cssVar('--line', '#E5E5E5') };
+    }
+    function layoutFor(pts, forExport) {
+      const col = axisColors(forExport);
+      const span = pts.length > 1 ? pts[pts.length - 1].time - pts[0].time : 0;
+      const yaxis = {
+        showgrid: false, linecolor: col.line, tickfont: { size: 11 }, rangemode: 'tozero',
+        ticks: 'outside', ticklen: 10, tickcolor: 'rgba(0,0,0,0)', automargin: true, showspikes: false, fixedrange: true,
+      };
+      if (metric === 'share') Object.assign(yaxis, { tickformat: '.2~f', ticksuffix: '%' });
+      else if (metric === 'fusion') Object.assign(yaxis, { tickformat: '$,.2s' });
+      else Object.assign(yaxis, { tickprefix: '$', ticksuffix: 'B', tickformat: '.2~f' });
+      return {
+        autosize: true,
+        margin: { l: 72, r: 24, t: 16, b: 48 },
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        font: { family: 'Geist, -apple-system, sans-serif', color: col.font, size: 12 },
+        xaxis: {
+          type: 'date', showgrid: false, linecolor: col.line, tickfont: { size: 11 },
+          tickformat: span > 330 * 86400000 ? "%b '%y" : '%b %d',
+          ticks: 'outside', ticklen: 8, tickcolor: 'rgba(0,0,0,0)', automargin: true, showspikes: false,
+        },
+        yaxis,
+        showlegend: false,
+        hovermode: 'x unified', hoverdistance: -1, spikedistance: -1,
+        dragmode: FusionChart.compact() ? false : 'zoom',
+      };
+    }
+    function tracesFor(pts) {
+      const accent = FusionChart.cssVar('--accent', '#8429FF');
+      const x = pts.map(p => p.time), marks = pts.map(p => (p.anchor ? 'anchor' : null));
+      const line = (y, color, extra) => Object.assign({
+        type: 'scatter', mode: 'lines', x, y, customdata: marks,
+        line: { color, width: 2.5, shape: 'linear' }, hoverinfo: 'none',
+      }, extra);
+      if (metric === 'share') return [line(pts.map(p => p.share), accent, { fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)', name: 'Share' })];
+      if (metric === 'fusion') return [line(pts.map(p => p.borrowed), accent, { fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)', name: 'Fusion borrowed' })];
+      // All loans: Fusion at the bottom, the rest stacked over it, in $B.
+      return [
+        line(pts.map(p => p.borrowed / 1e9), accent, { stackgroup: 'loans', fillcolor: 'rgba(132,41,255,0.55)', name: 'Fusion' }),
+        line(pts.map(p => (p.totalLoans - p.borrowed) / 1e9), OTHER, { stackgroup: 'loans', fillcolor: 'rgba(168,184,216,0.35)', name: 'Rest of Morpho' }),
+      ];
+    }
+    function describe(hp) {
+      const p = shown[hp[0].pointIndex != null ? hp[0].pointIndex : hp[0].pointNumber];
+      if (!p) return '';
+      const when = p.live ? 'Now · live from Morpho' : p.daily ? dayOf(p.time) + ', ' + p.time.getUTCFullYear() + ' · daily average' : utc(p.time, true);
+      const big = metric === 'share' ? pct(p.share) : metric === 'fusion' ? UI.usd(p.borrowed) : UI.usd(p.totalLoans);
+      const accent = FusionChart.cssVar('--accent', '#8429FF');
+      const rows = [];
+      if (metric !== 'fusion') rows.push(FusionChart.row(accent, 'Fusion', UI.usd(p.borrowed)));
+      if (metric === 'loans') rows.push(FusionChart.row(OTHER, 'Rest', UI.usd(p.totalLoans - p.borrowed)));
+      if (metric !== 'loans') rows.push(FusionChart.row(null, 'All Morpho', UI.usd(p.totalLoans)));
+      if (metric !== 'share') rows.push(FusionChart.row(null, 'Share', pct(p.share)));
+      return `<div class="hv-when">${esc(when)}</div><div class="hv-big">${big}</div>` + rows.join('');
+    }
+    async function drawChart() {
+      const el = document.getElementById('chart');
+      document.getElementById('chartTitle').textContent = TITLES[metric];
+      const { pts, startsInside } = windowed();
+      if (!pts.length) {
+        if (window.Plotly && el.data) Plotly.purge(el);
+        el.innerHTML = `<div class="ui-empty">${history.length || live ? 'No readings in this range.' : liveError ? 'No history to draw.' : 'Loading…'}</div>`;
+        return;
+      }
+      // A line that starts inside the range rises from a zero one step
+      // before its first reading. It is not a reading: the hover skips it.
+      shown = pts.slice();
+      if (startsInside) {
+        const step = pts.length > 1 ? Math.min(pts[1].time - pts[0].time, 86400000) : 86400000;
+        shown.unshift({ time: new Date(pts[0].time - step), borrowed: 0, totalLoans: 0, share: 0, anchor: true });
+      }
+      await plotlyReady;
+      el.querySelectorAll(':scope > .ui-empty').forEach(n => n.remove());
+      const layout = layoutFor(pts, false);
+      el.__wideLayout = layout;
+      await Plotly.react(el, tracesFor(shown), FusionChart.fit(layout), CONFIG);
+      FusionChart.glide(el, describe);
+    }
+    function downloadChartCsv() {
+      const { pts } = windowed();
+      if (!pts.length) return;
+      UI.csv(`fusion-morpho-share-${range === 'all' ? 'all' : range + 'd'}-${new Date().toISOString().slice(0, 10)}.csv`, [
+        ['time_utc', 'kind', 'all_morpho_loans_usd', 'fusion_borrowed_usd', 'fusion_share_pct'],
+        ...pts.map(p => [p.time.toISOString(), p.live ? 'live' : p.daily ? 'daily_average' : 'reading', p.totalLoans.toFixed(2), p.borrowed.toFixed(2), p.share.toFixed(4)]),
+      ]);
+    }
+    function downloadChartPng() {
+      const el = document.getElementById('chart');
+      if (!el.data) return;
+      const layout = layoutFor(windowed().pts, true);
+      return FusionChart.png({ data: el.data, layout }, {
+        width: el.clientWidth, height: el.clientHeight,
+        dots: document.getElementById('pngDots').checked,
+        filename: `fusion-morpho-${metric}-${new Date().toISOString().slice(0, 10)}.png`,
+      });
+    }
+
+    // ---- Wiring ----
+    function renderAll() { renderStatus(); renderFigures(); renderVaults(); }
+    function bind() {
+      document.getElementById('metric').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-m]');
+        if (!b || b.dataset.m === metric) return;
+        metric = b.dataset.m;
+        document.querySelectorAll('#metric button').forEach(x => x.classList.toggle('on', x === b));
+        drawChart();
+      });
+      document.getElementById('range').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-r]');
+        if (!b || b.dataset.r === range) return;
+        range = b.dataset.r;
+        document.querySelectorAll('#range button').forEach(x => x.classList.toggle('on', x === b));
+        drawChart();
+      });
+      document.getElementById('showIdle').addEventListener('click', () => { showIdle = !showIdle; renderVaults(); });
+      document.getElementById('vaultCsv').addEventListener('click', downloadVaultCsv);
+      document.getElementById('chartCsv').addEventListener('click', downloadChartCsv);
+      document.getElementById('chartPng').addEventListener('click', downloadChartPng);
+      // Theme and screen width change the axes: draw again.
+      const repaint = () => { if (window.Plotly && document.getElementById('chart').data) drawChart(); };
+      window.addEventListener('fusion:theme', repaint);
+      FusionChart.onChange(repaint);
+    }
+    function logSummary(fromCache) {
+      const t = liveTotals();
+      log(fromCache ? '=== LOADED FROM CACHE ===' : '=== FRESH DATA ===');
+      log(`Total Morpho Loans (mainnet): ${formatUsd(t.total)}`);
+      log(`Fusion Borrowed on Morpho Mainnet:    ${formatUsd(t.borrowed)}`);
+      log(`Fusion Collateral on Morpho:  ${formatUsd(t.collateral)}`);
+      log(`Fusion Supplied to Morpho:    ${formatUsd(t.supplied)}`);
+      log(`Fusion Share of Morpho Demand: ${t.share.toFixed(4)}%`);
+      log(`Vaults checked: ${FUSION_VAULTS.length}`);
+      log(`Vaults with Morpho positions: ${t.withPositions}`);
+      log(`Vaults actively borrowing:    ${t.borrowing}`);
+      if (fromCache) log(`Cache age: ${Math.round((Date.now() - live.ts) / 1000)}s (TTL: ${CACHE_TTL / 1000}s)`);
+    }
+
+    (async function main() {
+      bind();
+      const historyLoad = fetch('/history.json').then(r => (r.ok ? r.json() : [])).catch(() => []);
+      const cached = readCache();
+      if (cached) { live = Object.assign({}, cached, { fromCache: true }); renderAll(); }
+      const h = await historyLoad;
+      history = Array.isArray(h) ? h : [];
+      renderAll();
+      drawChart().catch(e => { document.getElementById('chart').innerHTML = `<div class="ui-error">${esc(e.message || e)}</div>`; });
+      if (cached && Date.now() - cached.ts < CACHE_TTL) {
+        log('Using cached data (< 15 min old). Skipping API calls.');
+        logSummary(true);
+        return;
+      }
+      refreshing = true; renderStatus();
       try {
         log(`Starting — ${FUSION_VAULTS.length} Fusion vaults to check`);
-        const [loansData, vaultResults] = await Promise.all([
-          fetchTotalMainnetLoans(),
-          fetchAllVaultPositions(FUSION_VAULTS)
-        ]);
-        setCachedData(loansData, vaultResults);
-        _lastHistory = history;
-        _lastLiveData = getLiveDataForChart(loansData, vaultResults);
-        renderChart(_lastHistory, _lastLiveData);
-        await renderDashboard(loansData, vaultResults, false);
+        const [loansData, vaultResults] = await Promise.all([fetchTotalMainnetLoans(), fetchAllVaultPositions(FUSION_VAULTS)]);
+        writeCache(loansData, vaultResults);
+        live = { ts: Date.now(), loansData, vaultResults, fromCache: false };
+        liveError = null;
+        logSummary(false);
       } catch (err) {
         console.error('Init error:', err);
         log(`ERROR: ${err.message}`);
-        _lastHistory = history;
-        _lastLiveData = null;
-        renderChart(_lastHistory, _lastLiveData);
-        document.getElementById('totalLoans').textContent = 'Error';
-        document.getElementById('totalLoansSub').innerHTML = `<span class="error-msg">${err.message}</span>`;
+        liveError = err.message.replace(/^Morpho API: /, '');
       }
-    }
-
-    run();
+      refreshing = false;
+      renderAll();
+      drawChart().catch(() => {});
+    })();
+  })();
   </script>
 </body>
 </html>

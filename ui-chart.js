@@ -13,6 +13,8 @@
 //                                       (a phone turned sideways): redraw
 //   FusionChart.glide(gd, describe)     the page's own hover (see below)
 //   FusionChart.quiet(traces)           traces that report hovers, draw none
+//   FusionChart.png(fig, { width, height, dots, filename })
+//                                       download a chart as an image
 //
 // Exports draw the layout as it was before fit(), whatever the screen: keep
 // it and hand it to Plotly.toImage.
@@ -134,5 +136,43 @@
     + (color ? '<span class="hv-sw" style="background:' + color + '"></span>' : '') + esc(label)
     + '</span><span class="hv-v">' + value + '</span></div>';
 
-  window.FusionChart = { fit, compact, onChange: (fn) => listeners.push(fn), quiet, glide, when, row, cssVar };
+  // A chart as a PNG for a deck or a doc: Plotly's transparent render over
+  // the dot grid it sits on (when dots), at twice the display size. fig is
+  // { data, layout } with the layout built for export (light axes).
+  function png(fig, { width, height, dots = true, filename = 'chart.png' }) {
+    const scale = 2, w = width * scale, h = height * scale;
+    // Display size and scale 2, not twice the size at scale 1: Plotly keeps
+    // the layout's font sizes, and the labels would come out half-size.
+    return Plotly.toImage(fig, { format: 'png', width, height, scale }).then(url => new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const c = cv.getContext('2d');
+        if (dots) {
+          // The 14px grid on screen, its pitch scaled to the image.
+          const pitch = Math.max(14, Math.round(w / 96));
+          c.fillStyle = '#191717';
+          c.globalAlpha = 0.18;
+          for (let y = h - pitch / 2; y > 0; y -= pitch) {
+            for (let x = pitch / 2; x < w; x += pitch) { c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill(); }
+          }
+          c.globalAlpha = 1;
+        }
+        c.drawImage(img, 0, 0, w, h);
+        cv.toBlob((blob) => {
+          const href = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = href; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(href), 0);
+          resolve();
+        }, 'image/png');
+      };
+      img.onerror = () => resolve();
+      img.src = url;
+    }));
+  }
+
+  window.FusionChart = { fit, compact, onChange: (fn) => listeners.push(fn), quiet, glide, when, row, cssVar, png };
 })();
