@@ -459,15 +459,35 @@ body {
 .ui-btn.primary:hover { opacity: 0.88; }
 
 /* ---------- Chart box: the faint dot grid the charts sit on ---------- */
+/* The dots fill the plot's square and stop at its edges: the page colour is
+   laid over them above the plot (--plot-t) and under it (--plot-b), where the
+   dates go. ui-chart.js (frame) sets both from the drawn plot. */
 .ui-chart {
   position: relative;
   height: 340px;
   --dots: rgba(11, 11, 15, 0.12);
-  background: radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 14px 14px;
+  --plot-t: 12px;
+  --plot-b: 24px;
+  background:
+    linear-gradient(var(--bg), var(--bg)) top / 100% var(--plot-t) no-repeat,
+    linear-gradient(var(--bg), var(--bg)) bottom / 100% var(--plot-b) no-repeat,
+    radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 14px 14px;
 }
 [data-theme="dark"] .ui-chart { --dots: rgba(255, 255, 255, 0.09); }
 .ui-chart .nsewdrag { cursor: default !important; }
 @container (max-width: 700px) { .ui-chart { height: 260px; } }
+
+/* The dates under a chart: first, middle, last (ui-chart.js frame). */
+.ui-dates {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+  height: var(--plot-b, 24px);
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  font: 11.5px var(--mono); letter-spacing: -0.01em; color: var(--text-3);
+  white-space: nowrap; pointer-events: none;
+}
+.ui-dates span:first-child { justify-self: start; }
+.ui-dates span:last-child { justify-self: end; }
+@container (max-width: 560px) { .ui-dates { font-size: 10.5px; } }
 
 /* ---------- States ---------- */
 .ui-empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
