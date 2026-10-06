@@ -19,6 +19,8 @@ jobs:
       RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # the branch as it is now, never a re-run's stale commit (see collect.yml)
 
       - uses: actions/setup-node@v4
         with:

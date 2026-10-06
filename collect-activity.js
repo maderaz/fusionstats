@@ -613,19 +613,20 @@ function chainHealth({ chain, head, cursors, progressed, unreachable = false, re
   return { status, head, cursor, lagBlocks, lagHours, reason, checkedAt: new Date(now).toISOString() };
 }
 
-// Split the vaults a chain scan covers into those that are current and those
-// far behind them (more than `gap` blocks behind the most advanced), each to
-// be scanned as its own pass, current first. Scanned as one, the chain started
-// from the laggard's block: every vault re-read the laggard's window on every
-// run, and a range only the laggard needed, once refused, held every vault on
-// the chain still. On Oct 5 two Base vaults worth $738 between them, 48h back,
-// kept $41M of Base vaults from moving.
+// Split the vaults a chain scan covers into passes, each holding vaults within
+// `gap` blocks of its most advanced member, most advanced pass first. Scanned
+// as one, the chain started from the laggard's block: every vault re-read the
+// laggard's window on every run, and a range only the laggard needed, once
+// refused, held every vault on the chain still. On Oct 5 two Base vaults worth
+// $738 between them, 48h back, kept $41M of Base vaults from moving.
 function scanCohorts(vaultsToScan, gap) {
-  if (vaultsToScan.length === 0) return [];
-  const newest = Math.max(...vaultsToScan.map(v => v.fromBlock));
-  const current = vaultsToScan.filter(v => v.fromBlock > newest - gap);
-  const behind = vaultsToScan.filter(v => v.fromBlock <= newest - gap);
-  return behind.length ? [current, behind] : [current];
+  const cohorts = [];
+  for (const v of [...vaultsToScan].sort((a, b) => b.fromBlock - a.fromBlock)) {
+    const pass = cohorts[cohorts.length - 1];
+    if (pass && pass[0].fromBlock - v.fromBlock <= gap) pass.push(v);
+    else cohorts.push([v]);
+  }
+  return cohorts;
 }
 
 function nextCursors({ addresses, prevCursors, reachedBlock, currentBlock, undatedBlocks = [] }) {
@@ -1841,9 +1842,9 @@ async function main() {
     const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
     const deadline = Date.now() + chainMs;
 
-    // One pass for the vaults that are current, then one for any far behind
-    // them (scanCohorts). Current first, so a range only the laggards need can
-    // neither hold the others back nor eat their time.
+    // One pass per group of vaults at about the same block (scanCohorts), most
+    // advanced first, so a range only the laggards need can neither hold the
+    // others back nor eat their time.
     for (const cohort of scanCohorts(vaultsToScan, CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default)) {
       const earliestFrom = Math.min(...cohort.map(v => v.fromBlock));
       const allAddresses = cohort.map(v => v.vault.address);
