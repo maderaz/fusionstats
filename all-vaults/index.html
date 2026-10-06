@@ -195,9 +195,9 @@
     // (tools/build-tvl-latest.js); before that file exists, the same rule is
     // run over the whole snapshot history.
     async function latestTvl() {
-      const small = await getJson('tvl-latest.json');
+      const small = await getJson('/tvl-latest.json');
       if (small && small.vaults) return small.vaults;
-      const snap = await getJson('tvl-snapshots.json');
+      const snap = await getJson('/tvl-snapshots.json');
       const out = {};
       for (const [addr, v] of Object.entries((snap && snap.vaults) || {})) {
         const series = (v.snapshots || []).filter(s => typeof s.tvlUsd === 'number' && s.tvlUsd >= 0 && s.tvlUsd < MAX_SANE_TVL);
@@ -207,7 +207,7 @@
     }
 
     async function loadData() {
-      const [ipor, factory, snapTvl] = await Promise.all([getJson('ipor-vaults.json'), getJson('vaults.json'), latestTvl()]);
+      const [ipor, factory, snapTvl] = await Promise.all([getJson('/ipor-vaults.json'), getJson('/vaults.json'), latestTvl()]);
       // The latest snapshot beats IPOR's figure, which can be stale.
       const bestTvl = (addr, apiTvl) => {
         const s = snapTvl[(addr || '').toLowerCase()];
