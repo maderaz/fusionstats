@@ -465,7 +465,7 @@
       };
       const trace = { type: 'scatter', mode: 'lines', x: pts.map(p => p.time), y: pts.map(p => p.rank), customdata: pts.map(p => p.balance),
         line: { color: accent, width: 2.5, shape: 'hv' } };
-      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout), { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false });
+      await Plotly.react(el, FusionChart.quiet([trace]), FusionChart.fit(layout, [trace]), { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: 'reset', showTips: false });
       FusionChart.glide(el, (hp) => {
         const p = pts[hp[0].pointIndex != null ? hp[0].pointIndex : hp[0].pointNumber];
         if (!p) return '';

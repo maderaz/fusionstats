@@ -345,18 +345,23 @@
 
     /* ---------- Plots ---------- */
     /* Fixed height, no border, dots on the plot's square only: the page colour
-       is laid over them above the plot and under it, where the dates go
-       (--plot-t/--plot-b, set by ui-chart.js frame). Matches /tvl. */
+       is laid over them above and under the plot, where the dates go, and
+       either side of it (--plot-t/-b/-l/-r, set by ui-chart.js frame).
+       Matches ui.css .ui-chart. */
     .plot {
       position: relative;
       width: 100%;
       height: 340px;
-      --plot-t: 12px;
-      --plot-b: 24px;
+      --plot-t: 20px;
+      --plot-b: 50px;
+      --plot-l: 65px;
+      --plot-r: 10px;
       background:
         linear-gradient(var(--bg), var(--bg)) top / 100% var(--plot-t) no-repeat,
         linear-gradient(var(--bg), var(--bg)) bottom / 100% var(--plot-b) no-repeat,
-        radial-gradient(circle, var(--tint-strong) 1px, transparent 1.4px) 0 100% / 14px 14px;
+        linear-gradient(var(--bg), var(--bg)) left / var(--plot-l) 100% no-repeat,
+        linear-gradient(var(--bg), var(--bg)) right / var(--plot-r) 100% no-repeat,
+        radial-gradient(circle, var(--tint-strong) 1px, transparent 1.5px) 0 0 / 20px 20px;
     }
     /* A pie has no square: no dots. The ring lifts off the page a little. */
     .plot.plot-pie { background: none; }
@@ -954,7 +959,7 @@
       el.querySelectorAll(':scope > .loading, :scope > .missing').forEach(n => n.remove());
       // On a phone the plot takes the whole box (ui-chart.js); the layout as
       // built is kept for the PNG export, which never draws the phone's.
-      Plotly.react(id, a[0], FusionChart.fit(a[1]), a[2]);
+      Plotly.react(id, a[0], FusionChart.fit(a[1], a[0]), a[2]);
       el.__wideLayout = a[1];
       drawnPlots.add(id);
       if (a[3]) a[3]();

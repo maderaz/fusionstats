@@ -1,13 +1,19 @@
 // ui-chart.js — what the site's Plotly charts share.
 //
-// Every chart with axes is drawn the same way, on a phone and on a desktop:
-// the plot runs the full width of its box, on the box's faint dots, which stop
-// at the plot's edges. The y labels sit just inside its left edge, small and
-// under the data. Under the plot, outside the dots, three dates: the first,
-// the middle and the last (frame(), called by glide() after every draw).
-// Exact values are what the hover is for.
+// Every chart with axes is laid out as the reference (shadcn's line-charts-9,
+// Recharts): margins of 20 above and 10 to the right, the y axis in a 60px
+// gutter on the left, its labels ending 21px short of the plot (Recharts'
+// tickSize 6 and tickMargin 15), and under the plot five dates, the first and
+// the last at the data's own ends and kept inside it. The plot runs from the
+// first reading to the last, with no dead space either side, up to a round
+// level above the highest (five levels, as Recharts' nice ticks), each a
+// faint dashed rule. The faint dots fill the plot's square and stop at its
+// edges. On a phone the labels go inside the plot, under the data, and the
+// dates are three. Exact values are what the hover is for.
 //
-//   layout = FusionChart.fit(layout)    a copy of layout, drawn that way
+//   layout = FusionChart.fit(layout, traces)
+//                                       a copy of layout, drawn that way; the
+//                                       traces it will draw give its ranges
 //   FusionChart.frame(gd)               the dots fitted to the plot, the dates
 //                                       under it (glide() calls it)
 //   FusionChart.compact()               true on a phone: the page's content
@@ -44,53 +50,148 @@
     (getComputedStyle(document.documentElement).getPropertyValue(name) || fallback || '').trim() || fallback;
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
-  // The strip under the plot that holds the dates.
-  const DATE_ROW = 24;
+  // The reference's measures. gap: from the plot's edge to its labels.
+  // Desktop: Recharts' margin (top 20, right 10, left 5) and its 60px y axis;
+  // under the plot its 30px x axis and 20 of margin. Phone: the labels inside.
+  const DESK = { t: 20, r: 10, l: 65, b: 50, gap: 21, font: 12, dates: 5 };
+  const HAND = { t: 20, r: 8, l: 8, b: 34, gap: 10, font: 11, dates: 3 };
+  const measures = () => (compact() ? HAND : DESK);
 
-  function fit(layout) {
+  const visible = (t) => t && t.visible !== false && t.visible !== 'legendonly';
+  const axisKey = (id) => id.charAt(0) + 'axis' + id.slice(1);   // 'x2' → 'xaxis2'
+
+  // A round step for a span cut in four (five levels), as Recharts' nice
+  // ticks: 1, 2, 2.5, 3, 4, 5, 6, 8 or 10 of a power of ten.
+  function niceStep(rough) {
+    if (!(rough > 0) || !Number.isFinite(rough)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(rough)));
+    const f = rough / p;
+    return p * [1, 2, 2.5, 3, 4, 5, 6, 8, 10].find(n => f <= n + 1e-9);
+  }
+  function niceRange(lo, hi) {
+    if (!(hi > lo)) { const d = Math.abs(hi) * 0.05 || 1; lo -= d; hi += d; }
+    let step = niceStep((hi - lo) / 4);
+    let a = Math.floor(lo / step + 1e-9) * step, b = Math.ceil(hi / step - 1e-9) * step;
+    // Rounding both ends can leave six or more levels: the next step up.
+    if ((b - a) / step > 5) { step = niceStep(step * 1.01 + 1e-12); a = Math.floor(lo / step + 1e-9) * step; b = Math.ceil(hi / step - 1e-9) * step; }
+    return { a, b, step };
+  }
+
+  // The data's own extent on each axis. A line runs from its first reading to
+  // its last; a bar takes its whole slot. A missing reading (a page's blank
+  // lead-in) takes no room. Stacks count by their totals.
+  function extents(traces, layout) {
+    const xs = {}, ys = {}, sums = {};
+    const barStack = layout.barmode === 'stack' || layout.barmode === 'relative';
+    const grow = (o, k, lo, hi) => { const e = o[k] || (o[k] = { lo: Infinity, hi: -Infinity, like: undefined }); e.lo = Math.min(e.lo, lo); e.hi = Math.max(e.hi, hi); return e; };
+    for (const t of traces || []) {
+      if (!visible(t) || !Array.isArray(t.x) || !Array.isArray(t.y) || t.orientation === 'h') continue;
+      if (t.type && !/^(scatter|scattergl|bar)$/.test(t.type)) continue;
+      const xa = t.xaxis || 'x', ya = t.yaxis || 'y', bar = t.type === 'bar';
+      const slot = bar ? (spacing(t.x) || 0) : 0;
+      const stack = bar && barStack ? 'bars' : t.stackgroup;
+      for (let i = 0; i < t.x.length; i++) {
+        const y = t.y[i];
+        if (y == null || y === '' || !Number.isFinite(+y)) continue;
+        const x = toNum(t.x[i]);
+        if (Number.isFinite(x)) { const e = grow(xs, xa, x - slot / 2, x + slot / 2); if (e.like === undefined) e.like = t.x[i]; }
+        if (stack) {
+          const m = sums[ya + '|' + stack] || (sums[ya + '|' + stack] = { ya, at: new Map() });
+          const cur = m.at.get(x) || [0, 0];
+          if (+y >= 0) cur[0] += +y; else cur[1] += +y;
+          m.at.set(x, cur);
+        } else grow(ys, ya, +y, +y);
+        if (bar) grow(ys, ya, 0, 0);
+      }
+    }
+    for (const m of Object.values(sums)) for (const [pos, neg] of m.at.values()) grow(ys, m.ya, neg, pos);
+    return { xs, ys };
+  }
+
+  // d3's ".2s" writes zero as "0.0" and a million as "1.0M": "~" drops the
+  // trailing zeros ("$0", "$1M", "$1.2M").
+  const trim = (f) => (typeof f === 'string' ? f.replace(/\.(\d+)([sfrgep%])/, (m, d, k) => '.' + d + '~' + k).replace(/~~/g, '~') : f);
+
+  function fit(layout, traces) {
     const out = clone(layout);
     // Only charts with axes: a pie keeps its own margins.
     if (!Object.keys(out).some(k => /^[xy]axis\d*$/.test(k))) return out;
-    const phone = compact();
+    const phone = compact(), M = measures();
     const muted = cssVar('--text-3', cssVar('--text-secondary', '#9A9AA6'));
+    const sans = cssVar('--sans', '');
+    if (sans) out.font = Object.assign({}, out.font, { family: sans });
     // A key above the plot keeps the room the page gave it.
     const keyOnTop = out.showlegend && out.legend && (out.legend.y == null || out.legend.y >= 1);
-    out.margin = { l: 0, r: 0, t: keyOnTop ? ((out.margin && out.margin.t) || 30) : 12, b: DATE_ROW, pad: 0 };
-    const small = (f) => Object.assign({}, f, { size: phone ? 10 : 11, color: muted });
+    out.margin = { l: M.l, r: M.r, t: keyOnTop ? ((out.margin && out.margin.t) || 30) : M.t, b: M.b, pad: 0 };
+    const { xs, ys } = traces ? extents(traces, out) : { xs: {}, ys: {} };
+    const normed = (traces || []).some(t => visible(t) && t.groupnorm);
     for (const k of Object.keys(out)) {
-      if (!/^xaxis\d*$/.test(k)) continue;
-      // The dates are frame()'s: three of them, under the dots.
-      Object.assign(out[k], { automargin: false, showticklabels: false, ticks: '', ticklen: 0, showline: false, showgrid: false });
+      const m = k.match(/^xaxis(\d*)$/);
+      if (!m) continue;
+      const ax = out[k];
+      // The dates are frame()'s: five under the plot (three on a phone).
+      Object.assign(ax, { automargin: false, showticklabels: false, ticks: '', ticklen: 0, showline: false, showgrid: false, zeroline: false });
+      // From the first reading to the last: no dead space either side.
+      const e = xs['x' + m[1]];
+      const own = ax.range || ax.type === 'category' || ax.type === 'multicategory' || ax.autorange === 'reversed';
+      if (!own && e && e.hi >= e.lo) {
+        const pad = e.hi > e.lo ? 0 : 864e5 / 2;
+        ax.range = [fromNum(e.lo - pad, e.like), fromNum(e.hi + pad, e.like)];
+        ax.autorange = false;
+      }
     }
     for (const k of Object.keys(out)) {
-      if (!/^yaxis\d*$/.test(k)) continue;
-      Object.assign(out[k], {
-        automargin: false, ticks: '', ticklen: 0, nticks: phone ? 5 : 6,
+      const m = k.match(/^yaxis(\d*)$/);
+      if (!m) continue;
+      const ax = out[k];
+      Object.assign(ax, {
+        ticks: '', ticklen: 0, showline: false, zeroline: false, layer: 'below traces',
+        // Faint dashed rules at the labelled levels, under everything.
+        showgrid: true, gridcolor: cssVar('--line', 'rgba(127, 127, 127, 0.16)'), griddash: '4px,8px', gridwidth: 1,
+        tickfont: Object.assign({}, ax.tickfont, { size: M.font, color: muted }),
+        tickformat: trim(ax.tickformat),
+      }, phone ? {
         // Inside the plot, just above the level they name, under the bars
         // and lines: the data covers them. Above, not on it: a label on the
         // zero line read as "-$0". 'allow': Plotly's overflow check would
         // hide labels that sit inside.
-        ticklabelposition: 'inside top', ticklabeloverflow: 'allow', ticklabelstandoff: 4, layer: 'below traces',
-        // Faint dashed rules at the labelled levels, under everything.
-        showline: false, showgrid: true, gridcolor: cssVar('--line', 'rgba(127, 127, 127, 0.16)'), griddash: '4px,8px', gridwidth: 1,
-        tickfont: small(out[k].tickfont),
+        automargin: false, ticklabelposition: 'inside top', ticklabeloverflow: 'allow', ticklabelstandoff: 4,
+      } : {
+        // In the gutter, right-aligned, 21px short of the plot; a label too
+        // wide for the gutter widens it.
+        automargin: true, ticklabelposition: 'outside', ticklabelstandoff: M.gap - 1,   // Plotly adds 1
       });
+      // Five round levels from zero (or the lowest reading) to just above the
+      // highest. A log, reversed or percent-of-total axis keeps Plotly's own.
+      const e = ys['y' + m[1]];
+      const own = ax.range || ax.type === 'log' || ax.type === 'category' || ax.autorange === 'reversed' || normed;
+      if (!own && e && Number.isFinite(e.lo) && Number.isFinite(e.hi)) {
+        let lo = e.lo, hi = e.hi;
+        if (ax.rangemode === 'tozero' || ax.rangemode === 'nonnegative') { lo = Math.min(0, lo); hi = Math.max(0, hi); }
+        if (ax.rangemode === 'nonnegative') lo = Math.max(0, lo);
+        const r = niceRange(lo, hi);
+        Object.assign(ax, { range: [r.a, r.b], autorange: false, tickmode: 'linear', tick0: r.a, dtick: r.step });
+        delete ax.nticks;
+        // A series that crosses zero keeps a quiet zero line.
+        if (r.a < 0 && r.b > 0) Object.assign(ax, { zeroline: true, zerolinecolor: cssVar('--line-strong', 'rgba(127, 127, 127, 0.3)'), zerolinewidth: 1 });
+      } else if (!ax.nticks && !ax.dtick && !ax.tickvals) ax.nticks = 5;
     }
     return out;
   }
 
   // The plot's square on its box: the dots stop at its edges (the box's
-  // --plot-t and --plot-b, in ui.css), and the dates go under it. The data's
-  // own first and last x on screen, not the axis's padding, and not a line's
-  // zero start (customdata 'anchor'), which is no reading.
+  // --plot-t, -b, -l and -r, in ui.css), and the dates go under it. One series
+  // labels its levels and dates in its own colour; a few lines glow.
   function frame(gd) {
     if (typeof gd === 'string') gd = document.getElementById(gd);
     const fl = gd && gd._fullLayout;
     if (!fl || !fl.xaxis || !fl._size) return;
     const box = gd.closest('.ui-chart') || gd;
-    const sz = fl._size;
+    const sz = fl._size, M = measures();
     box.style.setProperty('--plot-t', sz.t + 'px');
     box.style.setProperty('--plot-b', Math.max(0, fl.height - sz.t - sz.h) + 'px');
+    box.style.setProperty('--plot-l', sz.l + 'px');
+    box.style.setProperty('--plot-r', Math.max(0, fl.width - sz.l - sz.w) + 'px');
     let row = box.querySelector(':scope > .ui-dates');
     if (!row) {
       row = document.createElement('div');
@@ -98,8 +199,7 @@
       row.setAttribute('aria-hidden', 'true');
       box.appendChild(row);
     }
-    row.innerHTML = dates(gd).map(t => '<span>' + esc(t) + '</span>').join('');
-    // One series: its labels and dates in its colour. Several: muted.
+    place(row, dates(gd, M.dates), sz, M);
     const inks = new Set();
     for (const t of gd._fullData || []) {
       if (t.visible !== true || t.hoverinfo === 'skip' && t.mode === 'markers') continue;
@@ -107,45 +207,86 @@
       if (typeof c === 'string') inks.add(c);
     }
     if (inks.size === 1) box.style.setProperty('--chart-ink', [...inks][0]); else box.style.removeProperty('--chart-ink');
-    // A soft glow of each line's own colour under it, when there are few.
+    // The reference's glow: the line's own colour, 4px right and 6px down,
+    // blurred wide. Only when there are few lines.
     const drawn = [...gd.querySelectorAll('.scatterlayer .trace path.js-line')]
       .filter(pth => (parseFloat(pth.style.strokeWidth) || 0) > 0.5 && pth.style.stroke);
-    drawn.forEach(pth => { pth.style.filter = drawn.length <= 3 ? 'drop-shadow(0 7px 9px ' + alpha(pth.style.stroke, 0.28) + ')' : ''; });
+    drawn.forEach(pth => { pth.style.filter = drawn.length <= 3 ? 'drop-shadow(4px 6px 14px ' + alpha(pth.style.stroke, 0.35) + ')' : ''; });
     // A zoom (desktop) changes what is on screen.
     if (!gd.__framed && gd.on) { gd.__framed = true; gd.on('plotly_relayout', () => frame(gd)); }
   }
 
-  function dates(gd) {
+  // The dates, under their own x, 'gap' below the plot. The first and the last
+  // stay inside the plot (Recharts' preserveStartEnd); one that would run into
+  // its neighbour is left out.
+  function place(row, marks, sz, M) {
+    row.style.top = (sz.t + sz.h + M.gap) + 'px';
+    row.innerHTML = marks.map(m => '<span>' + esc(m.text) + '</span>').join('');
+    const spans = [...row.children];
+    const left = sz.l, right = sz.l + sz.w;
+    const at = spans.map((el, i) => {
+      const w = el.offsetWidth, c = marks[i].px;
+      let x = c - w / 2;
+      if (i === 0) x = Math.max(left, x);
+      if (i === spans.length - 1) x = Math.min(right - w, x);
+      return { el, x, w };
+    });
+    let prev = null;
+    at.forEach((a, i) => {
+      const last = i === at.length - 1;
+      if (prev && a.x < prev.x + prev.w + 10) {
+        if (!last) { a.el.remove(); return; }
+        if (prev.el !== at[0].el) prev.el.remove();
+      }
+      a.el.style.transform = 'translateX(' + Math.round(a.x) + 'px)';
+      prev = a;
+    });
+  }
+
+  // Up to n of the data's own x positions, spread evenly from the first to the
+  // last on screen, each with its date. Readings only: not a curve's drawn
+  // points, not a line's zero start (customdata 'anchor'), not a blank.
+  function dates(gd, n) {
     const xa = gd._fullLayout.xaxis;
     const lim = (xa.range || []).map(v => xa.r2l(v));
     const [r0, r1] = [Math.min(...lim), Math.max(...lim)];
-    let lo = Infinity, hi = -Infinity;
+    const set = new Set();
     for (const t of gd._fullData || []) {
-      if (t.visible === false || t.visible === 'legendonly' || !t.x) continue;
+      if (t.visible !== true || !t.x || t.hoverinfo === 'skip') continue;
       const cd = Array.isArray(t.customdata) ? t.customdata : null;
       for (let i = 0; i < t.x.length; i++) {
         if (cd && cd[i] === 'anchor') continue;
+        if (t.y && (t.y[i] == null || t.y[i] === '')) continue;
         const l = xa.d2l(t.x[i]);
-        if (!Number.isFinite(l) || l < r0 || l > r1) continue;
-        if (l < lo) lo = l;
-        if (l > hi) hi = l;
+        if (Number.isFinite(l) && l >= r0 - 1e-6 && l <= r1 + 1e-6) set.add(l);
       }
     }
-    if (!(hi >= lo)) return [];
-    const mid = (lo + hi) / 2;
+    const all = [...set].sort((a, b) => a - b);
+    if (!all.length) return [];
+    const lo = all[0], hi = all[all.length - 1];
+    const picks = [];
+    for (let k = 0; k < n; k++) {
+      const target = n === 1 ? lo : lo + (hi - lo) * k / (n - 1);
+      let best = all[0];
+      for (const v of all) if (Math.abs(v - target) < Math.abs(best - target)) best = v;
+      if (!picks.includes(best)) picks.push(best);
+    }
+    const label = labeller(xa, hi - lo);
+    return picks.map(l => ({ px: xa._offset + xa.l2p(l), text: label(l) }));
+  }
+  function labeller(xa, span) {
     if (xa.type === 'date') {
-      const day = 864e5, span = hi - lo;
-      const o = span > 120 * day ? { month: 'short', year: 'numeric' }
+      const day = 864e5;
+      const o = span > 300 * day ? { month: 'short', year: 'numeric' }
         : span > 2 * day ? { month: 'short', day: 'numeric' }
         : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
-      const f = (ms) => new Date(ms).toLocaleString('en-US', Object.assign({ timeZone: 'UTC' }, o));
-      return [f(lo), f(mid), f(hi)];
+      return (l) => new Date(l).toLocaleString('en-US', Object.assign({ timeZone: 'UTC' }, o));
     }
     if (xa.type === 'category' || xa.type === 'multicategory') {
       const c = xa._categories || [];
-      return [lo, mid, hi].map(v => String(c[Math.round(v)] == null ? '' : c[Math.round(v)]));
+      return (l) => String(c[Math.round(l)] == null ? '' : c[Math.round(l)]);
     }
-    return [lo, mid, hi].map(v => Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+    return (l) => Number(l).toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   // Listeners hear of it when compact() flips, whether the window or only the
@@ -296,9 +437,9 @@
         if (lo < 0 || +v < +t.y[lo]) lo = i;
       });
       const at = [...new Set([hi, lo])].filter(i => i >= 0);
-      if (at.length) out.push({ type: 'scatter', mode: 'markers', hoverinfo: 'skip', showlegend: false, meta: { of: -1 },
+      if (at.length) out.push({ type: 'scatter', mode: 'markers', hoverinfo: 'skip', showlegend: false, meta: { of: -1 }, cliponaxis: false,
         x: at.map(i => t.x[i]), y: at.map(i => t.y[i]),
-        marker: { size: 10, color: (t.line && t.line.color) || cssVar('--accent', '#8429FF'), line: { color: cssVar('--bg', '#fff'), width: 2 } } });
+        marker: { size: 12, color: (t.line && t.line.color) || cssVar('--accent', '#8429FF'), line: { color: '#fff', width: 2 } } });
     }
     return out;
   }

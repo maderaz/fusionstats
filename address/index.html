@@ -864,7 +864,7 @@
         yaxis: { tickformat: '$~s', gridcolor: routeColor('grid'), gridwidth: 1, showspikes: false,
                  zeroline: true, zerolinecolor: routeColor('zero'), zerolinewidth: 1, tickfont: { size: 11 } },
       };
-      const fitted = FusionChart.fit(layout);
+      const fitted = FusionChart.fit(layout, traces);
       if (FusionChart.compact()) fitted.margin.t = 34;   // the key sits above the plot
       el.__wideLayout = layout;
       Plotly.react(el, FusionChart.quiet(traces), fitted, CHART_CONFIG).then(() => FusionChart.glide(el, (pts) => {
@@ -1067,7 +1067,7 @@
     function drawChart(id, traces, layout, describe) {
       const gd = document.getElementById(id);
       gd.__wideLayout = layout;
-      return Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout), CHART_CONFIG)
+      return Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout, traces), CHART_CONFIG)
         .then(() => FusionChart.glide(gd, describe));
     }
     function saveImage(fig, width, height, filename) {
