@@ -153,6 +153,10 @@ jobs:
             # snapshots just landed (tvl-snapshots.yml): cut it again from both.
             node tools/build-stocks-data.js && git add -f stocks-data.json || true
             node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
+            # The Dust Tracker's deposits are marked from ZyfAI's list, which
+            # collect-zyfai.yml may have just updated: mark them again.
+            node tools/build-dust-events.js || true
+            for f in dust-events.json dust-events-tx.json; do [ -f "$f" ] && git add -f "$f"; done
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "Update data files [skip ci]"

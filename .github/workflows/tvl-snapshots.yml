@@ -156,8 +156,12 @@ jobs:
             git checkout -B "$BRANCH" "origin/$BRANCH"
             for f in $FILES; do cp "$KEEP/$f" "$f"; done
             # The Stocks file is cut from these snapshots and whatever events
-            # just landed (collect.yml): cut it again from both.
+            # just landed (collect.yml): cut it again from both. The latest
+            # TVLs come from the snapshots alone, but this run's copy may not
+            # be among $FILES (unchanged here, changed by the run that got in
+            # first): cut it again too, so it matches the snapshots it ships with.
             node tools/build-stocks-data.js && git add -f stocks-data.json || true
+            node tools/build-tvl-latest.js && git add -f tvl-latest.json || true
             node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi

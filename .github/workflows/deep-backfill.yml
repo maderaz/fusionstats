@@ -70,11 +70,19 @@ jobs:
             node collect-rebalances.js --deepest ${{ inputs.vault }} ${{ inputs.chain }}
           fi
 
+      # The pages' files cut from the events (tools/build-event-caches.js),
+      # rebuilt from what this run found: the pages read them instead of the
+      # whole history, so they must not lag it.
+      - name: Rebuild the pages' event files
+        continue-on-error: true
+        run: node tools/build-event-caches.js
+
       - name: Commit & push results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f rebalance-events-*.json activity-events.json 2>/dev/null || true
+          for f in $(node tools/build-event-caches.js --list); do [ -f "$f" ] && git add -f "$f"; done
           # Same rule as the collectors: generated output supersedes the remote,
           # so a rejected push resets onto origin and replays our files rather
           # than rebasing into a conflict that `|| true` would then hide.
@@ -93,6 +101,9 @@ jobs:
             git fetch origin "$BRANCH"
             git checkout -B "$BRANCH" "origin/$BRANCH"
             for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            # The page files again, from these events and the remote's other inputs.
+            node tools/build-event-caches.js || true
+            for f in $(node tools/build-event-caches.js --list); do [ -f "$f" ] && git add -f "$f"; done
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "Deep backfill: ${{ inputs.vault }} on ${{ inputs.chain }} [skip ci]"
