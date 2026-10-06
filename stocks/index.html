@@ -299,6 +299,46 @@
     .pg-step:disabled { opacity: 0.4; cursor: default; }
     .pg-step:focus-visible, .pg-num:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+    /* ---------- Hover: a hairline, a dot per line, the tips' bubble ---------- */
+    /* Positioned by transform and eased, so they glide from point to point
+       instead of jumping; .hv-jump puts them in place without the ease when a
+       hover starts. */
+    .plot { position: relative; }
+    .plot .nsewdrag { cursor: default !important; }
+    .hv { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+    .hv-line, .hv-dot, .hv-bubble {
+      position: absolute; top: 0; left: 0;
+      opacity: 0;
+      transition: opacity 0.14s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: transform;
+    }
+    .hv-jump .hv-line, .hv-jump .hv-dot, .hv-jump .hv-bubble { transition: opacity 0.14s ease; }
+    .hv-line { width: 1px; background: var(--line-strong); }
+    .hv-dot {
+      width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 2.5px var(--bg), 0 1px 4px 2px rgba(16, 16, 24, 0.18);
+    }
+    .hv-bubble {
+      min-width: 128px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: var(--tip-bg);
+      color: var(--tip-fg);
+      font: 400 12.5px/1.5 var(--sans);
+      white-space: nowrap;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    }
+    .hv-on .hv-line, .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
+    .hv-when { margin-bottom: 3px; font-size: 11.5px; opacity: 0.62; }
+    .hv-big { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+    .hv-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .hv-row + .hv-row { margin-top: 2px; }
+    .hv-k { display: flex; align-items: center; gap: 7px; opacity: 0.78; }
+    .hv-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .hv-sw { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
+
     /* ---------- Plots ---------- */
     /* Fixed height, dotted surface, no border. Matches /tvl. */
     .plot {
@@ -810,20 +850,101 @@
         paper_bgcolor: 'rgba(0,0,0,0)',
         font: { family: 'Poppins, -apple-system, sans-serif', color: body, size: 12 },
         xaxis: {
-          showgrid: false, linecolor: line, tickfont: { size: 11 }, type: 'date',
+          showgrid: false, linecolor: line, tickfont: { size: 11 }, type: 'date', showspikes: false,
           ticklen: 8, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
         },
         yaxis: {
-          showgrid: false, linecolor: line, tickfont: { size: 11 }, tickformat: yFmt,
+          showgrid: false, linecolor: line, tickfont: { size: 11 }, tickformat: yFmt, showspikes: false,
           type: (allowLog && S.scale === 'log') ? 'log' : 'linear',
           rangemode: (allowLog && S.scale === 'log') ? 'normal' : 'tozero',
           ticklen: 10, ticks: 'outside', tickcolor: 'rgba(0,0,0,0)', automargin: true,
         },
         showlegend: false,
+        // The hover is the page's own (glide): Plotly only reports where it is,
+        // from anywhere across the plot, and a drag no longer zooms.
         hovermode: 'x unified',
+        hoverdistance: -1,
+        spikedistance: -1,
+        dragmode: false,
       };
     }
-    const CONFIG = { displayModeBar: false, responsive: true };
+    const CONFIG = { displayModeBar: false, responsive: true, doubleClick: false, scrollZoom: false, showTips: false };
+
+    // Traces report hover positions but draw no label of their own.
+    const quiet = (traces) => traces.map(t => { const q = Object.assign({}, t, { hoverinfo: 'none' }); delete q.hovertemplate; return q; });
+
+    // ---- Hover: the page's own, not Plotly's --------------------------------
+    // Plotly's label is a square box in its own font that jumps from point to
+    // point. This draws what the rest of the page looks like: a hairline that
+    // glides to the nearest point, a ringed dot on each line, and the ⓘ tips'
+    // bubble beside them. `describe(points)` returns the bubble's HTML.
+    function glide(id, describe) {
+      const gd = document.getElementById(id);
+      if (!gd || !gd._fullLayout || !gd.on) return;
+      let hv = gd.querySelector(':scope > .hv');
+      if (!hv) {
+        hv = document.createElement('div');
+        hv.className = 'hv';
+        hv.innerHTML = '<div class="hv-line"></div><div class="hv-dots"></div><div class="hv-bubble"></div>';
+        gd.appendChild(hv);
+      }
+      // Re-rendering re-attaches: drop the last pair rather than stack them.
+      if (gd.__hv) { gd.removeListener('plotly_hover', gd.__hv.on); gd.removeListener('plotly_unhover', gd.__hv.off); }
+      let live = false;
+      const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); };
+      const on = (ev) => {
+        const h = gd.querySelector(':scope > .hv');
+        const pts = (ev.points || []).filter(p => p.y != null && p.x != null);
+        if (!h || !pts.length) return off();
+        const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
+        const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));
+        if (!live) { h.classList.add('hv-jump'); }
+        const line = h.querySelector('.hv-line');
+        line.style.height = sz.h + 'px';
+        line.style.transform = 'translate(' + x + 'px,' + sz.t + 'px)';
+        // A dot where each line is; bars carry no dot.
+        const dots = h.querySelector('.hv-dots');
+        const lines = pts.filter(p => p.data.type !== 'bar');
+        while (dots.children.length < lines.length) dots.appendChild(Object.assign(document.createElement('span'), { className: 'hv-dot' }));
+        [...dots.children].forEach((d, i) => {
+          const p = lines[i];
+          if (!p) { d.style.display = 'none'; return; }
+          d.style.display = '';
+          d.style.color = (p.data.line && p.data.line.color) || (p.data.marker && p.data.marker.color) || 'currentColor';
+          d.style.transform = 'translate(' + x + 'px,' + (ya._offset + ya.l2p(ya.d2l(p.y))) + 'px)';
+        });
+        // The bubble beside the line, on whichever side has room, level with
+        // the pointer and kept inside the plot.
+        const b = h.querySelector('.hv-bubble');
+        b.innerHTML = describe(pts);
+        const bw = b.offsetWidth, bh = b.offsetHeight;
+        const right = x + 16 + bw <= sz.l + sz.w + 8;
+        const bx = right ? x + 16 : x - 16 - bw;
+        const top = gd.getBoundingClientRect().top;
+        const py = ev.event && ev.event.clientY != null ? ev.event.clientY - top : sz.t + sz.h / 3;
+        const by = Math.max(sz.t - 6, Math.min(py - bh / 2, sz.t + sz.h - bh + 6));
+        b.style.transform = 'translate(' + Math.max(0, bx) + 'px,' + by + 'px)';
+        h.classList.add('hv-on');
+        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
+      };
+      gd.on('plotly_hover', on);
+      gd.on('plotly_unhover', off);
+      gd.__hv = { on, off };
+      if (!gd.__hvLeave) { gd.addEventListener('mouseleave', () => gd.__hv && gd.__hv.off()); gd.__hvLeave = true; }
+    }
+    // The pieces bubbles are made of.
+    const hvWhen = (x, hourly) => {
+      // "2026-10-05", "2026-10-05 13:00" or with seconds: read field by field.
+      const m = String(x).match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      const d = m ? new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))) : new Date(x);
+      const opts = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+      if (hourly) Object.assign(opts, { hour: '2-digit', minute: '2-digit', hour12: false });
+      // Plotly reports the axis's own wall-clock time; read back as UTC it prints as the axis does.
+      return '<div class="hv-when">' + d.toLocaleString('en-US', opts) + '</div>';
+    };
+    const hvRow = (color, label, value) => '<div class="hv-row"><span class="hv-k">'
+      + (color ? '<span class="hv-sw" style="background:' + color + '"></span>' : '') + esc(label)
+      + '</span><span class="hv-v">' + value + '</span></div>';
 
     // ---- daily TVL, forward-filled, one point per vault per day ----
     function tvlSeries(sel, range) {
@@ -940,7 +1061,9 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf),
             line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
             fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
-      Plotly.react('tvlPlot', [trace], baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG);
+      Plotly.react('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG);
+      glide('tvlPlot', (pts) => hvWhen(pts[0].x, stepFor(S.tvlRange) === HOUR_SEC)
+        + '<div class="hv-big">' + (usd ? fUsd(pts[0].y) : fNum(pts[0].y, 4) + ' ' + esc(unitLabel)) + '</div>');
       renderUnitsBreakdown();
 
       const chosen = vaultsFor(S.tvlVault);
@@ -982,7 +1105,9 @@
         : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
-      Plotly.react('walPlot', [trace], baseLayout(',d', true), CONFIG);
+      Plotly.react('walPlot', quiet([trace]), baseLayout(',d', true), CONFIG);
+      glide('walPlot', (pts) => hvWhen(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US')
+        + '</div><div class="hv-when" style="margin:1px 0 0">' + (S.walMode === 'active' ? 'wallets active' : 'wallets in total') + '</div>');
     }
 
     function renderStats() {
@@ -1418,7 +1543,15 @@
       // silently ignoring the control.
       const lay = baseLayout('$,.2s');
       lay.barmode = 'relative';
-      Plotly.react('flowPlot', traces, lay, CONFIG);
+      Plotly.react('flowPlot', quiet(traces), lay, CONFIG);
+      glide('flowPlot', (pts) => {
+        const by = (n) => (pts.find(p => p.data.name === n) || {}).y || 0;
+        const net = by('Net');
+        return hvWhen(pts[0].x)
+          + hvRow(ACCENT, 'Deposits', fUsd(by('Deposits')))
+          + hvRow(cssVar('--red'), 'Exits', fUsd(Math.abs(by('Exits'))))
+          + hvRow(cssVar('--text'), 'Net', (net >= 0 ? '+' : '−') + fUsd(Math.abs(net)));
+      });
       const tIn = pts.reduce((a, p) => a + p.inflow, 0), tOut = pts.reduce((a, p) => a + p.exit, 0);
       document.getElementById('flowNote').textContent =
         pts.length + ' active days · in ' + fUsd(tIn) + ' · out ' + fUsd(tOut)
@@ -1584,6 +1717,8 @@
         paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
         showlegend: false,
         font: { family: 'Poppins, -apple-system, sans-serif', color: cssVar('--text-body', '#70747A'), size: 12 },
+        hoverlabel: { bgcolor: cssVar('--tip-bg', '#111116'), bordercolor: cssVar('--tip-bg', '#111116'),
+                      font: { family: 'Geist, sans-serif', color: cssVar('--tip-fg', '#fff'), size: 12.5 } },
         annotations: [{
           text: '<b>' + fUsd(data.total) + '</b><br><span style="font-size:10px">'
                 + (S.pieMetric === 'here' ? 'still here' : 'gross in') + '</span>',
@@ -1786,7 +1921,9 @@
       lay.showlegend = true;
       lay.legend = { orientation: 'h', y: -0.18, font: { size: 11 } };
       lay.yaxis.rangemode = 'normal';
-      Plotly.react('retPlot', traces, lay, CONFIG);
+      Plotly.react('retPlot', quiet(traces), lay, CONFIG);
+      glide('retPlot', (pts) => hvWhen(pts[0].x) + pts.slice().sort((a, b) => b.y - a.y)
+        .map(p => hvRow(p.data.line.color, p.data.name, p.y.toFixed(2))).join(''));
 
       document.getElementById('retTable').innerHTML =
         '<div class="scroll" style="margin-top:0.9rem"><table class="data-table"><thead><tr><th>Vault</th>'

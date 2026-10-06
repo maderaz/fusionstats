@@ -265,43 +265,56 @@
       inset: 24% 0;
       border-radius: 12px;
     }
-    .flow-bar-slot { position: relative; flex: 1; border-radius: 7px; transition: background 0.12s; }
-    .flow-bar-slot:hover { background: var(--bg-subtle); }
+    .flow-bar-slot { position: relative; flex: 1; border-radius: 7px; transition: background 0.18s; }
     .flow-bar {
       position: absolute;
       left: 20%;
       right: 20%;
       min-height: 2px;
-      transition: opacity 0.15s;
+      transition: opacity 0.18s;
     }
     .flow-bar.positive { bottom: 50%; background: var(--pos-bar); border-radius: 4px 4px 1px 1px; }
     .flow-bar.negative { top: 50%; background: var(--neg-bar); border-radius: 1px 1px 4px 4px; }
-    .flow-chart-bars:hover .flow-bar { opacity: 0.4; }
-    .flow-chart-bars .flow-bar-slot:hover .flow-bar { opacity: 1; }
-    .flow-bar-slot .flow-bar-tooltip {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 7px 10px;
-      border-radius: 9px;
+    /* While a day is pointed at, it stays lit and the rest step back. */
+    .flow-chart-bars.hv-live .flow-bar { opacity: 0.35; }
+    .flow-chart-bars.hv-live .flow-bar-slot.on { background: var(--bg-subtle); }
+    .flow-chart-bars.hv-live .flow-bar-slot.on .flow-bar { opacity: 1; }
+
+    /* ---------- Hover: a hairline, a dot, the tips' bubble (as on Stocks) ---------- */
+    /* Positioned by transform and eased, so they glide from day to day instead
+       of each bar's own tooltip popping in and out; .hv-jump places them
+       without the ease when a hover starts. */
+    .hv { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+    .hv-line, .hv-dot, .hv-bubble {
+      position: absolute; top: 0; left: 0;
+      opacity: 0;
+      transition: opacity 0.14s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: transform;
+    }
+    .hv-jump .hv-line, .hv-jump .hv-dot, .hv-jump .hv-bubble { transition: opacity 0.14s ease; }
+    .hv-line { width: 1px; height: 100%; background: var(--line-strong); }
+    .hv-dot {
+      width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 2.5px var(--bg), 0 1px 4px 2px rgba(16, 16, 24, 0.18);
+    }
+    .hv-bubble {
+      min-width: 128px;
+      padding: 9px 12px;
+      border-radius: 10px;
       background: var(--tip-bg);
       color: var(--tip-fg);
-      font-size: 12px;
-      line-height: 1.4;
-      text-align: center;
+      font: 400 12.5px/1.5 var(--sans);
       white-space: nowrap;
-      pointer-events: none;
-      z-index: 10;
-      opacity: 0;
-      visibility: hidden;
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
-      transition: opacity 0.1s;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
     }
-    .flow-bar-tooltip strong { font-weight: 600; font-variant-numeric: tabular-nums; }
-    .flow-bar-slot:nth-child(-n+4) .flow-bar-tooltip { left: 0; transform: none; text-align: left; }
-    .flow-bar-slot:nth-last-child(-n+4) .flow-bar-tooltip { left: auto; right: 0; transform: none; text-align: right; }
-    .flow-bar-slot:hover .flow-bar-tooltip { opacity: 1; visibility: visible; }
+    .hv-on .hv-line, .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
+    .hv-when { margin-bottom: 3px; font-size: 11.5px; opacity: 0.62; }
+    .hv-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .hv-k { display: flex; align-items: center; gap: 7px; opacity: 0.78; }
+    .hv-v { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .hv-sw { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
     .flow-chart-axis {
       display: flex;
       justify-content: space-between;
@@ -1308,6 +1321,54 @@
       document.getElementById('overview').style.display = '';
     }
 
+    // The days the flow chart draws, for its hover.
+    let flowDays = [];
+
+    // One hairline, one dot and one bubble glide to the nearest day — the
+    // pointer anywhere over the chart picks one — and that day's bar stays lit
+    // while the rest step back. Tap on a touch screen; tap elsewhere to close.
+    (function flowHover() {
+      const bars = document.getElementById('flowChartBars');
+      let live = false;
+      const hide = () => {
+        live = false;
+        bars.classList.remove('hv-live');
+        const h = bars.querySelector('.hv'); if (h) h.classList.remove('hv-on');
+        bars.querySelectorAll('.flow-bar-slot.on').forEach(el => el.classList.remove('on'));
+      };
+      function show(clientX) {
+        const h = bars.querySelector('.hv'), slots = [...bars.querySelectorAll('.flow-bar-slot')];
+        if (!h || !slots.length || slots.length !== flowDays.length) return;
+        const box = bars.getBoundingClientRect();
+        let i = 0, best = Infinity;
+        slots.forEach((el, k) => { const r = el.getBoundingClientRect(); const d = Math.abs(clientX - (r.left + r.width / 2)); if (d < best) { best = d; i = k; } });
+        const r = slots[i].getBoundingClientRect(), bar = slots[i].querySelector('.flow-bar').getBoundingClientRect();
+        const day = flowDays[i], up = day.value >= 0;
+        const x = r.left + r.width / 2 - box.left;
+        const y = (up ? bar.top : bar.bottom) - box.top;
+        if (!live) h.classList.add('hv-jump');
+        slots.forEach((el, k) => el.classList.toggle('on', k === i));
+        bars.classList.add('hv-live');
+        h.querySelector('.hv-line').style.transform = 'translateX(' + x + 'px)';
+        const dot = h.querySelector('.hv-dot');
+        dot.style.color = up ? 'var(--pos-bar)' : 'var(--neg-bar)';
+        dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        const b = h.querySelector('.hv-bubble');
+        b.innerHTML = '<div class="hv-when">' + day.label + '</div><div class="hv-row"><span class="hv-k">'
+          + '<span class="hv-sw" style="background:' + (up ? 'var(--pos-bar)' : 'var(--neg-bar)') + '"></span>Net flow</span>'
+          + '<span class="hv-v">' + day.text + '</span></div>';
+        // Above the chart, centred on the day, kept within it.
+        const bw = b.offsetWidth, bh = b.offsetHeight;
+        b.style.transform = 'translate(' + Math.max(0, Math.min(x - bw / 2, box.width - bw)) + 'px,' + (-bh - 10) + 'px)';
+        h.classList.add('hv-on');
+        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
+      }
+      bars.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') show(e.clientX); });
+      bars.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hide(); });
+      bars.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(e.clientX); });
+      document.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !bars.contains(e.target)) hide(); });
+    })();
+
     function renderFlowChart(events, days = 30) {
       const chart = document.getElementById('flowChart');
       const bars = document.getElementById('flowChartBars');
@@ -1347,18 +1408,17 @@
       };
 
       let html = '';
+      flowDays = [];
       for (let i = 0; i < days; i++) {
         const val = buckets[i];
         const daysAgo = days - 1 - i;
         const heightPct = Math.abs(val) / maxAbs * 50; // max 50% (half the chart)
         const cls = val >= 0 ? 'positive' : 'negative';
         const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
-        html += `<div class="flow-bar-slot">
-          <div class="flow-bar ${cls}" style="height:${heightPct}%"></div>
-          <div class="flow-bar-tooltip">${label}<br><strong>${fmtUsd(val)}</strong></div>
-        </div>`;
+        html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div></div>`;
+        flowDays.push({ label, value: val, text: fmtUsd(val) });
       }
-      bars.innerHTML = html;
+      bars.innerHTML = html + '<div class="hv"><div class="hv-line"></div><span class="hv-dot"></span><div class="hv-bubble"></div></div>';
 
       document.getElementById('flowChartStart').textContent = fmtDay(days - 1);
       document.getElementById('flowChartEnd').textContent = 'today';
