@@ -134,6 +134,12 @@ const TIMESTAMP_BUDGET_MS = 30_000;
 const RUN_BUDGET_MS = Number(process.env.ACTIVITY_RUN_BUDGET_MS || 6.5 * 60_000);
 // Held back from that budget so tagging + the final write always happen.
 const WRITE_RESERVE_MS = 20_000;
+// After every chain has had its slice, the run's spare time goes to chains with
+// a vault still behind (see the catch-up pass in main). This much is kept for
+// the price and timestamp repairs that follow, and a slice shorter than the
+// minimum is not worth starting.
+const CATCH_UP_RESERVE_MS = 30_000;
+const CATCH_UP_MIN_MS = 10_000;
 
 // DeFi Llama chain prefix for price lookups
 const LLAMA_CHAIN = {
@@ -589,28 +595,58 @@ async function enrichWithPrices(events) {
 //     undated event is invisible downstream — banking that block would turn a
 //     retryable gap into a permanent one
 // How far behind the chain head a chain's collection is, in words a page and
-// a workflow can both act on. The slowest vault sets it: a block is only
+// a workflow can both act on. The slowest vault sets the lag: a block is only
 // covered once every tracked vault on the chain has been asked about it.
 //
-//   ok           within a few hours of the head
-//   behind       further back, but this run moved forward
-//   stalled      further back, and this run moved nothing
+//   ok           every vault within a few hours of the head
+//   behind       some vault further back, and this run moved the chain forward
+//   stalled      some vault further back, and this run moved nothing
 //   unreachable  no endpoint would even report the head
+//
+// With it, the facts a check needs to tell catching up from stuck:
+//   behindSince  when the chain last went from ok to behind, carried over from
+//                the previous run's verdict (`prev`) while it stays behind. A
+//                vault back above the TVL floor resumes from the cursor it had
+//                when it dropped out (Private ETH Lending Optimizer, Oct 6:
+//                8 days back), so a big lag on its own says nothing is wrong.
+//   laggards     every vault further back: name, lag, TVL, whether this run
+//                moved it, and whether it is stuck (its pass ran and it did
+//                not move)
 //
 // Recorded rather than only logged because both earlier outages logged the
 // problem every run — Base for five days, Ethereum for three weeks — in a
 // step that could not fail, under a page that said "updated 2 minutes ago".
+//
+// `vaults` is [{ address, name, tvl, cursor, start, reached }]: the cursor
+// now, the cursor when the run began, and whether its pass ran before the
+// time ran out. The older form, `cursors` and one `progressed` for the
+// chain, is still taken.
 const HEALTHY_LAG_HOURS = 6;
-function chainHealth({ chain, head, cursors, progressed, unreachable = false, reason = null, now = Date.now() }) {
+function chainHealth({ chain, head, vaults, cursors, progressed, prev = null, unreachable = false, reason = null, now = Date.now() }) {
+  const at = new Date(now).toISOString();
+  const wasBehind = prev && prev.status && prev.status !== 'ok';
+  const since = () => (wasBehind ? prev.behindSince || prev.checkedAt || at : at);
   if (unreachable) return { status: 'unreachable', head: null, cursor: null, lagBlocks: null, lagHours: null,
-                            reason, checkedAt: new Date(now).toISOString() };
-  const known = cursors.filter(c => typeof c === 'number' && c > 0);
-  const cursor = known.length ? Math.min(...known) : null;
-  const lagBlocks = cursor == null ? null : Math.max(0, head - cursor);
+                            behindSince: since(), laggards: [], reason, checkedAt: at };
   const bpd = BLOCKS_PER_DAY[chain] || BLOCKS_PER_DAY._default;
-  const lagHours = lagBlocks == null ? null : Math.round(lagBlocks / bpd * 24 * 10) / 10;
-  const status = lagHours == null || lagHours <= HEALTHY_LAG_HOURS ? 'ok' : progressed ? 'behind' : 'stalled';
-  return { status, head, cursor, lagBlocks, lagHours, reason, checkedAt: new Date(now).toISOString() };
+  const hours = (blocks) => Math.round(blocks / bpd * 24 * 10) / 10;
+  const list = vaults || (cursors || []).map(c => ({ cursor: c, moved: !!progressed }));
+  const known = list.filter(v => typeof v.cursor === 'number' && v.cursor > 0);
+  const cursor = known.length ? Math.min(...known.map(v => v.cursor)) : null;
+  const lagBlocks = cursor == null ? null : Math.max(0, head - cursor);
+  const lagHours = lagBlocks == null ? null : hours(lagBlocks);
+  const laggards = known
+    .map(v => {
+      const moved = v.moved != null ? !!v.moved : v.cursor > (v.start || 0);
+      return { address: v.address, name: v.name, tvl: v.tvl, lagHours: hours(Math.max(0, head - v.cursor)),
+               moved, stuck: v.reached !== false && !moved };
+    })
+    .filter(v => v.lagHours > HEALTHY_LAG_HOURS)
+    .sort((a, b) => b.lagHours - a.lagHours);
+  const chainMoved = vaults ? known.some(v => v.cursor > (v.start || 0)) : !!progressed;
+  const status = !laggards.length ? 'ok' : chainMoved ? 'behind' : 'stalled';
+  return { status, head, cursor, lagBlocks, lagHours, behindSince: status === 'ok' ? null : since(),
+           laggards, reason, checkedAt: at };
 }
 
 // Split the vaults a chain scan covers into passes, each holding vaults within
@@ -1800,52 +1836,34 @@ async function main() {
     byChain[c].push(v);
   });
 
-  for (const [chain, chainVaults] of Object.entries(byChain)) {
-    if (!rpcEndpoints(chain, CHAIN_RPCS[chain]).length) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
-    if (budgetLeft() <= 0) {
-      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (run budget spent; it keeps its cursor and resumes next run)`);
-      continue;
-    }
-
-    let currentBlock;
+  const save = () => {
     try {
-      currentBlock = await getBlockNumber(chain);
-      console.log(`\n=== ${chain.toUpperCase()} === (block ${currentBlock}, ${chainVaults.length} vaults)`);
+      fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
     } catch (e) {
-      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (RPC error: ${e.message})`);
-      console.log(`::error::${chain}: no endpoint answered eth_blockNumber — this chain is not being collected at all`);
-      (data.chainHealth = data.chainHealth || {})[chain] = chainHealth({ chain, unreachable: true, reason: e.message });
-      continue;
+      console.log(`  (warning: intermediate save failed: ${e.message})`);
     }
+  };
 
+  // One slice of a chain's scan: a pass per group of vaults at about the same
+  // block (scanCohorts), most advanced first, so a range only the laggards
+  // need can neither hold the others back nor eat their time, until
+  // `deadline`. Returns the first refusal, and the vaults whose pass the time
+  // ran out before (asked nothing, so not stuck).
+  async function scanChain(chain, chainVaults, currentBlock, deadline) {
     const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
-
-    // Find the earliest fromBlock across all vaults on this chain
     const vaultsToScan = [];
     for (const vault of chainVaults) {
       const lastBlock = data.lastBlock[vault.address] || (currentBlock - backfill);
       const fromBlock = lastBlock + 1;
       if (fromBlock <= currentBlock) vaultsToScan.push({ vault, fromBlock });
     }
-
-    if (vaultsToScan.length === 0) {
-      console.log(`  All vaults up to date`);
-      (data.chainHealth = data.chainHealth || {})[chain] = chainHealth({ chain, head: currentBlock, progressed: true,
-        cursors: chainVaults.map(v => data.lastBlock[v.address]) });
-      continue;
-    }
+    const out = { stall: null, notReached: [], scanned: vaultsToScan.length };
+    if (vaultsToScan.length === 0) return out;
 
     const vaultMap = Object.fromEntries(chainVaults.map(v => [v.address, v]));
 
-    // Whichever runs out first: this chain's slice, or the run as a whole.
-    let chainProgressed = false, chainStall = null;
-    const chainMs = Math.min(CHAIN_TIMEOUT_MS, budgetLeft());
-    const deadline = Date.now() + chainMs;
-
-    // One pass per group of vaults at about the same block (scanCohorts), most
-    // advanced first, so a range only the laggards need can neither hold the
-    // others back nor eat their time.
     for (const cohort of scanCohorts(vaultsToScan, CHAIN_CHUNKS[chain] || CHAIN_CHUNKS._default)) {
+      if (Date.now() >= deadline) { out.notReached.push(...cohort.map(v => v.vault.address)); continue; }
       const earliestFrom = Math.min(...cohort.map(v => v.fromBlock));
       const allAddresses = cohort.map(v => v.vault.address);
       console.log(`  Batch scanning ${allAddresses.length} vaults from block ${earliestFrom} (deadline ${Math.round((deadline - Date.now()) / 1000)}s)...`);
@@ -1941,28 +1959,96 @@ async function main() {
           undatedBlocks,
         });
         Object.assign(data.lastBlock, advanced);
-        chainProgressed = chainProgressed || progressBlock >= earliestFrom;
-        if (scanned.stalled) chainStall = chainStall || `blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} refused: ${scanned.stalled.reason}`;
+        if (scanned.stalled) out.stall = out.stall || `blocks ${scanned.stalled.range[0]}-${scanned.stalled.range[1]} refused: ${scanned.stalled.reason}`;
       } catch (e) {
         console.log(`  ${chain} batch scan failed: ${e.message}`);
-        chainStall = chainStall || e.message;
+        out.stall = out.stall || e.message;
       }
     }
+    return out;
+  }
 
-    const health = chainHealth({ chain, head: currentBlock, progressed: chainProgressed, reason: chainStall,
-                                 cursors: chainVaults.map(v => data.lastBlock[v.address]) });
-    (data.chainHealth = data.chainHealth || {})[chain] = health;
-    if (health.status === 'stalled' || health.status === 'behind') {
-      console.log(`::error::${chain} collection is ${health.lagHours}h behind the chain head (${health.lagBlocks} blocks)`
-        + (health.status === 'stalled' ? ' and made no progress this run' : '') + (chainStall ? ` — ${chainStall}` : ''));
+  // The verdict on a chain from where its vaults' cursors stand now. `prev`
+  // is the last run's verdict, read before this run wrote any, so a chain that
+  // was already behind keeps the time it fell behind.
+  const prevHealth = { ...(data.chainHealth || {}) };
+  const judge = (c) => {
+    const health = chainHealth({
+      chain: c.chain, head: c.head, reason: c.stall, prev: prevHealth[c.chain],
+      vaults: c.chainVaults.map(v => ({ address: v.address, name: v.name, tvl: v.tvl, cursor: data.lastBlock[v.address],
+                                        start: c.start[v.address], reached: !c.notReached.includes(v.address) })),
+    });
+    (data.chainHealth = data.chainHealth || {})[c.chain] = health;
+    return health;
+  };
+
+  const scannedChains = [];
+  for (const [chain, chainVaults] of Object.entries(byChain)) {
+    if (!rpcEndpoints(chain, CHAIN_RPCS[chain]).length) { console.log(`Skipping ${chain} — no RPCs configured`); continue; }
+    if (budgetLeft() <= 0) {
+      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (run budget spent; it keeps its cursor and resumes next run)`);
+      continue;
     }
 
-    // Persist after each chain so partial progress is saved even if later chains hang
+    let currentBlock;
     try {
-      fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
+      currentBlock = await getBlockNumber(chain);
+      console.log(`\n=== ${chain.toUpperCase()} === (block ${currentBlock}, ${chainVaults.length} vaults)`);
     } catch (e) {
-      console.log(`  (warning: intermediate save failed: ${e.message})`);
+      console.log(`\n=== ${chain.toUpperCase()} === SKIPPED (RPC error: ${e.message})`);
+      console.log(`::error::${chain}: no endpoint answered eth_blockNumber — this chain is not being collected at all`);
+      (data.chainHealth = data.chainHealth || {})[chain] = chainHealth({ chain, unreachable: true, reason: e.message, prev: prevHealth[chain] });
+      continue;
     }
+
+    // Where each vault starts this run (a vault never scanned starts its
+    // backfill window back): moving past it is progress.
+    const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
+    const start = Object.fromEntries(chainVaults.map(v => [v.address, data.lastBlock[v.address] || (currentBlock - backfill)]));
+    // Whichever runs out first: this chain's slice, or the run as a whole.
+    const r = await scanChain(chain, chainVaults, currentBlock, Date.now() + Math.min(CHAIN_TIMEOUT_MS, budgetLeft()));
+    if (r.scanned === 0) console.log(`  All vaults up to date`);
+    const c = { chain, chainVaults, head: currentBlock, start, stall: r.stall, notReached: r.notReached };
+    scannedChains.push(c);
+    judge(c);
+    // Persist after each chain so partial progress is saved even if later chains hang
+    save();
+  }
+
+  // Catch-up: whatever the run has left goes to the chains with a vault still
+  // behind. On Oct 6 a Base vault back above the TVL floor resumed from its
+  // cursor of 8 days before; its 133 seconds covered half of that, the run
+  // ended with three of its six and a half minutes unused, and the chain was
+  // reported 100.9h behind. Each chain is caught up to the head it was read
+  // at; the repairs that follow keep CATCH_UP_RESERVE_MS.
+  for (const c of scannedChains) {
+    const behind = c.chainVaults.filter(v => {
+      const cur = data.lastBlock[v.address];
+      return cur > 0 && (c.head - cur) / (BLOCKS_PER_DAY[c.chain] || BLOCKS_PER_DAY._default) * 24 > HEALTHY_LAG_HOURS;
+    });
+    if (!behind.length) continue;
+    const ms = budgetLeft() - CATCH_UP_RESERVE_MS;
+    if (ms < CATCH_UP_MIN_MS) {
+      console.log(`\n${c.chain}: ${behind.length} vault(s) still behind; no time left to catch up this run (they resume next run)`);
+      break;
+    }
+    console.log(`\n=== ${c.chain.toUpperCase()} === catching up ${behind.length} vault(s) behind with the run's spare ${Math.round(ms / 1000)}s`);
+    const r = await scanChain(c.chain, c.chainVaults, c.head, Date.now() + ms);
+    // This attempt is the latest word on a refused range; a vault counts as
+    // asked if either pass reached it.
+    c.stall = r.stall;
+    c.notReached = c.notReached.filter(a => r.notReached.includes(a));
+    judge(c);
+    save();
+  }
+
+  for (const c of scannedChains) {
+    const health = data.chainHealth[c.chain];
+    if (health.status === 'ok') continue;
+    const who = health.laggards.slice(0, 3).map(l => `${l.name || l.address} ${l.lagHours}h${l.stuck ? ' (stuck)' : ''}`).join(', ');
+    console.log(`::${health.status === 'stalled' ? 'error' : 'warning'}::${c.chain} collection is ${health.lagHours}h behind the chain head (${health.lagBlocks} blocks)`
+      + (health.status === 'stalled' ? ' and made no progress this run' : '') + (who ? ` — behind: ${who}` : '')
+      + (health.reason ? ` — ${health.reason}` : ''));
   }
 
   // Backfill prices for any events still missing usdValue (works without RPC)
