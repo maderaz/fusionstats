@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/ui.css">
   <!-- Plotly draws the charts and nothing else: it loads alongside the page
        instead of in front of it, and the charts draw when it is in. -->
-  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
   <script src="/nav.js"></script>
   <style>
     * { margin: 0; padding: 0; }
@@ -991,17 +991,22 @@
     }
     if (!plotlyIn) {
       const tag = document.getElementById('plotlyJs');
-      if (tag) {
+      const failed = () => PLOT_IDS.forEach(id => {
+        if (drawnPlots.has(id)) return;
+        undraw(id);
+        document.getElementById(id).innerHTML = '<div class="missing">The chart library (cdn.plot.ly) did not load. '
+          + 'The figures and tables on this page are unaffected.</div>';
+      });
+      // The library may have come or failed before this ran, and its events
+      // do not fire twice: the tag keeps its outcome (its onload/onerror).
+      if (tag && tag.dataset.state) failed();
+      else if (tag) {
         tag.addEventListener('load', () => {
           plotlyIn = !!window.Plotly;
+          if (!plotlyIn) return failed();
           Object.keys(pendingPlots).forEach(id => { if (nearPlots.has(id) || !canWatch) flushPlot(id); });
         });
-        tag.addEventListener('error', () => PLOT_IDS.forEach(id => {
-          if (drawnPlots.has(id)) return;
-          undraw(id);
-          document.getElementById(id).innerHTML = '<div class="missing">The chart library (cdn.plot.ly) did not load. '
-            + 'The figures and tables on this page are unaffected.</div>';
-        }));
+        tag.addEventListener('error', failed);
       }
     }
 
