@@ -224,7 +224,8 @@
     .facts dd { margin: 0; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
     .facts dd a { color: inherit; }
     .facts dd .mono { font-family: var(--mono); font-size: 13px; }
-    .key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; font-size: 13px; color: var(--text-2); }
+    /* The key, under the chart it reads. */
+    .key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 13px; color: var(--text-2); }
     .key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
     .key i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
     .empty-state { padding: 40px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
@@ -334,8 +335,8 @@
             <button type="button" data-v="30">30d</button><button type="button" data-v="90" class="on">90d</button><button type="button" data-v="365">1y</button><button type="button" data-v="all">All</button>
           </div>
         </div>
-        <div class="key" id="allocKey"></div>
         <div class="ui-chart" id="allocChart"><div class="ui-empty">Loading…</div></div>
+        <div class="key" id="allocKey"></div>
         <p class="chart-note" id="allocNote"></p>
       </section>
 
