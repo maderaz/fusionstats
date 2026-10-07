@@ -46,20 +46,21 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.56.1
           npx playwright install --with-deps chromium
 
+      # Yesterday's cards: a page that shows an error today, or doesn't
+      # finish loading, keeps its card rather than putting the error on it.
+      - name: Fetch yesterday's cards
+        run: |
+          mkdir -p prev
+          if git fetch --depth 1 origin og-cards 2>/dev/null; then git archive FETCH_HEAD | tar -x -C prev; fi
+          ls prev
+
       - name: Draw the cards
-        continue-on-error: true   # a page that fails keeps yesterday's card (below)
-        run: node tools/og-cards.mjs --out og-out
+        run: node tools/og-cards.mjs --out og-out --prev prev
 
       - name: Publish to the og-cards branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Yesterday's cards stand in for any page that failed to draw today.
-          mkdir -p prev og-out
-          if git fetch --depth 1 origin og-cards 2>/dev/null; then
-            git archive FETCH_HEAD | tar -x -C prev
-            for f in prev/*.png; do [ -e "$f" ] && [ ! -e "og-out/$(basename "$f")" ] && cp "$f" og-out/; done
-          fi
           ls og-out/*.png >/dev/null 2>&1 || { echo "::error::no cards drawn"; exit 1; }
           cd og-out
           git init -q
