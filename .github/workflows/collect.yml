@@ -75,9 +75,9 @@ jobs:
       # Where each new stock-vault deposit's tokens came from: a swap through
       # LI.FI (and which app sent it: Jumper), a bridge, another vault, or
       # elsewhere (collect-stock-funding.js), for the Stocks page's routes. A
-      # bounded slice a run, newest first; the older ones fill in over runs.
+      # bounded slice a run (90s), newest first; the older ones fill in over runs.
       - name: Read where stock deposits were funded
-        timeout-minutes: 2
+        timeout-minutes: 3
         continue-on-error: true
         run: node collect-stock-funding.js
 
