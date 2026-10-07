@@ -12,7 +12,7 @@
 // Each case below is one of the ways that went wrong.
 
 const assert = require('assert');
-const { nextCursors, chainHealth, scanCohorts, HEALTHY_LAG_HOURS } = require('./collect-activity.js');
+const { nextCursors, chainHealth, scanCohorts, tagSyntheticEvents, HEALTHY_LAG_HOURS } = require('./collect-activity.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -238,5 +238,35 @@ test('a pass spans at most one gap from its most advanced vault', () => {
 test('nothing to scan is no passes', () => {
   assert.deepStrictEqual(scanCohorts([], 2000), []);
 });
+
+console.log('\ntagSyntheticEvents');
+
+{
+  const V = '0xvault', U1 = '0xu1', U2 = '0xu2', ROUTER = '0xrouter';
+  const e = (type, owner, block, assets, extra = {}) => ({ type, vault: V, owner, sender: owner, block, timestamp: 1000 + block * 2, assets, usdValue: assets * 250, tx: '0x' + type + owner + block, ...extra });
+  const quiet = (fn) => { const log = console.log; console.log = () => {}; try { return fn(); } finally { console.log = log; } };
+  const tagged = (events, vaults = [{ address: V, tvl: 1e6 }], snaps) => { quiet(() => tagSyntheticEvents(events, vaults, snaps)); return events.map(x => x.syntheticReason || '-'); };
+
+  test('one holder in and out in the same block is a round trip', () => {
+    assert.deepStrictEqual(tagged([e('deposit', U1, 10, 1), e('withdraw', U1, 10, 1)]), ['same-block-pair', 'same-block-pair']);
+  });
+  test('two strangers moving the same ~$250 in one block are not', () => {
+    assert.deepStrictEqual(tagged([e('deposit', U1, 10, 1), e('withdraw', U2, 10, 1)]), ['-', '-']);
+  });
+  test('a keeper repeating itself is recurring; a router depositing for five users is not', () => {
+    const self = [1, 2, 3, 4, 5].map(i => e('deposit', U1, i * 100, 1));
+    assert.deepStrictEqual(tagged(self), ['recurring-keeper', 'recurring-keeper', 'recurring-keeper', 'recurring-keeper', 'recurring-keeper']);
+    const routed = [1, 2, 3, 4, 5].map(i => e('deposit', '0xuser' + i, i * 100, 1, { sender: ROUTER }));
+    assert.deepStrictEqual(tagged(routed), ['-', '-', '-', '-', '-']);
+  });
+  test('a big deposit into a vault that has since drained is measured against its TVL then', () => {
+    const big = () => [e('deposit', U1, 10, 4000)];   // $1M
+    assert.deepStrictEqual(tagged(big(), [{ address: V, tvl: 60000 }]), ['tvl-ratio']);
+    const snaps = { vaults: { [V]: { snapshots: [{ timestamp: 1000, tvlUsd: 15e6 }] } } };
+    assert.deepStrictEqual(tagged(big(), [{ address: V, tvl: 60000 }], snaps), ['-']);
+    // …but one far beyond the vault both then and now still is.
+    assert.deepStrictEqual(tagged([e('deposit', U1, 10, 400000)], [{ address: V, tvl: 60000 }], snaps), ['tvl-ratio']);
+  });
+}
 
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

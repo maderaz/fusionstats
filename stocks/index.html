@@ -437,6 +437,7 @@
     .badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
     .badge.dep { background: var(--pos-soft); color: var(--pos); }
     .badge.wd  { background: var(--neg-soft); color: var(--neg); }
+    .badge.hop { margin-left: 6px; background: var(--bg-subtle); color: var(--text-3); font-weight: 500; letter-spacing: 0; }
     /* An address is one line: a table scrolls inside its box rather than
        break one. */
     .addr { font: 12.5px var(--mono); color: var(--text-2); text-decoration: none; white-space: nowrap; transition: color 0.15s; }
@@ -680,6 +681,7 @@
         </div>
       </div>
       <div class="plot" id="walPlot"><div class="loading">Loading…</div></div>
+      <div class="chart-note" id="walNote"></div>
     </section>
 
     <!-- ---------- DEPOSIT & EXIT ACTIVITY ---------- -->
@@ -1212,14 +1214,20 @@
       const byB = new Map();
       const seen = new Set();
       evs.forEach(e => {
+        // A relay hop's legs are the same tokens passed from wallet to wallet
+        // (routes.js markRelays): the wallet they reach is no new depositor.
+        if (e.relay) return;
         const w = (e.owner || e.sender || '').toLowerCase();
         if (!w) return;
         const bk = Math.floor(e.timestamp / step);
         if (!byB.has(bk)) byB.set(bk, { active: new Set(), cumulative: 0 });
         byB.get(bk).active.add(w);
-        seen.add(w);
+        // Every wallet that has ever deposited, as the Measure tip says (a
+        // wallet that only ever withdrew holds shares it was handed).
+        if (e.type === 'deposit') seen.add(w);
         byB.get(bk).cumulative = seen.size;
       });
+      if (!byB.size) return [];
 
       const keys = [...byB.keys()].sort((a, b) => a - b);
       const full = [];
@@ -1239,6 +1247,19 @@
       const cutoff = cutoffFor(range);
       return full.filter(p => p.ts >= cutoff).map(p => ({ ts: p.ts, v: mode === 'active' ? p.active : p.cumulative }));
     }
+
+    // The relay hops a chart left out, in its vaults and range: the hops (one
+    // deposit each), what they moved, and the wallets they alone brought in.
+    function relaysIn(sel, range) {
+      const want = new Set(vaultsFor(sel).map(v => v.address));
+      const cutoff = cutoffFor(range);
+      const evs = S.events.filter(e => want.has((e.vault || '').toLowerCase()));
+      const hops = evs.filter(e => e.relay === 'in' && e.timestamp >= cutoff);
+      const real = new Set(evs.filter(e => e.type === 'deposit' && !e.relay).map(e => (e.owner || e.sender || '').toLowerCase()));
+      const only = new Set(hops.map(e => (e.owner || e.sender || '').toLowerCase()).filter(w => !real.has(w)));
+      return { n: hops.length, usd: hops.reduce((a, e) => a + (e.usdValue || 0), 0), wallets: only.size };
+    }
+    const relayWords = (r) => r.n + ' relay hop' + (r.n === 1 ? '' : 's') + ' (' + fUsd(r.usd) + '): a wallet\'s withdrawal deposited by another wallet moments later, the same tokens passed along';
 
     // Bars: each day's (each hour's, in the shortest range) value stacked by
     // stock, every stock in its own colour (fusion-select.js tokenColor) with
@@ -1351,7 +1372,7 @@
     function renderWallets() {
       const pts = withLead(walletSeries(S.walVault, S.walRange, S.walMode), 'v', S.walRange);
       const el = document.getElementById('walPlot');
-      if (!pts.length) { undraw('walPlot'); el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; return; }
+      if (!pts.length) { undraw('walPlot'); el.innerHTML = '<div class="loading">No wallet activity in this range.</div>'; document.getElementById('walNote').textContent = ''; return; }
       const trace = S.walMode === 'active'
         ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
@@ -1360,6 +1381,10 @@
             line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
       const what = S.walMode === 'active' ? 'wallets active' : 'wallets in total';
+      const r = relaysIn(S.walVault, S.walRange);
+      document.getElementById('walNote').textContent = r.n
+        ? 'Not counted: ' + relayWords(r) + (r.wallets ? '. ' + r.wallets + ' wallet' + (r.wallets === 1 ? '' : 's') + ' only ever received such a hop.' : '.')
+        : '';
       draw('walPlot', quiet([trace]), baseLayout(',d', true), CONFIG, () =>
         glide('walPlot', (pts) => hvWhen(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US')
           + '</div><div class="hv-when" style="margin:1px 0 0">' + what + '</div>'));
@@ -1399,7 +1424,9 @@
         const w = (e.owner || e.sender || '').toLowerCase();
         return '<tr>'
           + '<td>' + (e.timestamp ? timeAgo(e.timestamp) : '#' + e.block) + '</td>'
-          + '<td><span class="badge ' + (e.type === 'deposit' ? 'dep">DEPOSIT' : 'wd">EXIT') + '</span></td>'
+          + '<td><span class="badge ' + (e.type === 'deposit' ? 'dep">DEPOSIT' : 'wd">EXIT') + '</span>'
+            + (e.relay ? '<span class="badge hop" title="' + (e.relay === 'in' ? 'Deposited straight from another wallet\'s withdrawal' : 'Withdrawn to another wallet, which deposited it moments later') + ': a relay hop, not money in or out">relay</span>' : '')
+            + '</td>'
           + '<td class="num">' + fNum(e.assets, 4) + ' ' + (e.symbol || v.token || '') + '</td>'
           + '<td class="num">' + fUsd(e.usdValue) + '</td>'
           + '<td><span class="ticker">' + (v.token || '') + '</span> <span style="color:var(--text-secondary)">'
@@ -1607,6 +1634,7 @@
       S.events.forEach(e => {
         if (!e.timestamp || e.timestamp < cutoff) return;
         if (!want.has((e.vault || '').toLowerCase())) return;
+        if (e.relay) return;   // the same tokens out of one wallet and into the next: no money in or out
         const d = Math.floor(e.timestamp / DAY_SEC) * DAY_SEC;
         const r = by[d] || (by[d] = { ts: d, inflow: 0, exit: 0 });
         if (e.type === 'deposit') r.inflow += e.usdValue || 0;
@@ -1621,7 +1649,7 @@
     function routeTotals(range) {
       const cutoff = cutoffFor(range);
       return R.totals(S.events.filter(e =>
-        e.type === 'deposit' && e.timestamp && e.timestamp >= cutoff
+        e.type === 'deposit' && !e.relay && e.timestamp && e.timestamp >= cutoff
         && S.vaultSet.has((e.vault || '').toLowerCase())));
     }
 
@@ -1629,7 +1657,7 @@
       const cutoff = cutoffFor(range);
       const days = {}, routes = new Set();
       S.events.forEach(e => {
-        if (e.type !== 'deposit' || !e.timestamp || e.timestamp < cutoff) return;
+        if (e.type !== 'deposit' || e.relay || !e.timestamp || e.timestamp < cutoff) return;
         if (!S.vaultSet.has((e.vault || '').toLowerCase())) return;
         const r = depositRoute(e); routes.add(r);
         const d = Math.floor(e.timestamp / DAY_SEC) * DAY_SEC;
@@ -1820,6 +1848,8 @@
       const notes = [];
       if (S.flowVault !== '__all__') notes.push('in ' + fUsd(tIn) + ' · out ' + fUsd(tOut) + ' · net ' + fUsd(tIn - tOut));
       if (S.scale === 'log') notes.push('log scale does not apply to a series that crosses zero');
+      const r = relaysIn(S.flowVault, S.flowRange);
+      if (r.n) notes.push('left out: ' + relayWords(r));
       document.getElementById('flowNote').textContent = notes.join(' · ');
     }
 
@@ -2115,7 +2145,10 @@
       const custodial = totals.filter(r => r.selfOwned);
       const custodialNames = [...new Set(custodial.map(r => routeInfo(r.route).protocol))];
 
-      document.getElementById('routeNote').innerHTML = ('<p><strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
+      const hops = relaysIn('__all__', S.flowRange);
+      document.getElementById('routeNote').innerHTML = (
+        (hops.n ? '<p><strong>Not gross inflow:</strong> ' + esc(relayWords(hops)) + '. The tokens came in once, by the route of the first wallet.</p>' : '')
+        + '<p><strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
         + 'later exited reads high on <em>Gross in</em> and low here. That ratio is the reason both numbers share a row.'
         + '</p><p>Protocols are identified from Basescan, not from a list we maintain by hand: '
         + bySource + ' from the contract\'s own verified source — storage namespaces, contract and interface names'
@@ -3065,6 +3098,9 @@
       if (act) {
         const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
         S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);
+        // Relay hops come marked in stocks-data.json; read from the full
+        // activity file, where the receivers still are, they are found here.
+        if (S.events.some(e => e.receiver) && !S.events.some(e => e.relay)) FusionRoutes.markRelays(S.events);
         S.updatedAt = act.updatedAt;
         // When each vault first held capital — where its performance clock starts.
         S.firstDeposit = {};

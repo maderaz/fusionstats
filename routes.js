@@ -12,6 +12,7 @@
 //   R.routeInfo(route)     -> how to label that row, and why
 //   R.totals(deposits)     -> gross in per route
 //   R.originOfValue(holdings, deposits) -> what is still here, per route
+//   FusionRoutes.markRelays(events)       -> marks relay hops (below)
 //
 // `identity` is router-identity.json as fetched (its _meta is lifted out).
 // `events` is whatever the page has loaded: it is only used to learn which
@@ -347,5 +348,45 @@
              ownerMix, flows, netSeries, topNet };
   }
 
-  window.FusionRoutes = { create, DIRECT, PROTO, DISPLAY_NAME, displayName, shortAddr };
+  // A relay hop: a wallet withdraws to another wallet, and that wallet
+  // deposits the same tokens moments later. Both legs are the same money
+  // changing hands, not money coming in or going out, and the wallet it went
+  // to is no new depositor. The Jumper campaign had one operator pass ~$251
+  // through some hundred wallets this way, a hop every ~16 seconds, which read
+  // as a hundred new wallets and $99K of fresh deposits for no money at all.
+  //
+  // A withdrawal whose receiver is not its owner, and the receiver's first
+  // deposit of the same token (underlying address, else symbol) within
+  // RELAY_SEC, the amounts within RELAY_TOL of each other: e.relay is 'out'
+  // on the withdrawal and 'in' on the deposit. Each event is one leg at most.
+  // Returns how many hops it found.
+  const RELAY_SEC = 600, RELAY_TOL = 0.005;
+  function markRelays(events) {
+    const sameToken = (a, b) => (a.underlyingToken && b.underlyingToken
+      ? lc(a.underlyingToken) === lc(b.underlyingToken) : !!a.symbol && a.symbol === b.symbol);
+    const deposits = new Map();
+    (events || []).forEach(e => {
+      if (e.type !== 'deposit' || !e.owner || !e.timestamp) return;
+      const k = lc(e.owner);
+      (deposits.get(k) || deposits.set(k, []).get(k)).push(e);
+    });
+    deposits.forEach(list => list.sort((a, b) => a.timestamp - b.timestamp));
+    const outs = (events || []).filter(e => e.type === 'withdraw' && e.receiver && e.timestamp && lc(e.receiver) !== lc(e.owner))
+      .sort((a, b) => a.timestamp - b.timestamp);
+    const taken = new Set();
+    let hops = 0;
+    for (const w of outs) {
+      if (w.relay) continue;
+      const d = (deposits.get(lc(w.receiver)) || []).find(x => !taken.has(x) && !x.relay
+        && x.timestamp >= w.timestamp && x.timestamp - w.timestamp <= RELAY_SEC && sameToken(x, w)
+        && Math.abs(x.assets - w.assets) <= RELAY_TOL * Math.max(x.assets, w.assets));
+      if (!d) continue;
+      taken.add(d);
+      w.relay = 'out'; d.relay = 'in';
+      hops++;
+    }
+    return hops;
+  }
+
+  window.FusionRoutes = { create, markRelays, RELAY_SEC, DIRECT, PROTO, DISPLAY_NAME, displayName, shortAddr };
 })();
