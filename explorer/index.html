@@ -182,6 +182,7 @@
     .hd a.mono:hover { color: var(--accent); }
     .hd-list { display: none; }
     .hd .rkn { min-width: 18px; color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+    .mk-item .nm-l .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
 
     /* Curator actions: a row a rebalance, newest first. */
     .act { display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(max-content, auto) minmax(max-content, auto); align-items: center; gap: 8px 16px; padding: 13px 0; border-top: 1px solid var(--line); }
@@ -435,7 +436,7 @@
           </div>
           <div class="hd-list mk-list" id="holdersList"></div>
           <div id="holdersPager"></div>
-          <p class="chart-note">Every address holding the vault's shares, read from its share transfers on-chain. What each holds is its shares at the latest share price, in the vault's asset; its value is its share of the TVL now. A holder that is itself a Fusion vault is named.</p>
+          <p class="chart-note">Every address holding the vault's shares, read from its share transfers on-chain. What each holds is its share of the vault's assets, in its asset, and its share of the TVL now, in dollars. A holder that is itself a Fusion vault is named.</p>
         </section>
       </div>
 

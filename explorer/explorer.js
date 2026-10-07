@@ -278,14 +278,17 @@
     const last = Math.ceil(rows.length / PAGE);
     holdersPage = Math.min(Math.max(1, holdersPage), last);
     const page = rows.slice((holdersPage - 1) * PAGE, holdersPage * PAGE);
+    const name = (r) => (r.name ? `<span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>` : '');
     const who = (r, rank) => `<span class="hd">${rank ? `<span class="rkn">${r.rank}</span>` : ''}<a class="mono" href="/address/?a=${r.address}" title="${esc(r.address)}">${esc(shortAddr(r.address))}</a>${debank(r.address)}`
-      + (r.name ? `<span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>` : '') + '</span>';
+      + (rank ? '' : name(r)) + '</span>';
     const holds = (r) => (r.asset != null ? amount(r.asset) + ' ' + esc(cur.token) : amount(r.shares) + ' shares');
     body.innerHTML = page.map(r => `<tr><td class="rk">${r.rank}</td><td>${who(r)}</td><td class="n">${holds(r)}</td>`
       + `<td class="n">${r.usd != null ? usd(r.usd) : '—'}</td><td class="n">${r.share != null ? pctTxt(r.share * 100, 2) : '—'}</td></tr>`).join('');
-    // A phone: a holder a block, its value and share under it.
+    // A phone: a holder a block, its value and share under it; a holder that
+    // is a Fusion vault has its name on a line of its own, the width of the row.
     const line = (cls, left, right) => `<div class="l ${cls}">${left.startsWith('<span class="hd">') ? left : `<span>${left}</span>`}<span>${right}</span></div>`;
     $('holdersList').innerHTML = page.map(r => `<div class="mk-item">${line('l1', who(r, true), r.usd != null ? usd(r.usd) : '—')}`
+      + (r.name ? `<div class="l nm-l">${name(r)}</div>` : '')
       + line('', holds(r), r.share != null ? pctTxt(r.share * 100, 2) : '—') + '</div>').join('');
     $('holdersPager').innerHTML = UI.pager({ total: rows.length, page: holdersPage, size: PAGE, noun: 'holders' });
   }
