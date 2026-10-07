@@ -122,6 +122,13 @@ jobs:
         continue-on-error: true
         run: node tools/build-earnings.js
 
+      # The Explorer's files a vault, with the day's TVL and share prices
+      # (tools/build-explorer.js).
+      - name: Build the Explorer's files
+        if: always()
+        continue-on-error: true
+        run: node tools/build-explorer.js
+
       - name: Commit & push results
         if: always()
         run: |
@@ -129,8 +136,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # One at a time: a single missing file makes `git add a b c` add none
           # of them, and the snapshots would go uncommitted with it.
-          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json share-prices.json earnings-daily.json; do
-            [ -f "$f" ] && git add -f "$f"
+          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json share-prices.json earnings-daily.json explorer/vaults; do
+            [ -e "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)
           if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
@@ -161,7 +168,7 @@ jobs:
             git merge  --abort 2>/dev/null || true
             git fetch origin "$BRANCH"
             git checkout -B "$BRANCH" "origin/$BRANCH"
-            for f in $FILES; do cp "$KEEP/$f" "$f"; done
+            for f in $FILES; do mkdir -p "$(dirname "$f")"; cp "$KEEP/$f" "$f"; done
             # The Stocks file is cut from these snapshots and whatever events
             # just landed (collect.yml): cut it again from both. The latest
             # TVLs come from the snapshots alone, but this run's copy may not
@@ -172,6 +179,7 @@ jobs:
             node tools/build-tvl-latest.js && git add -f tvl-latest.json || true
             node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
             node tools/build-share-prices.js && git add -f share-prices.json || true
+            node tools/build-explorer.js && git add -f explorer/vaults || true
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "$MSG"

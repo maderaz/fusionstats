@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explorer — Fusion Stats</title>
+  <meta name="description" content="Every Fusion vault, one at a time: its yield, assets, markets, allocation over time and capacity.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
+  <script src="/nav.js"></script>
+  <style>
+    .chart-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .ui-chart { margin: 0 -4px; }
+    .ui-masthead h1 { overflow-wrap: anywhere; }
+
+    /* The search: a field, and the vaults under it as one types, as the
+       Activity page's product list draws them. */
+    .ui-masthead > div { min-width: 0; flex: 1; }
+    .xp-search { position: relative; margin: 20px 0 4px; max-width: 640px; }
+    .xp-field {
+      display: flex; align-items: center; gap: 10px;
+      height: 52px; padding: 0 16px;
+      border: 1px solid var(--line-strong); border-radius: 14px;
+      background: var(--bg);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .xp-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg, rgba(132, 41, 255, 0.12)); }
+    .xp-field svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: var(--text-3); stroke-width: 1.6; stroke-linecap: round; }
+    .xp-field input {
+      flex: 1; min-width: 0; height: 100%; padding: 0;
+      border: 0; outline: none; background: none;
+      font: 500 16px var(--sans); color: var(--text);
+    }
+    .xp-field input::placeholder { color: var(--text-3); }
+    .xp-field input::-webkit-search-cancel-button { display: none; }
+    .xp-pop {
+      position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 50;
+      max-height: min(420px, 60vh); overflow-y: auto; overscroll-behavior: contain;
+      padding: 6px;
+      border: 1px solid var(--line-strong); border-radius: 14px;
+      background: var(--surface, var(--bg));
+      box-shadow: 0 18px 44px rgba(16, 16, 24, 0.14), 0 2px 6px rgba(16, 16, 24, 0.06);
+    }
+    [data-theme="dark"] .xp-pop { box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5); }
+    .xp-pop[hidden] { display: none; }
+    .xp-opt {
+      display: flex; align-items: center; gap: 10px;
+      min-height: 40px; padding: 6px 10px;
+      border-radius: 9px;
+      font-size: 14px; font-weight: 500; line-height: 1.25;
+      color: var(--text); text-decoration: none;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .xp-opt.active { background: var(--bg-hover, var(--bg-subtle)); }
+    .xp-opt .ic { width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; }
+    .xp-opt .mono {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%;
+      background: var(--bg-subtle); color: var(--text-2); font: 600 10px var(--sans);
+    }
+    .xp-opt .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .xp-opt .nt { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .xp-opt .nt img { width: 14px; height: 14px; border-radius: 3px; }
+    [data-theme="dark"] .xp-opt .nt img.ink { filter: invert(1); }
+    .xp-empty { padding: 12px 10px; font-size: 13px; color: var(--text-3); }
+    .xp-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 24px; }
+    .xp-picks .xp-opt { padding-left: 0; padding-right: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+    .xp-picks .xp-opt:hover .nm { color: var(--accent); }
+    @container (max-width: 900px) { .xp-picks { grid-template-columns: minmax(0, 1fr); } }
+    @container (max-width: 700px) { .xp-field { height: 48px; } }
+
+    /* A vault: what it is, in a row of tags under its name. */
+    .xp-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0; }
+    .xp-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 30px; padding: 0 11px;
+      border: 1px solid var(--line); border-radius: 999px;
+      font-size: 13px; font-weight: 500; color: var(--text-2); white-space: nowrap;
+    }
+    .xp-tag img { width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; }
+    .xp-tag img.chain { border-radius: 4px; }
+    [data-theme="dark"] .xp-tag img.ink { filter: invert(1); }
+    .xp-tag.lev { color: var(--accent); border-color: var(--accent-bg, rgba(132, 41, 255, 0.2)); background: var(--accent-bg, rgba(132, 41, 255, 0.08)); }
+    .xp-tag a { color: inherit; text-decoration: none; }
+    .xp-tag.addr { font-family: var(--mono); font-size: 12.5px; }
+    .xp-tag button { display: inline-flex; padding: 0; border: 0; background: none; color: var(--text-3); cursor: pointer; }
+    .xp-tag button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Markets: a row a market, its positions under it. */
+    #markets td.n, #markets th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #markets .mk { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; font-weight: 500; color: var(--text); }
+    #markets .mk .share { font-size: 12.5px; font-weight: 500; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    #markets tr.total td { font-weight: 600; }
+    #markets tr.total td:first-child { color: var(--text); }
+    #markets tr.pos td { padding-top: 7px; padding-bottom: 7px; font-size: 13px; color: var(--text-2); }
+    #markets tr.pos td:first-child { padding-left: 16px; }
+    #markets tr.pos .side { color: var(--text-3); }
+    #markets td.dim { color: var(--text-3); }
+    /* On a phone the table keeps a line a row and scrolls in its box. */
+    @container (max-width: 700px) { #markets td, #markets th { white-space: nowrap; } }
+
+    /* Capacity: what is in, against the cap. */
+    .cap-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .cap-line b { color: var(--text); font-weight: 600; }
+    .cap-bar { height: 8px; margin: 12px 0; border-radius: 999px; background: var(--bg-subtle); overflow: hidden; }
+    .cap-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+    .cap-bar.full > span { background: var(--neg, #DC2626); }
+
+    /* About: a term and its value a row. */
+    .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; margin: 0; }
+    .facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .facts dt { color: var(--text-3); white-space: nowrap; }
+    .facts dd { margin: 0; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+    .facts dd a { color: inherit; }
+    .facts dd .mono { font-family: var(--mono); font-size: 13px; }
+    .key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; font-size: 13px; color: var(--text-2); }
+    .key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .key i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .empty-state { padding: 40px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
+    @container (max-width: 700px) {
+      .facts { grid-template-columns: minmax(0, 1fr); }
+      .xp-tags { gap: 6px; }
+      .xp-tag { height: 28px; padding: 0 10px; font-size: 12.5px; }
+    }
+  </style>
+  <script defer src="/track.js"></script>
+</head>
+<body>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1 id="title">Explorer</h1>
+        <p class="ui-lede keep" id="lede">Every Fusion vault, one at a time: search by name, token or network, or paste its address.</p>
+        <div class="xp-tags" id="tags" hidden></div>
+        <div class="ui-status" id="status"></div>
+        <div class="xp-search" id="search">
+          <label class="xp-field">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+            <input id="q" type="search" placeholder="Search a vault, or paste an address" autocomplete="off" autocorrect="off" spellcheck="false"
+              role="combobox" aria-expanded="false" aria-controls="xpList" aria-autocomplete="list" aria-label="Search a vault">
+          </label>
+          <div class="xp-pop" id="xpPop" hidden><div id="xpList" role="listbox" aria-label="Vaults"></div></div>
+        </div>
+      </div>
+    </header>
+
+    <div id="home">
+      <section class="ui-section">
+        <div class="ui-head"><h2>Largest vaults</h2></div>
+        <div class="xp-picks" id="picks"><div class="ui-empty">Loading…</div></div>
+      </section>
+    </div>
+
+    <div id="vault" hidden>
+      <div class="ui-figures" style="--n:4" id="figures">
+        <div class="ui-figure"><div class="k">APY <span class="ui-tip" tabindex="0" data-tip="What depositors earn now, after fees, as IPOR reports it. Under it, what the share price actually did over the last 30 days, a year's worth.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Total value managed <span class="ui-tip" tabindex="0" data-tip="Everything the vault has in its markets: what it supplied and what it holds as collateral, including what it bought with borrowed money. TVL is that less what it owes.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">TVL</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Holders</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      </div>
+
+      <section class="ui-section" id="perfSec">
+        <div class="ui-head"><h2>Performance</h2></div>
+        <div class="ui-toolbar">
+          <div class="ui-seg" id="perfView" role="group" aria-label="Measure">
+            <button type="button" data-v="apy" class="on">APY</button><button type="button" data-v="sp">Share price</button><button type="button" data-v="tvl">TVL</button>
+          </div>
+          <div class="ui-seg" id="perfRange" role="group" aria-label="Range">
+            <button type="button" data-v="30">30d</button><button type="button" data-v="90" class="on">90d</button><button type="button" data-v="365">1y</button><button type="button" data-v="all">All</button>
+          </div>
+        </div>
+        <div class="ui-chart" id="perfChart"><div class="ui-empty">Loading…</div></div>
+        <p class="chart-note" id="perfNote"></p>
+      </section>
+
+      <section class="ui-section" id="allocSec">
+        <div class="ui-head"><h2>Historical allocation</h2></div>
+        <div class="ui-toolbar">
+          <div class="ui-seg" id="allocRange" role="group" aria-label="Range">
+            <button type="button" data-v="30">30d</button><button type="button" data-v="90" class="on">90d</button><button type="button" data-v="365">1y</button><button type="button" data-v="all">All</button>
+          </div>
+        </div>
+        <div class="key" id="allocKey"></div>
+        <div class="ui-chart" id="allocChart"><div class="ui-empty">Loading…</div></div>
+        <p class="chart-note" id="allocNote"></p>
+      </section>
+
+      <section class="ui-section" id="marketsSec">
+        <div class="ui-head"><h2>All markets</h2></div>
+        <div class="ui-table-wrap">
+          <table class="ui-table" id="markets">
+            <thead><tr><th>Market</th><th class="n">Assets</th><th class="n">Assets APY</th><th class="n">Liabilities</th><th class="n">Liabilities APY</th><th class="n">Net APY</th></tr></thead>
+            <tbody><tr class="ui-loading-row"><td colspan="6"></td></tr></tbody>
+          </table>
+        </div>
+        <p class="chart-note" id="marketsNote"></p>
+      </section>
+
+      <section class="ui-section" id="capSec" hidden>
+        <div class="ui-head"><h2>Capacity</h2></div>
+        <div class="cap-line"><span id="capLeft"></span><span id="capPct"></span></div>
+        <div class="cap-bar" id="capBar"><span></span></div>
+        <div class="cap-line"><span id="capIn"></span><span id="capMax"></span></div>
+      </section>
+
+      <section class="ui-section" id="aboutSec">
+        <div class="ui-head"><h2>About this vault</h2></div>
+        <dl class="facts" id="facts"></dl>
+      </section>
+
+      <details class="ui-more">
+        <summary>Methodology</summary>
+        <div>The vault list, its APY and TVL now are IPOR's (<code>ipor-vaults.json</code>). The history is the vault's own: its TVL and share price at a block a day (<code>tvl-snapshots.json</code>), and the APY drawn from the share price over the week before each day, a year's worth. <b>Markets</b> are read on-chain every six hours (<code>collect-vault-markets.js</code>): each market's balance as the vault keeps it (<code>totalAssetsInMarket</code>), and in Aave V3, Morpho and Euler V2 each position's supply, collateral and debt as their balance fuses read them, at the rates those markets quote. A loop's collateral (a staked token such as cbETH) earns its own yield instead: its price against the token borrowed against it, now and about a month back, a year's worth; where there is nothing to measure it by, its APY is left empty, and so is the market's net APY. <b>Total value managed</b> is everything in the markets, borrowed-for included; <b>leverage</b> is that over TVL. <b>Historical allocation</b> is each market's balance at the TVL snapshots' blocks, in dollars at that day's price. <b>Capacity</b> is the vault's supply cap (<code>getTotalSupplyCap</code>, in shares) in its asset. The curator and the category are read from the vault's name.</div>
+      </details>
+    </div>
+  </div>
+
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script src="/explorer/explorer.js"></script>
+</body>
+</html>

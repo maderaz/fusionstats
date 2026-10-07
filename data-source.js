@@ -43,16 +43,18 @@
   var direct = host === 'localhost' || host === '127.0.0.1' || /github\.(io|com)$/.test(host);
 
   // Matches a bare data JSON living at the repo root, e.g. "ipor-vaults.json",
-  // "../activity-events.json", "/rebalance-events-0xabc.json".
-  var DATA_JSON = /^(?:\.{0,2}\/)*[a-z0-9][a-z0-9._-]*\.json(?:\?.*)?$/i;
+  // "../activity-events.json", "/rebalance-events-0xabc.json", or one of the
+  // Explorer's files a vault, "/explorer/vaults/base-0xabc.json".
+  var DATA_JSON = /^(?:\.{0,2}\/)*(?:explorer\/vaults\/)?[a-z0-9][a-z0-9._-]*\.json(?:\?.*)?$/i;
+  // Its path in the repository: the root file's name, or the Explorer's path.
+  var repoPath = function (input) { return input.split('?')[0].replace(/^(?:\.{0,2}\/)*/, ''); };
 
   var nativeFetch = window.fetch.bind(window);
 
   function fromNetwork(input, init) {
     if (direct) return nativeFetch(input, init);
-    var file = input.split('?')[0].split('/').pop();
     var bust = 't=' + Math.floor(Date.now() / 120000); // 2-minute cache bucket
-    var cdnUrl = RAW + file + '?' + bust;
+    var cdnUrl = RAW + repoPath(input) + '?' + bust;
 
     return nativeFetch(cdnUrl, init)
       .then(function (res) {

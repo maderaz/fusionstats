@@ -37,14 +37,12 @@
     .ui-table tr.total td:first-child { color: var(--text); }
     .note { margin: 16px 0 0; max-width: 780px; font-size: 14px; line-height: 1.6; color: var(--text-2); }
     .note b { font-weight: 600; color: var(--text); }
-    /* A scenario: today against the stock all supplied. */
-    .scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px 40px; }
-    /* A grid cell holding a table must not take the table's width: its
-       scroller would never scroll, and the page would. */
-    .scen > div { min-width: 0; }
+    /* A scenario, today against the stock all supplied: a section per table,
+       one under the other. */
     .scen .nw { white-space: nowrap; }
-    .scen h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
     .scen .ui-table th:first-child, .scen .ui-table td:first-child { white-space: normal; }
+    /* The tables one under the other keep their columns in line. */
+    @container (min-width: 701px) { .scen .ui-table th.n { width: 25%; } }
     .scen .fits { margin: 10px 0 0; font-size: 13px; color: var(--text-3); }
     .sm { display: none; }
     .empty-state { padding: 48px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
@@ -57,7 +55,6 @@
       .lg { display: none; }
       .sm { display: inline; }
       #markets td, #markets th { padding-left: 5px; padding-right: 5px; font-size: 12.5px; }
-      .scen { grid-template-columns: minmax(0, 1fr); }
       /* A figure in two lines, its tokens over its dollars. */
       .scen .ui-table td.n .nw { display: block; }
       .scen .ui-table td.n .sep { display: none; }
@@ -103,8 +100,8 @@
         </div>
         <div class="ui-toolbar">
           <div class="ui-seg" id="view" role="group" aria-label="View">
-            <button type="button" data-v="total" class="on">Total</button>
-            <button type="button" data-v="markets">By market</button>
+            <button type="button" data-v="total">Total</button>
+            <button type="button" data-v="markets" class="on">By market</button>
           </div>
           <div class="ui-seg" id="range" role="group" aria-label="Range">
             <button type="button" data-v="30">30d</button>
@@ -128,10 +125,7 @@
         <p class="note" id="idleNote" hidden></p>
       </section>
 
-      <section class="ui-section" id="scenSec" hidden>
-        <div class="ui-head"><h2>If the idle stock went in</h2></div>
-        <div class="scen" id="scen"></div>
-      </section>
+      <div id="scen" hidden></div>
 
       <details class="ui-more">
         <summary>Methodology</summary>
@@ -166,7 +160,7 @@
     const brand = (sym, i, forExport) => (window.FusionSelect && FusionSelect.tokenColor
       && FusionSelect.tokenColor(sym, darkPage() && !forExport)) || colors()[i % 7];
 
-    let data = null, view = 'total', range = 'all', size = 'wide';
+    let data = null, view = 'markets', range = 'all', size = 'wide';
 
     // ---- The numbers -------------------------------------------------------
     const val = (m, k) => (m[k] || 0) * (m.price || 0);
@@ -347,11 +341,12 @@
       }).join('<br>');
 
       // The scenario: each idle market's stock all supplied, everything else as today.
-      const sec = $('scenSec');
+      const sec = $('scen');
       sec.hidden = !idle.length;
       if (!idle.length) return;
       const row = (k, a, b) => '<tr><td>' + k + '</td><td class="n">' + a + '</td><td class="n">' + b + '</td></tr>';
       const table = (rows) => '<div class="ui-table-wrap"><table class="ui-table"><thead><tr><th></th><th class="n">Today</th><th class="n">After full deployment</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      const section = (title, body) => '<section class="ui-section scen"><div class="ui-head"><h2>' + title + '</h2></div>' + body + '</section>';
       let addUsd = 0;
       const cards = idle.map(m => {
         const room = m.cap == null ? Infinity : Math.max(0, m.cap - m.supplied);
@@ -366,13 +361,13 @@
         const fits = m.cap == null ? 'The reserve has no deposit cap, so the full amount fits.'
           : add >= m.idle ? 'The cap has room, so the full amount fits.'
           : 'The cap leaves room for ' + tok(add) + ' ' + esc(m.symbol) + ' of the ' + tok(m.idle) + ': that is what is counted.';
-        return '<div><h3>All of Fusion’s idle ' + esc(m.symbol) + ' supplied</h3>' + table(rows) + '<p class="fits">' + fits + '</p></div>';
+        return section('If <span class="m-hide">all of Fusion’s</span><span class="m-show">the</span> idle ' + esc(m.symbol) + ' went in', table(rows) + '<p class="fits">' + fits + '</p>');
       });
-      const share = '<div><h3>Our share of Aave V4’s tokenised-stock TVL</h3>' + table(
+      const share = section('Our share of Aave V4<span class="m-hide">’s tokenised-stock TVL</span>', table(
         row('Aave V4 tokenised-stock TVL', usd(t.aave), usd(t.aave + addUsd))
         + row('Fusion contribution', usd(t.fusion), usd(t.fusion + addUsd))
-        + row('Fusion share', pct(t.aave ? t.fusion / t.aave : null), pct((t.fusion + addUsd) / (t.aave + addUsd)))) + '</div>';
-      $('scen').innerHTML = cards.join('') + share;
+        + row('Fusion share', pct(t.aave ? t.fusion / t.aave : null), pct((t.fusion + addUsd) / (t.aave + addUsd)))));
+      sec.innerHTML = cards.join('') + share;
     }
 
     function status() {

@@ -710,7 +710,11 @@
       if (!src) continue;
       for (const d of cd) {
         if (d.isBlank || !(Math.abs(d.s1 - d.s0) * perY >= S + 6) || !(Math.abs(d.p1 - d.p0) * perX >= S + 4)) continue;
-        out.push({ source: src, xref: 'x', yref: 'y', x: (d.p0 + d.p1) / 2, y: (d.s0 + d.s1) / 2,
+        // The bar's middle in the axis's own terms: a date axis reads a bare
+        // number as the viewer's local time, which would move every mark by
+        // their offset from UTC.
+        const mid = (d.p0 + d.p1) / 2;
+        out.push({ source: src, xref: 'x', yref: 'y', x: xa.type === 'date' ? xa.c2d(mid) : mid, y: (d.s0 + d.s1) / 2,
           sizex: S / perX, sizey: S / perY, xanchor: 'center', yanchor: 'middle', sizing: 'contain', layer: 'above' });
       }
     }
