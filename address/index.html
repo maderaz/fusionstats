@@ -98,7 +98,14 @@
     .routes-chip:first-child { padding-left: 0; border-left: none; }
     .routes-chip .k { font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .routes-chip .v { margin-top: 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.025em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
-    .routes-chip .s { margin-top: 2px; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .routes-chip .s { margin-top: 2px; font-size: 12.5px; color: var(--text-3); text-wrap: balance; }
+    /* Three across only where each value ("Harvest contract · +$2.60M") has
+       its line whole; narrower, one under another, as on a phone. */
+    @container (max-width: 960px) {
+      .routes-strip { grid-template-columns: 1fr; row-gap: 0; }
+      .routes-chip { padding: 10px 0; border-left: none; border-top: 1px solid var(--line); }
+      .routes-chip:first-child { border-top: none; padding-top: 0; }
+    }
     .routes-sub { margin: 26px 0 6px; font-size: 14px; font-weight: 600; color: var(--text); }
     .routes-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
     .routes-table th { padding: 10px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; }

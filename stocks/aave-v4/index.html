@@ -26,7 +26,10 @@
     .key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
     .key i { width: 9px; height: 9px; border-radius: 50%; }
     .key b { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
-    .mk { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; color: var(--text); }
+    /* A market: its mark and its name, as one block centred in the row like
+       every number beside it (inline, the mark's baseline would lift the
+       name a few pixels above them). */
+    .mk { display: flex; align-items: center; gap: 10px; font-weight: 500; color: var(--text); white-space: nowrap; }
     .mk img { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
     .key img { width: 16px; height: 16px; border-radius: 50%; }
     .ui-table td.n, .ui-table th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -282,10 +285,11 @@
       const ms = data.markets;
       const t = totals(ms);
       const figs = document.querySelectorAll('#figures .ui-figure');
-      const set = (i, v, s, cls) => { figs[i].querySelector('.v').textContent = v; figs[i].querySelector('.v').className = 'v' + (cls ? ' ' + cls : ''); figs[i].querySelector('.s').textContent = s; };
+      // s is text; a figure whose words differ on a phone passes { html } (m-show / m-hide).
+      const set = (i, v, s, cls) => { figs[i].querySelector('.v').textContent = v; figs[i].querySelector('.v').className = 'v' + (cls ? ' ' + cls : ''); const e = figs[i].querySelector('.s'); if (s && s.html) e.innerHTML = s.html; else e.textContent = s; };
       const live = ms.filter(m => m.fusion > 0).length;
       set(0, usd(t.fusion), 'in ' + live + ' of ' + ms.length + ' markets', 'green');
-      set(1, pct(t.aave ? t.fusion / t.aave : null), 'of ' + usd(t.aave) + ' in Aave V4 stocks');
+      set(1, pct(t.aave ? t.fusion / t.aave : null), { html: 'of ' + usd(t.aave) + ' in <span class="m-hide">Aave V4 </span>stocks' });
       set(2, usd(t.debt), t.fusion ? 'against ' + usd(t.fusion) + ' of stock' : 'none');
       set(3, usd(t.idle), t.idle ? 'not counted above' : 'none');
 

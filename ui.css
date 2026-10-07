@@ -263,7 +263,9 @@ body {
 }
 .ui-figure .v.pos { color: var(--pos); }
 .ui-figure .v.neg { color: var(--neg); }
-.ui-figure .s { margin-top: 3px; font-size: 12.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A caption says all it says: where its column is narrow it takes a second,
+   balanced line rather than end in "…". */
+.ui-figure .s { margin-top: 3px; font-size: 12.5px; color: var(--text-3); text-wrap: balance; }
 .ui-figure .v:empty::before { content: ''; display: block; width: 70%; height: 1em; border-radius: 8px; background: linear-gradient(90deg, var(--bg-subtle) 0%, var(--line) 50%, var(--bg-subtle) 100%); background-size: 200% 100%; animation: ui-shimmer 1.4s linear infinite; }
 /* Narrow: two columns, a hairline between rows as well. */
 @container (max-width: 700px) {
@@ -395,8 +397,11 @@ body {
 .ui-sub { display: block; margin-top: 2px; font-size: 12.5px; color: var(--text-3); }
 
 /* ---------- Network badge: mark and name ---------- */
-.ui-chain { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.ui-chain img, .ui-chain .ui-chain-mono { width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px; }
+/* The name carries the chip's baseline, so it sits on its line level with the
+   words beside it; the mark is centred on it. (Inline, an image first would
+   put the baseline at the image's foot and lift the name.) */
+.ui-chain { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.ui-chain img, .ui-chain .ui-chain-mono { align-self: center; width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px; }
 .ui-chain .ui-chain-mono {
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%; background: var(--text); color: var(--bg);
