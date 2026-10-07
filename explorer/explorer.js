@@ -1,0 +1,464 @@
+// explorer/explorer.js — one vault at a time. A search field over every
+// vault IPOR lists (by name, token, network or address, as the Activity
+// page's product list filters), and, once one is picked, the vault: what it
+// is, its yield, its assets, its markets now and over time, its capacity.
+//
+// The list, the APY and the TVL now are ipor-vaults.json's; the rest is the
+// vault's own file, explorer/vaults/<chain>-<address>.json
+// (tools/build-explorer.js, from the TVL snapshots, the holders, the fee
+// terms and the markets read on-chain, collect-vault-markets.js). The page's
+// address carries the vault (?v=0x…&c=base), so a vault can be linked to.
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const DAY = 864e5;
+  const esc = UI.esc, usd = UI.usd;
+  const FS = window.FusionSelect;
+  const chainName = (c) => (FS ? FS.chainName(c) : String(c));
+  const cssVar = (n, f) => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim() || f;
+  const pctTxt = (v, d = 2) => (v == null || !Number.isFinite(v) ? '—' : v.toFixed(d) + '%');
+  const iso = (day) => new Date(day * DAY).toISOString().slice(0, 10);
+  const dateTxt = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const amount = (n) => (n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: n >= 1000 ? 0 : n >= 1 ? 2 : 4 }));
+  const shortAddr = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
+  const EXPLORERS = { ethereum: ['Etherscan', 'https://etherscan.io/address/'], base: ['Basescan', 'https://basescan.org/address/'], arbitrum: ['Arbiscan', 'https://arbiscan.io/address/'] };
+
+  // What a name says about a vault: who runs it, and what kind it is.
+  const CURATORS = [[/^TAU\b/i, 'TAU Labs'], [/^(TESS|Tesseract)\b/i, 'Tesseract'], [/^Harvest\b/i, 'Harvest'], [/^Reservoir\b/i, 'Reservoir'],
+    [/^(IPOR|Fusion)\b/i, 'IPOR'], [/^Hyperithm\b/i, 'Hyperithm'], [/^Origin\b/i, 'Origin Protocol'], [/^Strata/i, 'Strata'],
+    [/^Llamarisk/i, 'LlamaRisk'], [/^Ensuro\b/i, 'Ensuro'], [/^Tanken\b/i, 'Tanken'], [/^AlphaYields/i, 'AlphaYields'], [/^yo(USD|ETH|BTC)\b/i, 'Yo']];
+  const curatorOf = (name) => { for (const [re, c] of CURATORS) if (re.test(name || '')) return c; return null; };
+  function categoryOf(name) {
+    const n = String(name || '');
+    if (/loop|looper|looping|leverage/i.test(n)) return 'Leveraged looping';
+    if (/carry/i.test(n)) return 'Carry trade';
+    if (/debt vault/i.test(n)) return 'Debt vault';
+    if (/lending optimi[sz]er|\bLO\b/i.test(n)) return 'Lending optimizer';
+    if (/pointsmax/i.test(n)) return 'Points';
+    if (/liquidity/i.test(n)) return 'Liquidity';
+    return 'Yield vault';
+  }
+
+  // ---- The vault list -------------------------------------------------------
+  let vaults = [];
+  const mark = (sym) => {
+    const src = FS && FS.tokenIcon ? FS.tokenIcon(sym) : null;
+    return src ? `<img class="ic" src="${esc(src)}" alt="" width="20" height="20" decoding="async">`
+      : `<span class="mono" aria-hidden="true">${esc(String(sym || '?')[0].toUpperCase())}</span>`;
+  };
+  const chainMark = (c) => {
+    const ic = FS && FS.chainIcon ? FS.chainIcon(c) : null;
+    return ic ? `<img src="${esc(ic.src)}" alt=""${ic.ink ? ' class="ink"' : ''} width="14" height="14" decoding="async">` : '';
+  };
+  // A vault's row: an option in the search's list, or a plain link (a pick).
+  const row = (v, i, pick) => `<a class="xp-opt vault-row"${pick ? '' : ` role="option" id="xp-o${i}" data-i="${i}"`} href="${hrefOf(v)}">${mark(v.token)}`
+    + `<span class="nm">${esc(v.name)}</span><span class="nt">${chainMark(v.chain)}${v.tvl >= 1 ? usd(v.tvl) : '—'}</span></a>`;
+  const hrefOf = (v) => '/explorer/?v=' + v.address.toLowerCase() + '&c=' + encodeURIComponent(v.chain);
+
+  // ---- Search ----------------------------------------------------------------
+  const input = $('q'), pop = $('xpPop'), list = $('xpList');
+  let shown = [], active = -1;
+  const isAddress = (s) => /^0x[0-9a-f]{40}$/i.test(s.trim());
+  function filter(q) {
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return vaults;
+    // Words match the name, token and network; an address only what is
+    // typed as one (0x…), not two letters that happen to be in it.
+    return vaults.filter(v => {
+      const hay = (v.name + ' ' + v.token + ' ' + chainName(v.chain) + ' ' + v.chain).toLowerCase();
+      return terms.every(t => (/^0x/.test(t) ? v.address.toLowerCase().startsWith(t) : hay.includes(t)));
+    });
+  }
+  function render() {
+    const q = input.value.trim();
+    shown = filter(q).slice(0, 80);
+    active = shown.length ? 0 : -1;
+    list.innerHTML = shown.length ? shown.map(row).join('')
+      : `<div class="xp-empty">${isAddress(q) ? 'No Fusion vault we track at ' + esc(shortAddr(q)) + '.' : 'No vault matches.'}</div>`;
+    paint();
+  }
+  function paint() {
+    list.querySelectorAll('.xp-opt').forEach((el, i) => el.classList.toggle('active', i === active));
+    input.setAttribute('aria-activedescendant', active >= 0 ? 'xp-o' + active : '');
+    const el = active >= 0 && list.children[active];
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+  }
+  const open = () => { if (!vaults.length) return; render(); pop.hidden = false; input.setAttribute('aria-expanded', 'true'); };
+  const close = () => { pop.hidden = true; input.setAttribute('aria-expanded', 'false'); };
+  input.addEventListener('focus', open);
+  input.addEventListener('input', open);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (pop.hidden) open();
+      e.preventDefault();
+      if (shown.length) { active = (active + (e.key === 'ArrowDown' ? 1 : -1) + shown.length) % shown.length; paint(); }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (active >= 0 && shown[active]) pick(shown[active]);
+    } else if (e.key === 'Escape') { close(); input.blur(); }
+  });
+  // A press on a row picks it before the field loses focus.
+  list.addEventListener('mousedown', (e) => e.preventDefault());
+  list.addEventListener('click', (e) => {
+    const a = e.target.closest('.xp-opt');
+    if (!a || e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    pick(shown[Number(a.dataset.i)]);
+  });
+  document.addEventListener('pointerdown', (e) => { if (!$('search').contains(e.target)) close(); });
+  function pick(v) {
+    if (!v) return;
+    close();
+    input.value = '';
+    input.blur();
+    history.pushState(null, '', hrefOf(v));
+    route();
+    window.scrollTo({ top: 0 });
+  }
+
+  // ---- Routing ---------------------------------------------------------------
+  function route() {
+    const p = new URLSearchParams(location.search);
+    const a = (p.get('v') || '').toLowerCase(), c = (p.get('c') || '').toLowerCase();
+    const v = a && (vaults.find(x => x.address.toLowerCase() === a && (!c || String(x.chain).toLowerCase() === c))
+      || vaults.find(x => x.address.toLowerCase() === a));
+    if (!a) return showHome();
+    if (!v) return showMissing(a);
+    showVault(v);
+  }
+  window.addEventListener('popstate', route);
+  // The title keeps one line: a long vault name steps down a size at a time,
+  // to 16px; one too long even then takes a second line.
+  function fitTitle() {
+    const h = $('title');
+    h.style.fontSize = '';
+    h.style.whiteSpace = 'nowrap';
+    let size = parseFloat(getComputedStyle(h).fontSize);
+    while (h.scrollWidth > h.clientWidth + 0.5 && size > 16) { size -= 1; h.style.fontSize = size + 'px'; }
+    if (h.scrollWidth > h.clientWidth + 0.5) h.style.whiteSpace = '';
+  }
+  window.addEventListener('resize', fitTitle);
+  function showHome() {
+    document.title = 'Explorer — Fusion Stats';
+    $('title').textContent = 'Explorer';
+    fitTitle();
+    $('lede').textContent = 'Every Fusion vault, one at a time: search by name, token or network, or paste its address.';
+    $('tags').hidden = true;
+    $('status').textContent = '';
+    $('home').hidden = false;
+    $('vault').hidden = true;
+    $('picks').innerHTML = vaults.slice(0, 12).map((v, i) => row(v, i, true)).join('');
+  }
+  function showMissing(a) {
+    showHome();
+    $('status').innerHTML = 'No Fusion vault we track at <b>' + esc(shortAddr(a)) + '</b>.';
+  }
+
+  // ---- A vault -----------------------------------------------------------------
+  let cur = null, file = null, perfView = 'apy', perfRange = '90', allocRange = '90';
+  async function showVault(v) {
+    cur = v; file = null;
+    document.title = v.name + ' — Explorer — Fusion Stats';
+    $('title').textContent = v.name;
+    fitTitle();
+    $('lede').textContent = categoryOf(v.name);
+    $('home').hidden = true;
+    $('vault').hidden = false;
+    $('status').textContent = '';
+    tags(null);
+    figures(null);
+    $('perfChart').innerHTML = $('allocChart').innerHTML = '<div class="ui-empty">Loading…</div>';
+    const want = v;
+    const f = await fetch('/explorer/vaults/' + String(v.chain).toLowerCase() + '-' + v.address.toLowerCase() + '.json')
+      .then(r => (r.ok ? r.json() : null)).catch(() => null);
+    if (cur !== want) return;   // another vault was picked meanwhile
+    file = f || {};
+    tags(file);
+    figures(file);
+    markets(file);
+    capacity(file);
+    facts(file);
+    const at = file.markets && file.markets.readAt || file.builtAt;
+    $('status').innerHTML = at ? 'Updated <b>' + UI.ago(Date.parse(at) / 1000) + '</b>' : '';
+    await Promise.all([drawPerf(), drawAlloc()]);
+  }
+
+  // Total value managed: everything in the markets (supplied, and held as
+  // collateral); the TVL is that less what is borrowed.
+  function managed(f) {
+    const ms = (f && f.markets && f.markets.markets) || [];
+    if (!ms.length) return null;
+    let assets = 0, debt = 0;
+    for (const m of ms) {
+      if (m.positions && m.positions.length) { assets += m.supplyUsd || 0; debt += m.borrowUsd || 0; }
+      else if (m.netUsd > 0) assets += m.netUsd;
+    }
+    return { assets, debt, net: assets - debt };
+  }
+  function tags(f) {
+    const v = cur, t = [];
+    const ic = FS && FS.chainIcon ? FS.chainIcon(v.chain) : null;
+    t.push(`<span class="xp-tag">${ic ? `<img class="chain${ic.ink ? ' ink' : ''}" src="${esc(ic.src)}" alt="" width="16" height="16">` : ''}${esc(chainName(v.chain))}</span>`);
+    const tok = FS && FS.tokenIcon ? FS.tokenIcon(v.token) : null;
+    t.push(`<span class="xp-tag">${tok ? `<img src="${esc(tok)}" alt="" width="16" height="16">` : ''}${esc(v.token)}</span>`);
+    const c = curatorOf(v.name);
+    if (c) t.push(`<span class="xp-tag">${esc(c)}</span>`);
+    const m = managed(f);
+    if (m && m.net > 0 && m.assets / m.net >= 1.05) t.push(`<span class="xp-tag lev">${(m.assets / m.net).toFixed(1)}× leverage</span>`);
+    t.push(`<span class="xp-tag addr">${esc(shortAddr(v.address))}<button type="button" id="copyAddr" aria-label="Copy the address" title="Copy the address">`
+      + '<svg viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.75"/><path d="M10.5 5.5V3.75A1.25 1.25 0 0 0 9.25 2.5h-5.5A1.25 1.25 0 0 0 2.5 3.75v5.5a1.25 1.25 0 0 0 1.25 1.25H5.5"/></svg></button></span>');
+    $('tags').innerHTML = t.join('');
+    $('tags').hidden = false;
+    $('copyAddr').addEventListener('click', () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(v.address).then(() => { $('copyAddr').title = 'Copied'; }).catch(() => {});
+    });
+  }
+
+  // ---- Figures -------------------------------------------------------------------
+  const series = (s) => (s && Array.isArray(s.v) ? s : null);
+  // The share price's yearly pace between two days, or null.
+  function pace(sp, i0, i1) {
+    const a = sp.v[i0], b = sp.v[i1];
+    if (!(a > 0) || !(b > 0) || i1 <= i0) return null;
+    const r = Math.pow(b / a, 365 / (i1 - i0)) - 1;
+    return Number.isFinite(r) ? r * 100 : null;
+  }
+  // The last day with a share price, and the first within n days before it.
+  function trailing(sp, n) {
+    let end = sp.v.length - 1;
+    while (end >= 0 && !(sp.v[end] > 0)) end--;
+    if (end < 1) return null;
+    let start = Math.max(0, end - n);
+    while (start < end && !(sp.v[start] > 0)) start++;
+    return end - start >= Math.min(n, 7) ? pace(sp, start, end) : null;
+  }
+  function figures(f) {
+    const figs = document.querySelectorAll('#figures .ui-figure');
+    const set = (i, v, s) => { figs[i].querySelector('.v').textContent = v; figs[i].querySelector('.s').textContent = s; };
+    if (!f) { figs.forEach(x => { x.querySelector('.v').textContent = ''; x.querySelector('.s').innerHTML = '&nbsp;'; }); return; }
+    const v = cur, sp = series(f.days && f.days.sharePrice);
+    const p30 = sp ? trailing(sp, 30) : null;
+    set(0, v.apy != null ? pctTxt(Number(v.apy)) : '—', p30 != null ? '30-day: ' + pctTxt(p30) : 'as IPOR reports it');
+    const m = managed(f), mk = f.markets;
+    set(1, m ? usd(m.assets) : '—', m ? (m.debt > 0 ? usd(m.debt) + ' of it borrowed' : 'nothing borrowed') : 'markets not read yet');
+    set(2, usd(v.tvl), mk && mk.totalAssets != null ? amount(mk.totalAssets) + ' ' + v.token : v.token + ' deposited');
+    const h = f.holders, hd = h && series(h.days);
+    let since = '';
+    if (hd && hd.v.length > 30) {
+      const now = hd.v[hd.v.length - 1], then = hd.v[hd.v.length - 31];
+      if (now != null && then != null) since = now === then ? 'unchanged in 30 days' : (now > then ? '+' : '−') + Math.abs(now - then) + ' in 30 days';
+    }
+    set(3, h && h.total != null ? h.total.toLocaleString('en-US') : '—', h ? since || 'holding shares' : 'not tracked yet');
+  }
+
+  // ---- Charts ----------------------------------------------------------------------
+  const CONFIG = { displayModeBar: false, responsive: true, doubleClick: false, scrollZoom: false, showTips: false };
+  const plotlyReady = new Promise((resolve, reject) => {
+    const tag = $('plotlyJs');
+    const settle = () => (window.Plotly ? resolve() : reject(new Error('no Plotly')));
+    if (window.Plotly || !tag || tag.dataset.state) return settle();
+    tag.addEventListener('load', settle);
+    tag.addEventListener('error', () => reject(new Error('no Plotly')));
+  });
+  const rangeDays = (r) => (r === 'all' ? Infinity : Number(r));
+  const LAYOUT = () => ({
+    autosize: true, margin: { l: 70, r: 20, t: 20, b: 50 },
+    plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: 'Geist, -apple-system, sans-serif', color: cssVar('--text-2', '#5E5E6B'), size: 12 },
+    xaxis: { type: 'date', showgrid: false }, yaxis: { showgrid: true, zeroline: false },
+    showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
+  });
+  async function ready(gd) {
+    try { await plotlyReady; return true; } catch { gd.innerHTML = '<div class="ui-empty">The chart library (cdn.plot.ly) did not load.</div>'; return false; }
+  }
+  const empty = (gd, text) => { if (window.Plotly) Plotly.purge(gd); gd.innerHTML = '<div class="empty-state">' + esc(text) + '</div>'; };
+
+  // Performance: the APY the share price made over each week before a day
+  // (a year's worth), the share price, or the TVL.
+  function perfPoints() {
+    const d = file && file.days;
+    if (perfView === 'tvl') {
+      const t = series(d && d.tvl);
+      return t ? t.v.map((v, i) => [t.from + i, v]) : [];
+    }
+    const sp = series(d && d.sharePrice);
+    if (!sp) return [];
+    if (perfView === 'sp') return sp.v.map((v, i) => [sp.from + i, v]).filter(p => p[1] > 0);
+    const out = [];
+    for (let i = 7; i < sp.v.length; i++) {
+      let j = i - 7;
+      while (j > i - 14 && j > 0 && !(sp.v[j] > 0)) j--;
+      const r = sp.v[i] > 0 ? pace(sp, j, i) : null;
+      // A move no yield vault makes (over 5% a day) is a reading's fault.
+      if (r != null && Math.abs(sp.v[i] / sp.v[j] - 1) <= 0.05 * (i - j)) out.push([sp.from + i, r]);
+    }
+    return out;
+  }
+  async function drawPerf() {
+    const gd = $('perfChart');
+    const all = perfPoints();
+    const from = all.length ? all[all.length - 1][0] - rangeDays(perfRange) + 1 : 0;
+    const pts = all.filter(p => p[0] >= from && p[1] != null);
+    $('perfNote').textContent = perfView === 'apy' ? 'Each day, the share price\'s pace over the week before it, a year\'s worth, after fees.'
+      : perfView === 'sp' ? 'What one share is worth in ' + cur.token + ', after fees.' : 'Total value locked, in dollars, at a reading a day.';
+    if (pts.length < 2) return empty(gd, file && file.days ? 'Not enough history in this range yet.' : 'No history yet: the vault\'s first daily readings fill this in.');
+    if (!(await ready(gd))) return;
+    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
+    const c = cssVar('--accent', '#8429FF');
+    const traces = [{ type: 'scatter', mode: 'lines', name: 'v', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
+      line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? 'rgba(132,41,255,0.08)' : undefined }];
+    const layout = LAYOUT();
+    layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : '$,.2~s';
+    if (perfView === 'apy') layout.yaxis.ticksuffix = '%';
+    if (perfView === 'tvl') layout.yaxis.rangemode = 'tozero';
+    await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(traces)), FusionChart.fit(layout, traces), CONFIG);
+    FusionChart.glide(gd, (p) => {
+      const y = p[0].y;
+      const val = perfView === 'apy' ? pctTxt(y) : perfView === 'sp' ? y.toFixed(6) + ' ' + esc(cur.token) : usd(y);
+      return FusionChart.when(p[0].x) + '<div class="hv-big">' + val + '</div>';
+    });
+  }
+
+  // Allocation: each market's dollars on the days read, stacked.
+  const PALETTE = () => [cssVar('--accent', '#8429FF'), cssVar('--chart-2', '#009689'), cssVar('--chart-1', '#F54900'), cssVar('--chart-4', '#FFB900'),
+    cssVar('--chart-3', '#104E64'), cssVar('--chart-5', '#FE9A00'), '#94A3B8', '#CBD5E1'];
+  async function drawAlloc() {
+    const gd = $('allocChart'), a = file && file.allocation;
+    const days = (a && a.days) || [];
+    const last = days.length ? days[days.length - 1][0] : 0;
+    const inRange = days.filter(([d]) => d >= last - rangeDays(allocRange) + 1);
+    $('allocKey').innerHTML = '';
+    $('allocNote').textContent = days.length ? 'Each market\'s balance as the vault keeps it, in dollars, at a reading a day for the last 120 days and a week apart before.' : '';
+    if (inRange.length < 2) return empty(gd, days.length ? 'The history is still being read: a few days at a time, newest first.' : 'No allocation history yet: the markets are read every six hours.');
+    if (!(await ready(gd))) return;
+    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
+    // Markets by their largest balance in the range, the biggest at the bottom.
+    const peak = {};
+    for (const [, m] of inRange) for (const [id, v] of Object.entries(m)) peak[id] = Math.max(peak[id] || 0, v);
+    const ids = Object.keys(peak).filter(id => peak[id] > 0).sort((x, y) => peak[y] - peak[x]);
+    const pal = PALETTE();
+    const name = (id) => (a.names && a.names[id]) || 'Market ' + id;
+    const traces = ids.map((id, k) => ({ type: 'scatter', mode: 'lines', name: name(id), stackgroup: 'one',
+      x: inRange.map(([d]) => iso(d)), y: inRange.map(([, m]) => m[id] || 0),
+      line: { color: pal[k % pal.length], width: 0.5 }, fillcolor: pal[k % pal.length] }));
+    $('allocKey').innerHTML = ids.map((id, k) => `<span><i style="background:${pal[k % pal.length]}"></i>${esc(name(id))}</span>`).join('');
+    const layout = LAYOUT();
+    layout.yaxis.tickformat = '$,.2~s';
+    layout.yaxis.rangemode = 'tozero';
+    await Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout, traces), CONFIG);
+    FusionChart.glide(gd, (pts) => {
+      const total = pts.reduce((s, p) => s + (p.y || 0), 0);
+      return FusionChart.when(pts[0].x) + pts.filter(p => p.y > 0).map(p => FusionChart.row(p.data.fillcolor, p.data.name, usd(p.y))).join('')
+        + FusionChart.row(null, 'Total', usd(total));
+    });
+  }
+
+  // ---- Markets ------------------------------------------------------------------------
+  function markets(f) {
+    const body = $('markets').querySelector('tbody');
+    const ms = ((f && f.markets && f.markets.markets) || []).slice().sort((a, b) => Math.abs(b.netUsd || 0) - Math.abs(a.netUsd || 0));
+    if (!ms.length) {
+      body.innerHTML = '<tr><td colspan="6" class="dim">Not read yet: the markets are read every six hours.</td></tr>';
+      $('marketsNote').textContent = '';
+      return;
+    }
+    const m = managed(f);
+    const netApy = (a, aApy, l, lApy) => (a - l > 0 && aApy != null && (l === 0 || lApy != null) ? (a * aApy - l * (lApy || 0)) / (a - l) : null);
+    const money = (v) => (v > 0 ? usd(v) : '—');
+    const rows = [`<tr class="total"><td>All markets${m.net > 0 && m.assets / m.net >= 1.05 ? ` <span class="share">· ${(m.assets / m.net).toFixed(2)}× leverage</span>` : ''}</td>`
+      + `<td class="n">${money(m.assets)}</td><td class="n"></td><td class="n">${money(m.debt)}</td><td class="n"></td><td class="n"></td></tr>`];
+    for (const x of ms) {
+      const lending = x.positions && x.positions.length;
+      const assets = lending ? x.supplyUsd || 0 : Math.max(0, x.netUsd || 0);
+      const debt = lending ? x.borrowUsd || 0 : 0;
+      const share = m.net > 0 && x.netUsd != null ? (100 * x.netUsd / m.net) : null;
+      rows.push(`<tr><td><span class="mk">${esc(x.name)}${share != null ? `<span class="share">${share.toFixed(1)}%</span>` : ''}</span></td>`
+        + `<td class="n">${money(assets)}</td><td class="n">${pctTxt(x.supplyApy)}</td>`
+        + `<td class="n">${money(debt)}</td><td class="n">${debt > 0 ? pctTxt(x.borrowApy) : '—'}</td>`
+        + `<td class="n">${pctTxt(netApy(assets, x.supplyApy, debt, x.borrowApy))}</td></tr>`);
+      // What it holds, then what it owes, a market (Morpho's) at a time.
+      const order = (p) => (p.side === 'borrow' ? 1 : 0);
+      if (lending) for (const p of x.positions.slice().sort((a, b) => String(a.market || '').localeCompare(String(b.market || '')) || order(a) - order(b))) {
+        const side = { supply: 'supplied', collateral: 'collateral', borrow: 'borrowed' }[p.side] || p.side;
+        const isDebt = p.side === 'borrow';
+        rows.push(`<tr class="pos"><td>${esc(p.market ? p.market + ' · ' : '')}${esc(p.asset || '?')} <span class="side">${side}</span></td>`
+          + `<td class="n">${isDebt ? '' : usd(p.usd)}</td><td class="n">${isDebt ? '' : pctTxt(p.apy)}</td>`
+          + `<td class="n">${isDebt ? usd(p.usd) : ''}</td><td class="n">${isDebt ? pctTxt(p.apy) : ''}</td><td class="n"></td></tr>`);
+      }
+    }
+    body.innerHTML = rows.join('');
+    $('marketsNote').textContent = 'Read ' + UI.ago(Date.parse(f.markets.readAt) / 1000) + '. A loop\'s collateral earns its own yield, measured against the token borrowed; an APY left empty had nothing to measure it by.';
+  }
+
+  // ---- Capacity ----------------------------------------------------------------------------
+  function capacity(f) {
+    const mk = f && f.markets, sec = $('capSec');
+    sec.hidden = !(mk && mk.cap > 0 && mk.totalAssets != null);
+    if (sec.hidden) return;
+    const sym = cur.token, used = Math.min(1, mk.totalAssets / mk.cap), left = Math.max(0, mk.cap - mk.totalAssets);
+    $('capLeft').innerHTML = left > 0 ? '<b>' + amount(left) + ' ' + esc(sym) + '</b> left before the cap' : '<b>The cap is reached</b>';
+    $('capPct').textContent = (used * 100).toFixed(used >= 0.995 && used < 1 ? 1 : 0) + '% used';
+    $('capBar').classList.toggle('full', used >= 0.95);
+    $('capBar').firstElementChild.style.width = (used * 100).toFixed(2) + '%';
+    $('capIn').textContent = 'Deposits: ' + amount(mk.totalAssets) + ' ' + sym;
+    $('capMax').textContent = 'Cap: ' + amount(mk.cap) + ' ' + sym;
+  }
+
+  // ---- About -------------------------------------------------------------------------------
+  function facts(f) {
+    const v = cur, out = [];
+    const add = (k, html) => out.push(`<div><dt>${esc(k)}</dt><dd>${html}</dd></div>`);
+    add('Address', `<span class="mono">${esc(shortAddr(v.address))}</span>`);
+    add('Network', esc(chainName(v.chain)));
+    add('Asset', esc(v.token) + (v.assetAddress ? ` <span class="mono muted">${esc(shortAddr(v.assetAddress))}</span>` : ''));
+    add('Curator', esc(curatorOf(v.name) || '—'));
+    if (f.deployedAt) add('Deployed', esc(dateTxt(Date.parse(f.deployedAt))));
+    const fee = f.fees;
+    if (fee) {
+      add('Performance fee', fee.perf != null ? esc(fee.perf + '%') + (fee.daoPerf != null ? ` <span class="muted">· DAO ${esc(fee.daoPerf + '%')}</span>` : '') : '—');
+      add('Management fee', fee.mgmt != null ? esc(fee.mgmt + '%') + (fee.daoMgmt != null ? ` <span class="muted">· DAO ${esc(fee.daoMgmt + '%')}</span>` : '') : '—');
+    }
+    const links = [];
+    const chain = String(v.chain).toLowerCase();
+    links.push(`<a href="https://app.ipor.io/fusion/${encodeURIComponent(chain)}/${v.address.toLowerCase()}" target="_blank" rel="noopener">IPOR app ↗</a>`);
+    if (EXPLORERS[chain]) links.push(`<a href="${EXPLORERS[chain][1]}${v.address.toLowerCase()}" target="_blank" rel="noopener">${EXPLORERS[chain][0]} ↗</a>`);
+    links.push(`<a href="https://debank.com/profile/${v.address.toLowerCase()}" target="_blank" rel="noopener">DeBank ↗</a>`);
+    add('Links', links.join(' · '));
+    $('facts').innerHTML = out.join('');
+  }
+
+  // ---- Controls ------------------------------------------------------------------------------
+  function seg(id, on) {
+    $(id).addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-v]');
+      if (!b) return;
+      $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      on(b.dataset.v);
+    });
+  }
+  seg('perfView', (v) => { perfView = v; if (file) drawPerf(); });
+  seg('perfRange', (v) => { perfRange = v; if (file) drawPerf(); });
+  seg('allocRange', (v) => { allocRange = v; if (file) drawAlloc(); });
+  const redraw = () => { if (file) { drawPerf(); drawAlloc(); } };
+  window.addEventListener('fusion:theme', redraw);
+  FusionChart.onChange(redraw);
+  // The picks and the list's rows are links: an ordinary press stays here.
+  $('picks').addEventListener('click', (e) => {
+    const a = e.target.closest('a.xp-opt');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    history.pushState(null, '', a.getAttribute('href'));
+    route();
+    window.scrollTo({ top: 0 });
+  });
+
+  // ---- Load ----------------------------------------------------------------------------------
+  fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
+    vaults = ((j && j.vaults) || []).filter(v => v.address && v.name)
+      .map(v => Object.assign({}, v, { tvl: Number(v.tvl) || 0 }))
+      .sort((a, b) => b.tvl - a.tvl);
+    if (!vaults.length) { $('picks').innerHTML = '<div class="ui-error">The vault list did not load.</div>'; return; }
+    route();
+    if (document.activeElement === input) open();
+  });
+})();

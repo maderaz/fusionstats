@@ -1,0 +1,72 @@
+name: Collect Vault Markets
+
+# Where each vault's assets are, market by market — balances, lending
+# positions and their rates, and the supply cap — read on-chain
+# (collect-vault-markets.js) for the Explorer, which gets its files a vault
+# rebuilt here (tools/build-explorer.js). Each run also reaches back over
+# the history, a budget at a time, until every vault's days are read. Keyed
+# endpoints (RPC_URL_*) go first.
+
+on:
+  schedule:
+    - cron: '20 */6 * * *'   # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      RPC_URL_ETHEREUM: ${{ secrets.RPC_URL_ETHEREUM }}
+      RPC_URL_BASE: ${{ secrets.RPC_URL_BASE }}
+      RPC_URL_ARBITRUM: ${{ secrets.RPC_URL_ARBITRUM }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # the branch as it is now, never a re-run's stale commit (see collect.yml)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Read the markets
+        run: node collect-vault-markets.js
+
+      - name: Build the Explorer's files
+        continue-on-error: true
+        run: node tools/build-explorer.js
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          for f in vault-markets.json vault-markets-history.json explorer/vaults; do
+            [ -e "$f" ] && git add -f "$f"
+          done
+          FILES=$(git diff --cached --name-only)
+          if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
+          git commit -m "Update vault-markets.json [skip ci]"
+
+          # Generated data: on rejection, reset onto origin and replay this
+          # run's files rather than rebase (see collect-zyfai.yml).
+          BRANCH="${{ github.ref_name }}"
+          KEEP=$(mktemp -d)
+          for f in $FILES; do mkdir -p "$KEEP/$(dirname "$f")"; cp "$f" "$KEEP/$f"; done
+          for i in 1 2 3 4 5; do
+            if git push origin "HEAD:$BRANCH"; then exit 0; fi
+            echo "push rejected (attempt $i) — replaying generated files onto origin"
+            git rebase --abort 2>/dev/null || true
+            git merge  --abort 2>/dev/null || true
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            for f in $FILES; do mkdir -p "$(dirname "$f")"; cp "$KEEP/$f" "$f"; done
+            git add -f $FILES
+            if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
+            git commit -m "Update vault-markets.json [skip ci]"
+            sleep $((2**i))
+          done
+          echo "::error::push still failing after retries"
+          exit 1

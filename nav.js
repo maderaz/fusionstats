@@ -19,6 +19,7 @@
   const GROUPS = [
     { pages: [
       { href: '/',                      label: 'Key Metrics',    icon: 'activity' },
+      { href: '/explorer',              label: 'Explorer',       icon: 'explorer' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
         sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'aave' }] },
     ] },
@@ -50,6 +51,8 @@
   const ICONS = {
     // Deposits drop into the vault, withdrawals rise out of it.
     activity: '<path d="M2.5 9.5v2.25A2.25 2.25 0 0 0 4.75 14h6.5a2.25 2.25 0 0 0 2.25-2.25V9.5"/><path class="a" d="M6 2v7.75M4 7.75l2 2 2-2"/><path d="M10 9.75V2M8 4l2-2 2 2"/>',
+    // A lens over a vault: one looked at closely.
+    explorer: '<circle cx="6.75" cy="6.75" r="4.75"/><path class="a" d="M10.25 10.25L14 14"/><rect class="a f" x="5" y="5" width="3.5" height="3.5" rx=".9"/>',
     // Candles: hollow up, filled down.
     stocks: '<path d="M3.25 3.5v1.75M3.25 10.75v2.25"/><rect x="1.75" y="5.25" width="3" height="5.5" rx=".75"/><path class="a" d="M8 2v2M8 9v2.75"/><rect class="a f" x="6.5" y="4" width="3" height="5" rx=".75"/><path d="M12.75 5.5v2.25M12.75 12.25V14"/><rect x="11.25" y="7.75" width="3" height="4.5" rx=".75"/>',
     // A safe: dial, handle, feet.
