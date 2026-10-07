@@ -196,6 +196,30 @@
     .act-tx { white-space: nowrap; font: 12.5px var(--mono); color: var(--text-3); text-decoration: none; }
     .act-tx:hover { color: var(--accent); }
 
+    /* Activity: a row a deposit or withdrawal. */
+    #activity td.n, #activity th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #activity td { white-space: nowrap; }
+    #activity .when span, .av-list .when span { margin-left: 6px; color: var(--text-3); font-size: 12px; }
+    .av-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; }
+    .av-badge.dep { background: var(--pos-soft); color: var(--pos); }
+    .av-badge.wd { background: var(--neg-soft); color: var(--neg); }
+    .xp-act-tools .ui-filters { flex: 1 1 420px; }
+    .av-list { display: none; }
+
+    /* Curator actions, administrative: a row a change (or a transaction's
+       changes of one kind), newest first. */
+    .adm { display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(max-content, auto) minmax(max-content, auto); align-items: center; gap: 6px 16px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .adm:first-child { border-top: none; }
+    .adm-what { min-width: 0; }
+    .adm-what b { font-weight: 600; color: var(--text); }
+    .adm-what .on { margin-left: 8px; color: var(--text-3); font-size: 12.5px; white-space: nowrap; }
+    .adm-what .dt { display: block; margin-top: 3px; font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+    .adm-by { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; font-size: 13px; }
+    .adm-by .rl { color: var(--text); font-weight: 500; }
+    .adm-by a { font: 12.5px var(--mono); color: var(--text-3); text-decoration: none; }
+    .adm-by a:hover { color: var(--accent); }
+    .dep-tag { display: inline-flex; align-items: center; height: 18px; margin-top: 3px; padding: 0 6px; border-radius: 5px; background: var(--accent-bg); color: var(--accent); font: 600 10.5px var(--sans); letter-spacing: 0.02em; text-transform: uppercase; }
+
     /* A phone: the tabs' shorter words, holders as blocks, a rebalance in two
        lines (when and how much, then what moved). After the rules above, which
        they override. */
@@ -208,12 +232,30 @@
       .act-when { display: flex; gap: 6px; }
       .act-when span { display: inline; margin: 0; }
       .act-moves { grid-column: 1 / -1; order: 3; }
+      .av-tbl { display: none; }
+      .av-list { display: block; }
+      .adm { grid-template-columns: minmax(0, 1fr) minmax(max-content, auto); padding: 12px 0; }
+      .adm .act-when { display: flex; gap: 6px; grid-column: 1 / -1; }
+      .adm .act-when span { display: inline; margin: 0; }
+      .adm .dep-tag { margin: 0; }
+      .adm-by { align-items: baseline; flex-direction: row; flex-wrap: wrap; gap: 2px 8px; grid-column: 1; white-space: normal; }
+      .adm-by > * { white-space: nowrap; }
     }
-    @container (max-width: 380px) {
+    /* Four tabs on a phone: their shortest words. */
+    @container (max-width: 520px) {
       .xp-tabs { gap: 18px; }
       .xp-tab { font-size: 14px; }
       .xp-tab .w-mid.h { display: none; }
       .xp-tab .w-short { display: inline; }
+    }
+    @container (max-width: 340px) {
+      .xp-tabs { gap: 14px; }
+      .xp-tab { font-size: 13.5px; }
+    }
+    /* Narrow phones: "Any amount" is "Any" under its label. */
+    @container (max-width: 380px) {
+      .xp-act-tools .fs-wide { display: none; }
+      .xp-act-tools .fs-narrow { display: inline; }
     }
 
     /* Capacity: what is in, against the cap. */
@@ -284,7 +326,8 @@
       <div class="xp-tabs" id="tabs" role="tablist" aria-label="This vault">
         <button type="button" class="xp-tab" role="tab" id="tab-perf" data-tab="perf" aria-controls="pane-perf" aria-selected="true">Performance</button>
         <button type="button" class="xp-tab" role="tab" id="tab-holders" data-tab="holders" aria-controls="pane-holders" aria-selected="false" tabindex="-1"><span class="w-long">All Holders</span><span class="w-mid h">All Holders</span><span class="w-short">Holders</span></button>
-        <button type="button" class="xp-tab" role="tab" id="tab-actions" data-tab="actions" aria-controls="pane-actions" aria-selected="false" tabindex="-1"><span class="w-long">Curator Action History</span><span class="w-mid">Curator Actions</span></button>
+        <button type="button" class="xp-tab" role="tab" id="tab-activity" data-tab="activity" aria-controls="pane-activity" aria-selected="false" tabindex="-1">Activity</button>
+        <button type="button" class="xp-tab" role="tab" id="tab-actions" data-tab="actions" aria-controls="pane-actions" aria-selected="false" tabindex="-1"><span class="w-long">Curator Action History</span><span class="w-mid h">Curator Actions</span><span class="w-short">Curator</span></button>
       </div>
 
       <div class="xp-pane" id="pane-perf" role="tabpanel" aria-labelledby="tab-perf">
@@ -396,12 +439,60 @@
         </section>
       </div>
 
+      <div class="xp-pane" id="pane-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+        <section class="ui-section" id="activitySec">
+          <div class="ui-head">
+            <h2>Activity</h2>
+            <button type="button" class="ui-btn" id="activityCsv" title="These deposits and withdrawals as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
+          </div>
+          <div class="ui-toolbar xp-act-tools">
+            <div class="ui-seg" id="avType" role="group" aria-label="Type">
+              <button type="button" data-v="" class="on">All</button><button type="button" data-v="1">Deposits</button><button type="button" data-v="0">Withdrawals</button>
+            </div>
+            <div class="ui-filters" style="--cols: 2">
+              <label class="ui-filter"><span class="ui-filter-label">Min amount</span><select id="avMin" data-fs><option value="0" data-narrow="Any">Any amount</option><option value="100">$100</option><option value="1000">$1K</option><option value="10000">$10K</option><option value="100000">$100K</option></select></label>
+              <label class="ui-filter"><span class="ui-filter-label">Wallet</span><input type="search" id="avWallet" placeholder="0x…" spellcheck="false" autocomplete="off"></label>
+            </div>
+          </div>
+          <div class="ui-figures" style="--n:3" id="avFigures">
+            <div class="ui-figure"><div class="k">Deposited</div><div class="v"></div><div class="s">&nbsp;</div></div>
+            <div class="ui-figure"><div class="k">Withdrawn</div><div class="v"></div><div class="s">&nbsp;</div></div>
+            <div class="ui-figure"><div class="k">Net</div><div class="v"></div><div class="s">&nbsp;</div></div>
+          </div>
+          <div class="ui-table-wrap av-tbl">
+            <table class="ui-table" id="activity">
+              <thead><tr><th>When</th><th>Type</th><th class="n">Amount</th><th class="n">Value</th><th>Wallet</th><th class="n">Tx</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="mk-list av-list" id="activityList"></div>
+          <div id="activityPager"></div>
+          <p class="chart-note" id="activityNote"></p>
+        </section>
+      </div>
+
       <div class="xp-pane" id="pane-actions" role="tabpanel" aria-labelledby="tab-actions" hidden>
         <section class="ui-section" id="actionsSec">
           <div class="ui-head">
             <h2>Curator action history</h2>
-            <button type="button" class="ui-btn" id="actionsCsv" title="These rebalances as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
+            <button type="button" class="ui-btn" id="actionsCsv" title="These actions as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
           </div>
+          <div class="ui-toolbar">
+            <div class="ui-seg" id="actKind" role="group" aria-label="Kind">
+              <button type="button" data-v="admin" class="on">Administrative</button><button type="button" data-v="rebalance">Rebalancing</button>
+            </div>
+          </div>
+          <div id="admView">
+            <div class="ui-figures" style="--n:3" id="admFigures">
+              <div class="ui-figure"><div class="k">Changes</div><div class="v"></div><div class="s">&nbsp;</div></div>
+              <div class="ui-figure"><div class="k">At deployment</div><div class="v"></div><div class="s">&nbsp;</div></div>
+              <div class="ui-figure"><div class="k">Last change</div><div class="v"></div><div class="s">&nbsp;</div></div>
+            </div>
+            <div id="admList"></div>
+            <div id="admPager"></div>
+            <p class="chart-note" id="admNote"></p>
+          </div>
+          <div id="rebView" hidden>
           <div class="ui-figures" style="--n:3" id="actFigures">
             <div class="ui-figure"><div class="k">Rebalances</div><div class="v"></div><div class="s">&nbsp;</div></div>
             <div class="ui-figure"><div class="k">Moved in 30 days</div><div class="v"></div><div class="s">&nbsp;</div></div>
@@ -410,6 +501,7 @@
           <div id="actList"></div>
           <div id="actPager"></div>
           <p class="chart-note" id="actNote"></p>
+          </div>
         </section>
       </div>
     </div>

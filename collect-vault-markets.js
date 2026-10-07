@@ -452,4 +452,4 @@ if (require.main === module) {
   main({ only: i > 0 ? String(process.argv[i + 1] || '').toLowerCase() : null })
     .catch(e => { console.log('::error::vault-markets: ' + String(e.message || e).replace(/https?:\/\/\S+/g, '<url>')); process.exitCode = 1; });
 }
-module.exports = { main, readVault, wantedDays, SEL, MARKETS, words, array, text, units };
+module.exports = { main, readVault, wantedDays, SEL, MARKETS, CHAINS, CHAIN_OF_ID, words, array, text, units, pool };

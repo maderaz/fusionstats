@@ -23,23 +23,37 @@
 //
 // And a file a vault for its Curator Action History,
 // explorer/actions/<chain>-<address>.json, read only when that tab opens:
-// each rebalance the curator made (rebalance-events-<address>.json, the
-// rebalance scan's), newest first, with what it moved, protocol by protocol
-// (rebalance-flows.js, as the Address page counts it). The newest
-// ACTIONS_KEPT of them; the count says how many there are in all.
+//   admin       every change made to the vault and the contracts that run it
+//               (vault-changes.json, collect-vault-changes.js), as
+//               tools/describe-changes.js words them, newest first; the
+//               set-up made at its deployment carries that moment
+//   actions     each rebalance the curator made (rebalance-events-<address>.json,
+//               the rebalance scan's), newest first, with what it moved,
+//               protocol by protocol (rebalance-flows.js, as the Address page
+//               counts it). The newest ACTIONS_KEPT of them; the count says how
+//               many there are in all.
 //
-//   node tools/build-explorer.js
+// And a file a vault for its Activity tab, explorer/activity/<chain>-<address>.json:
+// its deposits and withdrawals (activity-events.json, the real ones), newest
+// first, the newest ACTIVITY_KEPT: [time, 1 deposit / 0 withdrawal, amount in
+// its asset, dollars, wallet, transaction].
+//
+//   node tools/build-explorer.js              every file
+//   node tools/build-explorer.js --activity   the activity files only
 
 const fs = require('fs');
 const path = require('path');
 const TvlSeries = require('../tvl-series.js');
 const RebalanceFlows = require('../rebalance-flows.js');
 const { dailySharePrices } = require('./build-earnings.js');
+const { describeVault } = require('./describe-changes.js');
 
 const ROOT = path.join(__dirname, '..');
 const DIR = path.join(ROOT, 'explorer', 'vaults');
 const ACTIONS_DIR = path.join(ROOT, 'explorer', 'actions');
 const ACTIONS_KEPT = 1000;
+const ACTIVITY_DIR = path.join(ROOT, 'explorer', 'activity');
+const ACTIVITY_KEPT = 5000;
 
 // A day-indexed map as one array from its first day: a day without a value
 // is null, or the last value before it (carry), as the TVL page carries TVL.
@@ -144,6 +158,33 @@ function buildActions(scan, opts = {}) {
   };
 }
 
+// A vault's governance changes, worded (tools/describe-changes.js).
+function buildAdmin(state, opts = {}) {
+  if (!state || !Array.isArray(state.changes)) return null;
+  const rows = describeVault(state, opts);
+  return { readAt: state.readAt || null, deployBlock: state.deployBlock || null, count: rows.length, rows };
+}
+
+// Every vault's deposits and withdrawals, newest first: one entry a vault.
+function buildActivity(events, opts = {}) {
+  const kept = opts.kept || ACTIVITY_KEPT;
+  const by = new Map();
+  for (const e of events || []) {
+    if (!e || e.synthetic === true || !e.vault || !e.chain || (e.type !== 'deposit' && e.type !== 'withdraw')) continue;
+    const k = fileOf(e.chain, e.vault);
+    if (!by.has(k)) by.set(k, { address: e.vault.toLowerCase(), chain: String(e.chain).toLowerCase(), symbol: e.symbol || null, list: [] });
+    by.get(k).list.push(e);
+  }
+  const out = {};
+  for (const [k, v] of by) {
+    const list = v.list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || (b.block || 0) - (a.block || 0) || (b.logIdx || 0) - (a.logIdx || 0));
+    out[k] = { address: v.address, chain: v.chain, symbol: v.symbol, updatedAt: opts.updatedAt || null, count: list.length,
+      rows: list.slice(0, kept).map(e => [e.timestamp || null, e.type === 'deposit' ? 1 : 0, sig(e.assets || 0),
+        e.usdValue != null ? Math.round(e.usdValue * 100) / 100 : null, String(e.owner || e.sender || '').toLowerCase(), e.tx || null]) };
+  }
+  return out;
+}
+
 function main() {
   const read = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch { return null; } };
   const files = buildExplorer({ snapshots: read('tvl-snapshots.json'), holders: read('vault-holders.json'), holderState: read('vault-holders-state.json'),
@@ -163,17 +204,51 @@ function main() {
   for (const [name, v] of Object.entries(files)) { const b = write(DIR, name, v); if (b) { bytes += b; written++; } }
   console.log(`explorer/vaults: ${Object.keys(files).length} vaults, ${written} rewritten (${(bytes / 1024).toFixed(0)} KB)`);
 
+  // Curator Action History: the rebalances a vault has been scanned for, and
+  // the governance changes read for it, in one file.
   fs.mkdirSync(ACTIONS_DIR, { recursive: true });
-  let scans = 0, aBytes = 0, aWritten = 0;
+  const actions = {};
   for (const f of fs.readdirSync(ROOT).filter(n => /^rebalance-events-0x[0-9a-f]{40}\.json$/i.test(n))) {
     const a = buildActions(read(f));
-    if (!a) continue;
-    scans++;
-    const b = write(ACTIONS_DIR, fileOf(a.chain, a.address), a);
-    if (b) { aBytes += b; aWritten++; }
+    if (a) actions[fileOf(a.chain, a.address)] = a;
   }
-  console.log(`explorer/actions: ${scans} vaults, ${aWritten} rewritten (${(aBytes / 1024).toFixed(0)} KB)`);
+  const changes = read('vault-changes.json'), deps = (read('vault-deployments.json') || {}).deployments || {};
+  const symbols = Object.fromEntries(((read('ipor-vaults.json') || {}).vaults || []).map(v => [String(v.address).toLowerCase(), v.token || null]));
+  for (const [addr, st] of Object.entries((changes && changes.vaults) || {})) {
+    if (!st.chain) continue;
+    const dep = deps[addr.toLowerCase()];
+    const admin = buildAdmin(st, { deployedAt: dep && dep.deployedAt ? Math.floor(Date.parse(dep.deployedAt) / 1000) : null, symbol: symbols[addr.toLowerCase()] });
+    if (!admin) continue;
+    const k = fileOf(st.chain, addr);
+    actions[k] = Object.assign(actions[k] || { address: addr.toLowerCase(), chain: String(st.chain).toLowerCase(), count: 0, protocols: [], actions: [] }, { admin });
+  }
+  let aBytes = 0, aWritten = 0;
+  for (const [name, a] of Object.entries(actions)) { const b = write(ACTIONS_DIR, name, a); if (b) { aBytes += b; aWritten++; } }
+  console.log(`explorer/actions: ${Object.keys(actions).length} vaults, ${aWritten} rewritten (${(aBytes / 1024).toFixed(0)} KB)`);
+  activity(write, read);
 }
 
-if (require.main === module) main();
-module.exports = { buildExplorer, buildActions, fileOf, dense, shares };
+// The Activity tab's files, from activity-events.json.
+function activity(write, read) {
+  const act = read('activity-events.json');
+  if (!act) { console.log('explorer/activity: activity-events.json unreadable; left as it was'); return; }
+  const files = buildActivity(act.events, { updatedAt: act.updatedAt || null });
+  fs.mkdirSync(ACTIVITY_DIR, { recursive: true });
+  let bytes = 0, written = 0;
+  for (const [name, v] of Object.entries(files)) { const b = write(ACTIVITY_DIR, name, v); if (b) { bytes += b; written++; } }
+  console.log(`explorer/activity: ${Object.keys(files).length} vaults, ${written} rewritten (${(bytes / 1024).toFixed(0)} KB)`);
+}
+
+if (require.main === module) {
+  if (process.argv.includes('--activity')) {
+    const read = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch { return null; } };
+    const write = (dir, name, v) => {
+      const body = JSON.stringify(v) + '\n', p = path.join(dir, name);
+      let old = null; try { old = fs.readFileSync(p, 'utf8'); } catch {}
+      if (old === body) return 0;
+      fs.writeFileSync(p, body); return body.length;
+    };
+    activity(write, read);
+  } else main();
+}
+module.exports = { buildExplorer, buildActions, buildAdmin, buildActivity, fileOf, dense, shares };

@@ -21,6 +21,17 @@
   const dateTxt = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const amount = (n) => (n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: n >= 1000 ? 0 : n >= 1 ? 2 : 4 }));
   const shortAddr = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
+  // How long ago, however long: the site's "8h ago", "40d ago", then months
+  // and years rather than a date (a row says its date beside it).
+  const agoLong = (t) => {
+    const s = Date.now() / 1000 - t;
+    if (s < 60 * 86400) return UI.ago(t);
+    if (s < 365 * 86400) return Math.round(s / (30.44 * 86400)) + ' mo ago';
+    return (s / (365.25 * 86400)).toFixed(1).replace(/\.0$/, '') + ' y ago';
+  };
+  // An amount, a tiny one to its first two digits rather than "0".
+  const qty = (n) => (n == null ? '—' : n !== 0 && Math.abs(n) < 0.0001 ? String(Number(n.toPrecision(2))) : amount(n));
+  const cents = (v) => (v == null ? '—' : v > 0 && v < 0.005 ? '<$0.01' : usd(v));
   const EXPLORERS = { ethereum: ['Etherscan', 'https://etherscan.io/address/'], base: ['Basescan', 'https://basescan.org/address/'], arbitrum: ['Arbiscan', 'https://arbiscan.io/address/'] };
 
   // What a name says about a vault: who runs it, and what kind it is.
@@ -176,8 +187,9 @@
     tags(null);
     figures(null);
     $('perfChart').innerHTML = $('allocChart').innerHTML = '<div class="ui-empty">Loading…</div>';
-    holdersPage = 1; actionsPage = 1;
+    holdersPage = 1; actionsPage = 1; admPage = 1; avPage = 1;
     if (tab === 'holders') holdersView();
+    if (tab === 'activity') activityView();
     if (tab === 'actions') actionsView();
     const want = v;
     const f = await fetch('/explorer/vaults/' + String(v.chain).toLowerCase() + '-' + v.address.toLowerCase() + '.json')
@@ -196,10 +208,10 @@
     if (tab === 'perf') await Promise.all([drawPerf(), drawAlloc()]);
   }
 
-  // ---- Tabs: Performance, All Holders, Curator Action History -------------------
+  // ---- Tabs: Performance, All Holders, Activity, Curator Action History ----------
   // The tab is kept in the address bar (&tab=holders), so a view can be linked
   // to; switching tabs doesn't add to Back's history.
-  const TABS = ['perf', 'holders', 'actions'];
+  const TABS = ['perf', 'holders', 'activity', 'actions'];
   let tab = 'perf';
   function showTab(t, fromClick) {
     const was = tab;
@@ -214,6 +226,7 @@
     if (tab === 'perf') u.searchParams.delete('tab'); else u.searchParams.set('tab', tab);
     history.replaceState(history.state, '', u.pathname + u.search);
     if (tab === 'holders') holdersView();
+    if (tab === 'activity') activityView();
     if (tab === 'actions') actionsView();
     if (tab === 'perf' && was !== 'perf' && file) { drawPerf(); drawAlloc(); }
   }
@@ -233,7 +246,7 @@
   // asset (its shares at the latest share price) and in dollars (its share
   // of the TVL now); a holder that is itself a Fusion vault is named.
   const PAGE = 25;
-  let holdersPage = 1, actionsPage = 1;
+  let holdersPage = 1, actionsPage = 1, admPage = 1, avPage = 1;
   const lastOf = (s) => { s = series(s); if (!s) return null; for (let i = s.v.length - 1; i >= 0; i--) if (s.v[i] != null) return s.v[i]; return null; };
   const debank = (a) => `<a class="debank" href="https://debank.com/profile/${a}" target="_blank" rel="noopener" title="View on DeBank" aria-label="View on DeBank"><img src="/icons/debank.svg" alt="" width="18" height="18"></a>`;
   function holderRows() {
@@ -283,6 +296,82 @@
       .concat(rows.map(r => [r.rank, r.address, r.shares, r.asset != null ? r.asset.toFixed(6) : '', r.usd != null ? r.usd.toFixed(2) : '', r.share != null ? (r.share * 100).toFixed(4) : '', r.name || ''])));
   });
 
+  // ---- Activity -------------------------------------------------------------------------------
+  // The vault's deposits and withdrawals, newest first (explorer/activity/…,
+  // from activity-events.json), 25 a page: by type, from an amount, by wallet.
+  let av = null, avFor = null, avType = '', avMin = 0, avWallet = '';
+  const TXS_AV = { ethereum: 'https://etherscan.io/tx/', base: 'https://basescan.org/tx/', arbitrum: 'https://arbiscan.io/tx/' };
+  async function activityView() {
+    if (!cur) return;
+    const want = cur, key = String(cur.chain).toLowerCase() + '-' + cur.address.toLowerCase();
+    if (avFor !== key) {
+      avFor = key; av = null; avPage = 1;
+      $('activity').querySelector('tbody').innerHTML = '<tr class="ui-loading-row"><td colspan="6"></td></tr>';
+      $('activityList').innerHTML = ''; $('activityPager').innerHTML = ''; $('activityNote').textContent = '';
+      const a = await fetch('/explorer/activity/' + key + '.json').then(r => (r.ok ? r.json() : null)).catch(() => null);
+      if (cur !== want || avFor !== key) return;
+      av = a || { rows: [], count: 0, missing: true };
+    }
+    if (av) renderActivity();
+  }
+  function avRows() {
+    const w = avWallet.toLowerCase().replace(/\s+/g, '');
+    return (av.rows || []).filter(r => (avType === '' || String(r[1]) === avType)
+      && (!avMin || (r[3] != null && r[3] >= avMin)) && (!w || String(r[4]).includes(w)));
+  }
+  function renderActivity() {
+    const rows = avRows(), set = (i, v, sub) => { const f = $('avFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub || ' '; };
+    const dep = rows.filter(r => r[1] === 1), wd = rows.filter(r => r[1] === 0);
+    const sum = (l) => l.reduce((a, r) => a + (r[3] || 0), 0);
+    const din = sum(dep), dout = sum(wd);
+    set(0, usd(din), dep.length.toLocaleString('en-US') + (dep.length === 1 ? ' deposit' : ' deposits'));
+    set(1, usd(dout), wd.length.toLocaleString('en-US') + (wd.length === 1 ? ' withdrawal' : ' withdrawals'));
+    set(2, (din - dout < 0 ? '−' : '+') + usd(Math.abs(din - dout)), rows.length ? 'in what is shown' : '');
+    const body = $('activity').querySelector('tbody');
+    if (!rows.length) {
+      const why = av.missing ? 'Not read yet: deposits and withdrawals are read every few minutes for every vault above $50.'
+        : (av.rows || []).length ? 'Nothing matches these filters.' : 'No deposits or withdrawals yet.';
+      body.innerHTML = '<tr><td colspan="6" class="dim">' + why + '</td></tr>';
+      $('activityList').innerHTML = '<div class="empty-state">' + why + '</div>';
+      $('activityPager').innerHTML = ''; $('activityNote').textContent = '';
+      return;
+    }
+    const last = Math.ceil(rows.length / PAGE);
+    avPage = Math.min(Math.max(1, avPage), last);
+    const page = rows.slice((avPage - 1) * PAGE, avPage * PAGE);
+    const txBase = TXS_AV[String(cur.chain).toLowerCase()];
+    const sym = esc(av.symbol || cur.token || '');
+    const when = (t) => (t ? esc(agoLong(t)) + '<span>' + esc(dateTxt(t * 1000)) + '</span>' : '—');
+    const badge = (k) => (k ? '<span class="av-badge dep">Deposit</span>' : '<span class="av-badge wd">Withdrawal</span>');
+    const wallet = (a) => `<span class="hd"><a class="mono" href="/address/?a=${esc(a)}" title="${esc(a)}">${esc(shortAddr(a))}</a>${debank(a)}</span>`;
+    const tx = (h) => (txBase && h ? `<a class="act-tx" href="${txBase}${esc(h)}" target="_blank" rel="noopener" title="${esc(h)}" aria-label="The transaction">${esc(h.slice(0, 6) + '…' + h.slice(-4))} ↗</a>` : '');
+    body.innerHTML = page.map(([t, k, amt, v, a, h]) => `<tr><td class="when">${when(t)}</td><td>${badge(k)}</td><td class="n">${qty(amt)} ${sym}</td>`
+      + `<td class="n">${cents(v)}</td><td>${wallet(a)}</td><td class="n">${tx(h)}</td></tr>`).join('');
+    $('activityList').innerHTML = page.map(([t, k, amt, v, a, h]) => '<div class="mk-item">'
+      + `<div class="l l1"><span>${badge(k)}</span><span>${v != null ? cents(v) : qty(amt) + ' ' + sym}</span></div>`
+      + `<div class="l"><span class="when">${t ? esc(agoLong(t)) : '—'}</span><span>${qty(amt)} ${sym}</span></div>`
+      + `<div class="l">${wallet(a)}<span>${tx(h)}</span></div></div>`).join('');
+    $('activityPager').innerHTML = UI.pager({ total: rows.length, page: avPage, size: PAGE, noun: rows.length === 1 ? 'event' : 'events' });
+    $('activityNote').innerHTML = 'Every deposit into the vault and withdrawal from it, read from its own events on-chain; a wallet is the one the shares belong to.'
+      + (av.count > (av.rows || []).length ? ' The newest ' + (av.rows || []).length.toLocaleString('en-US') + ' of ' + av.count.toLocaleString('en-US') + ' are here.' : '')
+      + (av.updatedAt ? ' Read ' + esc(UI.ago(Date.parse(av.updatedAt) / 1000)) + '.' : '');
+  }
+  UI.onPage($('activityPager'), (n) => { avPage = n; renderActivity(); $('activitySec').scrollIntoView({ block: 'start' }); });
+  $('avType').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]');
+    if (!b || b.dataset.v === avType) return;
+    avType = b.dataset.v; avPage = 1;
+    $('avType').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (av) renderActivity();
+  });
+  $('avMin').addEventListener('change', (e) => { avMin = Number(e.target.value) || 0; avPage = 1; if (av) renderActivity(); });
+  $('avWallet').addEventListener('input', (e) => { avWallet = e.target.value.trim(); avPage = 1; if (av) renderActivity(); });
+  $('activityCsv').addEventListener('click', () => {
+    if (!av || !(av.rows || []).length) return;
+    UI.csv('fusion-' + slug() + '-activity-' + stamp(), [['time_utc', 'type', 'amount_' + String(av.symbol || cur.token || 'asset').toLowerCase(), 'value_usd', 'wallet', 'tx']]
+      .concat(avRows().map(([t, k, amt, v, a, h]) => [t ? new Date(t * 1000).toISOString() : '', k ? 'deposit' : 'withdrawal', amt, v != null ? v : '', a, h || ''])));
+  });
+
   // ---- Curator action history ---------------------------------------------------------------
   // Each rebalance the curator made, newest first (explorer/actions/…, from
   // the rebalance scan's on-chain token transfers): what moved, out of the
@@ -290,6 +379,14 @@
   // symbol; and what the rebalance moved in all, counted once.
   let acts = null, actsFor = null;
   const TXS = { ethereum: 'https://etherscan.io/tx/', base: 'https://basescan.org/tx/', arbitrum: 'https://arbiscan.io/tx/' };
+  let actKind = 'admin';
+  $('actKind').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-v]');
+    if (!b || b.dataset.v === actKind) return;
+    actKind = b.dataset.v;
+    $('actKind').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (acts) renderActions();
+  });
   async function actionsView() {
     if (!cur) return;
     const want = cur, key = String(cur.chain).toLowerCase() + '-' + cur.address.toLowerCase();
@@ -305,7 +402,52 @@
     if (!acts) return;
     renderActions();
   }
+  // Administrative: every change made to the vault and the contracts that run
+  // it (tools/describe-changes.js), newest first; the set-up made at its
+  // deployment carries that moment.
+  function renderAdmin() {
+    const adm = acts.admin, rows = (adm && adm.rows) || [];
+    const set = (i, v, sub) => { const f = $('admFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub || ' '; };
+    if (!rows.length) {
+      $('admFigures').hidden = true;
+      $('admList').innerHTML = '<div class="empty-state">' + (adm
+        ? 'No changes found: nothing about the vault or the contracts that run it has been changed.'
+        : 'Not read yet: changes to the vault and its contracts are read from their events on-chain every six hours, from the vault\'s deployment on.') + '</div>';
+      $('admPager').innerHTML = ''; $('admNote').textContent = '';
+      return;
+    }
+    $('admFigures').hidden = false;
+    const n = (r) => r.n || 1;
+    const total = rows.reduce((a, r) => a + n(r), 0), atDeploy = rows.filter(r => r.d).reduce((a, r) => a + n(r), 0);
+    const since = rows.filter(r => !r.d);
+    set(0, total.toLocaleString('en-US'), rows.length === total ? '' : rows.length.toLocaleString('en-US') + ' transactions\' worth');
+    set(1, atDeploy.toLocaleString('en-US'), rows.find(r => r.d && r.t) ? dateTxt(rows.find(r => r.d && r.t).t * 1000) : 'the set-up');
+    set(2, since.length && since[0].t ? agoLong(since[0].t) : '—', since.length ? since[0].what : 'none since deployment');
+    const last = Math.ceil(rows.length / PAGE);
+    admPage = Math.min(Math.max(1, admPage), last);
+    const txBase = TXS[String(cur.chain).toLowerCase()];
+    const when = (r) => { if (!r.t) return '—'; const d = new Date(r.t * 1000);
+      return dateTxt(r.t * 1000) + '<span>' + (r.d ? '<i class="dep-tag">At deployment</i>' : d.toISOString().slice(11, 16) + ' UTC · ' + esc(agoLong(r.t))) + '</span>'; };
+    const who = (r) => '<div class="adm-by">' + (r.role ? '<span class="rl"' + (r.also ? ' title="Also ' + esc(r.also.join(', ')) + '"' : '') + '>'
+        + esc(r.role) + (r.also ? ' +' + r.also.length : '') + '</span>' : '')
+      + (r.by ? `<a href="/address/?a=${esc(r.by)}" title="${esc(r.by)}">${esc(shortAddr(r.by))}</a>` : '')
+      + (r.via ? `<a href="/address/?a=${esc(r.via)}" title="Signed by ${esc(r.via)}">via ${esc(shortAddr(r.via))}</a>` : '') + '</div>';
+    $('admList').innerHTML = rows.slice((admPage - 1) * PAGE, admPage * PAGE).map(r => '<div class="adm">'
+      + '<div class="act-when">' + when(r) + '</div>'
+      + '<div class="adm-what"><b>' + esc(r.what) + '</b><span class="on">' + esc(r.on) + '</span>' + (r.detail ? '<span class="dt">' + esc(r.detail) + '</span>' : '') + '</div>'
+      + who(r)
+      + (txBase && r.tx ? `<a class="act-tx" href="${txBase}${esc(r.tx)}" target="_blank" rel="noopener" title="${esc(r.tx)}" aria-label="The transaction"><span class="m-hide">${esc(r.tx.slice(0, 6) + '…' + r.tx.slice(-4))} </span>↗</a>` : '<span></span>')
+      + '</div>').join('');
+    $('admPager').innerHTML = UI.pager({ total: rows.length, page: admPage, size: PAGE, noun: rows.length === 1 ? 'change' : 'changes' });
+    $('admNote').innerHTML = 'What was changed in the vault and in the contracts that run it, its access manager, fee, withdraw and rewards managers and its own price oracle, read from their events on-chain: fuses and markets, roles and who may call what, fees, limits and caps. '
+      + 'Executed by is who sent the transaction, or the contract with a role it went through (a Safe), with its roles at the time. The set-up made at deployment carries that moment.'
+      + (adm.readAt ? ' Read ' + esc(UI.ago(Date.parse(adm.readAt) / 1000)) + '.' : '');
+  }
+  UI.onPage($('admPager'), (n) => { admPage = n; renderAdmin(); $('actionsSec').scrollIntoView({ block: 'start' }); });
   function renderActions() {
+    $('admView').hidden = actKind !== 'admin';
+    $('rebView').hidden = actKind === 'admin';
+    if (actKind === 'admin') { renderAdmin(); return; }
     const list = acts.actions || [], set = (i, v, sub) => { const f = $('actFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub; };
     if (!list.length) {
       $('actFigures').hidden = true;
@@ -340,6 +482,13 @@
   }
   UI.onPage($('actPager'), (n) => { actionsPage = n; renderActions(); $('actionsSec').scrollIntoView({ block: 'start' }); });
   $('actionsCsv').addEventListener('click', () => {
+    if (acts && actKind === 'admin') {
+      const rows = (acts.admin && acts.admin.rows) || [];
+      if (!rows.length) return;
+      UI.csv('fusion-' + slug() + '-curator-changes-' + stamp(), [['time_utc', 'at_deployment', 'what', 'detail', 'contract', 'executed_by', 'role', 'via', 'tx']]
+        .concat(rows.map(r => [r.t ? new Date(r.t * 1000).toISOString() : '', r.d ? 'yes' : '', r.what, r.detail, r.on, r.by || '', [r.role].concat(r.also || []).filter(Boolean).join('; '), r.via || '', r.tx || ''])));
+      return;
+    }
     if (!acts || !(acts.actions || []).length) return;
     UI.csv('fusion-' + slug() + '-curator-actions-' + stamp(), [['time_utc', 'tx', 'moved_usd', 'moves']]
       .concat(acts.actions.map(([ts, tx, vol, moves]) => [ts ? new Date(ts * 1000).toISOString() : '', tx, vol,

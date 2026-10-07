@@ -122,6 +122,13 @@ jobs:
         continue-on-error: true
         run: node tools/build-dust-events.js
 
+      # The Explorer's Activity tab: each vault's deposits and withdrawals in
+      # a file of its own (tools/build-explorer.js --activity), so a vault's
+      # page reads its own and not every vault's.
+      - name: Build the Explorer's activity files
+        continue-on-error: true
+        run: node tools/build-explorer.js --activity
+
       - name: Commit & push data files
         run: |
           git config user.name "github-actions[bot]"
@@ -136,6 +143,7 @@ jobs:
           [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true
           [ -f dust-events.json ] && git add -f dust-events.json || true
           [ -f dust-events-tx.json ] && git add -f dust-events-tx.json || true
+          [ -d explorer/activity ] && git add -f explorer/activity || true
           [ -f vaults.json ] && git add vaults.json || true
           [ -f ipor-vaults.json ] && git add ipor-vaults.json || true
           # Generated data never merges cleanly and never should: the freshest

@@ -35,6 +35,15 @@ jobs:
       - name: Read the markets
         run: node collect-vault-markets.js
 
+      # Every change made to each vault and the contracts that run it, from
+      # their events on-chain (collect-vault-changes.js): the Explorer's
+      # Curator Action History, administrative. A budget of calls a chain a
+      # run; a vault's history fills in from its deployment over runs.
+      - name: Read the vaults' governance changes
+        timeout-minutes: 11
+        continue-on-error: true
+        run: node collect-vault-changes.js
+
       - name: Build the Explorer's files
         continue-on-error: true
         run: node tools/build-explorer.js
@@ -43,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          for f in vault-markets.json vault-markets-history.json explorer/vaults explorer/actions; do
+          for f in vault-markets.json vault-markets-history.json vault-changes.json explorer/vaults explorer/actions explorer/activity; do
             [ -e "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)
