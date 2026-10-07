@@ -55,8 +55,13 @@ const PAGES = [
     description: 'Branded 3D cube images for social posts, sized for each network.' },
 ];
 
+// Whether search engines may list the site. Off for now: every page says
+// noindex (tools/page-meta.js writes it; the pages outside the menu carry
+// their own). Turn it on and run node tools/page-meta.js to be listed.
+const INDEXED = false;
+
 const title = (p) => p.name + ' — ' + SITE_NAME;
 const url = (p) => SITE + p.path;
 const cardUrl = (p) => (CARDS ? CARDS + p.card + '.png' : null);
 
-module.exports = { SITE, SITE_NAME, CARDS, PAGES, title, url, cardUrl };
+module.exports = { SITE, SITE_NAME, CARDS, INDEXED, PAGES, title, url, cardUrl };

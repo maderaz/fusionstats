@@ -8,7 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { PAGES, title, url, cardUrl } = require('./pages.js');
+const { PAGES, INDEXED, title, url, cardUrl } = require('./pages.js');
 const { rewrite, heading, block, BEGIN, END } = require('./page-meta.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -56,6 +56,18 @@ test('the block: title, description, canonical address, and the share card once 
   }
   assert.strictEqual(title(p), 'Stocks — Fusion Stats');
   assert.strictEqual(url(PAGES[0]), 'https://fusionecosystem.xyz/');
+});
+test('while the site is kept out of search, every page in the repo says noindex, once', () => {
+  if (INDEXED) return;
+  const { execSync } = require('child_process');
+  const files = execSync('git ls-files -z -- "*.html"', { cwd: ROOT }).toString().split('\0').filter(Boolean);
+  assert.ok(files.length >= PAGES.length, 'read ' + files.length + ' pages');
+  const off = files.filter(f => {
+    const tags = fs.readFileSync(path.join(ROOT, f), 'utf8').match(/<meta name="robots" content="[^"]*"\s*\/?>/g) || [];
+    return tags.length !== 1 || !/noindex/.test(tags[0]);
+  });
+  assert.deepStrictEqual(off, []);
+  assert.ok(block(PAGES[0], '').includes('<meta name="robots" content="noindex">'));
 });
 test('descriptions fit a search result (at most 170 characters), and cards have distinct names', () => {
   const long = PAGES.filter(p => p.description.length > 170).map(p => p.file + ' ' + p.description.length);
