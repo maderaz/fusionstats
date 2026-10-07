@@ -242,9 +242,10 @@
 
   // ---- All holders ------------------------------------------------------------------------
   // Every holder, largest first (tools/build-explorer.js, from the holders
-  // collector's balances), 25 a page. What each holds is in the vault's
-  // asset (its shares at the latest share price) and in dollars (its share
-  // of the TVL now); a holder that is itself a Fusion vault is named.
+  // collector's balances), 25 a page. What each holds is its share of the
+  // vault: of its assets as the markets read them (else its shares at the
+  // latest share price) and of the TVL now; a holder that is itself a Fusion
+  // vault is named.
   const PAGE = 25;
   let holdersPage = 1, actionsPage = 1, admPage = 1, avPage = 1;
   const lastOf = (s) => { s = series(s); if (!s) return null; for (let i = s.v.length - 1; i >= 0; i--) if (s.v[i] != null) return s.v[i]; return null; };
@@ -252,11 +253,12 @@
   function holderRows() {
     const f = file || {}, all = (f.holders && f.holders.all) || [];
     const supply = all.reduce((a, h) => a + h[1], 0);
-    const sp = lastOf(f.days && f.days.sharePrice);
+    const sp = lastOf(f.days && f.days.sharePrice), total = f.markets && f.markets.totalAssets;
     return all.map(([a, shares], i) => {
       const share = supply > 0 ? shares / supply : null;
       const v = vaults.find(x => x.address.toLowerCase() === a);
-      return { rank: i + 1, address: a, shares, asset: sp ? shares * sp : null, usd: share != null && cur.tvl ? cur.tvl * share : null, share, name: v ? v.name : null };
+      const asset = share != null && total > 0 ? total * share : sp ? shares * sp : null;
+      return { rank: i + 1, address: a, shares, asset, usd: share != null && cur.tvl ? cur.tvl * share : null, share, name: v ? v.name : null };
     });
   }
   function holdersView() {

@@ -170,6 +170,15 @@ async function getBlock(rpc, blockNum) {
   return await rpc('eth_getBlockByNumber', ['0x' + blockNum.toString(16), false]);
 }
 
+// The share token's decimals, read from the vault: a Fusion vault's are its
+// asset's plus two (8 for USDC, 20 for WETH), so no one number fits them all.
+async function readDecimals(rpc, addr) {
+  const out = await rpc('eth_call', [{ to: addr, data: '0x313ce567' }, 'latest']);
+  const d = parseInt(out, 16);
+  if (!Number.isFinite(d) || d > 36) throw new Error(`no decimals() on ${addr}`);
+  return d;
+}
+
 async function getLogs(rpc, addr, fromBlock, toBlock) {
   return await rpc('eth_getLogs', [{
     address: addr,
@@ -368,6 +377,7 @@ async function scanVault(vault, args, persistedState, checkpoint) {
   const fromBlock = (prior && Number.isFinite(prior.lastBlock))
     ? prior.lastBlock + 1
     : deployBlock;
+  vault = { ...vault, decimals: Number.isFinite(persistedState?.decimals) ? persistedState.decimals : await readDecimals(rpc, addr) };
 
   if (fromBlock > head) {
     // Up to date — rebuild Maps from sidecar state and snapshot so the
@@ -431,6 +441,7 @@ function packResult(vault, deployBlock, head, snap) {
     },
     state: {
       lastBlock: snap.lastBlock,
+      decimals,
       totalHolders: snap.totalHolders,
       bal: snap.bal,
       byDay: snap.byDay,
