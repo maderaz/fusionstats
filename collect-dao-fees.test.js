@@ -16,7 +16,8 @@ async function test(name, fn) {
 }
 
 const w = (x) => BigInt(x).toString(16).padStart(64, '0');
-const V = { apple: '0x31744e44d6af88225c1dbefbe5df8308faea641b', tezos: '0xde09e16675b667b6abb6d7910d6e009f630bcb96', old: '0x00000000000000000000000000000000000000c1', ethNew: '0x00000000000000000000000000000000000000c5', legacy: '0x00000000000000000000000000000000000000c6', stranger: '0x00000000000000000000000000000000000000c7', down: '0x00000000000000000000000000000000000000c2' };
+const V = { apple: '0x31744e44d6af88225c1dbefbe5df8308faea641b', tezos: '0xde09e16675b667b6abb6d7910d6e009f630bcb96', old: '0x00000000000000000000000000000000000000c1', ethNew: '0x00000000000000000000000000000000000000c5', legacy: '0x00000000000000000000000000000000000000c6', stranger: '0x00000000000000000000000000000000000000c7', down: '0x00000000000000000000000000000000000000c2',
+  small: '0x00000000000000000000000000000000000000c3', gone: '0x00000000000000000000000000000000000000c8' };
 const ACC = { perf: '0x00000000000000000000000000000000000000a1', mgmt: '0x00000000000000000000000000000000000000a2', oldAcc: '0x00000000000000000000000000000000000000a3' };
 const MGR = { apple: '0x00000000000000000000000000000000000000b1', tezos: '0x00000000000000000000000000000000000000b2', ethNew: '0x00000000000000000000000000000000000000b3' };
 // The DAO's fee recipient, and an older treasury Safe with the same signers.
@@ -31,6 +32,8 @@ const CHAIN = {
   [V.ethNew]: ['0x00000000000000000000000000000000000000a5', 1000, 50, MGR.ethNew, 200, 30],
   [V.legacy]: [TREASURY, 1000, 100, null],
   [V.stranger]: [STRANGER, 1000, 100, null],
+  [V.small]: ['0x00000000000000000000000000000000000000a6', 1000, 50, MGR.ethNew, 200, 30],
+  [V.gone]: ['0x00000000000000000000000000000000000000a7', 500, 25, MGR.apple, 200, 30],
 };
 const accounts = {}; const managers = {};
 for (const [v, c] of Object.entries(CHAIN)) { if (c[3]) { accounts[c[0]] = c[3]; managers[c[3]] = [c[4], c[5]]; } }
@@ -67,10 +70,18 @@ const IPOR = { vaults: [
 (async () => {
   console.log('\ndao fees');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dao-fees-'));
-  const ipor = path.join(dir, 'ipor.json'), out = path.join(dir, 'out.json');
+  const ipor = path.join(dir, 'ipor.json'), out = path.join(dir, 'out.json'), snapshots = path.join(dir, 'snaps.json');
   fs.writeFileSync(ipor, JSON.stringify(IPOR));
+  // History: "Small" held $50K once; a vault IPOR no longer lists held $80K
+  // on Base; another unlisted one never passed the floor.
+  const D = 20000;
+  fs.writeFileSync(snapshots, JSON.stringify({ vaults: {
+    [V.small]: { chain: 'ethereum', symbol: 'USDC', snapshots: [{ day: D, tvlUsd: 50000 }, { day: D + 5, tvlUsd: 900 }] },
+    [V.gone]: { chain: 'base', symbol: 'WETH', snapshots: [{ day: D, tvlUsd: 80000 }, { day: D + 9, tvlUsd: 0 }] },
+    '0x00000000000000000000000000000000000000c9': { chain: 'base', symbol: 'DAI', snapshots: [{ day: D, tvlUsd: 4000 }] },
+  } }));
   const log = console.log; const lines = []; console.log = (...a) => lines.push(a.join(' '));
-  await F.main({ out, ipor });
+  await F.main({ out, ipor, snapshots });
   console.log = log;
   const j = JSON.parse(fs.readFileSync(out, 'utf8'));
   await test("a vault's own rates and the DAO's share of each, as percents", () => {
@@ -80,9 +91,10 @@ const IPOR = { vaults: [
   await test('a vault whose fee account is no FeeManager keeps its rates and no DAO share', () => {
     assert.deepStrictEqual([j.vaults[V.old].perf, j.vaults[V.old].daoPerf, j.vaults[V.old].daoMgmt], [10, null, null]);
   });
-  await test('only vaults above $10K, on chains with endpoints; an unreachable one is warned and left out', () => {
-    assert.deepStrictEqual(Object.keys(j.vaults).sort(), [V.apple, V.tezos, V.old, V.ethNew, V.legacy, V.stranger].sort());
+  await test('vaults above $10K now or ever, listed or not, on chains with endpoints; an unreachable one is warned and left out', () => {
+    assert.deepStrictEqual(Object.keys(j.vaults).sort(), [V.apple, V.tezos, V.old, V.ethNew, V.legacy, V.stranger, V.small, V.gone].sort());
     assert.ok(lines.some(l => /::warning::dao-fees: Unreachable/.test(l)));
+    assert.deepStrictEqual([j.vaults[V.gone].chainId, j.vaults[V.gone].name, j.vaults[V.gone].daoPerf], [8453, 'WETH vault, base', 2]);
   });
   await test('an older vault paying a Safe signed by the DAO’s own signers counts in full', () => {
     assert.deepStrictEqual([j.vaults[V.legacy].daoPerf, j.vaults[V.legacy].daoMgmt, j.vaults[V.legacy].daoVia], [10, 1, 'treasury']);
@@ -94,7 +106,7 @@ const IPOR = { vaults: [
     const prev = { readAt: 'x', vaults: { [V.down]: { chainId: 1, name: 'Unreachable', perf: 5, daoPerf: 2, mgmt: 0.5, daoMgmt: 0.3 } } };
     fs.writeFileSync(out, JSON.stringify(prev));
     console.log = () => {};
-    await F.main({ out, ipor });
+    await F.main({ out, ipor, snapshots });
     console.log = log;
     assert.strictEqual(JSON.parse(fs.readFileSync(out, 'utf8')).vaults[V.down].daoPerf, 2);
   });

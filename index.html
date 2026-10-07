@@ -244,6 +244,20 @@
     .stat-card .label .info-tip { margin-left: 5px; vertical-align: middle; position: relative; top: -1px; }
     .stat-card .value:empty { height: 1.05em; width: 70%; border-radius: 8px; }
     .stat-card .value.earn { color: var(--pos); }
+    /* DAO and Curator earnings open their Finances page (a tap on the ⓘ
+       opens its tip instead). A pointer over either lights its area with
+       the charts' dot grid, softly, fading out to its edges. */
+    a.stat-card { position: relative; isolation: isolate; color: inherit; text-decoration: none; outline: none; -webkit-tap-highlight-color: transparent; --dots: rgba(11, 11, 15, 0.12); }
+    :root[data-theme="dark"] a.stat-card { --dots: rgba(255, 255, 255, 0.09); }
+    a.stat-card::before {
+      content: ''; position: absolute; z-index: -1; inset: -12px 0; pointer-events: none;
+      background: radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 12px 12px;
+      -webkit-mask-image: radial-gradient(ellipse 75% 85% at 50% 50%, #000 40%, transparent 100%);
+              mask-image: radial-gradient(ellipse 75% 85% at 50% 50%, #000 40%, transparent 100%);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    a.stat-card:focus-visible::before { opacity: 1; }
+    @media (hover: hover) { a.stat-card:hover::before { opacity: 1; } }
     .stat-card .value {
       margin-top: 6px;
       font-size: clamp(15px, calc(3.3cqi - 7.5px), 32px);
@@ -1019,8 +1033,8 @@
         <div class="ov-half">
           <div class="figs figs-3">
             <div class="stat-card fig-tvl"><div class="label"><span class="nw">TVL<span class="info-tip" tabindex="0" data-tip="Total value locked across every Fusion vault on every network, as IPOR's API reports it now: the vault list this page already loads, so it costs no extra download. It refreshes with the data. The TVL page charts its history, rebuilt from on-chain snapshots.">&#9432;</span></span></div><div class="value" id="tvlValue"></div></div>
-            <div class="stat-card fig-earn"><div class="label">DAO <span class="nw">earnings<span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="earnValue"></div></div>
-            <div class="stat-card fig-curator"><div class="label">Curator <span class="nw">earnings<span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="curatorValue"></div></div>
+            <a class="stat-card fig-earn" href="/finances/dao"><div class="label">DAO <span class="nw">earnings<span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="earnValue"></div></a>
+            <a class="stat-card fig-curator" href="/finances/curator"><div class="label">Curator <span class="nw">earnings<span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="curatorValue"></div></a>
           </div>
           <div id="tvlWeekly" class="flow-chart">
             <div class="flow-chart-header">
@@ -1144,6 +1158,7 @@
   </div>
 
   <script src="/fusion-select.js"></script>
+  <script src="/earnings.js"></script>
   <script>
     function formatAmount(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
@@ -1729,35 +1744,13 @@
       renderEarnings(vaults);
     }
 
-    // Annualized earnings: what the IPOR DAO takes from Fusion's vaults in a
-    // year at today's TVL and APY, from every vault above $10K (99.9% of TVL).
-    // Per vault: its share of the management fee, on the TVL; and its share of
-    // the performance fee, on the yield before fees. IPOR's APY is what
-    // depositors keep, so the yield before fees is (APY + management fee) /
-    // (1 - performance fee); a vault losing money pays no performance fee.
-    // The fee terms are each vault's own, read on-chain (dao-fees.json); TVL
-    // and APY are IPOR's, already in dollars at its ETH, BTC and other prices.
-    const EARN_FLOOR = 10000;
+    // Annualized earnings: what the IPOR DAO, and the vaults' own curators
+    // and operators, take from Fusion's vaults in a year at today's TVL and
+    // APY, from every vault above $10K (99.9% of TVL); the formula is
+    // earnings.js's, shared with the Finances pages.
     let daoFees, daoFeesLoad = null;
-    // The same for the vaults' own curators and operators: the rest of each
-    // fee, what the vault charges less the DAO's part (the FeeManager's
-    // recipients). A vault paying the DAO's treasury directly has none.
     function earnings(vaults, fees) {
-      const dao = { mgmt: 0, perf: 0 }, cur = { mgmt: 0, perf: 0 };
-      let count = 0, missing = 0;
-      for (const v of vaults) {
-        if (!(v.tvl > EARN_FLOOR)) continue;
-        const f = fees[String(v.address).toLowerCase()];
-        if (!f || f.daoMgmt == null || f.daoPerf == null) { missing++; continue; }
-        const net = Number(v.apy) / 100;
-        const gross = net > 0 ? (net + f.mgmt / 100) / (1 - f.perf / 100) : 0;
-        dao.mgmt += v.tvl * f.daoMgmt / 100;
-        dao.perf += v.tvl * gross * f.daoPerf / 100;
-        cur.mgmt += v.tvl * Math.max(0, f.mgmt - f.daoMgmt) / 100;
-        cur.perf += v.tvl * gross * Math.max(0, f.perf - f.daoPerf) / 100;
-        count++;
-      }
-      return { dao: Object.assign(dao, { total: dao.mgmt + dao.perf }), curator: Object.assign(cur, { total: cur.mgmt + cur.perf }), count, missing };
+      return FusionEarnings.annualized(vaults, fees);
     }
     function renderEarnings(vaults) {
       const el = document.getElementById('earnValue');
