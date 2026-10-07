@@ -6,8 +6,19 @@
   <script>window.FusionData && FusionData.preload(['share-prices.json', 'ipor-vaults.json', 'fe-apy.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Share-Price Monitor — Fusion Stats</title>
-  <meta name="description" content="Share-price trajectory per Fusion vault, its realised APY against the rate the IPOR app shows, sorted by how far the two drift apart.">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <title>Monitor — Fusion Stats</title>
+  <meta name="description" content="Each Fusion vault's share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/monitor">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Stats">
+  <meta property="og:title" content="Monitor — Fusion Stats">
+  <meta property="og:description" content="Each Fusion vault's share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/monitor">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Monitor — Fusion Stats">
+  <meta name="twitter:description" content="Each Fusion vault's share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.">
+  <!-- /page-meta -->
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%88</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -90,7 +101,7 @@
   <div class="ui-page">
     <header class="ui-masthead">
       <div>
-        <h1>Share-Price Monitor</h1>
+        <h1>Monitor</h1>
         <p class="ui-lede">Each vault's share price over a window, and how the rate it actually earned compares with the rate the IPOR app shows. The widest gaps come first.</p>
         <div class="ui-status" id="status">Loading…</div>
       </div>

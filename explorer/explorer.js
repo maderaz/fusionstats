@@ -111,7 +111,7 @@
     close();
     input.value = '';
     input.blur();
-    history.pushState(null, '', hrefOf(v));
+    history.pushState({ fromHome: true }, '', hrefOf(v));
     route();
     window.scrollTo({ top: 0 });
   }
@@ -133,6 +133,8 @@
     const h = $('title');
     h.style.fontSize = '';
     h.style.whiteSpace = 'nowrap';
+    // Stepped aside on a phone (nav.js), the top bar saying it: nothing to fit.
+    if (h.getBoundingClientRect().width <= 1) return;
     let size = parseFloat(getComputedStyle(h).fontSize);
     while (h.scrollWidth > h.clientWidth + 0.5 && size > 16) { size -= 1; h.style.fontSize = size + 'px'; }
     if (h.scrollWidth > h.clientWidth + 0.5) h.style.whiteSpace = '';
@@ -141,12 +143,14 @@
   function showHome() {
     document.title = 'Explorer — Fusion Stats';
     $('title').textContent = 'Explorer';
-    fitTitle();
+    requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = 'Every Fusion vault, one at a time: search by name, token or network, or paste its address.';
     $('tags').hidden = true;
     $('status').textContent = '';
     $('home').hidden = false;
     $('vault').hidden = true;
+    $('search').hidden = false;
+    $('back').hidden = true;
     $('picks').innerHTML = vaults.slice(0, 12).map((v, i) => row(v, i, true)).join('');
   }
   function showMissing(a) {
@@ -160,10 +164,13 @@
     cur = v; file = null;
     document.title = v.name + ' — Explorer — Fusion Stats';
     $('title').textContent = v.name;
-    fitTitle();
+    requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = categoryOf(v.name);
     $('home').hidden = true;
     $('vault').hidden = false;
+    close();
+    $('search').hidden = true;
+    $('back').hidden = false;
     $('status').textContent = '';
     tags(null);
     figures(null);
@@ -520,9 +527,15 @@
   $('allocPng').addEventListener('click', () => exportPng('alloc'));
   $('perfCsv').addEventListener('click', () => exportCsv('perf'));
   $('allocCsv').addEventListener('click', () => exportCsv('alloc'));
-  // The pinned search draws a hairline once the page runs under it.
-  const pin = () => $('search').classList.toggle('stuck', window.scrollY > 4 && $('search').getBoundingClientRect().top <= 0.5);
-  window.addEventListener('scroll', pin, { passive: true });
+  // Back: to the search the vault was picked from, or to the start page when
+  // the vault was opened from a link.
+  $('back').href = location.pathname;
+  $('back').addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    if (history.state && history.state.fromHome) history.back();
+    else { history.pushState(null, '', location.pathname); route(); window.scrollTo({ top: 0 }); }
+  });
   seg('perfView', (v) => { perfView = v; if (file) drawPerf(); });
   seg('perfRange', (v) => { perfRange = v; if (file) drawPerf(); });
   seg('allocRange', (v) => { allocRange = v; if (file) drawAlloc(); });
@@ -534,7 +547,7 @@
     const a = e.target.closest('a.xp-opt');
     if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
-    history.pushState(null, '', a.getAttribute('href'));
+    history.pushState({ fromHome: true }, '', a.getAttribute('href'));
     route();
     window.scrollTo({ top: 0 });
   });

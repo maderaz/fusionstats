@@ -97,10 +97,12 @@ function inPage(opts) {
     return s + (t ? ' "' + t + '"' : '');
   };
   const add = (kind, el, detail) => { const k = kind + '|' + name(el) + '|' + detail; if (!seen.has(k)) { seen.add(k); out.push({ kind, el: name(el), detail: detail + TAG }); } };
+  // Text kept for screen readers only (clipped to nothing) is not on screen.
+  const srOnly = (cs) => cs.clipPath === 'inset(50%)' || /^rect\(0px,? 0px,? 0px,? 0px\)$/.test(cs.clip);
   const shown = (el) => {
     for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
       const cs = getComputedStyle(n);
-      if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0 || n.hidden) return false;
+      if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0 || n.hidden || srOnly(cs)) return false;
     }
     const r = el.getBoundingClientRect();
     return r.width > 0 && r.height > 0;

@@ -9,7 +9,19 @@
   <script>window.FusionData && FusionData.preload(['activity-recent.json', 'ipor-vaults.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Activity — Fusion Stats</title>
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <title>Key Metrics — Fusion Stats</title>
+  <meta name="description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Stats">
+  <meta property="og:title" content="Key Metrics — Fusion Stats">
+  <meta property="og:description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Key Metrics — Fusion Stats">
+  <meta name="twitter:description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
+  <!-- /page-meta -->
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1010,7 +1022,7 @@
   <div class="page">
     <header class="masthead">
       <div>
-        <h1>Vault Activity</h1>
+        <h1>Key Metrics</h1>
         <p class="lede">Deposit &amp; withdrawal events across all Fusion vaults</p>
       </div>
       <div class="mast-meta">
@@ -2097,7 +2109,7 @@
     function clearFire() {
       if (!fireActive) return;
       fireActive = false;
-      document.title = 'Activity \u2014 Fusion Stats';
+      document.title = 'Key Metrics \u2014 Fusion Stats';
       setFavicon('\u26d4'); // default: no-entry circle (neutral)
       // restore original favicon
       const link = document.querySelector("link[rel~='icon']");

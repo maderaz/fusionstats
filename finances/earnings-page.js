@@ -23,12 +23,16 @@
   const BAR_PX = 8;
 
   let file = null, view = 'weekly', range = 'all', size = '43';
+  // The first day this page earned: the curators' fees start months after the
+  // DAO's (Mar 2025 against Oct 2024), and a chart or a total reaching back
+  // before it would open on empty weeks.
+  let firstDay = 0;
 
   // ---- The numbers ---------------------------------------------------------
   const series = () => (file ? file[KIND] : []);
   const sumLast = (n) => { const s = series(); return s.slice(Math.max(0, s.length - n)).reduce((a, v) => a + v, 0); };
   // The first day the range shows.
-  const start = () => Math.max(file.minDay, file.maxDay - RANGES[range] + 1);
+  const start = () => Math.max(firstDay, file.maxDay - RANGES[range] + 1);
 
   // Bars: { first, last, sum, open }, oldest first. A bar shows whole when
   // any of it is in the range; open is the month still under way.
@@ -36,6 +40,7 @@
     const out = [];
     series().forEach((v, k) => {
       const d = file.minDay + k, t = new Date(d * DAY);
+      if (d < firstDay) return;
       const key = t.getUTCFullYear() * 12 + t.getUTCMonth();
       let m = out[out.length - 1];
       if (!m || m.key !== key) out.push(m = { key, first: d, last: d, sum: 0 });
@@ -50,7 +55,7 @@
   function weeks() {
     const s = series(), out = [];
     for (let last = file.maxDay; last >= start(); last -= 7) {
-      const first = Math.max(file.minDay, last - 6);
+      const first = Math.max(firstDay, last - 6);
       out.unshift({ first, last, sum: s.slice(first - file.minDay, last - file.minDay + 1).reduce((a, v) => a + v, 0) });
     }
     return out;
@@ -69,8 +74,8 @@
     const n = series().length;
     set(0, annual ? usd(annual[KIND].total) : '—', annual ? 'at today’s TVL and APY' : 'fee terms not read yet');
     set(1, usd(sumLast(30)), 'about ' + whole(sumLast(30) / 30) + ' a day');
-    set(2, usd(sumLast(365)), 'since ' + date(file.maxDay - Math.min(n, 365) + 1, { year: 'numeric' }));
-    set(3, usd(sumLast(n)), 'since ' + date(file.minDay, { year: 'numeric' }));
+    set(2, usd(sumLast(365)), 'since ' + date(Math.max(firstDay, file.maxDay - Math.min(n, 365) + 1), { year: 'numeric' }));
+    set(3, usd(sumLast(n)), 'since ' + date(firstDay, { year: 'numeric' }));
   }
 
   // ---- Chart ---------------------------------------------------------------
@@ -164,7 +169,7 @@
     const f = FusionChart.inLight(() => figure(true, w));   // light colours: the image is on white
     // The image says what it is: the chart's title, the range, what a bar is.
     const who = KIND === 'dao' ? 'DAO Earnings' : 'Curator Earnings';
-    const span = range === 'all' ? 'All time, since ' + date(file.minDay, { year: 'numeric' }) : range === '365' ? 'Last 12 months' : 'Last 90 days';
+    const span = range === 'all' ? 'All time, since ' + date(firstDay, { year: 'numeric' }) : range === '365' ? 'Last 12 months' : 'Last 90 days';
     const what = view === 'weekly' ? 'each bar is a week\'s fees' : view === 'monthly' ? 'each bar is a month\'s fees, the month under way paler'
       : 'the line is everything earned to each day';
     await FusionChart.png({ data: FusionChart.quiet(FusionChart.soft(f.traces)), layout: f.layout }, {
@@ -176,7 +181,7 @@
     if (!file) return;
     let run = 0;
     const rows = [['date', 'earned_usd', 'earned_in_all_usd']];
-    series().forEach((v, k) => { run += v; rows.push([iso(file.minDay + k), v.toFixed(2), run.toFixed(2)]); });
+    series().forEach((v, k) => { if (file.minDay + k < firstDay) return; run += v; rows.push([iso(file.minDay + k), v.toFixed(2), run.toFixed(2)]); });
     UI.csv('fusion-' + KIND + '-earnings-daily-' + new Date().toISOString().slice(0, 10), rows);
   }
 
@@ -206,9 +211,14 @@
       return;
     }
     file = e;
+    firstDay = e.minDay + Math.max(0, (e[KIND] || []).findIndex(v => v > 0));
     const annual = ipor && fees ? FusionEarnings.annualized(ipor.vaults || [], fees.vaults || {}) : null;
     figures(annual);
-    $('status').innerHTML = 'Updated <b>' + UI.ago(Date.parse(e.updatedAt) / 1000) + '</b>';
+    // "Updated 2h ago" at the masthead's right, as on Key Metrics and Stocks,
+    // kept current while the page is open.
+    const updated = () => { $('status').innerHTML = 'Updated <span class="ago">' + UI.ago(Date.parse(e.updatedAt) / 1000) + '</span>'; };
+    updated();
+    setInterval(updated, 60000);
     const v = e.vaults || {}, big = v.withoutPeak && v.withoutPeak[0];
     $('coverage').textContent = 'From the ' + v.counted + ' vaults with fee terms on file, '
       + date(e.minDay, { year: 'numeric' }) + ' to ' + date(e.maxDay, { year: 'numeric' }) + '.'
