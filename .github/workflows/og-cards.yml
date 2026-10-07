@@ -1,0 +1,71 @@
+name: Share Cards
+
+# A share card for every page in the side menu (tools/og-cards.mjs): the
+# image a link to the page shows on X, Slack, LinkedIn and the rest, with
+# the page's latest data. Drawn every day, after the data's own runs, and
+# as soon as the cards' drawing or the pages' names change.
+#
+# The cards live on a branch of their own, og-cards, replaced each time (one
+# commit, one copy of each card), so the repository doesn't grow by a day's
+# images at a time. The pages point at them by GitHub's raw address
+# (tools/pages.js), which serves the latest within minutes, with no deploy.
+
+on:
+  schedule:
+    - cron: '40 9 * * *'   # daily, after TVL Snapshots
+  workflow_dispatch:
+  push:
+    branches: [claude/morpho-vault-demand-tracker-Zp6AV]
+    paths:
+      - tools/og-cards.mjs
+      - tools/pages.js
+      - .github/workflows/og-cards.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: og-cards
+  cancel-in-progress: false
+
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}   # the branch as it is now, with the latest data
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install a browser
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Draw the cards
+        continue-on-error: true   # a page that fails keeps yesterday's card (below)
+        run: node tools/og-cards.mjs --out og-out
+
+      - name: Publish to the og-cards branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Yesterday's cards stand in for any page that failed to draw today.
+          mkdir -p prev og-out
+          if git fetch --depth 1 origin og-cards 2>/dev/null; then
+            git archive FETCH_HEAD | tar -x -C prev
+            for f in prev/*.png; do [ -e "$f" ] && [ ! -e "og-out/$(basename "$f")" ] && cp "$f" og-out/; done
+          fi
+          ls og-out/*.png >/dev/null 2>&1 || { echo "::error::no cards drawn"; exit 1; }
+          cd og-out
+          git init -q
+          git checkout -q -b og-cards
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Share cards $(date -u +%Y-%m-%d) [skip ci]"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" og-cards
