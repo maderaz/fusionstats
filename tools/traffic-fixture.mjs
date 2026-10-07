@@ -23,14 +23,15 @@ function rng(seed) {
 const hex = (r, n) => Array.from({ length: n }, () => Math.floor(r() * 16).toString(16)).join('');
 const uuid = (r) => `${hex(r, 8)}-${hex(r, 4)}-4${hex(r, 3)}-a${hex(r, 3)}-${hex(r, 12)}`;
 
-// The site's owner, from Wrocław, looking at the pages often: the visitor a
-// "this is me" switch leaves out.
+// The site's owner, from Wrocław, looking at the pages often, now and then
+// from Warsaw: the city the page hides, and the visitor a "this is me"
+// switch leaves out.
 export const OWNER = '2fce9424-1c2d-4e5f-9a7b-3c4d5e6f7a8b';
 
 export function trafficRows(now = Date.now(), { days = 35, visitors = 140 } = {}) {
   const r = rng(20261007);
   const pick = (a) => a[Math.floor(r() * a.length)];
-  const people = [{ id: OWNER, place: PLACES[0], kit: KITS[0], weight: 9, since: days }];
+  const people = [{ id: OWNER, place: PLACES[0], away: PLACES[1], kit: KITS[0], weight: 9, since: days }];
   for (let i = 0; i < visitors; i++) {
     people.push({ id: uuid(r), place: pick(PLACES), kit: pick(KITS), weight: r() < 0.15 ? 4 : 1, since: Math.floor(r() * days) + 1 });
   }
@@ -41,6 +42,7 @@ export function trafficRows(now = Date.now(), { days = 35, visitors = 140 } = {}
       const at = now - Math.floor(r() * p.since * 864e5);
       const views = 1 + Math.floor(r() * (p.weight > 1 ? 5 : 3));
       const from = pick(REFS);
+      const place = p.away && r() < 0.25 ? p.away : p.place;
       for (let k = 0; k < views; k++) {
         const row = {
           ts: new Date(at + k * 45000).toISOString(),
@@ -48,7 +50,7 @@ export function trafficRows(now = Date.now(), { days = 35, visitors = 140 } = {}
           session_id: p.id,
           referrer: 'https://fusionecosystem.xyz/',
           user_agent: '',
-          country: p.place[0], region: p.place[1] || null, city: p.place[2],
+          country: place[0], region: place[1] || null, city: place[2],
           device: p.kit[0], browser: p.kit[1], os: p.kit[2],
         };
         // Where a visitor came from: recorded for the last ten days only, as
