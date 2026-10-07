@@ -24,7 +24,14 @@
     /* The search: a field, and the vaults under it as one types, as the
        Activity page's product list draws them. */
     .ui-masthead > div { min-width: 0; flex: 1; }
-    .xp-search { position: relative; margin: 20px 0 4px; max-width: 640px; }
+    /* The search keeps its place: the page's top, and the window's top once
+       the page scrolls under it. */
+    .xp-search {
+      position: sticky; top: 0; z-index: 40;
+      margin: -12px 0 6px; padding: 12px 0;
+      background: var(--bg);
+    }
+    .xp-search.stuck { box-shadow: 0 1px 0 var(--line); }
     .xp-field {
       display: flex; align-items: center; gap: 10px;
       height: 52px; padding: 0 16px;
@@ -104,8 +111,20 @@
     #markets tr.pos td:first-child { padding-left: 16px; }
     #markets tr.pos .side { color: var(--text-3); }
     #markets td.dim { color: var(--text-3); }
-    /* On a phone the table keeps a line a row and scrolls in its box. */
-    @container (max-width: 700px) { #markets td, #markets th { white-space: nowrap; } }
+    .mk-list { display: none; }
+    .mk-item { padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .mk-item .l { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .mk-item .l + .l { margin-top: 4px; }
+    .mk-item .l1 { font-size: 14.5px; font-weight: 500; color: var(--text); }
+    .mk-item .l1 i { margin-left: 6px; font-style: normal; font-size: 12.5px; color: var(--text-3); }
+    .mk-item .k { color: var(--text-3); }
+    .mk-item .p { padding-left: 12px; font-size: 12.5px; color: var(--text-2); }
+    .mk-item.total .l1 { font-weight: 600; }
+    /* A phone reads the markets as blocks, a figure a line. */
+    @container (max-width: 700px) {
+      #marketsSec .ui-table-wrap { display: none; }
+      .mk-list { display: block; }
+    }
 
     /* Capacity: what is in, against the cap. */
     .cap-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -135,20 +154,22 @@
 </head>
 <body>
   <div class="ui-page">
+    <!-- The search: on top of every view, and still there as the page scrolls. -->
+    <div class="xp-search" id="search">
+      <label class="xp-field">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+        <input id="q" type="search" placeholder="Search a vault, or paste an address" autocomplete="off" autocorrect="off" spellcheck="false"
+          role="combobox" aria-expanded="false" aria-controls="xpList" aria-autocomplete="list" aria-label="Search a vault">
+      </label>
+      <div class="xp-pop" id="xpPop" hidden><div id="xpList" role="listbox" aria-label="Vaults"></div></div>
+    </div>
+
     <header class="ui-masthead">
       <div>
         <h1 id="title">Explorer</h1>
         <p class="ui-lede keep" id="lede">Every Fusion vault, one at a time: search by name, token or network, or paste its address.</p>
         <div class="xp-tags" id="tags" hidden></div>
         <div class="ui-status" id="status"></div>
-        <div class="xp-search" id="search">
-          <label class="xp-field">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
-            <input id="q" type="search" placeholder="Search a vault, or paste an address" autocomplete="off" autocorrect="off" spellcheck="false"
-              role="combobox" aria-expanded="false" aria-controls="xpList" aria-autocomplete="list" aria-label="Search a vault">
-          </label>
-          <div class="xp-pop" id="xpPop" hidden><div id="xpList" role="listbox" aria-label="Vaults"></div></div>
-        </div>
       </div>
     </header>
 
@@ -168,7 +189,23 @@
       </div>
 
       <section class="ui-section" id="perfSec">
-        <div class="ui-head"><h2>Performance</h2></div>
+        <div class="ui-head">
+          <h2>Performance</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-k">Image size</div>
+              <div class="ui-seg" id="perfSize">
+                <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
+              </div>
+              <label class="ui-check"><input type="checkbox" id="perfDots" checked> Dot grid in the image</label>
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="perfPng">Download PNG</button>
+                <button type="button" class="ui-btn" id="perfCsv" title="A row a day: the APY over the week before, the share price and the TVL">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
         <div class="ui-toolbar">
           <div class="ui-seg" id="perfView" role="group" aria-label="Measure">
             <button type="button" data-v="apy" class="on">APY</button><button type="button" data-v="sp">Share price</button><button type="button" data-v="tvl">TVL</button>
@@ -182,7 +219,23 @@
       </section>
 
       <section class="ui-section" id="allocSec">
-        <div class="ui-head"><h2>Historical allocation</h2></div>
+        <div class="ui-head">
+          <h2>Historical allocation</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-k">Image size</div>
+              <div class="ui-seg" id="allocSize">
+                <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
+              </div>
+              <label class="ui-check"><input type="checkbox" id="allocDots" checked> Dot grid in the image</label>
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="allocPng">Download PNG</button>
+                <button type="button" class="ui-btn" id="allocCsv" title="A row a day read: each market's balance, in dollars">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
         <div class="ui-toolbar">
           <div class="ui-seg" id="allocRange" role="group" aria-label="Range">
             <button type="button" data-v="30">30d</button><button type="button" data-v="90" class="on">90d</button><button type="button" data-v="365">1y</button><button type="button" data-v="all">All</button>
@@ -201,6 +254,8 @@
             <tbody><tr class="ui-loading-row"><td colspan="6"></td></tr></tbody>
           </table>
         </div>
+        <!-- A phone: a market a block, its figures a line each. -->
+        <div class="mk-list" id="marketsList"></div>
         <p class="chart-note" id="marketsNote"></p>
       </section>
 

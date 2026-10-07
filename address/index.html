@@ -303,11 +303,10 @@
             <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
             <div class="ui-menu">
               <div class="menu-row"><span>Bar colour</span><label class="tvl-color-swatch" title="Bar colour"><input type="color" id="tvlBarColor" value="#8429FF"></label></div>
-              <div class="menu-row"><span>Axis in the image</span><button id="tvlAxisInvert" class="axis-btn" type="button">Dark</button></div>
               <div class="ui-menu-actions">
-                <button id="downloadTvlPng" class="ui-btn primary" type="button">Download PNG</button>
-                <button id="downloadTvlPng43" class="ui-btn" type="button">Download 4:3</button>
-                <button id="downloadTvlPngSquare" class="ui-btn" type="button">Download 1:1</button>
+                <button id="downloadTvlPng" class="ui-btn primary" type="button" title="4:3, white, with the dot grid, titled">Download PNG</button>
+                <button id="downloadTvlPngPage" class="ui-btn" type="button" title="At the chart's size on screen">Page size</button>
+                <button id="downloadTvlPngSquare" class="ui-btn" type="button">1:1</button>
               </div>
             </div>
           </details>
@@ -333,11 +332,10 @@
             <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
             <div class="ui-menu">
               <div class="menu-row"><span>Bar colour</span><label class="tvl-color-swatch" title="Bar colour"><input type="color" id="holdersBarColor" value="#8429FF"></label></div>
-              <div class="menu-row"><span>Axis in the image</span><button id="holdersAxisInvert" class="axis-btn" type="button">Dark</button></div>
               <div class="ui-menu-actions">
-                <button id="downloadHoldersPng" class="ui-btn primary" type="button">Download PNG</button>
-                <button id="downloadHoldersPng43" class="ui-btn" type="button">Download 4:3</button>
-                <button id="downloadHoldersPngSquare" class="ui-btn" type="button">Download 1:1</button>
+                <button id="downloadHoldersPng" class="ui-btn primary" type="button" title="4:3, white, with the dot grid, titled">Download PNG</button>
+                <button id="downloadHoldersPngPage" class="ui-btn" type="button" title="At the chart's size on screen">Page size</button>
+                <button id="downloadHoldersPngSquare" class="ui-btn" type="button">1:1</button>
               </div>
             </div>
           </details>
@@ -360,7 +358,7 @@
             <div class="ui-menu">
               <div class="menu-row"><span>Line colour</span><label class="tvl-color-swatch" title="Line colour"><input type="color" id="spLineColor" value="#8429FF"></label></div>
               <div class="ui-menu-actions">
-                <button id="downloadSpPng" class="ui-btn primary" type="button">Download PNG</button>
+                <button id="downloadSpPng" class="ui-btn primary" type="button" title="4:3, white, with the dot grid, titled">Download PNG</button>
                 <button id="downloadSpLinePng" class="ui-btn" type="button" title="Just the line: no fill, no x-axis, transparent">Download the line</button>
               </div>
             </div>
@@ -1089,6 +1087,16 @@
       return Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout, traces), CHART_CONFIG)
         .then(() => FusionChart.glide(gd, describe));
     }
+    const RANGE_TXT = (r) => (r === 'all' ? 'All history' : 'Last ' + r + ' days');
+    const SHAPES = { '43': [680, 510], square: [480, 480] };
+    // The shared image (ui-chart.js): white, the dot grid, the chart's title
+    // and under it the range and what a bar stands for.
+    function exportImage(fig, gd, aspect, filename, title, subtitle) {
+      const shape = SHAPES[aspect];
+      return FusionChart.png(fig, { width: shape ? shape[0] : gd.clientWidth, height: shape ? shape[1] : gd.clientHeight,
+        title, subtitle, dots: true, filename });
+    }
+    // A bare render, transparent: the share price's line alone.
     function saveImage(fig, width, height, filename) {
       return Plotly.toImage(fig, { format: 'png', width, height, scale: 2 }).then((url) => {
         const a = document.createElement('a');
@@ -1271,83 +1279,6 @@
         + '</div>';
     }
 
-    // Square (1:1) figure for social export. Honours the currently-visible
-    // x-window (so a zoomed view exports what you see), down-samples to ~24
-    // bars, sets an explicit bar width (date-axis bars otherwise default to the
-    // smallest x-gap and render hair-thin), and uses large axis fonts so labels
-    // stay legible at 1080×1080.
-    function tvlMakeSquareFigure(state, range, vaultInfo, visibleDays) {
-      const DAY_MS = 86400 * 1000;
-      let pts = state.pts;
-      // Restrict to the visible window if given (zoom/pan), else the active range.
-      if (visibleDays && visibleDays.length === 2) {
-        const [lo, hi] = visibleDays;
-        pts = pts.filter(p => p.day >= lo && p.day <= hi);
-      } else if (range !== 'all') {
-        const cutoff = state.anchorDay - parseInt(range, 10);
-        pts = pts.filter(p => p.day >= cutoff);
-      }
-      if (!pts.length) pts = state.pts.slice(); // never export an empty figure
-
-      // Down-sample to ~24 buckets, keeping the last (latest) value per bucket
-      // since TVL is a balance, not a flow. Bars are positioned on the bucket
-      // KEY (not the source day) so spacing is uniform — otherwise an uneven
-      // last gap can be narrower than the fixed bar width and the last two bars
-      // overlap.
-      const TARGET_BARS = 24;
-      let bucketDays = 1;
-      if (pts.length > TARGET_BARS) {
-        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
-        bucketDays = Math.ceil(spanDays / TARGET_BARS);
-        const buckets = new Map();
-        for (const p of pts) {
-          const key = Math.floor(p.day / bucketDays) * bucketDays;
-          const cur = buckets.get(key);
-          if (!cur || p.day > cur._src) buckets.set(key, { day: key, tvlUsd: p.tvlUsd, assets: p.assets, _src: p.day });
-        }
-        pts = [...buckets.values()].sort((a, b) => a.day - b.day);
-      }
-
-      const denomIsAsset = __tvlDenom === 'asset' && state.hasAssets;
-      const yValues = pts.map(p => Math.max(0, denomIsAsset ? p.assets : p.tvlUsd));
-      const tickFmt = denomIsAsset ? ',.3~s' : '$,.2s';
-      const c = tvlAxisColors();
-      const trace = {
-        x: pts.map(p => new Date(p.day * DAY_MS)),
-        y: yValues,
-        type: 'bar',
-        name: vaultInfo.name || 'TVL',
-        width: bucketDays * 0.82 * DAY_MS,   // uniform fat bars, in ms
-        marker: { color: __tvlBarColor, cornerradius: 6, line: { width: 0 } },
-        hoverinfo: 'skip',
-      };
-      // Pin the x-range to the data extent (+half a bar each side) so bars and
-      // ticks share one coordinate system and nothing clips.
-      const pad = bucketDays * 0.6 * DAY_MS;
-      const xMin = pts[0].day * DAY_MS - pad;
-      const xMax = pts[pts.length - 1].day * DAY_MS + pad;
-      const layout = {
-        margin: { l: 132, r: 28, t: 24, b: 96 },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 26 },
-        xaxis: {
-          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
-          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
-          ticks: 'outside', ticklen: 8, tickcolor: c.line,
-          range: [xMin, xMax], autorange: false,
-        },
-        yaxis: {
-          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
-          tickfont: { size: 26 }, tickformat: tickFmt, rangemode: 'tozero', nticks: 5,
-          ticks: 'outside', ticklen: 8, tickcolor: c.line,
-        },
-        bargap: 0.18,
-        showlegend: false,
-      };
-      return { trace, layout };
-    }
-
     const TVL_CONFIG = {
       responsive: true, displaylogo: false,
       modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
@@ -1410,44 +1341,20 @@
       // Axis invert toggle (black ⇄ white axis lines + labels). White axis pairs
       // with a dark preview bg so it stays visible; exports keep transparent bg.
       // The axis colour of the image: dark for a white slide, light for a dark one.
-      const axisBtn = document.getElementById('tvlAxisInvert');
-      if (axisBtn) {
-        axisBtn.textContent = __tvlAxisDark ? 'Dark' : 'Light';
-        axisBtn.onclick = () => { __tvlAxisDark = !__tvlAxisDark; axisBtn.textContent = __tvlAxisDark ? 'Dark' : 'Light'; };
-      }
-      // Export. 'wide' snapshots the live chart at on-screen proportions.
-      // 'square' (1080×1080) and '43' (1440×1080) re-render the live chart as a
-      // social figure (current zoom window, down-sampled bars, large fonts),
-      // capture it, then restore the on-screen view.
+      // Export: 4:3 by default, the chart's own size or 1:1 when asked, the
+      // chart as on screen within its zoom, titled.
       const exportTvlPng = async (aspect) => {
         const stamp = new Date().toISOString().slice(0, 10);
         const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        const denomSlug = (__tvlDenom === 'asset' && __tvlAssetSymbol) ? __tvlAssetSymbol.toLowerCase() : 'usd';
+        const asset = __tvlDenom === 'asset' && __tvlAssetSymbol;
         const gd = document.getElementById('tvlChart');
-
-        if (aspect === 'square' || aspect === '43') {
-          const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
-          const ratioSlug = aspect === '43' ? '4x3' : '1x1';
-          // Read the currently-displayed x-window (zoom or full) so the export
-          // matches what's on screen. _fullLayout.xaxis.range is [lo, hi] in ms.
-          let visibleDays = null;
-          try {
-            const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
-            if (xr && xr.length === 2) {
-              const DAY_MS = 86400 * 1000;
-              visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
-            }
-          } catch {}
-          const { trace, layout } = tvlMakeSquareFigure(__tvlState, __tvlRange, vaultInfo, visibleDays);
-          await saveImage({ data: [trace], layout }, dims.w, dims.h, `fusion-tvl-${slug}-${denomSlug}-${ratioSlug}-${stamp}.png`);
-          return;
-        }
-        // At the chart's own size: its layout, in the image's axis colour.
         const { trace, layout } = tvlMakeTraceLayout(__tvlState, __tvlRange, vaultInfo, true);
-        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight, `fusion-tvl-${slug}-${denomSlug}-${stamp}.png`);
+        await exportImage({ data: [trace], layout: keepZoom(gd, layout) }, gd, aspect,
+          `fusion-tvl-${slug}-${asset ? __tvlAssetSymbol.toLowerCase() : 'usd'}-${aspect === '43' ? '4x3' : aspect === 'square' ? '1x1' : 'page'}-${stamp}.png`,
+          (vaultInfo.name || 'Vault') + ': TVL', RANGE_TXT(__tvlRange) + ' · each bar is a day\'s TVL in ' + (asset ? __tvlAssetSymbol : 'dollars'));
       };
-      document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('wide');
-      document.getElementById('downloadTvlPng43').onclick = () => exportTvlPng('43');
+      document.getElementById('downloadTvlPng').onclick = () => exportTvlPng('43');
+      document.getElementById('downloadTvlPngPage').onclick = () => exportTvlPng('wide');
       document.getElementById('downloadTvlPngSquare').onclick = () => exportTvlPng('square');
     }
 
@@ -1589,72 +1496,6 @@
     }
     const holdersDescribe = (pts) => FusionChart.when(pts[0].x) + '<div class="hv-big">' + Number(pts[0].y).toLocaleString('en-US') + ' holders</div>';
 
-    // Square / 4:3 social figure — parallels tvlMakeSquareFigure. Down-samples
-    // to ~24 bars keeping the LAST count per bucket (holders is a level, like
-    // TVL, not a flow), pins the x-range so bars and ticks share one system.
-    function holdersMakeSquareFigure(state, range, visibleDays) {
-      const DAY_MS = 86400 * 1000;
-      let pts = state.pts;
-      if (visibleDays && visibleDays.length === 2) {
-        const [lo, hi] = visibleDays;
-        pts = pts.filter(p => p.day >= lo && p.day <= hi);
-      } else if (range !== 'all') {
-        const cutoff = state.anchorDay - parseInt(range, 10);
-        pts = pts.filter(p => p.day >= cutoff);
-      }
-      if (!pts.length) pts = state.pts.slice();
-
-      const TARGET_BARS = 24;
-      let bucketDays = 1;
-      if (pts.length > TARGET_BARS) {
-        const spanDays = pts[pts.length - 1].day - pts[0].day + 1;
-        bucketDays = Math.ceil(spanDays / TARGET_BARS);
-        const buckets = new Map();
-        for (const p of pts) {
-          const key = Math.floor(p.day / bucketDays) * bucketDays;
-          const cur = buckets.get(key);
-          if (!cur || p.day > cur._src) buckets.set(key, { day: key, holders: p.holders, _src: p.day });
-        }
-        pts = [...buckets.values()].sort((a, b) => a.day - b.day);
-      }
-
-      const yValues = pts.map(p => p.holders);
-      const maxY = yValues.reduce((m, v) => Math.max(m, v), 0);
-      const c = axisColors(__holdersAxisDark);
-      const trace = {
-        x: pts.map(p => new Date(p.day * DAY_MS)),
-        y: yValues,
-        type: 'bar',
-        name: 'Holders',
-        width: bucketDays * 0.82 * DAY_MS,
-        marker: { color: __holdersBarColor, cornerradius: 6, line: { width: 0 } },
-        hoverinfo: 'skip',
-      };
-      const pad = bucketDays * 0.6 * DAY_MS;
-      const xMin = pts[0].day * DAY_MS - pad;
-      const xMax = pts[pts.length - 1].day * DAY_MS + pad;
-      const layout = {
-        margin: { l: 110, r: 28, t: 24, b: 96 },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Geist, -apple-system, sans-serif', color: c.axis, size: 26 },
-        xaxis: {
-          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
-          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
-          ticks: 'outside', ticklen: 8, tickcolor: c.line,
-          range: [xMin, xMax], autorange: false,
-        },
-        yaxis: {
-          showgrid: false, showline: true, linecolor: c.line, linewidth: 2,
-          tickfont: { size: 26 }, tickformat: ',d', dtick: holdersDtick(maxY),
-          rangemode: 'tozero', ticks: 'outside', ticklen: 8, tickcolor: c.line,
-        },
-        bargap: 0.18,
-        showlegend: false,
-      };
-      return { trace, layout };
-    }
-
     function renderHoldersChart(addr, vaultInfo, events) {
       try { renderHoldersChartInner(addr, vaultInfo, events); }
       catch (e) {
@@ -1702,37 +1543,18 @@
         barColorInput.value = __holdersBarColor;
         barColorInput.oninput = () => { __holdersBarColor = barColorInput.value; reactChart(); };
       }
-      const axisBtn = document.getElementById('holdersAxisInvert');
-      if (axisBtn) {
-        axisBtn.textContent = __holdersAxisDark ? 'Dark' : 'Light';
-        axisBtn.onclick = () => { __holdersAxisDark = !__holdersAxisDark; axisBtn.textContent = __holdersAxisDark ? 'Dark' : 'Light'; };
-      }
 
       const exportHoldersPng = async (aspect) => {
         const stamp = new Date().toISOString().slice(0, 10);
         const slug = (vaultInfo.name || addr.slice(0, 10)).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         const gd = document.getElementById('holdersChart');
-
-        if (aspect === 'square' || aspect === '43') {
-          const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
-          const ratioSlug = aspect === '43' ? '4x3' : '1x1';
-          let visibleDays = null;
-          try {
-            const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
-            if (xr && xr.length === 2) {
-              const DAY_MS = 86400 * 1000;
-              visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
-            }
-          } catch {}
-          const { trace, layout } = holdersMakeSquareFigure(__holdersState, __holdersRange, visibleDays);
-          await saveImage({ data: [trace], layout }, dims.w, dims.h, `fusion-holders-${slug}-${ratioSlug}-${stamp}.png`);
-          return;
-        }
         const { trace, layout } = holdersMakeTraceLayout(__holdersState, __holdersRange, true);
-        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight, `fusion-holders-${slug}-${stamp}.png`);
+        await exportImage({ data: [trace], layout: keepZoom(gd, layout) }, gd, aspect,
+          `fusion-holders-${slug}-${aspect === '43' ? '4x3' : aspect === 'square' ? '1x1' : 'page'}-${stamp}.png`,
+          (vaultInfo.name || 'Vault') + ': holders', RANGE_TXT(__holdersRange) + ' · each bar is a day\'s count of addresses holding shares');
       };
-      document.getElementById('downloadHoldersPng').onclick = () => exportHoldersPng('wide');
-      document.getElementById('downloadHoldersPng43').onclick = () => exportHoldersPng('43');
+      document.getElementById('downloadHoldersPng').onclick = () => exportHoldersPng('43');
+      document.getElementById('downloadHoldersPngPage').onclick = () => exportHoldersPng('wide');
       document.getElementById('downloadHoldersPngSquare').onclick = () => exportHoldersPng('square');
     }
 
@@ -1857,8 +1679,9 @@
       document.getElementById('downloadSpPng').onclick = async () => {
         const gd = document.getElementById('sharePriceChart');
         const { trace, layout } = spMakeTraceLayout(__spState, __spRange, true);
-        await saveImage({ data: [trace], layout: keepZoom(gd, layout) }, gd.clientWidth, gd.clientHeight,
-          `fusion-shareprice-${spSlug()}-${new Date().toISOString().slice(0, 10)}.png`);
+        await exportImage({ data: [trace], layout: keepZoom(gd, layout) }, gd, '43',
+          `fusion-shareprice-${spSlug()}-${new Date().toISOString().slice(0, 10)}.png`,
+          (vaultInfo.name || 'Vault') + ': share price', RANGE_TXT(__spRange) + ' · each point is a day: what one share is worth in ' + (__spState.symbol || 'its asset'));
       };
       // "Download line" — minimalist export for overlay/composition use.
       // Strips the area-fill gradient and the entire x-axis, keeps the y-axis

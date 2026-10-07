@@ -18,12 +18,11 @@
   const whole = (v) => '$' + Math.round(v).toLocaleString('en-US');
   const date = (day, o) => new Date(day * DAY).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', timeZone: 'UTC' }, o));
   const iso = (day) => new Date(day * DAY).toISOString().slice(0, 10);
-  const at = (day) => new Date(day * DAY).toISOString().slice(0, 19).replace('T', ' ');
   const monthOf = (day, month) => new Date(day * DAY).toLocaleDateString('en-US', { month, year: 'numeric', timeZone: 'UTC' });
   const RANGES = { 90: 90, 365: 365, all: Infinity };
-  const BAR_PX = 8, PITCH_PX = 32;
+  const BAR_PX = 8;
 
-  let file = null, view = 'monthly', range = 'all', size = 'wide';
+  let file = null, view = 'weekly', range = 'all', size = '43';
 
   // ---- The numbers ---------------------------------------------------------
   const series = () => (file ? file[KIND] : []);
@@ -86,13 +85,12 @@
         line: { color: c, width: 2 }, fill: 'tozeroy', fillcolor: tint(c, 0.1) }];
     } else {
       const monthly = view === 'monthly', b = monthly ? months() : weeks();
-      // Thin bars, as on every chart here: at most BAR_PX wide and PITCH_PX
-      // apart. Too few to span the chart so, the timeline reaches back with
-      // empty slots in front of the first (no date, no hover).
-      const plotW = Math.max(200, width - 80);
-      const slots = Math.max(b.length, Math.ceil(plotW / PITCH_PX));
-      const fill = Math.min(0.56, BAR_PX * slots / plotW);
-      const pad = slots - b.length;
+      // Thin bars, as on every chart here, spread over the whole plot: each
+      // at most BAR_PX wide however few there are, the gaps taking the rest.
+      // The plot is the chart less the y labels' gutter (on a phone screen
+      // the labels sit inside the plot; an image keeps its gutter).
+      const plotW = Math.max(200, width - (!forExport && FusionChart.compact() ? 16 : 80));
+      const fill = Math.min(0.56, BAR_PX * b.length / plotW);
       // A month is a named place on its axis; a week sits at its middle day.
       // The month under way is paler.
       traces = [{ type: 'bar', name: 'Earned', y: b.map(p => p.sum),
@@ -100,9 +98,7 @@
         width: monthly ? fill : 7 * DAY * fill,
         customdata: b.map(p => [p.first, p.last, p.open ? 1 : 0]),
         marker: { color: c, opacity: b.map(p => (p.open ? 0.45 : 1)) } }];
-      const lo = monthly ? -0.5 - pad : at(b[0].last - 3 - 7 * (pad + 0.5));
-      const hi = monthly ? b.length - 0.5 : at(b[b.length - 1].last + 0.5);
-      xaxis = Object.assign(monthly ? { type: 'category' } : xaxis, { range: [lo, hi], autorange: false });
+      if (monthly) xaxis = { type: 'category' };
     }
     const layout = {
       autosize: true,
@@ -165,9 +161,15 @@
     const gd = $('chart');
     const shape = SHAPES[size];
     const w = shape ? shape[0] : gd.clientWidth, h = shape ? shape[1] : gd.clientHeight;
-    const f = figure(true, w);
+    const f = FusionChart.inLight(() => figure(true, w));   // light colours: the image is on white
+    // The image says what it is: the chart's title, the range, what a bar is.
+    const who = KIND === 'dao' ? 'DAO Earnings' : 'Curator Earnings';
+    const span = range === 'all' ? 'All time, since ' + date(file.minDay, { year: 'numeric' }) : range === '365' ? 'Last 12 months' : 'Last 90 days';
+    const what = view === 'weekly' ? 'each bar is a week\'s fees' : view === 'monthly' ? 'each bar is a month\'s fees, the month under way paler'
+      : 'the line is everything earned to each day';
     await FusionChart.png({ data: FusionChart.quiet(FusionChart.soft(f.traces)), layout: f.layout }, {
       width: w, height: h, dots: $('pngDots').checked,
+      title: who + ': ' + TITLES[view].toLowerCase(), subtitle: span + ' · ' + what,
       filename: 'fusion-' + KIND + '-earnings-' + view + '-' + range + '-' + new Date().toISOString().slice(0, 10) + '.png' });
   }
   function csv() {

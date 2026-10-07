@@ -830,7 +830,7 @@
     const MIN_VALID_DAY = Math.floor(Date.UTC(2021, 0, 1) / DAY_MS);
     const FEED_PAGE = 10;
     const ROUTE_PAGE = 5;
-    const LAYOUT_KEY = 'fusionstats_stocks_layout';
+    const LAYOUT_KEY = 'fusionstats_stocks_layout_v2';
 
     // CSV of whatever is on screen. Values are written raw, not formatted —
     // a spreadsheet wants the number, not "$4.6K".
@@ -857,7 +857,7 @@
       tvlVault: '__all__', tvlRange: '90', tvlType: 'line', tvlUnit: 'usd',
       walVault: '__all__', walRange: '90', walMode: 'cumulative',
       feedVault: '__all__', feedType: '', feedPage: 0, routePage: 0,
-      exportDots: true, pngStyle: 'bare', layout: 'wide',
+      exportDots: true, pngStyle: 'titled', layout: 'fourthree',
       // new: analytics sections
       vaultSet: new Set(),
       scale: 'linear', theme: 'light',
@@ -978,7 +978,10 @@
     const pendingPlots = {}, drawnPlots = new Set(), nearPlots = new Set();
     const canWatch = 'IntersectionObserver' in window;
     let plotlyIn = !!window.Plotly;
+    // An export's figure, built again and kept rather than drawn (lightFigure).
+    let capture = null;
     function draw(id, traces, layout, config, after) {
+      if (capture && capture.id === id) { capture.fig = { data: traces, layout }; return; }
       pendingPlots[id] = [traces, layout, config, after];
       if (drawnPlots.has(id) || nearPlots.has(id) || !canWatch) flushPlot(id);
     }
@@ -2337,6 +2340,10 @@
 
     const RANGE_LABEL = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days',
                           '180': 'Last 180 days', all: 'All time' };
+    // The line under the headline: the range, then what one mark stands for.
+    // Inside a week the TVL and wallet charts go by the hour (stepFor).
+    const rangeWhat = (range, what) => (RANGE_LABEL[range] || range) + '  ·  ' + what;
+    const perStep = (range) => stepFor(range) === HOUR_SEC ? "an hour's" : "a day's";
 
     // "Apple Carry Trade" -> "Apple". Derived from the vault name rather than a
     // hardcoded ticker map, so a vault added tomorrow reads correctly with no
@@ -2429,8 +2436,9 @@
 
         return {
           title, sub, legend, legendTotal, legendRow: !!legendTotal,
+          what: rangeWhat(S.tvlRange, (S.tvlType === 'bar' ? 'each bar is ' : 'each point is ')
+                  + perStep(S.tvlRange) + (usdMode ? ' TVL' : ' units held')),
           scope: [selLabel('tvlVault', 'All stock vaults'),
-                  RANGE_LABEL[S.tvlRange] || S.tvlRange,
                   selLabel('tvlUnit', 'USD'),
                   selLabel('tvlType', 'Line')].join('  ·  '),
           note: (document.getElementById('tvlNote') || {}).textContent || '',
@@ -2442,8 +2450,9 @@
         return {
           title: 'Deposit and Exit Activity Across Fusion Stock Vaults',
           sub: 'Net ' + ((tIn - tOut) >= 0 ? '+' : '') + fUsd(tIn - tOut),
-          scope: [selLabel('flowVault', 'All stock vaults'),
-                  RANGE_LABEL[S.flowRange] || S.flowRange].join('  ·  '),
+          what: rangeWhat(S.flowRange, "each bar is a day's deposits and exits"
+                  + (S.flowNet ? ', the line their net' : '')),
+          scope: selLabel('flowVault', 'All stock vaults'),
           note: 'Inflows above the line, exits below. In ' + fUsd(tIn) + ', out ' + fUsd(tOut) + '.',
         };
       }
@@ -2456,8 +2465,9 @@
             ? 'How People Got Into Fusion Stock Vaults'
             : 'Where the Money Still Here Came From',
           sub: data ? fUsd(data.total) + (gross ? ' deposited in total' : ' still held') : '',
-          scope: [RANGE_LABEL[S.flowRange] || S.flowRange,
-                  gross ? 'Gross inflow by route' : 'Value still here by route'].join('  ·  '),
+          what: rangeWhat(S.flowRange, gross ? "each slice is a route's share of the money deposited"
+                                               : "each slice is a route's share of the money still here"),
+          scope: gross ? 'Gross inflow by route' : 'Value still here by route',
           // Not "from each contract's verified source" any more — some names
           // come from who deployed a bare proxy, and two of these routes are
           // personal wallets rather than protocols. The export should not claim
@@ -2483,7 +2493,8 @@
           title: 'Return by Company Across Fusion Stock Vaults',
           sub: best ? best.vault.token + ' leads at ' + (best.total >= 0 ? '+' : '')
                       + (best.total * 100).toFixed(2) + '%' : '',
-          scope: [RANGE_LABEL[S.retRange] || S.retRange, 'Indexed to 100'].join('  ·  '),
+          what: rangeWhat(S.retRange, "each line is a vault's price per share, indexed to 100"),
+          scope: 'Indexed to 100',
           // Keyed by colour, not logo: two vaults share a company, and the
           // colour is what ties an entry to its line.
           legend: series.map((r, i) => ({ label: r.vault.name, value: fPct(r.total),
@@ -2499,8 +2510,10 @@
         sub: wLast == null ? '' : (S.walMode === 'active'
           ? wLast + ' wallets active in the latest bucket'
           : wLast + ' wallets have deposited'),
+        what: rangeWhat(S.walRange, S.walMode === 'active'
+          ? 'each bar is the wallets active in ' + (stepFor(S.walRange) === HOUR_SEC ? 'an hour' : 'a day')
+          : 'each point is every wallet that has deposited, to that ' + (stepFor(S.walRange) === HOUR_SEC ? 'hour' : 'day')),
         scope: [selLabel('walVault', 'All stock vaults'),
-                RANGE_LABEL[S.walRange] || S.walRange,
                 selLabel('walMode', 'Cumulative')].join('  ·  '),
         note: S.walMode === 'active'
           ? 'Distinct wallets transacting in each bucket.'
@@ -2547,251 +2560,282 @@
       });
     }
 
-    async function composeExport(pngUrl, w, h, filename, meta) {
-      const img = await loadImage(pngUrl);
-      if (!img) return;
+    // render(height) is the plot, drawn that many pixels tall. With fit, w × h
+    // is the whole file (a shape picked in the menu): the plot takes the
+    // height the headline, the caption and the key leave it. Without, the
+    // plot is h tall and the file grows around it.
+    async function composeExport(render, w, h, filename, meta, fit) {
       if (meta && meta.legend) {
         const marks = await Promise.all(meta.legend.map(l => loadImage(l.icon)));
         meta.legend.forEach((l, i) => { l.mark = marks[i]; });
       }
-      return new Promise((resolve) => {
-        // Background and headline used to be the same switch. They are two
-        // questions: does the file carry its own explanation, and does it
-        // carry its own background.
-        const hasHeader = (S.pngStyle === 'titled' || S.pngStyle === 'clear') && !!meta;
-        const opaque = S.pngStyle === 'titled';
-        const pad = Math.round(w / 36);
-        // Poster-scale: the headline and its counterweight are the point of
-        // this export, so they are sized to be read across a room, not to sit
-        // politely above the plot. The scope line stays small underneath.
-        const titleSize = Math.round(w / 26);
-        const subSize = Math.round(w / 44);
-        const scopeSize = Math.round(w / 104);
-        const noteSize = Math.round(w / 116);
+      // Background and headline used to be the same switch. They are two
+      // questions: does the file carry its own explanation, and does it
+      // carry its own background.
+      const hasHeader = (S.pngStyle === 'titled' || S.pngStyle === 'clear') && !!meta;
+      const opaque = S.pngStyle === 'titled';
+      const pad = Math.round(w / 36);
+      // Poster-scale: the headline and its counterweight are the point of
+      // this export, so they are sized to be read across a room, not to sit
+      // politely above the plot. The scope line stays small underneath.
+      const titleSize = Math.round(w / 26);
+      const whatSize = Math.round(w / 50);
+      const subSize = Math.round(w / 44);
+      const scopeSize = Math.round(w / 104);
+      const noteSize = Math.round(w / 116);
 
-        // Measure first: the header and footer grow with however many lines
-        // the text wraps to, so nothing is ever clipped.
-        const probe = document.createElement('canvas').getContext('2d');
-        const maxW = w - pad * 2;
-        probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-        const titleLines = hasHeader ? wrapText(probe, meta.title, maxW) : [];
-        probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-        const noteLines = hasHeader && meta.note ? wrapText(probe, meta.note, maxW) : [];
+      // Measure first: the header and footer grow with however many lines
+      // the text wraps to, so nothing is ever clipped.
+      const probe = document.createElement('canvas').getContext('2d');
+      const maxW = w - pad * 2;
+      probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW) : [];
+      // Under the headline: the range, and what one bar or point stands for.
+      probe.font = '400 ' + whatSize + 'px Poppins, sans-serif';
+      const whatLines = hasHeader && meta.what ? wrapText(probe, meta.what, maxW) : [];
+      const whatLH = Math.round(whatSize * 1.45);
+      probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+      const noteLines = hasHeader && meta.note ? wrapText(probe, meta.note, maxW) : [];
 
-        const titleLH = Math.round(titleSize * 1.16);
+      const titleLH = Math.round(titleSize * 1.16);
 
-        // A pie is unreadable without its key, and a DOM legend is not part
-        // of the plot image. When a chart supplies `legend`, it is laid out
-        // and painted here so the exported file carries the same key the page
-        // shows. Drawn even in the transparent style — a pie with no legend
-        // is not a smaller export, it is a useless one.
-        const legend = (meta && meta.legend) || null;
-        const legTotal = (meta && meta.legendTotal) || null;
-        // A per-ticker breakdown IS the subheading — it is what the single
-        // plotted line is made of — so in that mode it sits in the header at
-        // subheading scale, not in small type under the chart. A pie's key is
-        // a different job and stays below the plot at footnote scale.
-        const inHeader = hasHeader && !!(meta && meta.legendRow) && !!legend;
-        const legSize = inHeader ? Math.round(w / 58) : Math.round(w / 90);
-        const legLH = Math.round(legSize * (inHeader ? 1.7 : 2.1));
-        const totValSize = Math.round(legSize * (inHeader ? 1.15 : 1.3));
-        const totLblSize = Math.round(legSize * (inHeader ? 0.72 : 0.9));
-        const labelW = (t) => { probe.font = '500 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
-        const valueW = (t) => { probe.font = '400 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
-        const itemW = (l) => legSize * 1.7 + labelW(l.label) + legSize * 0.7 + valueW(l.value);
+      // A pie is unreadable without its key, and a DOM legend is not part
+      // of the plot image. When a chart supplies `legend`, it is laid out
+      // and painted here so the exported file carries the same key the page
+      // shows. Drawn even in the transparent style — a pie with no legend
+      // is not a smaller export, it is a useless one.
+      const legend = (meta && meta.legend) || null;
+      const legTotal = (meta && meta.legendTotal) || null;
+      // A per-ticker breakdown IS the subheading — it is what the single
+      // plotted line is made of — so in that mode it sits in the header at
+      // subheading scale, not in small type under the chart. A pie's key is
+      // a different job and stays below the plot at footnote scale.
+      const inHeader = hasHeader && !!(meta && meta.legendRow) && !!legend;
+      const legSize = inHeader ? Math.round(w / 58) : Math.round(w / 90);
+      const legLH = Math.round(legSize * (inHeader ? 1.7 : 2.1));
+      const totValSize = Math.round(legSize * (inHeader ? 1.15 : 1.3));
+      const totLblSize = Math.round(legSize * (inHeader ? 0.72 : 0.9));
+      const labelW = (t) => { probe.font = '500 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
+      const valueW = (t) => { probe.font = '400 ' + legSize + 'px Poppins, sans-serif'; return probe.measureText(t).width; };
+      const itemW = (l) => legSize * 1.7 + labelW(l.label) + legSize * 0.7 + valueW(l.value);
 
-        let totalW = 0;
-        if (legTotal) {
-          probe.font = '600 ' + totValSize + 'px Poppins, sans-serif';
-          const vw = probe.measureText(legTotal.value).width;
-          probe.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
-          totalW = vw + totLblSize * 0.7 + probe.measureText(legTotal.label).width;
+      let totalW = 0;
+      if (legTotal) {
+        probe.font = '600 ' + totValSize + 'px Poppins, sans-serif';
+        const vw = probe.measureText(legTotal.value).width;
+        probe.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+        totalW = vw + totLblSize * 0.7 + probe.measureText(legTotal.label).width;
+      }
+
+      // Two shapes. A key for a pie wants a grid; a per-ticker breakdown
+      // under a single line wants one row, with the headline figure pushed
+      // to the far right so the eye reads split-then-total.
+      let legCols = 1, legRows = 0, legH = 0, oneRow = false, itemGap = 0, totalOwnLine = false;
+      if (legend && legend.length) {
+        const rowW = legend.reduce((a, l) => a + itemW(l), 0);
+        if (meta.legendRow) {
+          oneRow = true;
+          const gaps = Math.max(1, legend.length - 1);
+          // Does the whole thing fit beside the total? At subheading scale it
+          // usually does not — the caption alone runs to half the width — so
+          // the total takes its own line rather than colliding with the
+          // tickers or forcing the type back down.
+          totalOwnLine = maxW - rowW - totalW - legSize * 2 < 0;
+          const room = (totalOwnLine ? maxW : maxW - totalW - legSize * 2) - rowW;
+          itemGap = Math.max(legSize * 0.9, Math.min(legSize * 2.4, room / gaps));
+          legRows = 1 + (totalOwnLine ? 1 : 0);
+          legH = legRows * legLH + (inHeader ? 0 : pad);
+        } else {
+          const widest = Math.max(...legend.map(l =>
+            labelW(l.label + '   ' + l.value))) + legSize * 3;
+          legCols = Math.max(1, Math.min(legend.length, Math.floor(maxW / widest)));
+          legRows = Math.ceil(legend.length / legCols);
+          legH = legRows * legLH + pad;
         }
+      } else if (legTotal) {
+        legH = legLH + pad;
+      }
 
-        // Two shapes. A key for a pie wants a grid; a per-ticker breakdown
-        // under a single line wants one row, with the headline figure pushed
-        // to the far right so the eye reads split-then-total.
-        let legCols = 1, legRows = 0, legH = 0, oneRow = false, itemGap = 0, totalOwnLine = false;
+      // The header owns the legend in units mode, so it takes that height
+      // instead of the subheading's.
+      // Room under the total line before the plot starts. The legend is the
+      // subheading now, and a subheading that butts against the chart reads
+      // as part of it.
+      const headLegH = inHeader ? legH + Math.round(legSize * 1.1) : 0;
+      const headH = hasHeader
+        ? pad + titleLines.length * titleLH
+          + (whatLines.length ? Math.round(whatSize * 0.3) + whatLines.length * whatLH + Math.round(whatSize * 0.5) : 0)
+          + (meta.sub ? Math.round(subSize * 1.35) : 0)
+          + headLegH + Math.round(pad * 0.3)
+        : 0;
+      const footLegH = inHeader ? 0 : legH;
+      // Scope is caption material — which vaults, which range, which day —
+      // so it sits under the chart with the note rather than wedged between
+      // the headline and the plot, where it was crowding both.
+      const scopeH = hasHeader ? Math.round(scopeSize * 2.4) : 0;
+      const footH = scopeH
+        + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
+
+      if (fit) h = Math.max(Math.round(w / 5), h - headH - footH);
+      const img = await loadImage(await render(h));
+      if (!img) return;
+
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h + headH + footH;
+      const c = cv.getContext('2d');
+
+      if (opaque) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
+      if (S.exportDots) paintDots(c, 0, headH, w, h);
+      c.drawImage(img, 0, headH, w, h);
+
+      let headLegendY = null;
+      if (hasHeader) {
+        c.textBaseline = 'top';
+        let y = pad;
+        c.fillStyle = '#000000';
+        c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
+        titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
+        if (whatLines.length) {
+          y += Math.round(whatSize * 0.3);
+          c.fillStyle = '#5E5E6B';
+          c.font = '400 ' + whatSize + 'px Poppins, sans-serif';
+          whatLines.forEach((ln) => { c.fillText(ln, pad, y); y += whatLH; });
+          y += Math.round(whatSize * 0.5);
+        }
+        if (meta.sub) {
+          c.fillStyle = '#8429FF';                 // the counterweight figure
+          c.font = '500 ' + subSize + 'px Poppins, sans-serif';
+          c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
+          y += Math.round(subSize * 1.35);
+        }
+        // The legend stands in for the subheading here; painted once its
+        // helpers exist, below. Only the position is decided at this point.
+        if (inHeader) { headLegendY = y + Math.round(legSize * 0.2); y += headLegH; }
+
+        c.fillStyle = '#9BA3AF';
+        c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
+        c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
+                   pad, headH + h + footLegH + Math.round(scopeSize * 0.9));
+        if (noteLines.length) {
+          c.fillStyle = '#70747A';
+          c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
+          const lh = Math.round(noteSize * 1.5);
+          noteLines.forEach((ln, i) =>
+            c.fillText(ln, pad, headH + h + footLegH + scopeH + Math.round(pad * 0.3) + i * lh));
+        }
+      }
+
+      // The mark if the file decoded, the series dot if it did not — the
+      // same fallback the page itself uses, so an export never shows a gap
+      // where a ticker should be.
+      const drawKey = (item, x, y) => {
+        const d = legSize * 1.2;                       // the disc's diameter
+        // Centre the disc on the glyphs, not on the line box — a fixed
+        // fraction of the font size left it 5px low against the caps.
+        //
+        // measureText reports the glyph box relative to the CURRENT
+        // textBaseline, which is the trap here: with 'top' set,
+        // actualBoundingBoxAscent comes back NEGATIVE (-3 at 40px), because
+        // the glyphs start below the top line rather than above the
+        // alphabetic one. Read as an ascent it moves the disc the wrong way
+        // and by the wrong amount. Pin the baseline first, then the glyph
+        // band is simply -ascent to +descent from y.
+        c.textBaseline = 'top';
+        c.font = '600 ' + legSize + 'px Poppins, sans-serif';
+        const tm = c.measureText(item.label);
+        const gTop = tm.actualBoundingBoxAscent != null ? -tm.actualBoundingBoxAscent : legSize * 0.08;
+        const gBot = tm.actualBoundingBoxDescent != null ? tm.actualBoundingBoxDescent : legSize * 0.78;
+        const cx = x + d / 2, cy = y + (gTop + gBot) / 2;
+        if (item.mark) {
+          // Clipped to a circle, because the page renders these marks with
+          // border-radius:50% and several of the source files are squares —
+          // a square Apple tile beside a round Google one is the same logo
+          // set drawn two different ways.
+          c.save();
+          c.beginPath(); c.arc(cx, cy, d / 2, 0, Math.PI * 2); c.closePath();
+          c.fillStyle = '#FFFFFF'; c.fill();           // under transparent marks
+          c.clip();
+          c.drawImage(item.mark, cx - d / 2, cy - d / 2, d, d);
+          c.restore();
+          // A hairline keeps a white-on-white mark from dissolving into the page.
+          c.beginPath(); c.arc(cx, cy, d / 2, 0, Math.PI * 2);
+          c.strokeStyle = 'rgba(0,0,0,0.10)'; c.lineWidth = Math.max(1, legSize * 0.04); c.stroke();
+        } else {
+          c.fillStyle = item.color;
+          c.beginPath(); c.arc(cx, cy, legSize * 0.5, 0, Math.PI * 2); c.fill();
+        }
+        c.textBaseline = 'top';
+        c.fillStyle = hasHeader ? '#000000' : '#191717';
+        c.font = '600 ' + legSize + 'px Poppins, sans-serif';
+        c.fillText(item.label, x + legSize * 1.7, y);
+        const lw = tm.width;
+        c.fillStyle = '#70747A';
+        c.font = '400 ' + legSize + 'px Poppins, sans-serif';
+        c.fillText(item.value, x + legSize * 1.7 + lw + legSize * 0.7, y);
+      };
+
+      const drawTotal = (y, rightAlign) => {
+        c.textBaseline = 'top';
+        c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+        const lw = c.measureText(legTotal.label).width;
+        c.font = '600 ' + totValSize + 'px Poppins, sans-serif';
+        const vw = c.measureText(legTotal.value).width;
+        const x = rightAlign ? pad + maxW - (vw + totLblSize * 0.7 + lw) : pad;
+        c.fillStyle = '#8429FF';
+        c.fillText(legTotal.value, x, y - Math.round(totValSize * 0.1));
+        c.fillStyle = '#70747A';
+        c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
+        c.fillText(legTotal.label, x + vw + totLblSize * 0.7,
+                   y + Math.round((totValSize - totLblSize) * 0.55));
+      };
+
+      const drawLegend = (top) => {
         if (legend && legend.length) {
-          const rowW = legend.reduce((a, l) => a + itemW(l), 0);
-          if (meta.legendRow) {
-            oneRow = true;
-            const gaps = Math.max(1, legend.length - 1);
-            // Does the whole thing fit beside the total? At subheading scale it
-            // usually does not — the caption alone runs to half the width — so
-            // the total takes its own line rather than colliding with the
-            // tickers or forcing the type back down.
-            totalOwnLine = maxW - rowW - totalW - legSize * 2 < 0;
-            const room = (totalOwnLine ? maxW : maxW - totalW - legSize * 2) - rowW;
-            itemGap = Math.max(legSize * 0.9, Math.min(legSize * 2.4, room / gaps));
-            legRows = 1 + (totalOwnLine ? 1 : 0);
-            legH = legRows * legLH + (inHeader ? 0 : pad);
+          if (oneRow) {
+            let x = pad;
+            legend.forEach((item) => { drawKey(item, x, top); x += itemW(item) + itemGap; });
           } else {
-            const widest = Math.max(...legend.map(l =>
-              labelW(l.label + '   ' + l.value))) + legSize * 3;
-            legCols = Math.max(1, Math.min(legend.length, Math.floor(maxW / widest)));
-            legRows = Math.ceil(legend.length / legCols);
-            legH = legRows * legLH + pad;
-          }
-        } else if (legTotal) {
-          legH = legLH + pad;
-        }
-
-        // The header owns the legend in units mode, so it takes that height
-        // instead of the subheading's.
-        // Room under the total line before the plot starts. The legend is the
-        // subheading now, and a subheading that butts against the chart reads
-        // as part of it.
-        const headLegH = inHeader ? legH + Math.round(legSize * 1.1) : 0;
-        const headH = hasHeader
-          ? pad + titleLines.length * titleLH
-            + (meta.sub ? Math.round(subSize * 1.35) : 0)
-            + headLegH + Math.round(pad * 0.3)
-          : 0;
-        const footLegH = inHeader ? 0 : legH;
-        // Scope is caption material — which vaults, which range, which day —
-        // so it sits under the chart with the note rather than wedged between
-        // the headline and the plot, where it was crowding both.
-        const scopeH = hasHeader ? Math.round(scopeSize * 2.4) : 0;
-        const footH = scopeH
-          + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
-
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h + headH + footH;
-        const c = cv.getContext('2d');
-
-        if (opaque) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
-        if (S.exportDots) paintDots(c, 0, headH, w, h);
-        c.drawImage(img, 0, headH, w, h);
-
-        let headLegendY = null;
-        if (hasHeader) {
-          c.textBaseline = 'top';
-          let y = pad;
-          c.fillStyle = '#000000';
-          c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-          titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
-          if (meta.sub) {
-            c.fillStyle = '#8429FF';                 // the counterweight figure
-            c.font = '500 ' + subSize + 'px Poppins, sans-serif';
-            c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
-            y += Math.round(subSize * 1.35);
-          }
-          // The legend stands in for the subheading here; painted once its
-          // helpers exist, below. Only the position is decided at this point.
-          if (inHeader) { headLegendY = y + Math.round(legSize * 0.2); y += headLegH; }
-
-          c.fillStyle = '#9BA3AF';
-          c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
-          c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
-                     pad, headH + h + footLegH + Math.round(scopeSize * 0.9));
-          if (noteLines.length) {
-            c.fillStyle = '#70747A';
-            c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-            const lh = Math.round(noteSize * 1.5);
-            noteLines.forEach((ln, i) =>
-              c.fillText(ln, pad, headH + h + footLegH + scopeH + Math.round(pad * 0.3) + i * lh));
+            const colW = Math.floor(maxW / legCols);
+            legend.forEach((item, i) => {
+              drawKey(item, pad + (i % legCols) * colW, top + Math.floor(i / legCols) * legLH);
+            });
           }
         }
+        // Beside the tickers when it fits, on the line below when it does not.
+        // Own line reads left, aligned with everything else in the header.
+        if (legTotal) drawTotal(top + (totalOwnLine ? legLH : 0), !totalOwnLine);
+      };
 
-        // The mark if the file decoded, the series dot if it did not — the
-        // same fallback the page itself uses, so an export never shows a gap
-        // where a ticker should be.
-        const drawKey = (item, x, y) => {
-          const d = legSize * 1.2;                       // the disc's diameter
-          // Centre the disc on the glyphs, not on the line box — a fixed
-          // fraction of the font size left it 5px low against the caps.
-          //
-          // measureText reports the glyph box relative to the CURRENT
-          // textBaseline, which is the trap here: with 'top' set,
-          // actualBoundingBoxAscent comes back NEGATIVE (-3 at 40px), because
-          // the glyphs start below the top line rather than above the
-          // alphabetic one. Read as an ascent it moves the disc the wrong way
-          // and by the wrong amount. Pin the baseline first, then the glyph
-          // band is simply -ascent to +descent from y.
-          c.textBaseline = 'top';
-          c.font = '600 ' + legSize + 'px Poppins, sans-serif';
-          const tm = c.measureText(item.label);
-          const gTop = tm.actualBoundingBoxAscent != null ? -tm.actualBoundingBoxAscent : legSize * 0.08;
-          const gBot = tm.actualBoundingBoxDescent != null ? tm.actualBoundingBoxDescent : legSize * 0.78;
-          const cx = x + d / 2, cy = y + (gTop + gBot) / 2;
-          if (item.mark) {
-            // Clipped to a circle, because the page renders these marks with
-            // border-radius:50% and several of the source files are squares —
-            // a square Apple tile beside a round Google one is the same logo
-            // set drawn two different ways.
-            c.save();
-            c.beginPath(); c.arc(cx, cy, d / 2, 0, Math.PI * 2); c.closePath();
-            c.fillStyle = '#FFFFFF'; c.fill();           // under transparent marks
-            c.clip();
-            c.drawImage(item.mark, cx - d / 2, cy - d / 2, d, d);
-            c.restore();
-            // A hairline keeps a white-on-white mark from dissolving into the page.
-            c.beginPath(); c.arc(cx, cy, d / 2, 0, Math.PI * 2);
-            c.strokeStyle = 'rgba(0,0,0,0.10)'; c.lineWidth = Math.max(1, legSize * 0.04); c.stroke();
-          } else {
-            c.fillStyle = item.color;
-            c.beginPath(); c.arc(cx, cy, legSize * 0.5, 0, Math.PI * 2); c.fill();
-          }
-          c.textBaseline = 'top';
-          c.fillStyle = hasHeader ? '#000000' : '#191717';
-          c.font = '600 ' + legSize + 'px Poppins, sans-serif';
-          c.fillText(item.label, x + legSize * 1.7, y);
-          const lw = tm.width;
-          c.fillStyle = '#70747A';
-          c.font = '400 ' + legSize + 'px Poppins, sans-serif';
-          c.fillText(item.value, x + legSize * 1.7 + lw + legSize * 0.7, y);
-        };
+      drawLegend(inHeader ? headLegendY : headH + h + Math.round(pad * 0.5));
 
-        const drawTotal = (y, rightAlign) => {
-          c.textBaseline = 'top';
-          c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
-          const lw = c.measureText(legTotal.label).width;
-          c.font = '600 ' + totValSize + 'px Poppins, sans-serif';
-          const vw = c.measureText(legTotal.value).width;
-          const x = rightAlign ? pad + maxW - (vw + totLblSize * 0.7 + lw) : pad;
-          c.fillStyle = '#8429FF';
-          c.fillText(legTotal.value, x, y - Math.round(totValSize * 0.1));
-          c.fillStyle = '#70747A';
-          c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
-          c.fillText(legTotal.label, x + vw + totLblSize * 0.7,
-                     y + Math.round((totValSize - totLblSize) * 0.55));
-        };
-
-        const drawLegend = (top) => {
-          if (legend && legend.length) {
-            if (oneRow) {
-              let x = pad;
-              legend.forEach((item) => { drawKey(item, x, top); x += itemW(item) + itemGap; });
-            } else {
-              const colW = Math.floor(maxW / legCols);
-              legend.forEach((item, i) => {
-                drawKey(item, pad + (i % legCols) * colW, top + Math.floor(i / legCols) * legLH);
-              });
-            }
-          }
-          // Beside the tickers when it fits, on the line below when it does not.
-          // Own line reads left, aligned with everything else in the header.
-          if (legTotal) drawTotal(top + (totalOwnLine ? legLH : 0), !totalOwnLine);
-        };
-
-        drawLegend(inHeader ? headLegendY : headH + h + Math.round(pad * 0.5));
-
-        cv.toBlob((blob) => {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 0);
-          resolve();
-        }, 'image/png');
-      });
+      await new Promise((resolve) => cv.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        resolve();
+      }, 'image/png'));
     }
 
     // The shapes the Export menu offers, at display size (the file is 2×) —
     // the sizes the page used to preview them at. "Page" is the chart as it
     // stands on screen.
     const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
+
+    // An image with a headline is for a light page: in a dark theme its chart
+    // is built again in the light theme's colours, with the headline's words
+    // and key, and kept rather than drawn; then built again in the page's own.
+    // A bare image (transparent, no headline) keeps the page's theme.
+    const RENDER = { tvlPlot: renderTvl, walPlot: renderWallets, flowPlot: renderFlows, routePie: renderRoutePie, retPlot: renderReturns };
+    function lightFigure(id) {
+      let meta = null, fig = null;
+      capture = { id, fig: null };
+      try { FusionChart.inLight(() => { RENDER[id](); meta = chartMeta(id); }); }
+      finally { fig = capture.fig; capture = null; }
+      RENDER[id]();
+      return fig ? { fig, meta } : null;
+    }
 
     async function downloadPlot(id, slug, size) {
       // A chart not yet scrolled to has not been drawn: draw it now.
@@ -2801,24 +2845,26 @@
       const stamp = new Date().toISOString().slice(0, 10);
       // The chosen shape, or the on-screen size for "Page". The donut has its
       // own: on screen it is narrow, and inheriting ~310px would put the title
-      // and legend on a canvas too small to read them.
+      // and legend on a canvas too small to read them. A shape is the whole
+      // file's; "Page" is the plot's, and the file grows around it.
       const shape = !size && EXPORT_SHAPES[S.layout];
       const w = (size && size.width) || (shape ? shape[0] : gd.clientWidth);
       const h = (size && size.height) || (shape ? shape[1] : gd.clientHeight);
       const scale = 2;
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
-      const fig = gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : gd;
-      const url = await Plotly.toImage(fig, { format: 'png', width: w, height: h, scale });
-      await composeExport(url, w * scale, h * scale,
-                          'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id));
+      const light = S.pngStyle !== 'bare' && document.documentElement.getAttribute('data-theme') !== 'light' ? lightFigure(id) : null;
+      const fig = light ? light.fig : gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : gd;
+      await composeExport((ch) => Plotly.toImage(fig, { format: 'png', width: w, height: Math.round(ch / scale), scale }),
+                          w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png', light ? light.meta : chartMeta(id),
+                          !!(size || shape));
     }
 
     // The export shape. It used to reshape the page itself as a preview, which
     // narrowed every section out of line with the rest; now it is only the
     // size of the file.
     function applyLayout(v) {
-      S.layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'wide';
+      S.layout = VALID_LAYOUTS.indexOf(v) >= 0 ? v : 'fourthree';
       try { localStorage.setItem(LAYOUT_KEY, S.layout); } catch (e) {}
     }
 
@@ -3083,7 +3129,7 @@
         });
       });
       // Every Export menu shows the same, remembered choice.
-      const PNG_KEY = 'stocks_png_style', DOTS_KEY = 'stocks_png_dots';
+      const PNG_KEY = 'stocks_png_style_v2', DOTS_KEY = 'stocks_png_dots_v2';
       try {
         const sv = localStorage.getItem(PNG_KEY);
         if (PNG_STYLES.indexOf(sv) >= 0) S.pngStyle = sv;
@@ -3100,7 +3146,7 @@
         applyLayout(b.dataset.v); syncExportControls();
       }));
       document.querySelectorAll('input[data-x="style"]').forEach(r => r.addEventListener('change', () => {
-        S.pngStyle = PNG_STYLES.indexOf(r.value) >= 0 ? r.value : 'bare';
+        S.pngStyle = PNG_STYLES.indexOf(r.value) >= 0 ? r.value : 'titled';
         try { localStorage.setItem(PNG_KEY, S.pngStyle); } catch (e) {}
         syncExportControls();
       }));
@@ -3142,7 +3188,7 @@
       wireButtons('retToolbar', 'data-ret-range', v => { S.retRange = v; renderReturns(); });
       wireButtons('pieMetric', 'data-pie', v => { S.pieMetric = v; renderRoutePie(); });
       document.getElementById('piePng').addEventListener('click',
-        () => downloadPlot('routePie', 'routes', { width: 900, height: 560 }));
+        () => downloadPlot('routePie', 'routes', { width: 900, height: 675 }));
 
       // Scale and theme are page-wide: repaint everything that draws.
       const repaintAll = () => {

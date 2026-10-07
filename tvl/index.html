@@ -90,7 +90,7 @@
           <div class="ui-menu">
             <div class="ui-menu-k">Image size</div>
             <div class="ui-seg" data-size="total">
-              <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="43">4:3</button><button type="button" data-v="square">1:1</button>
+              <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
             </div>
             <label class="ui-check"><input type="checkbox" data-dots checked> Dot grid in the image</label>
             <div class="ui-menu-actions">
@@ -406,45 +406,11 @@
     }
 
     // ---- PNG export ----
-    // A CSS dot grid is not in the exported pixels, so the export is
-    // composed: the dot grid redrawn by hand (when chosen), then the
-    // transparent Plotly render on top. No background: it drops onto any
-    // deck or doc.
+    // The shared image (ui-chart.js FusionChart.png): white, the dot grid when
+    // chosen, the chart's title and what it shows above it.
     let exportDots = true;
-    function composeExport(pngUrl, w, h, filename) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          const cv = document.createElement('canvas');
-          cv.width = w; cv.height = h;
-          const c = cv.getContext('2d');
-          if (exportDots) {
-            // Pitch scales with the export so the dots read as texture rather
-            // than noise at 2x, matching the 14px on-screen grid.
-            const pitch = Math.max(14, Math.round(w / 96));
-            c.fillStyle = '#191717';
-            c.globalAlpha = 0.18;
-            for (let y = h - pitch / 2; y > 0; y -= pitch) {
-              for (let x = pitch / 2; x < w; x += pitch) {
-                c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
-              }
-            }
-            c.globalAlpha = 1;
-          }
-          c.drawImage(img, 0, 0, w, h);
-          cv.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 0);
-            resolve();
-          }, 'image/png');
-        };
-        img.onerror = () => resolve();
-        img.src = pngUrl;
-      });
-    }
+    const RANGE_WORDS = { 30: 'Last 30 days', 90: 'Last 90 days', 180: 'Last 180 days', 365: 'Last 12 months', all: 'All history' };
+    const cadence = (range) => { const b = bucketDaysFor(range); return b === 1 ? 'a day' : b === 7 ? 'a week' : 'a ' + b + '-day span'; };
 
     // The export's layout: the chart's own, light, at the current zoom.
     function exportLayout(gd) {
@@ -462,18 +428,21 @@
 
     // By network: the chosen shape, at display size (the file is 2×).
     const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
-    const SIZE_KEY = 'fusionstats_tvl_layout';
+    // 4:3 unless another shape is chosen (kept per browser; a new key, so the
+    // 4:3 default reaches those who had kept "Page").
+    const SIZE_KEY = 'fusionstats_tvl_layout_v2';
     const VALID_SIZES = ['wide', 'widescreen', 'fourthree', 'compact'];
-    let netSize = 'wide';
+    let netSize = 'fourthree';
     async function downloadChartPng() {
       const gd = document.getElementById('tvlChart');
       if (!gd.data) return;
       const shape = EXPORT_SHAPES[netSize];
-      const w = shape ? shape[0] : gd.clientWidth, h = shape ? shape[1] : gd.clientHeight, scale = 2;
-      // Display size + scale:2 (not width*2 + scale:1), or Plotly keeps the
-      // layout's font sizes and the labels come out half-size.
-      const url = await Plotly.toImage({ data: gd.data, layout: exportLayout(gd) }, { format: 'png', width: w, height: h, scale });
-      await composeExport(url, w * scale, h * scale, `fusion-tvl-${stamp()}.png`);
+      const bars = curType === 'bar';
+      await FusionChart.png({ data: gd.data, layout: exportLayout(gd) }, {
+        width: shape ? shape[0] : gd.clientWidth, height: shape ? shape[1] : gd.clientHeight, dots: exportDots,
+        title: 'TVL by network' + (curStack === 'on' ? ', stacked' : ''),
+        subtitle: (RANGE_WORDS[curRange] || curRange) + ' · ' + (bars ? 'each bar is a network\'s TVL at the end of ' + cadence(curRange) : 'each line is a network, a point a day'),
+        filename: `fusion-tvl-${stamp()}.png` });
     }
 
     // ---- Total ----
@@ -531,54 +500,6 @@
       return { trace, layout };
     }
 
-    // 4:3 and 1:1 figures for export — the same bars as the chart on screen,
-    // at its cadence (weekly on 180d, 1y and All), within the visible x-window.
-    // They used to be re-bucketed to ~24 bars, which turned the weekly chart
-    // into roughly monthly bars. Sets an explicit bar width (date-axis bars
-    // otherwise default to the smallest gap and render hair-thin) and large
-    // axis fonts so labels stay legible at 1080 px.
-    function totalTvlSquareFigure(range, visibleDays) {
-      let pts = totalTvlSeries(range);
-      if (visibleDays && visibleDays.length === 2) {
-        const [lo, hi] = visibleDays;
-        const f = pts.filter(p => p.day >= lo && p.day <= hi);
-        if (f.length) pts = f;
-      }
-      const bucketDays = bucketDaysFor(range);
-      const trace = {
-        x: pts.map(p => new Date(p.day * DAY_MS)),
-        y: pts.map(p => p.tvl),
-        type: 'bar',
-        name: 'Total TVL',
-        width: bucketDays * 0.82 * DAY_MS,
-        marker: { color: TOTAL_BAR_COLOR, cornerradius: 6, line: { width: 0 } },
-        hoverinfo: 'skip',
-      };
-      const pad = bucketDays * 0.6 * DAY_MS;
-      const xMin = pts.length ? pts[0].day * DAY_MS - pad : undefined;
-      const xMax = pts.length ? pts[pts.length - 1].day * DAY_MS + pad : undefined;
-      const layout = {
-        margin: { l: 150, r: 46, t: 42, b: 112 },
-        plot_bgcolor: 'rgba(0,0,0,0)',
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        font: { family: 'Geist, -apple-system, sans-serif', color: '#3a3a3a', size: 26 },
-        xaxis: {
-          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
-          tickfont: { size: 26 }, type: 'date', tickformat: '%b %d', nticks: 5, tickangle: 0,
-          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
-          range: (xMin != null ? [xMin, xMax] : undefined), autorange: (xMin == null),
-        },
-        yaxis: {
-          showgrid: false, showline: true, linecolor: '#999999', linewidth: 2,
-          tickfont: { size: 26 }, tickformat: '$,.2s', rangemode: 'tozero', nticks: 5,
-          ticks: 'outside', ticklen: 8, tickcolor: '#999999',
-        },
-        bargap: 0.18,
-        showlegend: false,
-      };
-      return { trace, layout };
-    }
-
     function totalNote() {
       const b = bucketDaysFor(curTotalRange);
       document.getElementById('totalNote').textContent = b === 7
@@ -592,28 +513,19 @@
         + '<div class="hv-big">' + fmtUsd(pts[0].y) + '</div>');
     }
 
-    // PNG of the total: 'wide' at the on-screen proportions; 4:3 and 1:1 as
-    // their own large-type figures, within the current zoom window.
-    let totalSize = 'wide';
+    // PNG of the total: 4:3 unless another shape is chosen, the chart as on
+    // screen within the current zoom, saying what a bar is.
+    const TOTAL_SHAPES = { '43': [680, 510], square: [480, 480] };
+    let totalSize = '43';
     async function downloadTotalPng(aspect) {
       const gd = document.getElementById('totalTvlChart');
       if (!gd.data) return;
-      if (aspect === 'square' || aspect === '43') {
-        const dims = aspect === '43' ? { w: 1440, h: 1080 } : { w: 1080, h: 1080 };
-        const ratioSlug = aspect === '43' ? '4x3' : '1x1';
-        let visibleDays = null;
-        try {
-          const xr = gd._fullLayout && gd._fullLayout.xaxis && gd._fullLayout.xaxis.range;
-          if (xr && xr.length === 2) visibleDays = [Math.floor(new Date(xr[0]).getTime() / DAY_MS), Math.ceil(new Date(xr[1]).getTime() / DAY_MS)];
-        } catch {}
-        const { trace, layout } = totalTvlSquareFigure(curTotalRange, visibleDays);
-        const url = await Plotly.toImage({ data: [trace], layout }, { format: 'png', width: dims.w, height: dims.h, scale: 2 });
-        await composeExport(url, dims.w * 2, dims.h * 2, `fusion-total-tvl-${ratioSlug}-${stamp()}.png`);
-        return;
-      }
-      const w = gd.clientWidth, h = gd.clientHeight;
-      const url = await Plotly.toImage({ data: gd.data, layout: exportLayout(gd) }, { format: 'png', width: w, height: h, scale: 2 });
-      await composeExport(url, w * 2, h * 2, `fusion-total-tvl-${stamp()}.png`);
+      const shape = TOTAL_SHAPES[aspect];
+      await FusionChart.png({ data: gd.data, layout: exportLayout(gd) }, {
+        width: shape ? shape[0] : gd.clientWidth, height: shape ? shape[1] : gd.clientHeight, dots: exportDots,
+        title: 'Total TVL across Fusion vaults',
+        subtitle: (RANGE_WORDS[curTotalRange] || curTotalRange) + ' · each bar is the TVL at the end of ' + cadence(curTotalRange),
+        filename: `fusion-total-tvl-${aspect === 'wide' ? 'page' : aspect === '43' ? '4x3' : '1x1'}-${stamp()}.png` });
     }
 
     // The total chart's bars as numbers: the selected range at the chart's own

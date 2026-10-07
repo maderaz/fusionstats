@@ -88,7 +88,7 @@
             <div class="ui-menu">
               <div class="ui-menu-k">Image size</div>
               <div class="ui-seg" id="pngSize">
-                <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="43">4:3</button><button type="button" data-v="square">1:1</button>
+                <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
               </div>
               <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
               <div class="ui-menu-actions">
@@ -160,7 +160,7 @@
     const brand = (sym, i, forExport) => (window.FusionSelect && FusionSelect.tokenColor
       && FusionSelect.tokenColor(sym, darkPage() && !forExport)) || colors()[i % 7];
 
-    let data = null, view = 'markets', range = 'all', size = 'wide';
+    let data = null, view = 'markets', range = 'all', size = '43';
 
     // ---- The numbers -------------------------------------------------------
     const val = (m, k) => (m[k] || 0) * (m.price || 0);
@@ -280,17 +280,22 @@
       const gd = $('chart');
       const shape = SHAPES[size];
       const w = shape ? shape[0] : gd.clientWidth, h = shape ? shape[1] : gd.clientHeight;
+      // The image says what it is: the chart, the range, what a bar is.
+      const title = 'Supplied to Aave V4' + (view === 'markets' ? ', by market' : '');
+      const subtitle = (range === 'all' ? 'All readings' : 'Last ' + range + ' days')
+        + ' · each bar is a day\'s supply from Fusion\'s stock vaults' + (view === 'markets' ? ', split by market' : '');
+      const ch = FusionChart.pngHead(w, h, title, subtitle).chartH;
       const f = figure(true, w);
       const traces = view === 'total' ? FusionChart.soft(f.traces) : f.traces;
-      // Drawn once off screen at the image's size, so the marks in the bars
-      // are placed for it, then taken as the image.
+      // Drawn once off screen at the chart's size in the image, so the marks
+      // in the bars are placed for it, then taken as the image.
       const off = document.createElement('div');
-      off.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + w + 'px;height:' + h + 'px';
+      off.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + w + 'px;height:' + ch + 'px';
       document.body.appendChild(off);
       try {
-        await Plotly.newPlot(off, FusionChart.quiet(traces), Object.assign({}, f.layout, { width: w, height: h }), { staticPlot: true });
+        await Plotly.newPlot(off, FusionChart.quiet(traces), Object.assign({}, f.layout, { width: w, height: ch }), { staticPlot: true });
         if (view !== 'total') await Plotly.relayout(off, { images: await FusionChart.barMarks(off, 14) });
-        await FusionChart.png(off, { width: w, height: h, dots: $('pngDots').checked,
+        await FusionChart.png(off, { width: w, height: h, dots: $('pngDots').checked, title, subtitle,
           filename: 'fusion-aave-v4-' + view + '-' + range + '-' + new Date().toISOString().slice(0, 10) + '.png' });
       } finally { Plotly.purge(off); off.remove(); }
     }

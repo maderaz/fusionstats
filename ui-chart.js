@@ -25,8 +25,11 @@
 //   FusionChart.touch(gd)               a finger slid across the plot moves it
 //   FusionChart.quiet(traces)           traces that report hovers, draw none
 //   FusionChart.soft(traces)            the marks drawn soft and lean (below)
-//   FusionChart.png(fig, { width, height, dots, filename })
-//                                       download a chart as an image
+//   FusionChart.png(fig, { width, height, title, subtitle, dots, filename })
+//                                       download a chart as an image: 4:3 or
+//                                       as asked, white, titled
+//   FusionChart.inLight(fn)             fn() with the page in its light theme,
+//                                       for a figure drawn on white
 //   FusionChart.markBars(gd)            each stacked bar trace's mark
 //                                       (meta.mark: an icon's URL) inside its
 //                                       part of every bar with room; kept
@@ -637,42 +640,92 @@
     + (color ? '<span class="hv-sw" style="background:' + color + '"></span>' : '') + esc(label)
     + '</span><span class="hv-v">' + value + '</span></div>';
 
-  // A chart as a PNG for a deck or a doc: Plotly's transparent render over
-  // the dot grid it sits on (when dots), at twice the display size. fig is
-  // { data, layout } with the layout built for export (light axes).
-  function png(fig, { width, height, dots = true, filename = 'chart.png' }) {
-    const scale = 2, w = width * scale, h = height * scale;
+  // A chart as a PNG for a deck or a doc, at twice the display size: white,
+  // the chart's title and under it what it shows (the range, what a bar or a
+  // point stands for), then Plotly's render over the dot grid (when dots).
+  // fig is { data, layout } with the layout built for export (light axes), or
+  // a drawn chart; width × height is the whole image, header included.
+  const SANS = 'Geist, -apple-system, "Segoe UI", Roboto, sans-serif';
+  function wrapLines(c, text, max) {
+    const out = [];
+    let line = '';
+    for (const word of String(text).split(/\s+/)) {
+      const next = line ? line + ' ' + word : word;
+      if (line && c.measureText(next).width > max) { out.push(line); line = word; } else line = next;
+    }
+    if (line) out.push(line);
+    return out;
+  }
+  // fn() with the page in its light theme: the colours a chart reads from the
+  // CSS while it runs are the light ones, as an image on white wants, whatever
+  // the page shows. The theme is back before anything paints.
+  function inLight(fn) {
+    const root = document.documentElement, was = root.getAttribute('data-theme');
+    if (was === 'light') return fn();
+    root.setAttribute('data-theme', 'light');
+    try { return fn(); } finally {
+      if (was == null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', was);
+    }
+  }
+  // The header's measure for an image width: its lines and its height. A page
+  // that draws its chart for the image first (marks placed for its size)
+  // draws it pngHead(...).chartH tall.
+  function pngHead(width, height, title = '', subtitle = '') {
+    const pad = Math.round(width * 0.042);
+    const tSize = Math.round(Math.min(26, Math.max(17, width / 27)));
+    const sSize = Math.round(Math.min(15, Math.max(11.5, width / 50)) * 2) / 2;
+    const probe = document.createElement('canvas').getContext('2d');
+    probe.font = '600 ' + tSize + 'px ' + SANS;
+    const tLines = title ? wrapLines(probe, title, width - pad * 2) : [];
+    probe.font = '400 ' + sSize + 'px ' + SANS;
+    const sLines = subtitle ? wrapLines(probe, subtitle, width - pad * 2) : [];
+    const head = tLines.length || sLines.length
+      ? Math.round(pad + tLines.length * tSize * 1.22 + (sLines.length ? 6 + sLines.length * sSize * 1.45 : 0) + pad * 0.35) : 0;
+    return { pad, tSize, sSize, tLines, sLines, head, chartH: Math.max(160, height - head) };
+  }
+  async function png(fig, { width, height, title = '', subtitle = '', dots = true, filename = 'chart.png' }) {
+    const scale = 2;
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* draw anyway */ } }
+    const { pad, tSize, sSize, tLines, sLines, head, chartH } = pngHead(width, height, title, subtitle);
     // Display size and scale 2, not twice the size at scale 1: Plotly keeps
     // the layout's font sizes, and the labels would come out half-size.
-    return Plotly.toImage(fig, { format: 'png', width, height, scale }).then(url => new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const cv = document.createElement('canvas');
-        cv.width = w; cv.height = h;
-        const c = cv.getContext('2d');
-        if (dots) {
-          // The 14px grid on screen, its pitch scaled to the image.
-          const pitch = Math.max(14, Math.round(w / 96));
-          c.fillStyle = '#191717';
-          c.globalAlpha = 0.18;
-          for (let y = h - pitch / 2; y > 0; y -= pitch) {
-            for (let x = pitch / 2; x < w; x += pitch) { c.beginPath(); c.arc(x, y, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill(); }
-          }
-          c.globalAlpha = 1;
-        }
-        c.drawImage(img, 0, 0, w, h);
-        cv.toBlob((blob) => {
-          const href = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = href; a.download = filename;
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(() => URL.revokeObjectURL(href), 0);
-          resolve();
-        }, 'image/png');
-      };
-      img.onerror = () => resolve();
-      img.src = url;
-    }));
+    const url = await Plotly.toImage(fig, { format: 'png', width, height: chartH, scale });
+    const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
+    if (!img) return;
+    const cv = document.createElement('canvas');
+    cv.width = width * scale; cv.height = (head + chartH) * scale;
+    const c = cv.getContext('2d');
+    c.scale(scale, scale);
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(0, 0, width, head + chartH);
+    let y = pad;
+    c.textBaseline = 'alphabetic';
+    c.fillStyle = '#0B0B0F';
+    c.font = '600 ' + tSize + 'px ' + SANS;
+    tLines.forEach((l) => { y += tSize; c.fillText(l, pad, y); y += tSize * 0.22; });
+    if (sLines.length) {
+      y += 6;
+      c.fillStyle = '#5E5E6B';
+      c.font = '400 ' + sSize + 'px ' + SANS;
+      sLines.forEach((l) => { y += sSize * 1.1; c.fillText(l, pad, y); y += sSize * 0.35; });
+    }
+    if (dots) {
+      // The page's dot grid under the chart, at its pitch on screen.
+      const pitch = 16;
+      c.fillStyle = 'rgba(25, 23, 23, 0.16)';
+      for (let yy = head + chartH - pitch / 2; yy > head; yy -= pitch) {
+        for (let x = pitch / 2; x < width; x += pitch) { c.beginPath(); c.arc(x, yy, 0.85, 0, Math.PI * 2); c.fill(); }
+      }
+    }
+    c.drawImage(img, 0, head, width, chartH);
+    await new Promise((resolve) => cv.toBlob((blob) => {
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 0);
+      resolve();
+    }, 'image/png'));
   }
 
   // ---- Marks in the bars -----------------------------------------------------
@@ -740,5 +793,5 @@
     return place();
   }
 
-  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, markBars, barMarks };
+  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks };
 })();
