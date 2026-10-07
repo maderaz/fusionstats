@@ -289,14 +289,16 @@
       for (const v of all) if (Math.abs(v - target) < Math.abs(best - target)) best = v;
       if (!picks.includes(best)) picks.push(best);
     }
-    const label = labeller(xa, hi - lo);
+    // Readings all at midnight are a day's each: their dates, never "00:00",
+    // however few of them there are.
+    const label = labeller(xa, hi - lo, all.every(v => v % 864e5 === 0));
     return picks.map(l => ({ px: xa._offset + xa.l2p(l), text: label(l) }));
   }
-  function labeller(xa, span) {
+  function labeller(xa, span, daily) {
     if (xa.type === 'date') {
       const day = 864e5;
       const o = span > 300 * day ? { month: 'short', year: 'numeric' }
-        : span > 2 * day ? { month: 'short', day: 'numeric' }
+        : span > 2 * day || daily ? { month: 'short', day: 'numeric' }
         : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
       return (l) => new Date(l).toLocaleString('en-US', Object.assign({ timeZone: 'UTC' }, o));
     }
