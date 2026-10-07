@@ -16,7 +16,9 @@
   <script src="/nav.js"></script>
   <style>
     /* ---------- The list: a table on a desktop, two lines on a phone ---------- */
-    .mlist { --cols: minmax(0, 2.2fr) 128px minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.8fr); }
+    /* Each number's column is at least as wide as its heading on one line
+       (its sort arrow and ⓘ included); the vault's name takes what is left. */
+    .mlist { --cols: minmax(0, 2.2fr) 128px minmax(104px, 1.2fr) minmax(60px, 0.8fr) minmax(122px, 0.9fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr); }
     .mhead, .mrow { display: grid; grid-template-columns: var(--cols); align-items: center; column-gap: 14px; }
     .mhead { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--text-3); }
     .mhead > span { display: flex; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
@@ -36,8 +38,11 @@
     .vname .sub a { color: var(--accent); font-weight: 500; text-decoration: none; }
     .vname .sub a:hover { text-decoration: underline; text-underline-offset: 3px; }
     .spark { display: block; width: 120px; height: 28px; }
-    .spark .line { fill: none; stroke-width: 1.5; }
-    .spark .dot { stroke: var(--bg); stroke-width: 1; }
+    .spark .line { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+    /* The end dot: a round cap on a zero-length path, so it stays round. */
+    .spark .dot-ring, .spark .dot { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+    .spark .dot-ring { stroke: var(--bg); stroke-width: 6.8; }
+    .spark .dot { stroke-width: 4.8; }
     .px { color: var(--text-2); font-size: 13px; }
     .px .to { color: var(--text); font-weight: 500; }
     .px .arr { margin: 0 4px; color: var(--text-3); }
@@ -54,18 +59,13 @@
     .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
 
     @container (max-width: 900px) {
-      .mlist { --cols: minmax(0, 2fr) 96px minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.8fr) minmax(0, 0.8fr); }
+      .mlist { --cols: minmax(0, 2fr) 96px minmax(60px, 0.8fr) minmax(122px, 0.9fr) minmax(80px, 0.8fr) minmax(90px, 0.8fr); }
       .mhead .px-h, .mrow .px { display: none; }
       .spark { width: 92px; }
     }
-    /* A heading wider than its column wraps onto two lines rather than run
-       into the next one. */
-    .mhead { align-items: end; }
-    .mhead > span { white-space: normal; }
-    .mhead button { white-space: normal; text-align: inherit; line-height: 1.25; }
-    .mhead .r { text-align: right; }
-    /* Phone: the vault and its sparkline, then the four numbers. */
-    @container (max-width: 640px) {
+    /* Phone and small tablet: the vault and its sparkline, then the four
+       numbers (below 720px the table would cut the vault's name). */
+    @container (max-width: 720px) {
       .mhead { display: none; }
       .mrow {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -74,8 +74,9 @@
       }
       .mrow:hover { background: none; }
       .mrow .vname { grid-area: name; }
-      .mrow .sp { grid-area: spark; justify-self: end; }
-      .spark { width: 76px; height: 26px; }
+      /* The sparkline fills its column up to 76px, never into the name's. */
+      .mrow .sp { grid-area: spark; display: flex; justify-content: flex-end; }
+      .spark { width: 100%; max-width: 76px; height: 26px; }
       .mrow .d { grid-area: d; } .mrow .apy { grid-area: apy; } .mrow .fe { grid-area: fe; } .mrow .dev { grid-area: dev; }
       .mrow .d, .mrow .apy, .mrow .fe, .mrow .dev { justify-self: stretch; text-align: left; font-size: 13px; }
       /* The four numbers' names once, above the list, not in every row. */
@@ -211,13 +212,16 @@
     // The sparkline: the line's colour is the window's move, the dot the last move.
     function sparkSvg(vals, lineColor, dotColor) {
       if (!vals || vals.length < 2) return '<span class="na">no data</span>';
-      const W = 120, H = 28, PX = 2, PY = 4;
+      // Drawn stretched to the cell (preserveAspectRatio none); the stroke and
+      // the dot are in screen pixels so neither stretches with it, and the
+      // margins keep the dot clear of the box at the narrowest (76px).
+      const W = 120, H = 28, PX = 6, PY = 4;
       const lo = Math.min(...vals), hi = Math.max(...vals);
       const range = (hi - lo) || (hi * 0.001) || 1;
       const iw = W - 2 * PX, ih = H - 2 * PY;
       const pts = vals.map((v, i) => (PX + (i / (vals.length - 1)) * iw).toFixed(1) + ',' + (PY + (1 - (v - lo) / range) * ih).toFixed(1)).join(' ');
       const lastY = (PY + (1 - (vals[vals.length - 1] - lo) / range) * ih).toFixed(1);
-      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline class="line" points="${pts}" stroke="${lineColor}"/><circle class="dot" cx="${(PX + iw).toFixed(1)}" cy="${lastY}" r="2.4" fill="${dotColor}"/></svg>`;
+      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline class="line" points="${pts}" stroke="${lineColor}"/><path class="dot-ring" d="M${(PX + iw).toFixed(1)},${lastY}h0"/><path class="dot" d="M${(PX + iw).toFixed(1)},${lastY}h0" stroke="${dotColor}"/></svg>`;
     }
     const momentumColor = (mom) => (mom > 0 ? '#16A34A' : mom < 0 ? '#DC2626' : '#9BA3AF');
     function colorFor(pct) {

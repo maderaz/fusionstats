@@ -42,7 +42,7 @@
     .callout p:last-child { margin-bottom: 0; }
     table.api { width: 100%; margin: 8px 0 16px; border-collapse: separate; border-spacing: 0; font-size: 13.5px; }
     table.api th, table.api td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    table.api th { font-size: 12px; font-weight: 500; color: var(--text-3); }
+    table.api th { font-size: 12px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
     table.api th:first-child, table.api td:first-child { padding-left: 0; }
     table.api td { color: var(--text-2); line-height: 1.55; }
     table.api td code { font-size: 12px; overflow-wrap: anywhere; }
@@ -203,7 +203,7 @@ for (const t of rebalanceTransfers) {
         <p>The current rule set (kept in lock-step between <code>collect-rebalances.js</code> and the <code>PROTOCOL_RULES_FRONTEND</code> array in <code>address/index.html</code> so existing JSONs re-classify on the client without a re-scan):</p>
 
         <table class="api">
-          <thead><tr><th>Protocol</th><th>kind</th><th>Match heuristic (symbol / name)</th></tr></thead>
+          <thead><tr><th>Protocol</th><th>kind</th><th>Matched on</th></tr></thead>
           <tbody>
             <tr><td>Spark</td><td>lending</td><td><code>/^sp[A-Za-z]/</code>, <code>sDAI</code>, <code>sUSDS</code>, name contains <code>spark</code>, <code>variableDebtSp*</code>, <code>stableDebtSp*</code></td></tr>
             <tr><td>Aave</td><td>lending</td><td><code>aEth*</code>, <code>aBase*</code>, <code>aArb*</code>, <code>aPrime*</code>, &hellip; / name contains <code>aave</code> / <code>variableDebt*</code> / <code>stableDebt*</code></td></tr>

@@ -53,6 +53,13 @@
     @container (max-width: 700px) {
       .ui-section .ui-toolbar .ui-seg { width: 100%; }
       .ui-filters.net { --cols: 4; }
+    }
+    /* Four short switches share a row while each value fits whole; below
+       that, two by two. */
+    @container (max-width: 375px) {
+      .ui-filters.net { --cols: 2; }
+    }
+    @container (max-width: 700px) {
       .chip { height: 30px; padding: 0 10px 0 9px; font-size: 12.5px; }
     }
   </style>
@@ -125,7 +132,7 @@
         </details>
       </div>
       <div class="ui-toolbar">
-        <div class="ui-filters net" style="--cols: 4">
+        <div class="ui-filters net">
           <label class="ui-filter"><span class="ui-filter-label">Chart</span>
             <select id="netType" data-fs><option value="line">Line</option><option value="bar">Bars</option></select></label>
           <label class="ui-filter"><span class="ui-filter-label">Stack</span>

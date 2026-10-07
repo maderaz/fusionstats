@@ -14,6 +14,8 @@
 //   data-label="Base"    the name to show, when its text says more
 //   data-note="12"       a quiet note at the end of its row
 //   data-short="TVL"     a shorter name for the closed dropdown's cell
+//   data-narrow="All"    a shorter one still, where a page's cell is cramped
+//                        (the page shows .fs-narrow and hides .fs-wide there)
 // FusionSelect.chainName(id) gives a network's display name, and
 // FusionSelect.chainIcon(id) its mark ({ src, ink } or null).
 (function () {
@@ -55,6 +57,9 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const CHECK = '<svg class="fs-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l2.9 2.9 6.1-6.6"/></svg>';
+  // The trigger's chevron: its glyph is the middle 6px of its 12, so the 6px
+  // margin before it leaves 9px of air after the value.
+  const CHEV = '<svg class="fs-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
   const ALL = '<svg class="fs-ic fs-all" viewBox="0 0 18 18" aria-hidden="true"><circle cx="6.5" cy="9" r="4.25"/><circle cx="11.5" cy="9" r="4.25"/></svg>';
   const SEARCH = '<svg class="fs-search-ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>';
   const CLOSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
@@ -93,8 +98,21 @@
       -webkit-tap-highlight-color: transparent;
     }
     .fs-trigger:disabled { cursor: default; opacity: 0.55; }
-    .fs-face { display: flex; align-items: center; gap: 7px; min-width: 0; width: 100%; }
+    /* The chevron is the trigger's own (.fs-chev): at the end of the value's
+       line, always clear of it. A page's old background chevron stays off. */
+    .fs-trigger { display: flex; align-items: center; background-image: none !important; }
+    .fs-face { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1 1 auto; }
+    .fs-chev {
+      flex: none; width: 12px; height: 12px; margin-left: 6px;
+      fill: none; stroke: var(--text-3, var(--text-secondary, #9A9AA6)); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+      transition: transform 0.18s ease;
+    }
+    .fs-trigger[aria-expanded="true"] .fs-chev { transform: rotate(180deg); }
+    @media (prefers-reduced-motion: reduce) { .fs-chev { transition: none; } }
     .fs-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* An option's data-narrow is its word for a cramped trigger ("All" for
+       "All vaults"); a page shows it (.fs-narrow) where the full one won't fit. */
+    .fs-narrow { display: none; }
     .fs-ic { width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; object-fit: contain; }
     .fs-trigger .fs-ic { width: 16px; height: 16px; }
     [data-theme="dark"] .fs-ic-ink { filter: invert(1); }
@@ -160,14 +178,18 @@
     .fs-opt.active { background: var(--bg-hover, var(--bg-subtle, rgba(127, 127, 127, 0.08))); }
     .fs-opt[aria-selected="true"] { font-weight: 600; }
     .fs-opt.disabled { opacity: 0.45; cursor: default; }
-    .fs-opt .fs-text { flex: 1 1 auto; padding: 8px 0; }
+    /* A long name takes a second line rather than end in "…" (past two, it
+       does). The ✓ stands in the selected row's note, so no row keeps room
+       for it: the names get that room. */
+    .fs-opt { padding-top: 6px; padding-bottom: 6px; }
+    .fs-opt .fs-text { flex: 1 1 auto; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
     .fs-note { flex-shrink: 0; font-size: 12px; font-weight: 500; color: var(--text-3, var(--text-secondary, #9A9AA6)); }
     .fs-check {
-      width: 15px; height: 15px; flex-shrink: 0; margin-left: 2px;
+      display: none; width: 15px; height: 15px; flex-shrink: 0; margin-left: 2px;
       fill: none; stroke: var(--accent, #8429FF); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
-      visibility: hidden;
     }
-    .fs-opt[aria-selected="true"] .fs-check { visibility: visible; }
+    .fs-opt[aria-selected="true"] .fs-check { display: block; }
+    .fs-opt[aria-selected="true"] .fs-note { display: none; }
     .fs-empty { padding: 12px 10px; font-size: 13px; color: var(--text-3, var(--text-secondary, #9A9AA6)); }
 
     /* A phone: a sheet from the bottom, thumb-sized rows. */
@@ -214,7 +236,7 @@
     }
     .fs-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
     .fs-sheet .fs-search { height: 44px; font-size: 16px; border-radius: 12px; }
-    .fs-sheet .fs-opt { min-height: 50px; padding: 0 12px; border-radius: 12px; font-size: 15.5px; gap: 12px; }
+    .fs-sheet .fs-opt { min-height: 50px; padding: 6px 12px; border-radius: 12px; font-size: 15.5px; gap: 12px; }
     .fs-sheet .fs-ic { width: 22px; height: 22px; }
     .fs-sheet .fs-mono { font-size: 7.5px; }
     .fs-sheet .fs-check { width: 18px; height: 18px; }
@@ -493,7 +515,9 @@
 
     const sync = () => {
       const o = sel.options[sel.selectedIndex];
-      btn.innerHTML = o ? `<span class="fs-face">${iconHtml(o)}<span class="fs-text">${esc(o.dataset.short || labelOf(o))}</span></span>` : '';
+      const text = o && esc(o.dataset.short || labelOf(o));
+      const words = o && o.dataset.narrow ? `<span class="fs-wide">${text}</span><span class="fs-narrow">${esc(o.dataset.narrow)}</span>` : text;
+      btn.innerHTML = (o ? `<span class="fs-face">${iconHtml(o)}<span class="fs-text">${words}</span></span>` : '') + CHEV;
       btn.disabled = sel.disabled;
       if (current === api) renderList(true);
     };

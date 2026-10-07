@@ -324,17 +324,24 @@ body {
   outline: none;
   -webkit-appearance: none; appearance: none;
 }
-.ui-filter .fs-trigger { display: flex; align-items: center; }
+/* The chevron (fusion-select.js .fs-chev) draws 3px inside its box: a right
+   padding 3px under the left one sets its glyph as far from the cell's right
+   edge as the text is from the left. */
+.ui-filter .fs-trigger { display: flex; align-items: center; padding-right: 11px; }
 .ui-filter input { padding-right: 14px; background-image: none; cursor: text; }
 .ui-filter input::placeholder { color: var(--text-3); font-weight: 400; }
 .ui-filter input::-webkit-search-cancel-button { display: none; }
 .ui-filter select:focus-visible, .ui-filter .fs-trigger:focus-visible, .ui-filter input:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
 @container (max-width: 700px) {
   .ui-filters { flex-basis: 100%; display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); overflow: clip; }
-  .ui-filter { height: 48px; padding: 8px 12px 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: 0; }
+  /* Every cell draws its top and left hairline 1px out: at the box's own
+     edge that falls under the clip, so only the lines between cells show,
+     whatever the number of columns. Inner corners are square. */
+  .ui-filters .ui-filter { height: 49px; margin: -1px 0 0 -1px; padding: 9px 12px 0; border-left: 1px solid var(--line); border-top: 1px solid var(--line); border-radius: 0; }
   .ui-filter.full { grid-column: 1 / -1; }
   .ui-filter-label { font-size: 11px; gap: 4px; }
-  .ui-filter select, .ui-filter .fs-trigger, .ui-filter input { padding: 19px 26px 0 12px; font-size: 13.5px; background-position: right 10px center; }
+  .ui-filter select, .ui-filter .fs-trigger, .ui-filter input { padding: 20px 26px 0 12px; font-size: 13.5px; background-position: right 10px center; }
+  .ui-filter .fs-trigger { padding-right: 9px; }
   .ui-filter input { padding-right: 12px; }
 }
 
@@ -580,7 +587,14 @@ body {
 /* ---------- Section head: title, then its actions on the right ---------- */
 .ui-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
 .ui-head h2 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
-.ui-head .ui-count { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--text-3); }
+.ui-head .ui-count { margin-left: 8px; font-size: 13px; font-weight: 400; color: var(--text-3); white-space: nowrap; }
+/* The title keeps its line: on a phone a button beside it that has an icon
+   (Export, CSV, …) is just its icon (the word stays for screen readers), and
+   the narrowest phones step the title down a size. */
+@container (max-width: 560px) {
+  .ui-head .ui-btn:has(> svg):not(.ui-menu .ui-btn) { width: 36px; padding: 0; gap: 0; font-size: 0; }
+}
+@container (max-width: 345px) { .ui-head h2 { font-size: 17px; } }
 
 /* ---------- Export menu: <details class="ui-export"> (ui.js closes it) ---------- */
 .ui-export { position: relative; }
