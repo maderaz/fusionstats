@@ -9,8 +9,9 @@
 // To add this nav to a page: <script src="/nav.js"></script> in <head>.
 
 (function () {
-  // The pages, in three groups: the key pages, the insights that support
-  // them, and tools. A group's label is its heading; the key pages need none.
+  // The pages, in four groups: the key pages, the finances, the insights
+  // that support them, and tools. A group's label is its heading; the key
+  // pages need none.
   // A page's short name is its tile's on the narrowest phones, where the full
   // one won't fit on a line; a long name's (long: true) from 370px down.
   // A folding group starts closed and remembers being opened; on one of its
@@ -19,17 +20,17 @@
     { pages: [
       { href: '/',                      label: 'Key Metrics',    icon: 'activity' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
-        sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'stocks' }] },
+        sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'aave' }] },
+    ] },
+    { label: 'Finances', pages: [
+      { href: '/finances/dao',          label: 'DAO Earnings',     icon: 'dao', short: 'DAO' },
+      { href: '/finances/curator',      label: 'Curator Earnings', icon: 'curator', short: 'Curators', long: true },
     ] },
     { label: 'Insights', pages: [
       { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
       { href: '/switchers',             label: 'Switchers',      icon: 'switchers' },
       { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust' },
       { href: '/dominance',             label: 'Dominance',      icon: 'dominance' },
-    ] },
-    { label: 'Finances', pages: [
-      { href: '/finances/dao',          label: 'DAO Earnings',     icon: 'dao', short: 'DAO' },
-      { href: '/finances/curator',      label: 'Curator Earnings', icon: 'curator', short: 'Curators', long: true },
     ] },
     { label: 'Tools', folds: true, pages: [
       { href: '/monitor',               label: 'Monitor',        icon: 'monitor' },
@@ -79,6 +80,9 @@
     dao: '<path class="a" d="M2 6.25L8 2.5l6 3.75z"/><path d="M4 8.5v3.5M8 8.5v3.5M12 8.5v3.5M2.25 14h11.5"/>',
     // The one who runs the vault, and the fee they keep.
     curator: '<circle cx="6" cy="4.75" r="2.25"/><path d="M1.75 13.75c.45-2.6 2.1-4 4.25-4 .9 0 1.7.24 2.4.7"/><circle class="a" cx="11.75" cy="11" r="2.75"/><path class="a" d="M11.75 9.9v2.2"/>',
+    // Aave's mark (icons/aave logo eyes.svg), its eyes the accent.
+    aave: '<g transform="matrix(.0471 0 0 .0471 .75 4.2)"><path class="f" d="M153.878 0C68.885 0-.022 70.22 0 156.814h39.31c0-64.895 50.888-117.51 114.568-117.51s114.567 52.615 114.567 117.51h39.311C307.77 70.22 238.863 0 153.878 0z"/>'
+      + '<path class="a f" d="M118.034 160.112c17.064-2.771 28.651-18.851 25.882-35.914-2.77-17.065-18.85-28.653-35.913-25.883-17.065 2.77-28.653 18.849-25.883 35.914 2.77 17.064 18.849 28.651 35.914 25.883zm81.815 0c17.064-2.771 28.652-18.851 25.881-35.914-2.768-17.065-18.848-28.653-35.912-25.883-17.064 2.77-28.653 18.849-25.883 35.914 2.771 17.064 18.849 28.651 35.914 25.883z"/></g>',
     // Everything else, four tiles.
     more: '<rect x="2" y="2" width="5" height="5" rx="1.5"/><rect class="a" x="9" y="2" width="5" height="5" rx="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.5"/>',
   };
@@ -298,6 +302,7 @@
     }
     .fnav-item.closed .fnav-sub > div { visibility: hidden; transition: visibility 0s 0.22s; }
     .fnav-links .fnav-sub a { height: 30px; padding: 0 10px; font-size: 13px; }
+    .fnav-links .fnav-sub .fnav-ic { width: 14px; height: 14px; }
     .fnav-links a.parent-active { color: var(--text, #000); }
     .fnav-links a.parent-active .fnav-ic, .fnav-links a.parent-active .fnav-ic .a { color: var(--accent, #8429FF); }
     @media (prefers-reduced-motion: reduce) {
@@ -471,7 +476,7 @@
     return `<div class="fnav-item${open ? '' : ' closed'}" data-key="${subKey(p)}">${a}`
       + `<button type="button" class="fnav-sub-toggle" aria-expanded="${open}" aria-controls="${id}" aria-label="${p.label} pages">${CHEVRON}</button>`
       + `<div class="fnav-sub" id="${id}"><div>${p.sub.map(s => `<a href="${s.href}"${isActive(s.href) ? ' class="active"' : ''}${isActive(s.href) ? ' aria-current="page"' : ''}>`
-        + `<span class="fnav-label">${s.label}</span></a>`).join('')}</div></div></div>`;
+        + `${s.icon ? icon(s.icon) : ''}<span class="fnav-label">${s.label}</span></a>`).join('')}</div></div></div>`;
   };
   const subKey = (p) => 'fusionstats_nav_sub_' + p.label.toLowerCase();
   const foldKey = (g) => 'fusionstats_nav_' + g.label.toLowerCase();
