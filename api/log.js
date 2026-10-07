@@ -27,18 +27,20 @@ function parseUserAgent(ua) {
   const isMobile = !isTablet && /Mobi|Android|iPhone|iPod|Mobile/i.test(ua);
   const device = isTablet ? 'tablet' : isMobile ? 'mobile' : 'desktop';
 
+  // On an iPhone every browser is named its own way (CriOS, FxiOS, EdgiOS),
+  // and its system says "like Mac OS X": iOS is told apart before macOS.
   let browser = 'Unknown';
-  if (/Edg\//i.test(ua)) browser = 'Edge';
+  if (/Edg(A|iOS)?\//i.test(ua)) browser = 'Edge';
   else if (/OPR\/|Opera/i.test(ua)) browser = 'Opera';
-  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
-  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/(Chrome|CriOS)\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
+  else if (/(Firefox|FxiOS)\//i.test(ua)) browser = 'Firefox';
   else if (/Safari\//i.test(ua)) browser = 'Safari';
 
   let os = 'Unknown';
   if (/Windows NT/i.test(ua)) os = 'Windows';
+  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
   else if (/Mac OS X|Macintosh/i.test(ua)) os = 'macOS';
   else if (/Android/i.test(ua)) os = 'Android';
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
   else if (/Linux/i.test(ua)) os = 'Linux';
 
   return { device, browser, os };

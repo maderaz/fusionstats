@@ -2,11 +2,17 @@
 // every public page sends (track.js → /api/log → a private gist), read back
 // from /api/logs, newest first.
 //
+// Hiding a city: every entry from Wrocław, the owner's own, is hidden from
+// the whole page, whichever browser it came from.
+//
 // Leaving a visitor out: a visitor is a browser (track.js keeps one id per
 // browser). This browser's own id is track.js's, so "Leave my visits out" is
 // one switch; any other visitor (a phone of yours, a bot) is ticked in the
-// Visitors table. The choice is kept in this browser, and a visitor left out
-// is out of everything but that table, where it can be ticked back in.
+// Visitors table. A visitor left out is out of everything but that table,
+// where it can be ticked back in.
+//
+// Both choices are kept in this browser, with their switches at the foot of
+// the page.
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -14,17 +20,20 @@
   const DAY = 864e5, HOUR = 36e5;
   const ME_KEY = 'fusionstats_session';            // this browser's visitor id (track.js)
   const IGNORE_KEY = 'fusionstats_admin_ignore';   // the visitors left out, this browser's choice
+  const CITY = 'Wrocław';                          // hidden, unless this browser shows it:
+  const CITY_KEY = 'fusionstats_admin_show_city';  // '1' once it does
   const PAGE = 25;
   const RANGE_DAYS = { 1: 1, 7: 7, 30: 30, all: Infinity };
   const RANGE_WORDS = { 1: 'the last 24 hours', 7: 'the last 7 days', 30: 'the last 30 days', all: 'all the log' };
 
-  let rows = [];
-  let range = '7', fPage = '', fCountry = '', fDevice = '';
+  let log = [], rows = [];   // the whole log; what the page counts, the hidden city aside
+  let range = '30', fPage = '', fCountry = '', fDevice = '';
   let viewsPage = 1, visitorsPage = 1;
 
   const me = (() => { try { return localStorage.getItem(ME_KEY) || null; } catch { return null; } })();
   let ignored = new Set((() => { try { return JSON.parse(localStorage.getItem(IGNORE_KEY) || '[]'); } catch { return []; } })());
   const saveIgnored = () => { try { localStorage.setItem(IGNORE_KEY, JSON.stringify([...ignored])); } catch {} };
+  let hideCity = (() => { try { return localStorage.getItem(CITY_KEY) !== '1'; } catch { return true; } })();
 
   // ---- The words for a row ---------------------------------------------------
   const short = (id) => String(id || '').slice(0, 8) || '—';
@@ -33,6 +42,10 @@
   const pageOf = (r) => { const p = String(r.path || '/').split(/[?#]/)[0].replace(/\/+$/, ''); return p || '/'; };
   // Vercel sends the city percent-encoded ("Wroc%C5%82aw").
   const cityOf = (r) => { if (!r.city) return ''; try { return decodeURIComponent(r.city); } catch { return r.city; } };
+  // "Wrocław", "Wroclaw", "WROCŁAW" alike (ł is a letter of its own, not l with a mark).
+  const fold = (s) => s.toLowerCase().replace(/ł/g, 'l').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const inCity = (r) => fold(cityOf(r)) === fold(CITY);
+  const hide = () => { rows = hideCity ? log.filter(r => !inCity(r)) : log; };
   const regionNames = (() => { try { return new Intl.DisplayNames(['en'], { type: 'region' }); } catch { return null; } })();
   const countryName = (cc) => { if (!cc) return 'Unknown'; try { return (regionNames && regionNames.of(cc)) || cc; } catch { return cc; } };
   const flag = (cc) => {
@@ -42,7 +55,10 @@
   };
   const where = (r) => (r.country ? `<span class="fl">${flag(r.country)}</span>` : '') + esc(cityOf(r) || countryName(r.country));
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-  const kit = (r) => [r.device, r.browser, r.os].filter(Boolean).map(cap).join(' · ');
+  // The log named an iPhone's system macOS until it learned better (its
+  // browser says "like Mac OS X"); a phone or a tablet on macOS is iOS.
+  const osOf = (r) => (r.os === 'macOS' && r.device && r.device !== 'desktop' ? 'iOS' : r.os);
+  const kit = (r) => [r.device && cap(r.device), r.browser, osOf(r)].filter(Boolean).join(' · ');
   const ago = (t) => UI.ago(t / 1000);
   const when = (t) => new Date(t).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
   // Where a visit came from: the beacon sends the referring site since it
@@ -58,20 +74,30 @@
   });
   const counted = (list) => list.filter(r => !ignored.has(r.session_id));
 
-  // ---- You ---------------------------------------------------------------------------
+  // ---- At the foot: the hidden city, and you -----------------------------------------
   function meBar() {
+    const views = (n) => `<b>${num(n)}</b> ${n === 1 ? 'view' : 'views'}`;
+    const inIt = log.filter(inCity).length;
+    const city = `<div class="me-line"><span>Entries from <b>${esc(CITY)}</b> are ${hideCity ? 'hidden from everything on this page' : 'shown'}: ${inIt ? views(inIt) : 'none'} in the log.</span>`
+      + `<label class="switch"><input type="checkbox" id="hideCity"${hideCity ? ' checked' : ''}><i></i>Hide ${esc(CITY)}</label></div>`;
     const others = [...ignored].filter(id => id !== me);
-    const mine = me ? rows.filter(r => r.session_id === me).length : 0;
+    const mine = me ? log.filter(r => r.session_id === me).length : 0;
     const left = me
-      ? `This browser is visitor <span class="mono">${esc(short(me))}</span>, <b>${num(mine)}</b> ${mine === 1 ? 'view' : 'views'} in the log.`
-      : 'This browser has no visitor id yet: it gets one on its first visit to any page. Tick your devices in Visitors below.';
+      ? `This browser is visitor <span class="mono">${esc(short(me))}</span>, ${views(mine)} in the log.`
+      : 'This browser has no visitor id yet: it gets one on its first visit to any page. Tick your devices in Visitors above.';
     const also = others.length
       ? `<span class="also">Also left out: ${others.map(id => `<span class="chip">${esc(short(id))}<button type="button" data-back="${esc(id)}" aria-label="Count ${esc(short(id))} again" title="Count it again">×</button></span>`).join('')}</span>`
       : '';
     const sw = me ? `<label class="switch"><input type="checkbox" id="leaveMe"${ignored.has(me) ? ' checked' : ''}><i></i>Leave my visits out</label>` : '';
-    $('meBar').innerHTML = `<span>${left}</span>${also}${sw}`;
+    $('meBar').innerHTML = city + `<div class="me-line"><span>${left}</span>${also}${sw}</div>`;
   }
   $('meBar').addEventListener('change', (e) => {
+    if (e.target.id === 'hideCity') {
+      hideCity = e.target.checked;
+      try { if (hideCity) localStorage.removeItem(CITY_KEY); else localStorage.setItem(CITY_KEY, '1'); } catch {}
+      hide(); fillFilters(); render();
+      return;
+    }
     if (e.target.id !== 'leaveMe') return;
     if (e.target.checked) ignored.add(me); else ignored.delete(me);
     saveIgnored(); render();
@@ -88,14 +114,14 @@
     const visitors = new Map();
     for (const r of list) visitors.set(r.session_id, (visitors.get(r.session_id) || 0) + 1);
     // Against the same span just before, when the log reaches back that far.
-    const first = rows.length ? ts(rows[rows.length - 1]) : Date.now();
+    const first = log.length ? ts(log[log.length - 1]) : Date.now();
     const vsPrev = range !== 'all' && first <= since() - RANGE_DAYS[range] * DAY / 2 && prev.length
       ? Math.round((list.length / prev.length - 1) * 100) : null;
     set(0, num(list.length), vsPrev == null ? (range === 'all' ? 'since ' + new Date(first).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : RANGE_WORDS[range])
       : (vsPrev >= 0 ? '+' : '') + vsPrev + '% on the ' + (range === '1' ? 'day' : range + ' days') + ' before');
     // New: first seen in the log within the range.
     const firstSeen = new Map();
-    for (let i = rows.length - 1; i >= 0; i--) if (!firstSeen.has(rows[i].session_id)) firstSeen.set(rows[i].session_id, ts(rows[i]));
+    for (let i = log.length - 1; i >= 0; i--) if (!firstSeen.has(log[i].session_id)) firstSeen.set(log[i].session_id, ts(log[i]));
     const fresh = [...visitors.keys()].filter(id => firstSeen.get(id) >= since()).length;
     set(1, num(visitors.size), range === 'all' ? 'in the whole log' : num(fresh) + ' new');
     const one = [...visitors.values()].filter(n => n === 1).length;
@@ -175,7 +201,7 @@
     { title: 'Cities', key: (r) => (r.city ? cityOf(r) + '|' + (r.country || '') : null), label: (k) => { const [c, cc] = k.split('|'); return `<span class="fl">${flag(cc)}</span>${esc(c)}`; } },
     { title: 'Sources', key: sourceOf, label: (k) => esc(k), none: 'Recorded from now on: the beacon now sends where a visit came from.' },
     { title: 'Devices', key: (r) => r.device || null, filter: 'device', label: (k) => esc(k.charAt(0).toUpperCase() + k.slice(1)) },
-    { title: 'Browsers and systems', key: (r) => [r.browser, r.os].filter(Boolean).join(' on ') || null, label: (k) => esc(k) },
+    { title: 'Browsers and systems', key: (r) => [r.browser, osOf(r)].filter(Boolean).join(' on ') || null, label: (k) => esc(k) },
   ];
   const SHOWN = 6;
   function cards(list) {
@@ -296,8 +322,8 @@
   for (const [id, set] of [['fPage', (v) => { fPage = v; }], ['fCountry', (v) => { fCountry = v; }], ['fDevice', (v) => { fDevice = v; }]]) {
     $(id).addEventListener('change', (e) => { set(e.target.value); viewsPage = visitorsPage = 1; render(); });
   }
-  window.addEventListener('fusion:theme', () => rows.length && render());
-  FusionChart.onChange(() => rows.length && render());
+  window.addEventListener('fusion:theme', () => log.length && render());
+  FusionChart.onChange(() => log.length && render());
 
   let loadedAt = 0;
   const stamp = () => { if (loadedAt) $('status').innerHTML = 'Updated <span class="ago">' + esc(ago(loadedAt)) + '</span>'; };
@@ -309,7 +335,8 @@
       const json = await res.json().catch(() => ({}));
       if (json.error === 'storage_not_configured') { $('setup').hidden = false; $('dash').hidden = true; $('status').textContent = 'Not set up'; return; }
       if (!json.ok) throw new Error(json.error ? json.error + (json.detail ? ': ' + json.detail : '') : 'HTTP ' + res.status);
-      rows = (json.rows || []).filter(r => r && r.ts && !isNaN(Date.parse(r.ts))).sort((a, b) => ts(b) - ts(a));
+      log = (json.rows || []).filter(r => r && r.ts && !isNaN(Date.parse(r.ts))).sort((a, b) => ts(b) - ts(a));
+      hide();
       loadedAt = Date.now(); stamp();
       $('error').hidden = true; $('dash').hidden = false;
       fillFilters();
