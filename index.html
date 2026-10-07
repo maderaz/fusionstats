@@ -644,11 +644,17 @@
       border-collapse: separate;
       border-spacing: 0;
     }
+    /* The room between columns grows with the table, out of the Product
+       column's spare width: 10px a side where the table is tight (a 1024px
+       screen), up to 20px from about 940px of column, so a long vault name
+       keeps its room. The outer sides stay 12px, so the text still lines up
+       with the page's edge. */
+    #activityContent th, #activityContent td { --gutter: clamp(10px, calc(10px + (100cqi - 740px) * 0.05), 20px); }
     th {
       position: sticky;
       top: var(--tools-h, 0px);
       z-index: 2;
-      padding: 10px 12px;
+      padding: 10px var(--gutter, 12px);
       background: var(--bg);
       border-bottom: 1px solid var(--line);
       text-align: left;
@@ -659,13 +665,15 @@
     }
     td {
       height: 46px;
-      padding: 0 12px;
+      padding: 0 var(--gutter, 12px);
       border-bottom: 1px solid var(--line);
       font-size: 14px;
       color: var(--text);
       white-space: nowrap;
       vertical-align: middle;
     }
+    #activityContent th:first-child, #activityContent td:first-child { padding-left: 12px; }
+    #activityContent th:last-child, #activityContent td:last-child { padding-right: 12px; }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr td { transition: background 0.1s; }
     tbody tr:hover td { background: var(--bg-hover); }
@@ -864,7 +872,6 @@
     .mobile-event-when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
 
     @container (max-width: 900px) {
-      td, th { padding-left: 10px; padding-right: 10px; }
       .badge-deposit, .badge-withdraw { gap: 8px; }
     }
 
