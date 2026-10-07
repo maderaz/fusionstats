@@ -186,6 +186,35 @@ test('a wave is one wallet: the largest net depositor comes first, with its rout
   assert.strictEqual(T[1].net, 500);
 });
 
+console.log('\nfunded through LI.FI');
+
+test('a deposit from the wallet itself, funded by a Jumper swap minutes before: Jumper, not Direct', () => {
+  const e = { ...dep(USER, USER, 251), funded: { via: 'lifi', integrator: 'jumperrwa' } };
+  const R = create({ identity, events: [e] });
+  assert.strictEqual(label(R, R.depositRoute(e)), 'Jumper');
+  assert.strictEqual(R.routeInfo(R.depositRoute(e)).kind, 'funding');
+});
+
+test('another app on LI.FI, or a LI.FI bridge, is LI.FI; a deposit funded otherwise stays Direct', () => {
+  const a = { ...dep(USER, USER, 10), funded: { via: 'lifi', integrator: 'base-app' } };
+  const b = { ...dep(USER, USER, 10), funded: { via: 'lifi-bridge' } };
+  const c = { ...dep(USER, USER, 10), funded: { via: 'other', from: '0xpool' } };
+  const R = create({ identity, events: [a, b, c] });
+  assert.deepStrictEqual([a, b, c].map(e => label(R, R.depositRoute(e))), ['LI.FI', 'LI.FI', 'Direct']);
+});
+
+test('a named protocol that bought through LI.FI keeps its own row (Zyfi buys through it for its users)', () => {
+  const e = { ...dep(ZYFI, USER2, 50), funded: { via: 'lifi', integrator: 'zyfaiquotes' } };
+  const R = create({ identity, events: [e] });
+  assert.strictEqual(label(R, R.depositRoute(e)), 'Zyfi');
+});
+
+test('a contract of the user\'s own, funded by Jumper: Jumper', () => {
+  const e = { ...dep(MYSTERY, USER, 30), funded: { via: 'lifi', integrator: 'jumper.exchange.earn' } };
+  const R = create({ identity, events: [e] });
+  assert.strictEqual(label(R, R.depositRoute(e)), 'Jumper');
+});
+
 console.log('\nrelay hops');
 
 const { markRelays, RELAY_SEC } = window.FusionRoutes;

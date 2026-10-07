@@ -18,6 +18,13 @@
 //              file's updatedAt; a relay hop's two legs (routes.js
 //              markRelays: one wallet's withdrawal deposited by the next) carry
 //              relay: 'out' / 'in', found here where the receiver still is
+//              Where a deposit's tokens came from (stock-funding.json, by
+//              collect-stock-funding.js), when it says something a route
+//              can use: funded: { via: 'lifi' | 'lifi-bridge', integrator }
+//              or { via: 'vault' }
+//   holders    each of those vaults' holders as vault-holders-state.json
+//              reads them on-chain: { block, share: [[wallet, fraction of
+//              its shares], …] }, largest first
 //   identity   router-identity.json's entries for every address those events
 //              were sent or owned by, plus every entry sharing a protocol name
 //              with one of them (a route row describes its protocol from all
@@ -37,8 +44,8 @@ const STOCK_RE = /^0xb20{20}/;
 // Event fields the page and routes.js read. tx, logIdx, chain, vaultName,
 // underlyingToken and usdPrice they do not.
 const KEEP = ['type', 'vault', 'symbol', 'sender', 'owner', 'assets', 'shares', 'block', 'timestamp', 'usdValue'];
-// Set on a relay hop's legs only.
-const OPTIONAL = ['relay'];
+// Set on some events only: a relay hop's legs; a deposit's funding.
+const OPTIONAL = ['relay', 'funded'];
 
 // routes.js is the page's script (window.FusionRoutes); its relay rule is read
 // from there rather than copied, so the page and this file cannot disagree.
@@ -50,7 +57,32 @@ const ROUTES = (() => {
 
 const lc = (a) => (a || '').toLowerCase();
 
-function buildStocks({ ipor, tvl, activity, identity }) {
+// What of a deposit's funding a route can use (routes.js depositRoute).
+function fundedOf(f) {
+  if (!f) return null;
+  if (f.via === 'lifi' || f.via === 'lifi-bridge') return f.integrator ? { via: f.via, integrator: f.integrator } : { via: f.via };
+  if (f.via === 'vault') return { via: 'vault' };
+  return null;
+}
+
+// A vault's holders, each as a fraction of its shares, from raw balances.
+const ZERO = '0x0000000000000000000000000000000000000000';
+function sharesOf(st, vault) {
+  if (!st || !st.bal) return null;
+  const rows = [];
+  let total = 0n;
+  for (const [w, raw] of Object.entries(st.bal)) {
+    let b; try { b = BigInt(raw); } catch { continue; }
+    if (b <= 0n || lc(w) === ZERO || lc(w) === vault) continue;
+    rows.push([lc(w), b]); total += b;
+  }
+  if (total === 0n) return null;
+  const share = rows.sort((x, y) => (y[1] > x[1] ? 1 : y[1] < x[1] ? -1 : 0))
+    .map(([w, b]) => [w, Number((b * 10n ** 12n) / total) / 1e12]);
+  return { block: st.lastBlock || null, share };
+}
+
+function buildStocks({ ipor, tvl, activity, identity, funding, holderState }) {
   const vaults = ((ipor && ipor.vaults) || []).filter(v => STOCK_RE.test(lc(v.assetAddress)));
   const addrs = new Set(vaults.map(v => lc(v.address)));
 
@@ -59,9 +91,15 @@ function buildStocks({ ipor, tvl, activity, identity }) {
     if (addrs.has(lc(k))) snaps[k] = entry;
   }
 
+  const fundingOf = (funding && funding.deposits) || {};
   const full = ((activity && activity.events) || [])
     .filter(e => addrs.has(lc(e.vault)) && e.synthetic !== true)
-    .map(e => ({ ...e }));
+    .map(e => {
+      const out = { ...e };
+      const f = e.type === 'deposit' && e.tx && fundedOf(fundingOf[lc(e.tx) + ':' + e.logIdx]);
+      if (f) out.funded = f;
+      return out;
+    });
   ROUTES.markRelays(full);
   const events = [];
   const seen = new Set();
@@ -86,11 +124,18 @@ function buildStocks({ ipor, tvl, activity, identity }) {
     if (seen.has(lc(k)) || (id && id.protocol && protocols.has(id.protocol))) ids[k] = id;
   }
 
+  const holders = {};
+  for (const a of addrs) {
+    const h = sharesOf(holderState && holderState.vaults && holderState.vaults[a], a);
+    if (h) holders[a] = h;
+  }
+
   return {
     builtAt: new Date().toISOString(),
     ipor: { updatedAt: ipor && ipor.updatedAt, vaults },
     tvl: { updatedAt: tvl && tvl.updatedAt, vaults: snaps },
     activity: { updatedAt: activity && activity.updatedAt, events },
+    holders,
     identity: ids,
   };
 }
@@ -109,11 +154,13 @@ function main() {
     console.log('stocks-data.json: left as it was (' + (!ipor ? 'ipor-vaults.json' : 'activity-events.json') + ' unreadable)');
     return;
   }
-  const out = buildStocks({ ipor, activity, tvl: readJson('tvl-snapshots.json'), identity: readJson('router-identity.json') });
+  const out = buildStocks({ ipor, activity, tvl: readJson('tvl-snapshots.json'), identity: readJson('router-identity.json'),
+    funding: readJson('stock-funding.json'), holderState: readJson('vault-holders-state.json') });
   const body = JSON.stringify(out);
   fs.writeFileSync(path.join(ROOT, 'stocks-data.json'), body + '\n');
   console.log(`stocks-data.json: ${out.ipor.vaults.length} vaults, ${out.activity.events.length} events, `
-    + `${Object.keys(out.tvl.vaults).length} snapshot series, ${Object.keys(out.identity).length} router entries, `
+    + `${Object.keys(out.tvl.vaults).length} snapshot series, ${Object.keys(out.holders).length} holder lists, `
+    + `${out.activity.events.filter(e => e.funded).length} deposits with their funding, ${Object.keys(out.identity).length} router entries, `
     + `${(body.length / 1024).toFixed(0)} KB`);
 }
 

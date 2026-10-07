@@ -454,10 +454,13 @@ function loadEligibleVaults(args) {
   // under $1K TVL (test/abandoned) that aren't worth a Transfer scan; the
   // sub-$1K tier rounds to 1-2 holders anyway and the event-derived fallback
   // covers them. $1K captures every vault with real activity (58 across the
-  // 6 supported chains as of ship date).
+  // 6 supported chains as of ship date). A vault backed by tokenised stock is
+  // read whatever its TVL: the Stocks page counts its holders from these
+  // balances, and a campaign's wallets sit in vaults of a few thousand dollars.
   if (!args.vault) {
     const floor = parseFloat(args['min-tvl'] || '1000');
-    vaults = vaults.filter(x => (x.tvl || 0) >= floor);
+    const { STOCK_RE } = require('./tools/build-stocks-data.js');
+    vaults = vaults.filter(x => (x.tvl || 0) >= floor || STOCK_RE.test(String(x.assetAddress || '').toLowerCase()));
   }
   return vaults;
 }
