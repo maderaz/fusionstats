@@ -27,8 +27,8 @@
 //   node collect-fe-apy.js --apr-scale=percent   # force apr interpretation
 //   node collect-fe-apy.js --apr-scale=fraction
 //
-// No dependencies — keccak256 (for the function selectors) is implemented
-// inline and self-tested at startup against a known selector.
+// No dependencies — keccak256 (for the function selectors) is keccak.js,
+// self-tested when loaded against known values.
 
 const fs = require('fs');
 const path = require('path');
@@ -47,85 +47,8 @@ const CHAIN_RPCS = {
   9745:  { name: 'plasma',    rpcs: ['https://evm-rpc.plasma.io/api'] },
 };
 
-// ───────────────────────── keccak-256 (inline) ─────────────────────────
-// Minimal Keccak-f[1600] over BigInt lanes. Inputs are tiny (function
-// signatures) so performance is irrelevant; correctness is asserted at
-// startup. Keccak padding (0x01 … 0x80), NOT NIST SHA3 (0x06).
-function keccak256Hex(input) {
-  const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
-  const MASK = (1n << 64n) - 1n;
-  const RC = [
-    0x0000000000000001n, 0x0000000000008082n, 0x800000000000808an, 0x8000000080008000n,
-    0x000000000000808bn, 0x0000000080000001n, 0x8000000080008081n, 0x8000000000008009n,
-    0x000000000000008an, 0x0000000000000088n, 0x0000000080008009n, 0x000000008000000an,
-    0x000000008000808bn, 0x800000000000008bn, 0x8000000000008089n, 0x8000000000008003n,
-    0x8000000000008002n, 0x8000000000000080n, 0x000000000000800an, 0x800000008000000an,
-    0x8000000080008081n, 0x8000000000008080n, 0x0000000080000001n, 0x8000000080008008n,
-  ];
-  // rotation offsets r[x][y]
-  const ROT = [
-    [0, 36, 3, 41, 18],
-    [1, 44, 10, 45, 2],
-    [62, 6, 43, 15, 61],
-    [28, 55, 25, 21, 56],
-    [27, 20, 39, 8, 14],
-  ];
-  const rotl = (x, n) => { const b = BigInt(n); return ((x << b) | (x >> (64n - b))) & MASK; };
-
-  const S = new Array(25).fill(0n);
-  function keccakF() {
-    for (let round = 0; round < 24; round++) {
-      const C = [0n, 0n, 0n, 0n, 0n];
-      for (let x = 0; x < 5; x++) C[x] = S[x] ^ S[x + 5] ^ S[x + 10] ^ S[x + 15] ^ S[x + 20];
-      for (let x = 0; x < 5; x++) {
-        const D = C[(x + 4) % 5] ^ rotl(C[(x + 1) % 5], 1n);
-        for (let y = 0; y < 5; y++) S[x + 5 * y] ^= D;
-      }
-      const B = new Array(25).fill(0n);
-      for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) {
-        B[y + 5 * ((2 * x + 3 * y) % 5)] = rotl(S[x + 5 * y], ROT[x][y]);
-      }
-      for (let x = 0; x < 5; x++) for (let y = 0; y < 5; y++) {
-        S[x + 5 * y] = B[x + 5 * y] ^ ((~B[((x + 1) % 5) + 5 * y] & MASK) & B[((x + 2) % 5) + 5 * y]);
-      }
-      S[0] ^= RC[round];
-    }
-  }
-
-  const RATE = 136; // bytes (1088 bits)
-  const padded = new Uint8Array(Math.ceil((bytes.length + 1) / RATE) * RATE);
-  padded.set(bytes);
-  padded[bytes.length] ^= 0x01;
-  padded[padded.length - 1] ^= 0x80;
-
-  for (let off = 0; off < padded.length; off += RATE) {
-    for (let i = 0; i < RATE / 8; i++) {
-      let lane = 0n;
-      for (let k = 0; k < 8; k++) lane |= BigInt(padded[off + i * 8 + k]) << BigInt(8 * k);
-      S[i] ^= lane;
-    }
-    keccakF();
-  }
-
-  let out = '';
-  for (let i = 0; i < 4; i++) { // 4 lanes = 32 bytes
-    let lane = S[i];
-    for (let k = 0; k < 8; k++) { out += Number(lane & 0xffn).toString(16).padStart(2, '0'); lane >>= 8n; }
-  }
-  return out;
-}
-function selector(sig) { return '0x' + keccak256Hex(sig).slice(0, 8); }
-
-// Assert keccak is correct before trusting any computed selector. balanceOf's
-// selector (0x70a08231) is already relied on elsewhere in this repo.
-(function selfTest() {
-  const empty = keccak256Hex('');
-  const bal = selector('balanceOf(address)');
-  if (empty !== 'c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470' || bal !== '0x70a08231') {
-    console.error('keccak256 self-test FAILED:', { empty, bal });
-    process.exit(1);
-  }
-})();
+// keccak-256: keccak.js (no dependencies, checked when loaded).
+const { keccak256Hex, selector } = require('./keccak.js');
 
 const SEL_PERF = selector('getPerformanceFeeData()');
 const SEL_MGMT = selector('getManagementFeeData()');

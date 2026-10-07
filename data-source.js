@@ -44,9 +44,10 @@
 
   // Matches a bare data JSON living at the repo root, e.g. "ipor-vaults.json",
   // "../activity-events.json", "/rebalance-events-0xabc.json", or one of the
-  // Explorer's files a vault, "/explorer/vaults/base-0xabc.json", and its
-  // curator's actions, "/explorer/actions/base-0xabc.json".
-  var DATA_JSON = /^(?:\.{0,2}\/)*(?:explorer\/(?:vaults|actions)\/)?[a-z0-9][a-z0-9._-]*\.json(?:\?.*)?$/i;
+  // Explorer's files a vault, "/explorer/vaults/base-0xabc.json", its
+  // curator's actions, "/explorer/actions/base-0xabc.json", and its deposits
+  // and withdrawals, "/explorer/activity/base-0xabc.json".
+  var DATA_JSON = /^(?:\.{0,2}\/)*(?:explorer\/(?:vaults|actions|activity)\/)?[a-z0-9][a-z0-9._-]*\.json(?:\?.*)?$/i;
   // Its path in the repository: the root file's name, or the Explorer's path.
   var repoPath = function (input) { return input.split('?')[0].replace(/^(?:\.{0,2}\/)*/, ''); };
 
