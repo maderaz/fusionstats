@@ -159,31 +159,12 @@
     const DAY = 864e5;
     // The chart palette (ui.css --chart-1…5), then two quiet ones.
     const colors = () => [1, 2, 3, 4, 5].map(i => cssVar('--chart-' + i, '#8429FF')).concat(['#94A3B8', '#CBD5E1']);
-    // Each market in its brand's colour, so a bar reads like the key's marks:
-    // Apple black (near white on a dark page, where black would vanish),
-    // Google red, Meta blue, Nvidia green, and the rest apart from those.
-    const BRAND = { AAPLc: '#111114', GOOGLc: '#EA4335', METAc: '#0866FF', NVDAc: '#76B900', AMZNc: '#FF9900', MSFTc: '#00A4EF', TSLAc: '#A1A1AA' };
+    // Each market in its stock's own colour (fusion-select.js tokenColor: Apple
+    // black, near white on a dark page; Google red, Meta blue, Nvidia green),
+    // so a bar reads like the key's marks; anything else, the palette.
     const darkPage = () => document.documentElement.getAttribute('data-theme') === 'dark';
-    const brand = (sym, i, forExport) => (sym === 'AAPLc' && darkPage() && !forExport ? '#F2F2F5'
-      : BRAND[sym] || colors()[i % 7]);
-    // A market's mark for inside its bar: round, on a thin white ring, so it
-    // reads on any colour. Built from its icon file (data URL: Plotly draws
-    // it on the page and in the PNG alike).
-    const chips = {};
-    function chip(sym) {
-      if (!(sym in chips)) chips[sym] = (async () => {
-        const src = icon(sym);
-        if (!src) return null;
-        const svg = await (await fetch(src)).text();
-        const vb = (svg.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 512 512';
-        const inner = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-        const out = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#fff"/>'
-          + '<clipPath id="ring"><circle cx="20" cy="20" r="17"/></clipPath><g clip-path="url(#ring)">'
-          + '<svg x="3" y="3" width="34" height="34" viewBox="' + vb + '">' + inner + '</svg></g></svg>';
-        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(out)));
-      })().catch(() => null);
-      return chips[sym];
-    }
+    const brand = (sym, i, forExport) => (window.FusionSelect && FusionSelect.tokenColor
+      && FusionSelect.tokenColor(sym, darkPage() && !forExport)) || colors()[i % 7];
 
     let data = null, view = 'total', range = 'all', size = 'wide';
 
@@ -236,7 +217,7 @@
       const traces = view === 'total'
         ? [{ type: 'scatter', mode: 'lines', name: 'Fusion supplied', x, y: days.map(r => r.usd), line: { color: accent, width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)' }]
         : shown.map((m, i) => ({ type: 'bar', name: m.symbol, x, y: days.map(r => r.by[m.symbol].usd), width: DAY * BAR,
-            marker: { color: palette[i], line: { width: 0 } } }));
+            marker: { color: palette[i], line: { width: 0 } }, meta: { mark: icon(m.symbol) } }));
       const ink = forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B');
       const layout = {
         autosize: true,
@@ -255,32 +236,6 @@
         layout.xaxis.autorange = false;
       }
       return { traces, layout, days, shown, palette };
-    }
-    // Each market's mark inside its part of each bar, where that part has
-    // room for it (14px, 12px on a phone, with 3px clear above and below,
-    // and the bar 4px wider), centred in it. Sized in the axes' units from
-    // the plot as drawn, so it is placed again when the plot changes size.
-    async function marks(gd, f, forExport) {
-      const fl = gd._fullLayout;
-      if (view === 'total' || !fl || !fl.xaxis || !f.days.length) return [];
-      const MARK = !forExport && FusionChart.compact() ? 12 : 14;
-      const xa = fl.xaxis, ya = fl.yaxis, sz = fl._size;
-      const perX = sz.w / (xa._rl[1] - xa._rl[0]), perY = sz.h / (ya._rl[1] - ya._rl[0]);
-      if (!(perX > 0 && perY > 0) || DAY * BAR * perX < MARK + 4) return [];
-      const srcs = await Promise.all(f.shown.map(m => chip(m.symbol)));
-      const out = [];
-      f.days.forEach((r) => {
-        const x = new Date(r.d * DAY).toISOString().slice(0, 10);
-        let below = 0;
-        f.shown.forEach((m, i) => {
-          const v = r.by[m.symbol].usd;
-          if (!(v > 0)) return;
-          if (srcs[i] && v * perY >= MARK + 6) out.push({ source: srcs[i], xref: 'x', yref: 'y', x, y: below + v / 2,
-            sizex: MARK / perX, sizey: MARK / perY, xanchor: 'center', yanchor: 'middle', sizing: 'contain', layer: 'above' });
-          below += v;
-        });
-      });
-      return out;
     }
     function describe(pts) {
       const head = FusionChart.when(pts[0].x);
@@ -315,18 +270,8 @@
       const traces = view === 'total' ? FusionChart.soft(f.traces) : f.traces;
       await Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(f.layout, f.traces), CONFIG);
       FusionChart.glide(gd, describe);
-      // The marks in the bars, and again whenever the plot is drawn at a new size.
-      const place = async () => {
-        const sz = gd._fullLayout && gd._fullLayout._size;
-        const at = sz ? sz.w + 'x' + sz.h + view + range : '';
-        if (!sz || gd.dataset.marksAt === at) return;
-        gd.dataset.marksAt = at;
-        await Plotly.relayout(gd, { images: await marks(gd, f) });
-      };
-      gd.dataset.marksAt = '';
-      gd.__placeMarks = place;
-      if (!gd.dataset.marksHooked) { gd.dataset.marksHooked = '1'; gd.on('plotly_afterplot', () => gd.__placeMarks && gd.__placeMarks()); }
-      await place();
+      // Each market's mark inside its part of the bars (ui-chart.js markBars).
+      await FusionChart.markBars(gd);
       const first = f.days[0], lastDay = f.days[f.days.length - 1];
       $('chartNote').textContent = f.days.length + ' daily readings, '
         + new Date(first.d * DAY).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' to '
@@ -350,7 +295,7 @@
       document.body.appendChild(off);
       try {
         await Plotly.newPlot(off, FusionChart.quiet(traces), Object.assign({}, f.layout, { width: w, height: h }), { staticPlot: true });
-        if (view !== 'total') await Plotly.relayout(off, { images: await marks(off, f, true) });
+        if (view !== 'total') await Plotly.relayout(off, { images: await FusionChart.barMarks(off, 14) });
         await FusionChart.png(off, { width: w, height: h, dots: $('pngDots').checked,
           filename: 'fusion-aave-v4-' + view + '-' + range + '-' + new Date().toISOString().slice(0, 10) + '.png' });
       } finally { Plotly.purge(off); off.remove(); }

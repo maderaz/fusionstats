@@ -41,6 +41,8 @@
       padding: 28px 0 32px;
     }
     #concStats { grid-template-columns: repeat(4, minmax(min-content, 1fr)); }
+    /* The headline: three figures across (two, then one, on a phone). */
+    #stats { grid-template-columns: repeat(3, minmax(min-content, 1fr)); }
     .stat { min-width: 0; padding: 0 20px; border-left: 1px solid var(--line); }
     .stat:first-child { padding-left: 0; border-left: none; }
     /* A figure's name is one line: the columns are at least that wide. */
@@ -90,6 +92,12 @@
     .sub-meta { font-size: 12.5px; font-weight: 400; letter-spacing: 0; color: var(--text-3); }
     .sub-note { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.2; color: var(--text-3); white-space: nowrap; }
     .muted-note { font-size: 12.5px; font-weight: 400; line-height: 1.6; color: var(--text-3); }
+    /* The bars' key: each stock's mark, its ticker and what it holds now. */
+    .bar-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 12px; font-size: 13px; color: var(--text-2); }
+    .bar-key[hidden] { display: none; }
+    .bar-key span { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .bar-key img { width: 16px; height: 16px; border-radius: 50%; }
+    .bar-key b { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
     .chart-note, .holders-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 12px 0 0; font-size: 12.5px; color: var(--text-3); }
     .chart-note:empty, .holders-note:empty { display: none; }
     /* The TVL note ("31 points … ends at $778.6K") restates the figure at the
@@ -479,7 +487,9 @@
       #concStats .stat:nth-child(odd) { padding-left: 0; border-left: none; }
     }
     @container (max-width: 560px) {
-      .stat-row, .stat-row.divers { grid-template-columns: repeat(2, minmax(min-content, 1fr)); }
+      .stat-row, .stat-row.divers, #stats { grid-template-columns: repeat(2, minmax(min-content, 1fr)); }
+      /* Three headline figures: the third takes the row under the first two. */
+      #stats .stat:nth-child(3) { grid-column: 1 / -1; }
       .stat-row .stat { padding-left: 20px; border-left: 1px solid var(--line); }
       .stat-row .stat:nth-child(odd) { padding-left: 0; border-left: none; }
       /* The 3-column rule above still matches the 4th figure; two columns
@@ -620,6 +630,7 @@
           <button data-tvl-range="all" type="button">All</button>
         </div>
       </div>
+      <div class="bar-key" id="tvlKey" hidden></div>
       <div class="plot" id="tvlPlot"><div class="loading">Loading…</div></div>
       <div class="chart-note" id="tvlNote"></div>
       <div id="unitsBreakdown" style="display:none"></div>
@@ -1030,13 +1041,18 @@
       if (!hv) {
         hv = document.createElement('div');
         hv.className = 'hv';
-        hv.innerHTML = '<div class="hv-line"></div><div class="hv-dots"></div><div class="hv-bubble"></div>';
+        hv.innerHTML = '<div class="hv-dots"></div><div class="hv-bubble"></div>';
         gd.appendChild(hv);
       }
       // Re-rendering re-attaches: drop the last pair rather than stack them.
       if (gd.__hv) { gd.removeListener('plotly_hover', gd.__hv.on); gd.removeListener('plotly_unhover', gd.__hv.off); }
       let live = false;
-      const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); FusionChart.slot(gd, null); };
+      const off = () => {
+        live = false;
+        const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on');
+        const l = gd.querySelector(':scope > .hv-line'); if (l) l.classList.remove('on');
+        FusionChart.slot(gd, null);
+      };
       const on = (ev) => {
         const h = gd.querySelector(':scope > .hv');
         // A line's zero start (customdata 'anchor') shapes the line; it is
@@ -1047,10 +1063,12 @@
         FusionChart.slot(gd, pts);
         const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
         const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));
-        if (!live) { h.classList.add('hv-jump'); }
-        const line = h.querySelector('.hv-line');
+        // The hairline under the plot, so a bar covers it (ui-chart.js hairline).
+        const line = FusionChart.hairline(gd);
+        if (!live) { h.classList.add('hv-jump'); line.classList.add('hv-jump'); }
         line.style.height = sz.h + 'px';
         line.style.transform = 'translate(' + x + 'px,' + sz.t + 'px)';
+        line.classList.add('on');
         // A dot where each line is; bars carry no dot.
         const dots = h.querySelector('.hv-dots');
         const lines = pts.filter(p => p.data.type !== 'bar');
@@ -1074,7 +1092,7 @@
         const by = Math.max(sz.t - 6, Math.min(py - bh / 2, sz.t + sz.h - bh + 6));
         b.style.transform = 'translate(' + Math.max(0, bx) + 'px,' + by + 'px)';
         h.classList.add('hv-on');
-        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
+        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => { h.classList.remove('hv-jump'); line.classList.remove('hv-jump'); })); }
       };
       gd.on('plotly_hover', on);
       gd.on('plotly_unhover', off);
@@ -1201,7 +1219,68 @@
       return full.filter(p => p.ts >= cutoff).map(p => ({ ts: p.ts, v: mode === 'active' ? p.active : p.cumulative }));
     }
 
+    // Bars: each day's (each hour's, in the shortest range) value stacked by
+    // stock, every stock in its own colour (fusion-select.js tokenColor) with
+    // its mark inside its part where it fits (ui-chart.js markBars), as on
+    // Aave V4's By market; a key above names them.
+    function renderTvlBars() {
+      const usd = S.tvlUnit === 'usd';
+      const unitLabel = usd ? 'USD' : (S.tvlUnit === 'units' ? 'units' : S.tvlUnit);
+      const byTok = new Map();
+      vaultsFor(S.tvlVault).forEach(v => {
+        const t = tickerLabel(v.token);
+        const m = byTok.get(t) || new Map();
+        tvlSeries(v.address, S.tvlRange).forEach(p => {
+          const cur = m.get(p.ts) || { tvl: 0, units: 0 };
+          cur.tvl += p.tvl || 0; cur.units += p.units || 0;
+          m.set(p.ts, cur);
+        });
+        byTok.set(t, m);
+      });
+      const val = (o) => (o ? (usd ? o.tvl : o.units) : 0);
+      const allTs = [...new Set([...byTok.values()].flatMap(m => [...m.keys()]))].sort((a, b) => a - b);
+      const key = document.getElementById('tvlKey');
+      const el = document.getElementById('tvlPlot');
+      if (!allTs.length) { key.hidden = true; undraw('tvlPlot'); el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
+      const last = allTs[allTs.length - 1];
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      // The biggest now at the foot of the stack.
+      const toks = [...byTok.keys()].filter(t => [...byTok.get(t).values()].some(o => val(o) > 0))
+        .map(t => ({ t, now: val(byTok.get(t).get(last)) })).sort((a, b) => b.now - a.now);
+      const x = allTs.map(ts => new Date(ts * 1000));
+      const traces = toks.map((o, i) => ({
+        type: 'bar', name: o.t, x, y: allTs.map(ts => val(byTok.get(o.t).get(ts))),
+        width: stepFor(S.tvlRange) * 1000 * 0.62,
+        marker: { color: (window.FusionSelect && FusionSelect.tokenColor(o.t, dark)) || seriesColor(i), line: { width: 0 } },
+        meta: { mark: iconUrlFor(o.t) },
+      }));
+      const fmt = (v) => (usd ? fUsd(v) : fNum(v, 4) + ' ' + esc(unitLabel));
+      key.hidden = false;
+      key.innerHTML = toks.map(o => {
+        const src = iconUrlFor(o.t);
+        return '<span>' + (src ? '<img src="' + src + '" alt="">' : '') + esc(o.t) + ' <b>' + fmt(o.now) + '</b></span>';
+      }).join('');
+      const layout = Object.assign(baseLayout(usd ? '$,.2s' : ',.4~f', true), { barmode: 'stack', barcornerradius: 4 });
+      const hourly = stepFor(S.tvlRange) === HOUR_SEC;
+      draw('tvlPlot', FusionChart.quiet(traces), layout, CONFIG, () => {
+        glide('tvlPlot', (pts) => {
+          const rows = pts.filter(p => p.y > 0).sort((a, b) => b.y - a.y);
+          const sum = pts.reduce((a, p) => a + (p.y || 0), 0);
+          return hvWhen(pts[0].x, hourly) + rows.map(p => FusionChart.row(p.data.marker.color, esc(p.data.name), fmt(p.y))).join('')
+            + (rows.length > 1 ? FusionChart.row('', 'Total', fmt(sum)) : '');
+        });
+        FusionChart.markBars('tvlPlot');
+      });
+      renderUnitsBreakdown();
+      const note = document.getElementById('tvlNote');
+      note.textContent = allTs.length + (hourly ? ' hourly' : ' daily') + ' bars · ends '
+        + new Date(last * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' at '
+        + fmt(toks.reduce((a, o) => a + o.now, 0));
+    }
+
     function renderTvl() {
+      if (S.tvlType === 'bar') return renderTvlBars();
+      document.getElementById('tvlKey').hidden = true;
       const pts = withLead(tvlSeries(S.tvlVault, S.tvlRange), 'tvl', S.tvlRange);
       const el = document.getElementById('tvlPlot');
       if (!pts.length) { undraw('tvlPlot'); el.innerHTML = '<div class="loading">No snapshots in this range.</div>'; return; }
@@ -1212,12 +1291,9 @@
         ? '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>'
         : '<b>%{x|%b %d, %Y}</b><br>%{y:,.4f} ' + unitLabel + '<extra></extra>';
       const marks = pts.map(p => p.anchor ? 'anchor' : null);
-      const trace = S.tvlType === 'bar'
-        ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
-            marker: { color: ACCENT, cornerradius: 6, line: { width: 0 } }, hovertemplate: hover }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
-            line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
-            fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
+      const trace = { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
+        line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
+        fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
       const hourly = stepFor(S.tvlRange) === HOUR_SEC;
       draw('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG, () =>
         glide('tvlPlot', (pts) => hvWhen(pts[0].x, hourly)
@@ -1270,25 +1346,18 @@
 
     function renderStats() {
       const tvl = S.vaults.reduce((s, v) => s + (v.tvl || 0), 0);
-      const funded = S.vaults.filter(v => isFunded(v.tvl)).length;
-      const dep = S.events.filter(e => e.type === 'deposit');
-      const wd = S.events.filter(e => e.type === 'withdraw');
-      const net = dep.reduce((s, e) => s + (e.usdValue || 0), 0) - wd.reduce((s, e) => s + (e.usdValue || 0), 0);
-      // Shares of the underlying actually held, summed across vaults, and the
+      // Shares of the underlying actually held, summed across vaults (whole
+      // units: a fraction of a share says nothing at this size), and the
       // wallets holding them NOW — not everyone who ever deposited.
       const shares = S.vaults.reduce((a, v) => {
         const pts = tvlSeries(v.address, 'all');
         return a + (pts.length ? (pts[pts.length - 1].units || 0) : 0);
       }, 0);
       const holders = holdingsRows().filter(r => r.usd > 0).length;
-      const everWallets = new Set(S.events.map(e => (e.owner || e.sender || '').toLowerCase()).filter(Boolean));
       document.getElementById('stats').innerHTML = [
         ['Total value held', fUsd(tvl)],
-        ['Stock units held', fNum(shares, 4)],
+        ['Stock units held', Math.round(shares).toLocaleString('en-US')],
         ['Wallets holding', String(holders)],
-        ['Funded vaults', funded + ' of ' + S.vaults.length],
-        ['Wallets ever in', String(everWallets.size)],
-        ['Net flow', (net >= 0 ? '+' : '') + fUsd(net)],
       ].map(p => '<div class="stat"><div class="k">' + p[0] + '</div><div class="v">' + p[1] + '</div></div>').join('');
     }
 

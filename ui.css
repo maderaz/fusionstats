@@ -540,9 +540,12 @@ body {
   transition: opacity 0.14s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
   will-change: transform;
 }
-.hv-jump .hv-line, .hv-jump .hv-dot, .hv-jump .hv-bubble { transition: opacity 0.14s ease; }
-/* A dashed cursor, as the reference: 3 on, 3 off. */
-.hv-line { width: 1px; background: repeating-linear-gradient(to bottom, var(--text-3) 0 3px, transparent 3px 6px); }
+.hv-jump .hv-dot, .hv-jump .hv-bubble, .hv-line.hv-jump { transition: opacity 0.14s ease; }
+/* A dashed cursor, as the reference: 3 on, 3 off. It runs under the plot
+   (ui-chart.js hairline): a bar covers it, so the bar and the marks in it
+   stay readable; over the slot behind the bars. */
+.hv-line { z-index: 0; width: 1px; pointer-events: none; background: repeating-linear-gradient(to bottom, var(--text-3) 0 3px, transparent 3px 6px); }
+.hv-line.on { opacity: 0.5; }
 /* The reference's active dot: 6 across the middle, a white ring of 2, a shadow. */
 .hv-dot {
   width: 12px; height: 12px; margin: -6px 0 0 -6px;
@@ -564,7 +567,6 @@ body {
   box-shadow: 0 12px 30px rgba(16, 16, 24, 0.12), 0 2px 6px rgba(16, 16, 24, 0.05);
 }
 [data-theme="dark"] .hv-bubble { box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
-.hv-on .hv-line { opacity: 0.5; }
 .hv-on .hv-dot, .hv-on .hv-bubble { opacity: 1; }
 .hv-when { margin-bottom: 4px; font-size: 13px; color: var(--text-3); }
 .hv-big { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
