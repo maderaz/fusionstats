@@ -17,7 +17,9 @@
 //   data-narrow="All"    a shorter one still, where a page's cell is cramped
 //                        (the page shows .fs-narrow and hides .fs-wide there)
 // FusionSelect.chainName(id) gives a network's display name, and
-// FusionSelect.chainIcon(id) its mark ({ src, ink } or null).
+// FusionSelect.chainIcon(id) its mark ({ src, ink } or null);
+// FusionSelect.tokenIcon(sym) a token's mark, and tokenColor(sym, dark) a
+// stock's own colour for a chart.
 (function () {
   'use strict';
   if (window.FusionSelect) return;
@@ -48,6 +50,16 @@
     if (TOKENS[k]) return '/icons/tokens/' + TOKENS[k] + '.svg';
     if (STOCKS[k]) return '/stocks/icons/' + STOCKS[k] + '.svg';
     return null;
+  }
+  // A stock's own colour, for its part of a chart, so a bar reads like the
+  // marks beside it: Apple black (near white on a dark page, where black
+  // would vanish), Google red, Meta blue, Nvidia green, the rest apart from
+  // those. null for anything else (the chart's palette then).
+  const STOCK_COLORS = { aapl: ['#111114', '#F2F2F5'], goog: '#EA4335', meta: '#0866FF', nvda: '#76B900', amzn: '#FF9900',
+    msft: '#00A4EF', tsla: '#A1A1AA', coin: '#1E3A8A', mstr: '#D9480F', sndk: '#9F1239', spcx: '#64748B' };
+  function tokenColor(sym, dark) {
+    const c = STOCK_COLORS[STOCKS[String(sym || '').toLowerCase()]];
+    return Array.isArray(c) ? c[dark ? 1 : 0] : c || null;
   }
 
   const chainName = (id) => (CHAINS[id] ? CHAINS[id][0] : String(id || '').replace(/^./, c => c.toUpperCase()));
@@ -543,6 +555,7 @@
     chainName,
     chainIcon,
     tokenIcon,
+    tokenColor,
     close: () => close(false),
   };
   window.FusionSelect.enhanceAll();

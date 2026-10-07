@@ -17,7 +17,7 @@
   // own pages it is open, so the current page always shows.
   const GROUPS = [
     { pages: [
-      { href: '/',                      label: 'Activity',       icon: 'activity' },
+      { href: '/',                      label: 'Key Metrics',    icon: 'activity' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
         sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'stocks' }] },
     ] },

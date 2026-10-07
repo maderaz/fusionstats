@@ -27,6 +27,12 @@
 //   FusionChart.soft(traces)            the marks drawn soft and lean (below)
 //   FusionChart.png(fig, { width, height, dots, filename })
 //                                       download a chart as an image
+//   FusionChart.markBars(gd)            each stacked bar trace's mark
+//                                       (meta.mark: an icon's URL) inside its
+//                                       part of every bar with room; kept
+//                                       placed as the plot changes size
+//   FusionChart.barMarks(gd, size)      those marks, as layout.images (for an
+//                                       export drawn off screen)
 //
 // Exports draw the layout as it was before fit(), whatever the screen: keep
 // it and hand it to Plotly.toImage.
@@ -131,7 +137,9 @@
       if (!m) continue;
       const ax = out[k];
       // The dates are frame()'s: five under the plot (three on a phone).
-      Object.assign(ax, { automargin: false, showticklabels: false, ticks: '', ticklen: 0, showline: false, showgrid: false, zeroline: false });
+      // Plotly's own spike line stays off ('x unified' turns it on): the
+      // hover's hairline is ours, and runs under the bars (hairline()).
+      Object.assign(ax, { automargin: false, showticklabels: false, ticks: '', ticklen: 0, showline: false, showgrid: false, zeroline: false, showspikes: false });
       // From the first reading to the last: no dead space either side.
       const e = xs['x' + m[1]];
       const own = ax.range || ax.type === 'category' || ax.type === 'multicategory' || ax.autorange === 'reversed';
@@ -146,7 +154,7 @@
       if (!m) continue;
       const ax = out[k];
       Object.assign(ax, {
-        ticks: '', ticklen: 0, showline: false, zeroline: false, layer: 'below traces',
+        ticks: '', ticklen: 0, showline: false, zeroline: false, layer: 'below traces', showspikes: false,
         // Faint dashed rules at the labelled levels, under everything.
         showgrid: true, gridcolor: cssVar('--line', 'rgba(127, 127, 127, 0.16)'), griddash: '4px,8px', gridwidth: 1,
         tickfont: Object.assign({}, ax.tickfont, { size: M.font, color: muted }),
@@ -507,6 +515,17 @@
   // the nearest point, a ringed dot on each line, and a bubble beside them
   // (ui.css .hv). The layout wants hovermode 'x unified', hoverdistance -1.
   // describe(points) returns the bubble's HTML. Call again after each redraw.
+  // The hover's hairline, under the plot: placed just before Plotly's own
+  // drawing (and after the slot), so a bar or a line covers it and the slot
+  // behind the bars does not. (ui.css .hv-line)
+  function hairline(gd) {
+    let l = gd.querySelector(':scope > .hv-line');
+    if (!l) { l = document.createElement('div'); l.className = 'hv-line'; }
+    const plot = gd.querySelector(':scope > .plot-container, :scope > .svg-container');
+    if (plot && l.nextElementSibling !== plot) gd.insertBefore(l, plot);
+    else if (!plot && !l.parentNode) gd.appendChild(l);
+    return l;
+  }
   function glide(gd, describe) {
     if (typeof gd === 'string') gd = document.getElementById(gd);
     if (!gd || !gd._fullLayout || !gd.on) return;
@@ -514,12 +533,17 @@
     if (!hv) {
       hv = document.createElement('div');
       hv.className = 'hv';
-      hv.innerHTML = '<div class="hv-line"></div><div class="hv-dots"></div><div class="hv-bubble"></div>';
+      hv.innerHTML = '<div class="hv-dots"></div><div class="hv-bubble"></div>';
       gd.appendChild(hv);
     }
     if (gd.__hv) { gd.removeListener('plotly_hover', gd.__hv.on); gd.removeListener('plotly_unhover', gd.__hv.off); }
     let live = false;
-    const off = () => { live = false; const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on'); slot(gd, null); };
+    const off = () => {
+      live = false;
+      const h = gd.querySelector(':scope > .hv'); if (h) h.classList.remove('hv-on');
+      const l = gd.querySelector(':scope > .hv-line'); if (l) l.classList.remove('on');
+      slot(gd, null);
+    };
     const on = (ev) => {
       const h = gd.querySelector(':scope > .hv');
       // A line's zero start (customdata 'anchor') shapes the line; it is not
@@ -530,10 +554,11 @@
       slot(gd, pts);
       const fl = gd._fullLayout, sz = fl._size, xa = fl.xaxis, ya = fl.yaxis;
       const x = xa._offset + xa.l2p(xa.d2l(pts[0].x));
-      if (!live) h.classList.add('hv-jump');
-      const line = h.querySelector('.hv-line');
+      const line = hairline(gd);
+      if (!live) { h.classList.add('hv-jump'); line.classList.add('hv-jump'); }
       line.style.height = sz.h + 'px';
       line.style.transform = 'translate(' + x + 'px,' + sz.t + 'px)';
+      line.classList.add('on');
       const dots = h.querySelector('.hv-dots');
       const lines = pts.filter(p => p.data.type !== 'bar' && !p.data.stackgroup);
       while (dots.children.length < lines.length) dots.appendChild(Object.assign(document.createElement('span'), { className: 'hv-dot' }));
@@ -554,7 +579,7 @@
       const by = Math.max(sz.t - 6, Math.min(py - bh / 2, sz.t + sz.h - bh + 6));
       b.style.transform = 'translate(' + Math.max(0, bx) + 'px,' + by + 'px)';
       h.classList.add('hv-on');
-      if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => h.classList.remove('hv-jump'))); }
+      if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => { h.classList.remove('hv-jump'); line.classList.remove('hv-jump'); })); }
     };
     gd.on('plotly_hover', on);
     gd.on('plotly_unhover', off);
@@ -650,5 +675,66 @@
     }));
   }
 
-  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, glide, touch, frame, when, row, cssVar, png };
+  // ---- Marks in the bars -----------------------------------------------------
+  // A bar trace that names its mark (meta: { mark: an icon's URL }) shows it
+  // inside its part of every bar with room for it: the mark (14px, 12px on a
+  // phone) with 3px clear above and below, in a bar 4px wider. Round, on a
+  // thin white ring, so it reads on any colour, and centred in the part, from
+  // Plotly's own stacking (calcdata p0/p1, s0/s1). A data URL built from the
+  // icon file, so Plotly draws it on the page and in a PNG alike.
+  const chips = {};
+  function chip(src) {
+    if (!(src in chips)) chips[src] = (async () => {
+      const svg = await (await fetch(src)).text();
+      const vb = (svg.match(/viewBox="([^"]+)"/) || [])[1] || '0 0 512 512';
+      const inner = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+      const out = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#fff"/>'
+        + '<clipPath id="ring"><circle cx="20" cy="20" r="17"/></clipPath><g clip-path="url(#ring)">'
+        + '<svg x="3" y="3" width="34" height="34" viewBox="' + vb + '">' + inner + '</svg></g></svg>';
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(out)));
+    })().catch(() => null);
+    return chips[src];
+  }
+  async function barMarks(gd, size) {
+    const fl = gd && gd._fullLayout;
+    if (!fl || !fl.xaxis || !fl.yaxis || !gd.calcdata || fl.yaxis.type === 'log') return [];
+    const S = size || (compact() ? 12 : 14);
+    const xa = fl.xaxis, ya = fl.yaxis, sz = fl._size;
+    const perX = sz.w / Math.abs(xa._rl[1] - xa._rl[0]), perY = sz.h / Math.abs(ya._rl[1] - ya._rl[0]);
+    if (!(perX > 0 && perY > 0)) return [];
+    const out = [];
+    for (const cd of gd.calcdata) {
+      const t = cd && cd[0] && cd[0].trace;
+      if (!t || t.type !== 'bar' || t.visible !== true || !t.meta || !t.meta.mark || t.orientation === 'h') continue;
+      const src = await chip(t.meta.mark);
+      if (!src) continue;
+      for (const d of cd) {
+        if (d.isBlank || !(Math.abs(d.s1 - d.s0) * perY >= S + 6) || !(Math.abs(d.p1 - d.p0) * perX >= S + 4)) continue;
+        out.push({ source: src, xref: 'x', yref: 'y', x: (d.p0 + d.p1) / 2, y: (d.s0 + d.s1) / 2,
+          sizex: S / perX, sizey: S / perY, xanchor: 'center', yanchor: 'middle', sizing: 'contain', layer: 'above' });
+      }
+    }
+    return out;
+  }
+  // Places them on a drawn plot, and again whenever it is drawn at a new size
+  // or range. Call after each Plotly.react.
+  function markBars(gd) {
+    if (typeof gd === 'string') gd = document.getElementById(gd);
+    if (!gd || !gd.on) return Promise.resolve();
+    const place = async () => {
+      const fl = gd._fullLayout;
+      if (!fl || !fl._size || !fl.xaxis) return;
+      const at = [fl._size.w, fl._size.h, fl.xaxis._rl, fl.yaxis && fl.yaxis._rl].join('|');
+      if (gd.__marksAt === at) return;
+      gd.__marksAt = at;
+      const images = await barMarks(gd);
+      if (images.length || ((gd.layout && gd.layout.images) || []).length) await Plotly.relayout(gd, { images });
+    };
+    gd.__marksAt = '';
+    gd.__placeMarks = place;
+    if (!gd.__marksHooked) { gd.__marksHooked = true; gd.on('plotly_afterplot', () => gd.__placeMarks && gd.__placeMarks()); }
+    return place();
+  }
+
+  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, markBars, barMarks };
 })();
