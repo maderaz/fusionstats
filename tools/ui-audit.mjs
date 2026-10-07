@@ -5,8 +5,10 @@
 //   wrap     a label on more than one line: a figure's or a filter's name, a
 //            section title, a table heading, a button, a tab, a chip, a
 //            dropdown's value
-//   cut      a short word or value cut off with "…" (a long vault name may
-//            give way to an ellipsis; a short name or a filter's value never)
+//   cut      text cut off with "…": only a long name in a list's row may (a
+//            vault's); a caption, a figure, a heading or a value never does
+//   align    words in one row of a table or list off each other's line (a
+//            name raised a few pixels by the icon beside it)
 //   close    two things nearly touching: an icon within 4px of its text, a
 //            chevron within 8px of anything, two neighbouring items within 6px
 //   overlap  two things on top of each other
@@ -238,13 +240,45 @@ function inPage(opts) {
     }
     if (lines.length > 1) add('wrap', el, `${lines.length} lines`);
   }
-  // Cut short: a short word or value ending in "…".
+  // Cut short: text ending in "…". Only a long name in a list's row may (a
+  // vault's, in a table or a .vrow/.src-row line); a caption, a figure, a
+  // heading or a filter's value never does, however long.
+  const inListRow = (el) => { for (let n = el; n && n !== document.body; n = n.parentElement) {
+    if (n.matches('tr, li, [role="row"], .fs-opt')) return true;
+    if ([...n.classList].some(c => c !== 'stat-row' && /^[a-z]row$|-row$/.test(c))) return true;
+  } return false; };
   for (const el of document.querySelectorAll(ROOT_SEL + ' *')) {
     if (el.closest(SKIP)) continue;
     const c = getComputedStyle(el);
     if (c.textOverflow !== 'ellipsis' || c.overflowX === 'visible' || el.scrollWidth <= el.clientWidth + 1 || !shown(el)) continue;
     const full = (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ');
-    if (full && (full.length <= 20 || (el.matches('.fs-text, .fs-wide') && full.length <= 24))) add('cut', el, `"${full}" ends in … (${el.scrollWidth - el.clientWidth}px short)`);
+    if (!full) continue;
+    const longName = full.length > 20 && inListRow(el) && !el.matches('.fs-trigger .fs-text, .fs-trigger .fs-wide');
+    if (!longName) add('cut', el, `"${full.slice(0, 40)}" ends in … (${el.scrollWidth - el.clientWidth}px short)`);
+  }
+  // Level: the words in one row of a table or a list share their line. A
+  // one-line cell's text sits on the same centre as its neighbours' (same
+  // size of type, within 1.5px), never a few pixels up for an icon beside it.
+  const rows = [...document.querySelectorAll(ROOT_SEL + ' :is(tr, [role="row"])')]
+    .concat([...document.querySelectorAll(ROOT_SEL + ' *')].filter(n => [...n.classList].some(c => c !== 'stat-row' && /^[a-z]row$|-row$/.test(c))));
+  for (const row of new Set(rows)) {
+    if (row.closest(SKIP) || !shown(row)) continue;
+    const cells = [...row.children].filter(k => shown(k) && !k.matches(SKIP)).map(k => {
+      const lines = atoms(k).filter(a => a.type === 'text');
+      if (!lines.length) return null;
+      const tops = new Set(lines.map(a => Math.round(a.r.top)));
+      if ([...tops].some(t => Math.abs(t - lines[0].r.top) > lines[0].r.height * 0.5)) return null;   // more than one line: centred as a block
+      return { k, r: lines.reduce((m, a) => (a.r.height > m.r.height ? a : m)).r, fs: parseFloat(getComputedStyle(lines[0].el).fontSize) };
+    }).filter(Boolean);
+    // Against the line most of the row's cells share (their median centre),
+    // among the cells on that visual line in the same size of type.
+    for (const a of cells) {
+      const peers = cells.filter(b => b !== a && Math.abs(a.fs - b.fs) <= 1.5 && vOverlap(a.r, b.r) >= 0.3 * Math.min(a.r.height, b.r.height));
+      if (peers.length < 2) continue;
+      const mids = peers.map(b => (b.r.top + b.r.bottom) / 2).sort((x, y) => x - y);
+      const d = (a.r.top + a.r.bottom) / 2 - mids[mids.length >> 1];
+      if (Math.abs(d) > 1.5) add('align', a.k, `${Math.abs(d).toFixed(1)}px ${d < 0 ? 'above' : 'below'} the rest of its row (${name(row).slice(0, 30)})`);
+    }
   }
   // The screen's edge.
   for (const el of document.querySelectorAll(ROOT_SEL + ' *')) {
