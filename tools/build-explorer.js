@@ -9,8 +9,9 @@
 //               vault's first snapshot (tvl-snapshots.json, as the TVL page
 //               reads it: tvl-series.js; share prices as the Finances pages
 //               read them: build-earnings.js)
-//   holders     the number of holders a day, and the largest ones
-//               (vault-holders.json)
+//   holders     the number of holders a day (vault-holders.json), and every
+//               holder with its balance in shares, largest first
+//               (vault-holders-state.json, the holders collector's own state)
 //   markets     where its assets are now, market by market, with each
 //               lending position and its rate, and its capacity
 //               (vault-markets.json)
@@ -20,15 +21,25 @@
 // The vault's name, asset, TVL and APY now are the vault list's
 // (ipor-vaults.json), which the page reads anyway to search.
 //
+// And a file a vault for its Curator Action History,
+// explorer/actions/<chain>-<address>.json, read only when that tab opens:
+// each rebalance the curator made (rebalance-events-<address>.json, the
+// rebalance scan's), newest first, with what it moved, protocol by protocol
+// (rebalance-flows.js, as the Address page counts it). The newest
+// ACTIONS_KEPT of them; the count says how many there are in all.
+//
 //   node tools/build-explorer.js
 
 const fs = require('fs');
 const path = require('path');
 const TvlSeries = require('../tvl-series.js');
+const RebalanceFlows = require('../rebalance-flows.js');
 const { dailySharePrices } = require('./build-earnings.js');
 
 const ROOT = path.join(__dirname, '..');
 const DIR = path.join(ROOT, 'explorer', 'vaults');
+const ACTIONS_DIR = path.join(ROOT, 'explorer', 'actions');
+const ACTIONS_KEPT = 1000;
 
 // A day-indexed map as one array from its first day: a day without a value
 // is null, or the last value before it (carry), as the TVL page carries TVL.
@@ -45,9 +56,18 @@ function dense(map, round, carry) {
 }
 const r0 = (v) => Math.round(v);
 const r6 = (v) => Math.round(v * 1e6) / 1e6;
+const sig = (v) => Number(v.toPrecision(7));
+// A raw balance (hex or decimal string) in whole shares.
+function shares(raw, decimals) {
+  try {
+    const n = BigInt(raw);
+    const d = 10n ** BigInt(decimals);
+    return Number(n / d) + Number(n % d) / Number(d);
+  } catch { return null; }
+}
 const fileOf = (chain, addr) => `${String(chain).toLowerCase()}-${String(addr).toLowerCase()}.json`;
 
-function buildExplorer({ snapshots, holders, markets, history, fees, deployments }, opts = {}) {
+function buildExplorer({ snapshots, holders, holderState, markets, history, fees, deployments }, opts = {}) {
   const out = {};
   const at = (chain, addr) => {
     const k = fileOf(chain, addr);
@@ -67,6 +87,15 @@ function buildExplorer({ snapshots, holders, markets, history, fees, deployments
     const m = new Map((h.series || []).map(p => [p.day, p.holders]));
     v.holders = { total: h.totalHolders != null ? h.totalHolders : null, days: dense(m, r0),
       top: (h.topHolders || []).slice(0, 10).map(x => ({ address: x.address, balance: Math.round(x.balance * 100) / 100 })) };
+    // Every holder, largest first: [address, shares].
+    const st = holderState && holderState.vaults && holderState.vaults[h.address.toLowerCase()];
+    if (st && st.bal && h.decimals != null) {
+      v.holders.all = Object.entries(st.bal)
+        .map(([a, raw]) => [a.toLowerCase(), shares(raw, h.decimals)])
+        .filter(([a, b]) => b > 0 && a !== '0x0000000000000000000000000000000000000000')
+        .sort((x, y) => y[1] - x[1])
+        .map(([a, b]) => [a, sig(b)]);
+    }
   }
   for (const [addr, m] of Object.entries((markets && markets.vaults) || {})) {
     if (!m.chain) continue;
@@ -93,24 +122,58 @@ function buildExplorer({ snapshots, holders, markets, history, fees, deployments
   return out;
 }
 
+// One vault's Curator Action History from its rebalance scan: the moves of
+// each rebalance, newest first. protocols is the list of what the moves name
+// (a market's protocol, a token's symbol): [its index, 1 out of the vault or
+// 0 into it, dollars].
+function buildActions(scan, opts = {}) {
+  if (!scan || !scan.vault || !scan.chain) return null;
+  const kept = opts.kept || ACTIONS_KEPT;
+  const protocols = [], index = new Map();
+  const pi = (p) => { if (!index.has(p)) { index.set(p, protocols.length); protocols.push(p); } return index.get(p); };
+  const all = RebalanceFlows.prepare(JSON.parse(JSON.stringify(scan.rebalances || [])))
+    .map(r => ({ r, s: RebalanceFlows.summarize(r) }))
+    .filter(x => x.s.volume >= 1 && x.r.tx)   // dust (under a dollar) is no action
+    .sort((a, b) => (b.r.timestamp || 0) - (a.r.timestamp || 0) || (b.r.block || 0) - (a.r.block || 0));
+  const actions = all.slice(0, kept).map(({ r, s }) => [r.timestamp || null, r.tx, r0(s.volume),
+    s.moves.filter(m => m.usd >= 1).map(m => [pi(m.label), m.direction === 'out' ? 1 : 0, r0(m.usd)])]);
+  return {
+    address: scan.vault.toLowerCase(), chain: String(scan.chain).toLowerCase(),
+    scannedAt: scan.updatedAt || null, fromBlock: (scan.blockRange && scan.blockRange.from) || null,
+    count: all.length, protocols, actions,
+  };
+}
+
 function main() {
   const read = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch { return null; } };
-  const files = buildExplorer({ snapshots: read('tvl-snapshots.json'), holders: read('vault-holders.json'), markets: read('vault-markets.json'),
-    history: read('vault-markets-history.json'), fees: read('dao-fees.json'), deployments: read('vault-deployments.json') });
-  fs.mkdirSync(DIR, { recursive: true });
-  let bytes = 0, written = 0;
-  for (const [name, v] of Object.entries(files)) {
+  const files = buildExplorer({ snapshots: read('tvl-snapshots.json'), holders: read('vault-holders.json'), holderState: read('vault-holders-state.json'),
+    markets: read('vault-markets.json'), history: read('vault-markets-history.json'), fees: read('dao-fees.json'), deployments: read('vault-deployments.json') });
+  // A file is rewritten only when it changed (builtAt alone is no change).
+  const write = (dir, name, v) => {
     const body = JSON.stringify(v) + '\n';
-    const p = path.join(DIR, name);
+    const p = path.join(dir, name);
     let old = null;
     try { old = fs.readFileSync(p, 'utf8'); } catch {}
-    // builtAt alone is no change: leave the file as it was.
-    if (old && old.replace(/"builtAt":"[^"]*"/, '') === body.replace(/"builtAt":"[^"]*"/, '')) continue;
+    if (old && old.replace(/"builtAt":"[^"]*"/, '') === body.replace(/"builtAt":"[^"]*"/, '')) return 0;
     fs.writeFileSync(p, body);
-    bytes += body.length; written++;
-  }
+    return body.length;
+  };
+  fs.mkdirSync(DIR, { recursive: true });
+  let bytes = 0, written = 0;
+  for (const [name, v] of Object.entries(files)) { const b = write(DIR, name, v); if (b) { bytes += b; written++; } }
   console.log(`explorer/vaults: ${Object.keys(files).length} vaults, ${written} rewritten (${(bytes / 1024).toFixed(0)} KB)`);
+
+  fs.mkdirSync(ACTIONS_DIR, { recursive: true });
+  let scans = 0, aBytes = 0, aWritten = 0;
+  for (const f of fs.readdirSync(ROOT).filter(n => /^rebalance-events-0x[0-9a-f]{40}\.json$/i.test(n))) {
+    const a = buildActions(read(f));
+    if (!a) continue;
+    scans++;
+    const b = write(ACTIONS_DIR, fileOf(a.chain, a.address), a);
+    if (b) { aBytes += b; aWritten++; }
+  }
+  console.log(`explorer/actions: ${scans} vaults, ${aWritten} rewritten (${(aBytes / 1024).toFixed(0)} KB)`);
 }
 
 if (require.main === module) main();
-module.exports = { buildExplorer, fileOf, dense };
+module.exports = { buildExplorer, buildActions, fileOf, dense, shares };
