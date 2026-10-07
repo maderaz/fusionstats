@@ -746,19 +746,19 @@
     .addr-link:hover { color: var(--accent); }
     .col-profile { text-align: center; }
     th:last-child { text-align: center; }
+    /* A wallet's DeBank profile: DeBank's own mark (icons/debank.svg, from
+       DeBank's @debank/common package), a soft ring on hover. */
     .debank {
-      display: inline-grid;
-      place-items: center;
-      width: 22px;
-      height: 22px;
+      display: inline-flex;
+      vertical-align: middle;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: rgba(255, 107, 0, 0.11);
-      color: #FF6B00;
-      font: 700 10px var(--sans);
-      text-decoration: none;
-      transition: background 0.15s, color 0.15s;
+      transition: box-shadow 0.15s;
     }
-    .debank:hover { background: #FF6B00; color: #FFF; }
+    .debank img { display: block; width: 100%; height: 100%; }
+    .debank:hover { box-shadow: 0 0 0 3px rgba(254, 129, 95, 0.28); }
+    .debank:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .loading-msg { padding: 72px 20px; text-align: center; font-size: 14px; color: var(--text-3); }
     .loading-msg strong { color: var(--text); font-weight: 600; }
@@ -860,7 +860,7 @@
     .mobile-event-usd { font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .mobile-event-who { display: inline-flex; align-items: center; gap: 8px; }
     .mobile-event-user { font-size: 12px; color: var(--text-3); }
-    .mobile-event .debank { width: 18px; height: 18px; font-size: 9px; }
+    .mobile-event .debank { width: 18px; height: 18px; }
     .mobile-event-when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
 
     @container (max-width: 900px) {
@@ -1999,7 +1999,7 @@
         const amount = pegged
           ? `<span class="sym" title="${amountText(e, whole)} ${sym}">${sym}</span>`
           : `${amountText(e, whole)} <span class="sym">${sym}</span>`;
-        const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" class="debank">B</a>`;
+        const debank = `<a href="https://debank.com/profile/${e.owner}" target="_blank" rel="noopener" title="View on DeBank" aria-label="View on DeBank" class="debank"><img src="/icons/debank.svg" alt="" width="20" height="20"></a>`;
         // Arrow in, arrow out; the word stays DEPOSIT / WITHDRAW in the text.
         // The link waits for the row's transaction hash (see attachTx); the
         // badge reads the same without it.
