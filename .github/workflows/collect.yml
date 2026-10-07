@@ -72,6 +72,15 @@ jobs:
         continue-on-error: true
         run: node collect-activity.js
 
+      # Where each new stock-vault deposit's tokens came from: a swap through
+      # LI.FI (and which app sent it: Jumper), a bridge, another vault, or
+      # elsewhere (collect-stock-funding.js), for the Stocks page's routes. A
+      # bounded slice a run, newest first; the older ones fill in over runs.
+      - name: Read where stock deposits were funded
+        timeout-minutes: 2
+        continue-on-error: true
+        run: node collect-stock-funding.js
+
       # What the Activity page opens with: the last five weeks of events plus
       # what it needs from all history (tools/build-activity-recent.js), so a
       # visit no longer downloads every event ever collected — and their
@@ -121,6 +130,7 @@ jobs:
           [ -f activity-recent.json ] && git add -f activity-recent.json || true
           [ -f activity-recent-tx.json ] && git add -f activity-recent-tx.json || true
           [ -f stocks-data.json ] && git add -f stocks-data.json || true
+          [ -f stock-funding.json ] && git add -f stock-funding.json || true
           [ -f tvl-daily.json ] && git add -f tvl-daily.json || true
           [ -f switch-events.json ] && git add -f switch-events.json || true
           [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true

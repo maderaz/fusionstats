@@ -1561,9 +1561,30 @@
       return sp;
     }
 
+    // Where a vault's holders have been read on-chain (S.holders, from
+    // vault-holders-state.json), a wallet's position is its fraction of the
+    // vault's shares, of the vault's units and its TVL now: shares moved
+    // between wallets, sold back through an exit adapter or held by a proxy
+    // land where they are. Elsewhere it is net shares from the events.
     function holdingsRows() {
       const price = latestPrices();
       const sharePrice = latestSharePrices();
+      const pos = {}, usd = {};
+      const add = (w, a, units, dollars) => {
+        (pos[w] = pos[w] || {})[a] = (pos[w][a] || 0) + units;
+        usd[w] = (usd[w] || 0) + dollars;
+      };
+      const read = new Set();
+      S.vaults.forEach(v => {
+        const h = S.holders && S.holders[v.address];
+        if (!h || !h.share || !h.share.length) return;
+        const snaps = S.snaps[v.address] || [];
+        const last = snaps[snaps.length - 1];
+        const units = last && last.assets > 0 ? last.assets : (price[v.address] > 0 ? (v.tvl || 0) / price[v.address] : null);
+        if (units == null) return;
+        read.add(v.address);
+        h.share.forEach(([w, f]) => add(w, v.address, f * units, f * (v.tvl || 0)));
+      });
       // Net SHARES, not net assets. Shares are conserved: a deposit mints them
       // and a withdrawal burns them. Assets are not — a vault that earned yield
       // returns more underlying than went in, so netting assets showed a full
@@ -1571,26 +1592,22 @@
       const by = {};
       S.events.forEach(e => {
         const a = (e.vault || '').toLowerCase();
+        if (read.has(a)) return;
         const w = (e.owner || e.sender || '').toLowerCase();
         if (!w) return;
         by[w] = by[w] || {};
         by[w][a] = (by[w][a] || 0) + (e.type === 'deposit' ? 1 : -1) * (e.shares || 0);
       });
       const DUST = 1e-9;
-      return Object.entries(by).map(([w, shares]) => {
-        const pos = {};
-        let usd = 0;
-        Object.entries(shares).forEach(([a, q]) => {
-          // A fully exited position lands on a hair either side of zero from
-          // rounding; treat that as closed rather than as a tiny holding.
-          if (Math.abs(q) < DUST) return;
-          const units = q * (sharePrice[a] || 0);
-          pos[a] = units;
-          usd += units * (price[a] || 0);
-        });
-        return { wallet: w, pos, usd, shares };
-      })
-        .filter(r => Object.keys(r.pos).length)   // drop wallets that have fully exited
+      Object.entries(by).forEach(([w, shares]) => Object.entries(shares).forEach(([a, q]) => {
+        // A fully exited position lands on a hair either side of zero from
+        // rounding; treat that as closed rather than as a tiny holding.
+        if (Math.abs(q) < DUST) return;
+        const units = q * (sharePrice[a] || 0);
+        add(w, a, units, units * (price[a] || 0));
+      }));
+      return Object.keys(pos).map(w => ({ wallet: w, pos: pos[w], usd: usd[w] || 0 }))
+        .filter(r => Object.values(r.pos).some(q => Math.abs(q) > DUST))   // drop wallets that have fully exited
         .sort((x, y) => y.usd - x.usd);
     }
 
@@ -1786,12 +1803,18 @@
       const summed = rows.reduce((a, r) => a + r.usd, 0);
       const live = S.vaults.reduce((a, v) => a + (v.tvl || 0), 0);
       const gap = live > 0 ? (live - summed) / live * 100 : 0;
+      const onchain = S.vaults.filter(v => S.holders && S.holders[v.address]).length;
       document.getElementById('holdersNote').innerHTML =
         rows.length + ' wallets · holdings sum to ' + fUsd(summed) + ' against ' + fUsd(live)
         + ' live TVL (' + (gap >= 0 ? '+' : '') + gap.toFixed(1) + '%) '
-        + tip('Positions are net vault shares from deposit and withdrawal events, valued at the latest share '
-            + 'and asset price. Wallets that have fully exited are omitted. Shares moved directly between '
-            + 'wallets are not tracked.');
+        + tip((onchain
+              ? 'In ' + onchain + ' of ' + S.vaults.length + ' vaults, positions are each wallet\'s share of the vault\'s '
+                + 'shares as read on-chain, of the vault\'s TVL and units now: shares moved between wallets count where '
+                + 'they are. In the rest, '
+              : '')
+            + 'positions are net vault shares from deposit and withdrawal events, valued at the latest share '
+            + 'and asset price; shares moved directly between wallets are not tracked there. Wallets that have '
+            + 'fully exited are omitted.');
     }
 
     // When a figure cannot be shown, say which piece is missing. "No data"
@@ -2075,7 +2098,7 @@
             // underlying equity moved. Flag it so it reads as a gain.
             const rTitle = retained != null && retained > 1.005
               ? ' title="Worth more than went in — the position gained value since deposit"' : '';
-            const via = r.contracts > 1
+            const via = r.contracts > 1 && info.kind !== 'funding'
               ? r.contracts + ' contracts' + (info.via === 'deployer' ? ', deployed by ' + esc(info.protocol) : '')
               : esc(info.detail || '—');
             return '<tr>'
@@ -2123,7 +2146,8 @@
       // Matched on the protocol's real name, not its display name, or renaming
       // IPOR to "Direct Zap" would make the page report IPOR as never found.
       const looked = ['Harvest', 'Spectra', 'Zyfi', 'Portals', 'Enso', 'Odos', '1inch', 'ParaSwap', 'LI.FI', 'Pendle', 'IPOR'];
-      const found = new Set(protocols.map(r => ri(r).rawProtocol));
+      const funded = totals.filter(r => ri(r).kind === 'funding');
+      const found = new Set(protocols.concat(funded).map(r => ri(r).rawProtocol));
       // A contract we could not name still tells us something when its
       // transactions run through a protocol. Not a sighting, but not nothing.
       const seenVia = new Set();
@@ -2150,6 +2174,12 @@
         (hops.n ? '<p><strong>Not gross inflow:</strong> ' + esc(relayWords(hops)) + '. The tokens came in once, by the route of the first wallet.</p>' : '')
         + '<p><strong>Retained</strong> is what is still here divided by what came in — a route that pumped money in and '
         + 'later exited reads high on <em>Gross in</em> and low here. That ratio is the reason both numbers share a row.'
+        + (funded.length
+            ? '</p><p><strong>' + funded.map(r => esc(ri(r).protocol)).join(' and ') + '</strong> '
+              + (funded.length === 1 ? 'is' : 'are') + ' read from where a deposit\'s tokens came from, not from who made it: '
+              + 'a deposit from the wallet itself (or a contract of its own) minutes after the stock reached it in a swap '
+              + 'through LI.FI, whose own tag names the app that sent it (Jumper\'s begin "jumper").'
+            : '')
         + '</p><p>Protocols are identified from Basescan, not from a list we maintain by hand: '
         + bySource + ' from the contract\'s own verified source — storage namespaces, contract and interface names'
         + (byDeployer
@@ -3095,6 +3125,8 @@
         });
       }
       S.events = []; S.firstDeposit = {}; S.updatedAt = null;
+      // Each vault's holders as read on-chain (stocks-data.json only).
+      S.holders = d.holders || {};
       if (act) {
         const addrs = {}; S.vaults.forEach(v => { addrs[v.address] = 1; });
         S.events = (act.events || []).filter(e => addrs[(e.vault || '').toLowerCase()] && e.synthetic !== true);

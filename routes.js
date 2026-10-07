@@ -25,6 +25,9 @@
   // Named contracts collapse onto their protocol; this marks such a key so it
   // can never collide with a contract address.
   const PROTO = 'p:';
+  // A route known from where the deposit's tokens came from, not from who
+  // made the deposit (see depositRoute).
+  const FUNDED = 'f:';
 
   // IPOR is not a route into Fusion — IPOR *is* Fusion. Its ReferralPlasmaVault
   // and zap contracts are the app's own deposit path, so listing them beside
@@ -98,8 +101,21 @@
     // named contracts collapse onto their protocol and unidentified ones stay
     // separate — merging those would be inventing a relationship we have no
     // evidence for.
+    //
+    // One more shape the deposit itself cannot show: a deposit made from the
+    // user's own wallet, or from a contract depositing for that user alone,
+    // with tokens that arrived minutes before through LI.FI — the Jumper
+    // campaign's, made on Jumper and deposited a minute later. Where those
+    // tokens came from is read on-chain (collect-stock-funding.js, e.funded);
+    // the swap names the app that sent it, and Jumper's tags begin "jumper".
+    // A named protocol's deposit keeps its protocol (Zyfi buys through LI.FI
+    // too, for its own users).
     function depositRoute(e) {
       const c = depositContract(e);
+      const f = e.funded;
+      if (f && (f.via === 'lifi' || f.via === 'lifi-bridge') && (c === DIRECT || !knownProtocol(c))) {
+        return FUNDED + (/^jumper/i.test(f.integrator || '') ? 'Jumper' : 'LI.FI');
+      }
       if (c === DIRECT) return DIRECT;
       const id = knownProtocol(c);
       return id ? PROTO + id.protocol : c;
@@ -115,6 +131,13 @@
     //                   it. Good evidence, but not the contract's own.
     function routeInfo(route) {
       if (route === DIRECT) return { protocol: 'Direct', detail: 'straight into the vault', named: true, kind: 'direct' };
+      if (route.startsWith(FUNDED)) {
+        const app = route.slice(FUNDED.length);
+        return { protocol: app, rawProtocol: 'LI.FI', named: true, kind: 'funding', via: 'funding',
+                 detail: app === 'Jumper' ? 'bought through LI.FI on Jumper' : 'bought through LI.FI',
+                 reason: 'Deposited from the wallet itself (or a contract of its own) minutes after the stock reached it '
+                   + 'through LI.FI' + (app === 'Jumper' ? ', in a swap Jumper sent' : '') + ', read from that transaction on-chain' };
+      }
       if (route.startsWith(PROTO)) {
         const name = route.slice(PROTO.length);
         // Every checked contract carrying this name, so the row can say how
@@ -388,5 +411,5 @@
     return hops;
   }
 
-  window.FusionRoutes = { create, markRelays, RELAY_SEC, DIRECT, PROTO, DISPLAY_NAME, displayName, shortAddr };
+  window.FusionRoutes = { create, markRelays, RELAY_SEC, DIRECT, PROTO, FUNDED, DISPLAY_NAME, displayName, shortAddr };
 })();

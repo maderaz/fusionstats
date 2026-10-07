@@ -104,6 +104,19 @@ test('a relay hop: both legs marked, found while the receiver is still there', (
   assert.ok(!('receiver' in hop.activity.events[0]));
 });
 
+test('a deposit carries where its tokens came from, when a route can use it', () => {
+  const funding = { deposits: { '0x1:3': { via: 'lifi', integrator: 'jumperrwa', tx: '0xswap', block: 5 },
+                                '0x5:3': { via: 'other', from: '0xpool' } } };
+  const b = buildStocks({ ipor, activity, funding });
+  assert.deepStrictEqual(b.activity.events.map(e => e.funded || null), [{ via: 'lifi', integrator: 'jumperrwa' }, null, null]);
+});
+
+test("each vault's holders as fractions of its shares, largest first, the vault and the zero address aside", () => {
+  const holderState = { vaults: { '0xaaa1': { lastBlock: 42, bal: { '0xW1': '0x3', '0xw2': '0x1', '0x0000000000000000000000000000000000000000': '0x5', '0xaaa1': '0x9', '0xw3': '0x0' } } } };
+  const b = buildStocks({ ipor, activity, holderState });
+  assert.deepStrictEqual(b.holders, { '0xaaa1': { block: 42, share: [['0xw1', 0.75], ['0xw2', 0.25]] } });
+});
+
 test('matches the Stocks page on what a stock vault is', () => {
   const page = fs.readFileSync(path.join(__dirname, '..', 'stocks', 'index.html'), 'utf8');
   const m = page.match(/const STOCK_RE = (\/[^\n;]+\/[a-z]*);/);
