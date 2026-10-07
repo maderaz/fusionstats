@@ -227,7 +227,7 @@
         + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0') + ' UTC';
     }
     // The sparkline: the line's colour is the window's move, the dot the last move.
-    function sparkSvg(vals, lineColor, dotColor) {
+    function sparkSvg(vals, lineColor, dotColor, shape) {
       if (!vals || vals.length < 2) return '<span class="na">no data</span>';
       // Drawn stretched to the cell (preserveAspectRatio none); the stroke and
       // the dot are in screen pixels so neither stretches with it, and the
@@ -238,7 +238,11 @@
       const iw = W - 2 * PX, ih = H - 2 * PY;
       const pts = vals.map((v, i) => (PX + (i / (vals.length - 1)) * iw).toFixed(1) + ',' + (PY + (1 - (v - lo) / range) * ih).toFixed(1)).join(' ');
       const lastY = (PY + (1 - (vals[vals.length - 1] - lo) / range) * ih).toFixed(1);
-      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline class="line" points="${pts}" stroke="${lineColor}"/><path class="dot-ring" d="M${(PX + iw).toFixed(1)},${lastY}h0"/><path class="dot" d="M${(PX + iw).toFixed(1)},${lastY}h0" stroke="${dotColor}"/></svg>`;
+      // Its points, for "Copy as .md" (copy-md.js): share prices, or from
+      // share-prices.json the line's shape (sparkShape: 0 low, 1000 high).
+      const md = vals.map(v => +(+v).toPrecision(8)).join(',');
+      const what = shape ? 'Share price, as drawn (0 = the window&#39;s low, 1000 = its high)' : 'Share price';
+      return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" data-md-name="${what}" data-md-points="${md}"><polyline class="line" points="${pts}" stroke="${lineColor}"/><path class="dot-ring" d="M${(PX + iw).toFixed(1)},${lastY}h0"/><path class="dot" d="M${(PX + iw).toFixed(1)},${lastY}h0" stroke="${dotColor}"/></svg>`;
     }
     const momentumColor = (mom) => (mom > 0 ? '#16A34A' : mom < 0 ? '#DC2626' : '#9BA3AF');
     function colorFor(pct) {
@@ -319,7 +323,7 @@
         return `<div class="mrow">
           <span class="vname" title="${esc(r.name)}"><b><a href="/address/?a=${r.addr}">${esc(r.name)}</a></b>
             <span class="sub">${esc(r.symbol)}${tvl ? ' · <span class="tvl">' + tvl + '</span>' : ''}<span class="app"> · <a href="${app}" target="_blank" rel="noopener">Open in App ↗</a></span></span></span>
-          <span class="sp">${sparkSvg(r.vals, lineColor, dotColor)}</span>
+          <span class="sp">${sparkSvg(r.vals, lineColor, dotColor, !!rawData.windows)}</span>
           <span class="r px">${c.px}</span>
           <span class="r d">${c.d}</span>
           <span class="r apy">${c.apy}</span>

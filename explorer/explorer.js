@@ -616,7 +616,7 @@
     const pts = all.filter(p => p[0] >= from && p[1] != null);
     if (pts.length < 2) return null;
     const c = cssVar('--accent', '#8429FF');
-    const traces = [{ type: 'scatter', mode: 'lines', name: 'v', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
+    const traces = [{ type: 'scatter', mode: 'lines', name: { apy: 'APY', sp: 'Share price', tvl: 'TVL' }[perfView] || 'Value', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
       line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? 'rgba(132,41,255,0.08)' : undefined }];
     const layout = LAYOUT(forExport, perfRange);
     layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : '$,.2~s';
