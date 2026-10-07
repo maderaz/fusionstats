@@ -17,7 +17,7 @@
 //   edge     anything past the screen's edge, or a page that scrolls sideways
 //
 // Each page is also checked with its first dropdown open, Activity's More
-// panel open, and (on a phone) the menu sheet open.
+// panel open, (on a phone) the menu sheet open, and Stocks' Holders view on.
 //
 //   node tools/ui-audit.mjs                     every page, 22 widths, 320–1920
 //   node tools/ui-audit.mjs --widths 320,390,1440 --pages /,/stocks
@@ -88,7 +88,7 @@ function inPage(opts) {
   // What the eye takes for one mark: an icon, a chevron, a dot, a sort arrow.
   const ICONISH = 'svg, img, .info-tip, .ui-tip, .fs-chev, .fs-ic, .rt-dot, .dot, .hv-sw, .debank, .fnav-ic, .more-ic, .arrow';
   // Labels: each on one line.
-  const LABELS = '.stat-card .label, .ui-figure .k, .stat .k, .filter-label, .ui-filter-label, .flow-chart-title, .ui-head h2, .feed-title h2, .ui-section-title, th, .fs-trigger .fs-text, .more-k, .ui-menu-k, button, .ui-btn, .chip, .key span, .seg button, .ui-seg button, .pg-step, .fnav-tab span, .fnav-label, .fnav-badge, .ratio, .badge, .k, .ui-masthead h1';
+  const LABELS = '.stat-card .label, .ui-figure .k, .stat .k, .filter-label, .ui-filter-label, .flow-chart-title, .ui-head h2, .feed-title h2, .ui-section-title, th, .fs-trigger .fs-text, .addr, .addr-link, .more-k, .ui-menu-k, button, .ui-btn, .chip, .key span, .seg button, .ui-seg button, .pg-step, .fnav-tab span, .fnav-label, .fnav-badge, .ratio, .badge, .k, .ui-masthead h1';
   const vw = document.documentElement.clientWidth;
   const out = [], seen = new Set();
   const name = (el) => {
@@ -328,7 +328,8 @@ async function auditWidth(w) {
     const push = (list) => { for (const f of list) all.push({ w, path: pg, ...f }); };
     try { push(await p.evaluate(inPage)); } catch (e) { all.push({ w, path: pg, kind: 'error', el: 'audit', detail: String(e.message).slice(0, 120) }); }
     // The same rules inside what opens: a dropdown, the More panel, the menu sheet.
-    for (const [open, root, tag] of [['.fs-trigger', '.fs-pop', 'dropdown open'], ['#moreBtn', '.more-pop, #morePanel', 'more open'], ['#fnav-more', '.fnav-sheet', 'menu sheet']]) {
+    // (Stocks' Holders view last: it stays switched on.)
+    for (const [open, root, tag] of [['.fs-trigger', '.fs-pop', 'dropdown open'], ['#moreBtn', '.more-pop, #morePanel', 'more open'], ['#fnav-more', '.fnav-sheet', 'menu sheet'], ['button[data-view="holders"]', '#holdersView', 'holders view']]) {
       const btn = await p.$(open);
       if (!btn || !(await btn.isVisible().catch(() => false))) continue;
       try {
