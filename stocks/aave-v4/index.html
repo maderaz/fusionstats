@@ -233,11 +233,10 @@
       const shown = shownMarkets(days);
       const palette = shown.map((m, i) => brand(m.symbol, i, forExport));
       const accent = cssVar('--accent', '#8429FF');
-      const gap = forExport ? '#FFFFFF' : cssVar('--bg', '#FFFFFF');
       const traces = view === 'total'
         ? [{ type: 'scatter', mode: 'lines', name: 'Fusion supplied', x, y: days.map(r => r.usd), line: { color: accent, width: 2 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)' }]
         : shown.map((m, i) => ({ type: 'bar', name: m.symbol, x, y: days.map(r => r.by[m.symbol].usd), width: DAY * BAR,
-            marker: { color: palette[i], line: { width: 1, color: gap } } }));
+            marker: { color: palette[i], line: { width: 0 } } }));
       const ink = forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B');
       const layout = {
         autosize: true,
@@ -258,13 +257,13 @@
       return { traces, layout, days, shown, palette };
     }
     // Each market's mark inside its part of each bar, where that part has
-    // room for it (18px, with 3px clear above and below, and a bar at least
-    // 22px wide), centred in it. Sized in the axes' units from the plot as
-    // drawn, so it is placed again when the plot changes size.
-    const MARK = 18;
-    async function marks(gd, f) {
+    // room for it (14px, 12px on a phone, with 3px clear above and below,
+    // and the bar 4px wider), centred in it. Sized in the axes' units from
+    // the plot as drawn, so it is placed again when the plot changes size.
+    async function marks(gd, f, forExport) {
       const fl = gd._fullLayout;
       if (view === 'total' || !fl || !fl.xaxis || !f.days.length) return [];
+      const MARK = !forExport && FusionChart.compact() ? 12 : 14;
       const xa = fl.xaxis, ya = fl.yaxis, sz = fl._size;
       const perX = sz.w / (xa._rl[1] - xa._rl[0]), perY = sz.h / (ya._rl[1] - ya._rl[0]);
       if (!(perX > 0 && perY > 0) || DAY * BAR * perX < MARK + 4) return [];
@@ -351,7 +350,7 @@
       document.body.appendChild(off);
       try {
         await Plotly.newPlot(off, FusionChart.quiet(traces), Object.assign({}, f.layout, { width: w, height: h }), { staticPlot: true });
-        if (view !== 'total') await Plotly.relayout(off, { images: await marks(off, f) });
+        if (view !== 'total') await Plotly.relayout(off, { images: await marks(off, f, true) });
         await FusionChart.png(off, { width: w, height: h, dots: $('pngDots').checked,
           filename: 'fusion-aave-v4-' + view + '-' + range + '-' + new Date().toISOString().slice(0, 10) + '.png' });
       } finally { Plotly.purge(off); off.remove(); }
