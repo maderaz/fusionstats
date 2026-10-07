@@ -11,9 +11,10 @@
 
 const SITE = 'https://fusionecosystem.xyz';
 const SITE_NAME = 'Fusion Stats';
-// Where the share cards are served from, once a workflow draws them; until
-// then a shared link carries the name and the description, and no image.
-const CARDS = null;
+// The share cards: drawn every day by a workflow (og-cards.yml, with
+// tools/og-cards.mjs) onto a branch of their own, which keeps one copy of
+// each; GitHub's raw CDN serves the latest within minutes, with no deploy.
+const CARDS = 'https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/';
 
 const PAGES = [
   { path: '/', file: 'index.html', name: 'Key Metrics', card: 'key-metrics',
