@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 // Writes each page's title, description and share tags (Open Graph, X) from
-// tools/pages.js, in one block in its <head>:
+// tools/pages.js, in one block in its <head>, and noindex while the site is
+// kept out of search (INDEXED):
 //
 //   <!-- page-meta: … -->  …  <!-- /page-meta -->
 //
@@ -13,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { SITE_NAME, PAGES, title, url, cardUrl } = require('./pages.js');
+const { SITE_NAME, INDEXED, PAGES, title, url, cardUrl } = require('./pages.js');
 
 const ROOT = path.join(__dirname, '..');
 const BEGIN = '<!-- page-meta: written by tools/page-meta.js from tools/pages.js -->';
@@ -26,6 +27,7 @@ function block(p, indent) {
   const img = cardUrl(p);
   const lines = [
     BEGIN,
+    ...(INDEXED ? [] : ['<meta name="robots" content="noindex">']),
     `<title>${text(title(p))}</title>`,
     `<meta name="description" content="${attr(p.description)}">`,
     `<link rel="canonical" href="${attr(url(p))}">`,
