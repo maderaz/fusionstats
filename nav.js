@@ -19,9 +19,9 @@
   const GROUPS = [
     { pages: [
       { href: '/',                      label: 'Key Metrics',    icon: 'activity' },
-      { href: '/explorer',              label: 'Explorer',       icon: 'explorer' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
         sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'aave' }] },
+      { href: '/explorer',              label: 'Explorer',       icon: 'explorer' },
     ] },
     { label: 'Finances', pages: [
       { href: '/finances/dao',          label: 'DAO Earnings',     icon: 'dao', short: 'DAO' },

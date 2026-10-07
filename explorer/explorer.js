@@ -73,7 +73,7 @@
     const q = input.value.trim();
     shown = filter(q).slice(0, 80);
     active = shown.length ? 0 : -1;
-    list.innerHTML = shown.length ? shown.map(row).join('')
+    list.innerHTML = shown.length ? shown.map((v, i) => row(v, i)).join('')
       : `<div class="xp-empty">${isAddress(q) ? 'No Fusion vault we track at ' + esc(shortAddr(q)) + '.' : 'No vault matches.'}</div>`;
     paint();
   }
@@ -261,11 +261,14 @@
     tag.addEventListener('error', () => reject(new Error('no Plotly')));
   });
   const rangeDays = (r) => (r === 'all' ? Infinity : Number(r));
-  const LAYOUT = () => ({
+  // The layout on screen (FusionChart.fit draws its axes), or for an image:
+  // light, its own dates under the plot.
+  const LAYOUT = (forExport, range) => ({
     autosize: true, margin: { l: 70, r: 20, t: 20, b: 50 },
     plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
-    font: { family: 'Geist, -apple-system, sans-serif', color: cssVar('--text-2', '#5E5E6B'), size: 12 },
-    xaxis: { type: 'date', showgrid: false }, yaxis: { showgrid: true, zeroline: false },
+    font: { family: 'Geist, -apple-system, sans-serif', color: forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B'), size: 12 },
+    xaxis: Object.assign({ type: 'date', showgrid: false }, forExport ? { tickformat: range === '30' || range === '90' ? '%b %-d' : "%b '%y", nticks: 6, ticks: 'outside', ticklen: 6, tickcolor: 'rgba(0,0,0,0)' } : {}),
+    yaxis: { showgrid: true, zeroline: false, gridcolor: forExport ? '#E5E5EA' : undefined, griddash: forExport ? '4px,8px' : undefined },
     showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
   });
   async function ready(gd) {
@@ -275,15 +278,15 @@
 
   // Performance: the APY the share price made over each week before a day
   // (a year's worth), the share price, or the TVL.
-  function perfPoints() {
+  function perfPoints(view) {
     const d = file && file.days;
-    if (perfView === 'tvl') {
+    if (view === 'tvl') {
       const t = series(d && d.tvl);
       return t ? t.v.map((v, i) => [t.from + i, v]) : [];
     }
     const sp = series(d && d.sharePrice);
     if (!sp) return [];
-    if (perfView === 'sp') return sp.v.map((v, i) => [sp.from + i, v]).filter(p => p[1] > 0);
+    if (view === 'sp') return sp.v.map((v, i) => [sp.from + i, v]).filter(p => p[1] > 0);
     const out = [];
     for (let i = 7; i < sp.v.length; i++) {
       let j = i - 7;
@@ -294,24 +297,30 @@
     }
     return out;
   }
-  async function drawPerf() {
-    const gd = $('perfChart');
-    const all = perfPoints();
+  // The chart's figure, or null when the range has too little to draw.
+  function perfFigure(forExport) {
+    const all = perfPoints(perfView);
     const from = all.length ? all[all.length - 1][0] - rangeDays(perfRange) + 1 : 0;
     const pts = all.filter(p => p[0] >= from && p[1] != null);
-    $('perfNote').textContent = perfView === 'apy' ? 'Each day, the share price\'s pace over the week before it, a year\'s worth, after fees.'
-      : perfView === 'sp' ? 'What one share is worth in ' + cur.token + ', after fees.' : 'Total value locked, in dollars, at a reading a day.';
-    if (pts.length < 2) return empty(gd, file && file.days ? 'Not enough history in this range yet.' : 'No history yet: the vault\'s first daily readings fill this in.');
-    if (!(await ready(gd))) return;
-    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
+    if (pts.length < 2) return null;
     const c = cssVar('--accent', '#8429FF');
     const traces = [{ type: 'scatter', mode: 'lines', name: 'v', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
       line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? 'rgba(132,41,255,0.08)' : undefined }];
-    const layout = LAYOUT();
+    const layout = LAYOUT(forExport, perfRange);
     layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : '$,.2~s';
     if (perfView === 'apy') layout.yaxis.ticksuffix = '%';
     if (perfView === 'tvl') layout.yaxis.rangemode = 'tozero';
-    await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(traces)), FusionChart.fit(layout, traces), CONFIG);
+    return { traces, layout };
+  }
+  async function drawPerf() {
+    const gd = $('perfChart');
+    $('perfNote').textContent = perfView === 'apy' ? 'Each day, the share price\'s pace over the week before it, a year\'s worth, after fees.'
+      : perfView === 'sp' ? 'What one share is worth in ' + cur.token + ', after fees.' : 'Total value locked, in dollars, at a reading a day.';
+    const f = perfFigure(false);
+    if (!f) return empty(gd, file && file.days ? 'Not enough history in this range yet.' : 'No history yet: the vault\'s first daily readings fill this in.');
+    if (!(await ready(gd))) return;
+    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
+    await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(f.traces)), FusionChart.fit(f.layout, f.traces), CONFIG);
     FusionChart.glide(gd, (p) => {
       const y = p[0].y;
       const val = perfView === 'apy' ? pctTxt(y) : perfView === 'sp' ? y.toFixed(6) + ' ' + esc(cur.token) : usd(y);
@@ -322,17 +331,12 @@
   // Allocation: each market's dollars on the days read, stacked.
   const PALETTE = () => [cssVar('--accent', '#8429FF'), cssVar('--chart-2', '#009689'), cssVar('--chart-1', '#F54900'), cssVar('--chart-4', '#FFB900'),
     cssVar('--chart-3', '#104E64'), cssVar('--chart-5', '#FE9A00'), '#94A3B8', '#CBD5E1'];
-  async function drawAlloc() {
-    const gd = $('allocChart'), a = file && file.allocation;
-    const days = (a && a.days) || [];
+  // Markets by their largest balance in the range, the biggest at the bottom.
+  function allocFigure(forExport) {
+    const a = file && file.allocation, days = (a && a.days) || [];
     const last = days.length ? days[days.length - 1][0] : 0;
     const inRange = days.filter(([d]) => d >= last - rangeDays(allocRange) + 1);
-    $('allocKey').innerHTML = '';
-    $('allocNote').textContent = days.length ? 'Each market\'s balance as the vault keeps it, in dollars, at a reading a day for the last 120 days and a week apart before.' : '';
-    if (inRange.length < 2) return empty(gd, days.length ? 'The history is still being read: a few days at a time, newest first.' : 'No allocation history yet: the markets are read every six hours.');
-    if (!(await ready(gd))) return;
-    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
-    // Markets by their largest balance in the range, the biggest at the bottom.
+    if (inRange.length < 2) return null;
     const peak = {};
     for (const [, m] of inRange) for (const [id, v] of Object.entries(m)) peak[id] = Math.max(peak[id] || 0, v);
     const ids = Object.keys(peak).filter(id => peak[id] > 0).sort((x, y) => peak[y] - peak[x]);
@@ -341,11 +345,22 @@
     const traces = ids.map((id, k) => ({ type: 'scatter', mode: 'lines', name: name(id), stackgroup: 'one',
       x: inRange.map(([d]) => iso(d)), y: inRange.map(([, m]) => m[id] || 0),
       line: { color: pal[k % pal.length], width: 0.5 }, fillcolor: pal[k % pal.length] }));
-    $('allocKey').innerHTML = ids.map((id, k) => `<span><i style="background:${pal[k % pal.length]}"></i>${esc(name(id))}</span>`).join('');
-    const layout = LAYOUT();
+    const layout = LAYOUT(forExport, allocRange);
     layout.yaxis.tickformat = '$,.2~s';
     layout.yaxis.rangemode = 'tozero';
-    await Plotly.react(gd, FusionChart.quiet(traces), FusionChart.fit(layout, traces), CONFIG);
+    if (forExport) Object.assign(layout, { showlegend: true, legend: { orientation: 'h', x: 0, y: 1.12, font: { size: 12 } }, margin: { l: 70, r: 20, t: 50, b: 50 } });
+    return { traces, layout, ids, name, pal, inRange };
+  }
+  async function drawAlloc() {
+    const gd = $('allocChart'), a = file && file.allocation, days = (a && a.days) || [];
+    $('allocKey').innerHTML = '';
+    $('allocNote').textContent = days.length ? 'Each market\'s balance as the vault keeps it, in dollars, at a reading a day for the last 120 days and a week apart before.' : '';
+    const f = allocFigure(false);
+    if (!f) return empty(gd, days.length ? 'The history is still being read: a few days at a time, newest first.' : 'No allocation history yet: the markets are read every six hours.');
+    if (!(await ready(gd))) return;
+    gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
+    $('allocKey').innerHTML = f.ids.map((id, k) => `<span><i style="background:${f.pal[k % f.pal.length]}"></i>${esc(f.name(id))}</span>`).join('');
+    await Plotly.react(gd, FusionChart.quiet(f.traces), FusionChart.fit(f.layout, f.traces), CONFIG);
     FusionChart.glide(gd, (pts) => {
       const total = pts.reduce((s, p) => s + (p.y || 0), 0);
       return FusionChart.when(pts[0].x) + pts.filter(p => p.y > 0).map(p => FusionChart.row(p.data.fillcolor, p.data.name, usd(p.y))).join('')
@@ -353,20 +368,76 @@
     });
   }
 
+  // ---- Exports ---------------------------------------------------------------------------
+  // An image at the chart's own size or a fixed one, and the numbers behind it.
+  const SHAPES = { '43': [680, 510], square: [480, 480] };
+  const exportSize = { perf: '43', alloc: '43' };
+  const slug = () => (cur ? cur.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : 'vault');
+  const stamp = () => new Date().toISOString().slice(0, 10);
+  async function exportPng(key) {
+    if (!file) return;
+    // Built in the light theme's colours: the image is on white.
+    const f = FusionChart.inLight(() => (key === 'perf' ? perfFigure(true) : allocFigure(true)));
+    if (!f) return;
+    await plotlyReady;
+    const gd = $(key === 'perf' ? 'perfChart' : 'allocChart'), shape = SHAPES[exportSize[key]];
+    const traces = key === 'perf' ? FusionChart.quiet(FusionChart.soft(f.traces)) : FusionChart.quiet(f.traces);
+    // The image says what it is: the vault and the chart, the range, what a
+    // point or a band stands for.
+    const range = key === 'perf' ? perfRange : allocRange;
+    const span = range === 'all' ? 'All history' : range === '365' ? 'Last 12 months' : 'Last ' + range + ' days';
+    const title = cur.name + ': ' + (key === 'alloc' ? 'allocation by market' : { apy: 'APY', sp: 'share price', tvl: 'TVL' }[perfView]);
+    const what = key === 'alloc' ? 'each band is a market\'s balance in dollars, '
+        + (range === '30' || range === '90' ? 'read once a day' : 'read daily over the last 120 days, weekly before')
+      : perfView === 'apy' ? 'each point is a day: the share price\'s pace over the week before, a year\'s worth'
+      : perfView === 'sp' ? 'each point is a day: what one share is worth in ' + cur.token
+      : 'each point is a day\'s TVL in dollars';
+    await FusionChart.png({ data: traces, layout: f.layout }, { width: shape ? shape[0] : gd.clientWidth, height: shape ? shape[1] : gd.clientHeight,
+      title, subtitle: span + ' · ' + what,
+      dots: $(key + 'Dots').checked, filename: 'fusion-' + slug() + '-' + (key === 'perf' ? perfView : 'allocation') + '-' + (key === 'perf' ? perfRange : allocRange) + '-' + stamp() + '.png' });
+  }
+  function exportCsv(key) {
+    if (!file) return;
+    if (key === 'perf') {
+      const by = new Map();
+      for (const [view, col] of [['apy', 1], ['sp', 2], ['tvl', 3]]) for (const [d, v] of perfPoints(view)) {
+        if (!by.has(d)) by.set(d, [iso(d), '', '', '']);
+        by.get(d)[col] = v == null ? '' : view === 'sp' ? v.toFixed(6) : view === 'apy' ? v.toFixed(3) : v.toFixed(0);
+      }
+      const rows = [['date', 'apy_7d_pct', 'share_price', 'tvl_usd']].concat([...by.keys()].sort((a, b) => a - b).map(d => by.get(d)));
+      return UI.csv('fusion-' + slug() + '-performance-' + stamp(), rows);
+    }
+    const a = file.allocation, days = (a && a.days) || [];
+    const ids = [...new Set(days.flatMap(([, m]) => Object.keys(m)))];
+    const name = (id) => (a.names && a.names[id]) || 'Market ' + id;
+    const rows = [['date'].concat(ids.map(name))].concat(days.map(([d, m]) => [iso(d)].concat(ids.map(id => (m[id] != null ? String(m[id]) : '')))));
+    UI.csv('fusion-' + slug() + '-allocation-' + stamp(), rows);
+  }
+
   // ---- Markets ------------------------------------------------------------------------
   function markets(f) {
     const body = $('markets').querySelector('tbody');
     const ms = ((f && f.markets && f.markets.markets) || []).slice().sort((a, b) => Math.abs(b.netUsd || 0) - Math.abs(a.netUsd || 0));
+    const phone = $('marketsList');
     if (!ms.length) {
       body.innerHTML = '<tr><td colspan="6" class="dim">Not read yet: the markets are read every six hours.</td></tr>';
+      phone.innerHTML = '<div class="empty-state">Not read yet: the markets are read every six hours.</div>';
       $('marketsNote').textContent = '';
       return;
     }
+    // A phone's blocks: the market and its net, what it holds, what it owes,
+    // then each position, a line each.
+    const blocks = [];
+    const line = (cls, left, right) => `<div class="l ${cls}"><span>${left}</span><span>${right}</span></div>`;
+    const at = (v, apy) => `${usd(v)}${apy != null ? ' · ' + pctTxt(apy) : ''}`;
     const m = managed(f);
     const netApy = (a, aApy, l, lApy) => (a - l > 0 && aApy != null && (l === 0 || lApy != null) ? (a * aApy - l * (lApy || 0)) / (a - l) : null);
     const money = (v) => (v > 0 ? usd(v) : '—');
-    const rows = [`<tr class="total"><td>All markets${m.net > 0 && m.assets / m.net >= 1.05 ? ` <span class="share">· ${(m.assets / m.net).toFixed(2)}× leverage</span>` : ''}</td>`
+    const lev = m.net > 0 && m.assets / m.net >= 1.05 ? (m.assets / m.net).toFixed(2) + '× leverage' : '';
+    const rows = [`<tr class="total"><td>All markets${lev ? ` <span class="share">· ${lev}</span>` : ''}</td>`
       + `<td class="n">${money(m.assets)}</td><td class="n"></td><td class="n">${money(m.debt)}</td><td class="n"></td><td class="n"></td></tr>`];
+    blocks.push(`<div class="mk-item total">${line('l1', 'All markets', lev)}`
+      + line('', '<span class="k">Assets</span>', money(m.assets)) + (m.debt > 0 ? line('', '<span class="k">Owed</span>', money(m.debt)) : '') + '</div>');
     for (const x of ms) {
       const lending = x.positions && x.positions.length;
       const assets = lending ? x.supplyUsd || 0 : Math.max(0, x.netUsd || 0);
@@ -376,6 +447,10 @@
         + `<td class="n">${money(assets)}</td><td class="n">${pctTxt(x.supplyApy)}</td>`
         + `<td class="n">${money(debt)}</td><td class="n">${debt > 0 ? pctTxt(x.borrowApy) : '—'}</td>`
         + `<td class="n">${pctTxt(netApy(assets, x.supplyApy, debt, x.borrowApy))}</td></tr>`);
+      const net = netApy(assets, x.supplyApy, debt, x.borrowApy);
+      const b = [line('l1', esc(x.name) + (share != null ? `<i>${share.toFixed(1)}%</i>` : ''), net != null ? 'Net ' + pctTxt(net) : ''),
+        line('', '<span class="k">Assets</span>', assets > 0 ? at(assets, x.supplyApy) : '—')];
+      if (debt > 0) b.push(line('', '<span class="k">Owed</span>', at(debt, x.borrowApy)));
       // What it holds, then what it owes, a market (Morpho's) at a time.
       const order = (p) => (p.side === 'borrow' ? 1 : 0);
       if (lending) for (const p of x.positions.slice().sort((a, b) => String(a.market || '').localeCompare(String(b.market || '')) || order(a) - order(b))) {
@@ -384,9 +459,12 @@
         rows.push(`<tr class="pos"><td>${esc(p.market ? p.market + ' · ' : '')}${esc(p.asset || '?')} <span class="side">${side}</span></td>`
           + `<td class="n">${isDebt ? '' : usd(p.usd)}</td><td class="n">${isDebt ? '' : pctTxt(p.apy)}</td>`
           + `<td class="n">${isDebt ? usd(p.usd) : ''}</td><td class="n">${isDebt ? pctTxt(p.apy) : ''}</td><td class="n"></td></tr>`);
+        b.push(line('p', `${esc(p.asset || '?')} <span class="k">${side}</span>`, at(p.usd, p.apy)));
       }
+      blocks.push(`<div class="mk-item">${b.join('')}</div>`);
     }
     body.innerHTML = rows.join('');
+    phone.innerHTML = blocks.join('');
     $('marketsNote').textContent = 'Read ' + UI.ago(Date.parse(f.markets.readAt) / 1000) + '. A loop\'s collateral earns its own yield, measured against the token borrowed; an APY left empty had nothing to measure it by.';
   }
 
@@ -436,6 +514,15 @@
       on(b.dataset.v);
     });
   }
+  seg('perfSize', (v) => { exportSize.perf = v; });
+  seg('allocSize', (v) => { exportSize.alloc = v; });
+  $('perfPng').addEventListener('click', () => exportPng('perf'));
+  $('allocPng').addEventListener('click', () => exportPng('alloc'));
+  $('perfCsv').addEventListener('click', () => exportCsv('perf'));
+  $('allocCsv').addEventListener('click', () => exportCsv('alloc'));
+  // The pinned search draws a hairline once the page runs under it.
+  const pin = () => $('search').classList.toggle('stuck', window.scrollY > 4 && $('search').getBoundingClientRect().top <= 0.5);
+  window.addEventListener('scroll', pin, { passive: true });
   seg('perfView', (v) => { perfView = v; if (file) drawPerf(); });
   seg('perfRange', (v) => { perfRange = v; if (file) drawPerf(); });
   seg('allocRange', (v) => { allocRange = v; if (file) drawAlloc(); });
