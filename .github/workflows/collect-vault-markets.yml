@@ -43,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          for f in vault-markets.json vault-markets-history.json explorer/vaults; do
+          for f in vault-markets.json vault-markets-history.json explorer/vaults explorer/actions; do
             [ -e "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)

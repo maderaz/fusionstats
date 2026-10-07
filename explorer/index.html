@@ -145,6 +145,71 @@
       .mk-list { display: block; }
     }
 
+    /* A vault's three views, as tabs under its figures. */
+    .xp-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--line); }
+    .xp-tab {
+      position: relative; display: inline-flex; align-items: center;
+      height: 48px; padding: 0 2px; border: 0; background: none;
+      font: 500 14.5px var(--sans); letter-spacing: -0.01em; color: var(--text-3);
+      white-space: nowrap; cursor: pointer; transition: color 0.15s;
+    }
+    .xp-tab:hover { color: var(--text); }
+    .xp-tab[aria-selected="true"] { color: var(--text); font-weight: 600; }
+    .xp-tab[aria-selected="true"]::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+      height: 2px; border-radius: 2px; background: var(--accent);
+    }
+    .xp-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+    .xp-tab .w-mid, .xp-tab .w-short { display: none; }
+    .xp-pane > .ui-section:first-child { border-top: none; }
+
+    /* All holders: a row a holder, largest first. */
+    #holders td.n, #holders th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #holders td.rk { width: 44px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+    .hd { display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+    .hd .mono { font: 13px var(--mono); color: var(--text); }
+    .hd .nm { overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
+    .hd .debank { display: inline-flex; flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; transition: box-shadow 0.15s; }
+    .hd .debank img { display: block; width: 100%; height: 100%; }
+    .hd .debank:hover { box-shadow: 0 0 0 3px rgba(254, 129, 95, 0.28); }
+    .hd a.mono { text-decoration: none; }
+    .hd a.mono:hover { color: var(--accent); }
+    .hd-list { display: none; }
+    .hd .rkn { min-width: 18px; color: var(--text-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+    /* Curator actions: a row a rebalance, newest first. */
+    .act { display: grid; grid-template-columns: 132px minmax(0, 1fr) minmax(max-content, auto) minmax(max-content, auto); align-items: center; gap: 8px 16px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .act:first-child { border-top: none; }
+    .act-when { white-space: nowrap; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .act-when span { display: block; margin-top: 2px; font-size: 12px; color: var(--text-3); }
+    .act-moves { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+    .mv { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 8px; background: var(--bg-subtle); white-space: nowrap; font-size: 12.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .mv i { font-style: normal; color: var(--text-3); }
+    .mv b { font-weight: 600; color: var(--text); }
+    .act-vol { text-align: right; white-space: nowrap; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .act-tx { white-space: nowrap; font: 12.5px var(--mono); color: var(--text-3); text-decoration: none; }
+    .act-tx:hover { color: var(--accent); }
+
+    /* A phone: the tabs' shorter words, holders as blocks, a rebalance in two
+       lines (when and how much, then what moved). After the rules above, which
+       they override. */
+    @container (max-width: 700px) {
+      #holdersSec .ui-table-wrap { display: none; }
+      .hd-list { display: block; }
+      .xp-tab .w-long { display: none; }
+      .xp-tab .w-mid { display: inline; }
+      .act { grid-template-columns: minmax(0, 1fr) minmax(max-content, auto) minmax(max-content, auto); padding: 12px 0; }
+      .act-when { display: flex; gap: 6px; }
+      .act-when span { display: inline; margin: 0; }
+      .act-moves { grid-column: 1 / -1; order: 3; }
+    }
+    @container (max-width: 380px) {
+      .xp-tabs { gap: 18px; }
+      .xp-tab { font-size: 14px; }
+      .xp-tab .w-mid.h { display: none; }
+      .xp-tab .w-short { display: inline; }
+    }
+
     /* Capacity: what is in, against the cap. */
     .cap-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
     .cap-line b { color: var(--text); font-weight: 600; }
@@ -208,6 +273,14 @@
         <div class="ui-figure"><div class="k">Holders</div><div class="v"></div><div class="s">&nbsp;</div></div>
       </div>
 
+      <!-- A vault's three views. -->
+      <div class="xp-tabs" id="tabs" role="tablist" aria-label="This vault">
+        <button type="button" class="xp-tab" role="tab" id="tab-perf" data-tab="perf" aria-controls="pane-perf" aria-selected="true">Performance</button>
+        <button type="button" class="xp-tab" role="tab" id="tab-holders" data-tab="holders" aria-controls="pane-holders" aria-selected="false" tabindex="-1"><span class="w-long">All Holders</span><span class="w-mid h">All Holders</span><span class="w-short">Holders</span></button>
+        <button type="button" class="xp-tab" role="tab" id="tab-actions" data-tab="actions" aria-controls="pane-actions" aria-selected="false" tabindex="-1"><span class="w-long">Curator Action History</span><span class="w-mid">Curator Actions</span></button>
+      </div>
+
+      <div class="xp-pane" id="pane-perf" role="tabpanel" aria-labelledby="tab-perf">
       <section class="ui-section" id="perfSec">
         <div class="ui-head">
           <h2>Performance</h2>
@@ -295,6 +368,43 @@
         <summary>Methodology</summary>
         <div>The vault list, its APY and TVL now are IPOR's (<code>ipor-vaults.json</code>). The history is the vault's own: its TVL and share price at a block a day (<code>tvl-snapshots.json</code>), and the APY drawn from the share price over the week before each day, a year's worth. <b>Markets</b> are read on-chain every six hours (<code>collect-vault-markets.js</code>): each market's balance as the vault keeps it (<code>totalAssetsInMarket</code>), and in Aave V3, Morpho and Euler V2 each position's supply, collateral and debt as their balance fuses read them, at the rates those markets quote. A loop's collateral (a staked token such as cbETH) earns its own yield instead: its price against the token borrowed against it, now and about a month back, a year's worth; where there is nothing to measure it by, its APY is left empty, and so is the market's net APY. <b>Total value managed</b> is everything in the markets, borrowed-for included; <b>leverage</b> is that over TVL. <b>Historical allocation</b> is each market's balance at the TVL snapshots' blocks, in dollars at that day's price. <b>Capacity</b> is the vault's supply cap (<code>getTotalSupplyCap</code>, in shares) in its asset. The curator and the category are read from the vault's name.</div>
       </details>
+      </div>
+
+      <div class="xp-pane" id="pane-holders" role="tabpanel" aria-labelledby="tab-holders" hidden>
+        <section class="ui-section" id="holdersSec">
+          <div class="ui-head">
+            <h2>All holders</h2>
+            <button type="button" class="ui-btn" id="holdersCsv" title="Every holder as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
+          </div>
+          <p class="chart-note" id="holdersNote"></p>
+          <div class="ui-table-wrap">
+            <table class="ui-table" id="holders">
+              <thead><tr><th>#</th><th>Holder</th><th class="n">Holds</th><th class="n">Value</th><th class="n">Share</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="hd-list mk-list" id="holdersList"></div>
+          <div id="holdersPager"></div>
+          <p class="chart-note">Every address holding the vault's shares, read from its share transfers on-chain. What each holds is its shares at the latest share price, in the vault's asset; its value is its share of the TVL now. A holder that is itself a Fusion vault is named.</p>
+        </section>
+      </div>
+
+      <div class="xp-pane" id="pane-actions" role="tabpanel" aria-labelledby="tab-actions" hidden>
+        <section class="ui-section" id="actionsSec">
+          <div class="ui-head">
+            <h2>Curator action history</h2>
+            <button type="button" class="ui-btn" id="actionsCsv" title="These rebalances as CSV"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>CSV</button>
+          </div>
+          <div class="ui-figures" style="--n:3" id="actFigures">
+            <div class="ui-figure"><div class="k">Rebalances</div><div class="v"></div><div class="s">&nbsp;</div></div>
+            <div class="ui-figure"><div class="k">Moved in 30 days</div><div class="v"></div><div class="s">&nbsp;</div></div>
+            <div class="ui-figure"><div class="k">Last rebalance</div><div class="v"></div><div class="s">&nbsp;</div></div>
+          </div>
+          <div id="actList"></div>
+          <div id="actPager"></div>
+          <p class="chart-note" id="actNote"></p>
+        </section>
+      </div>
     </div>
   </div>
 

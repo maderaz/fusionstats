@@ -122,8 +122,8 @@ jobs:
         continue-on-error: true
         run: node tools/build-earnings.js
 
-      # The Explorer's files a vault, with the day's TVL and share prices
-      # (tools/build-explorer.js).
+      # The Explorer's files a vault, with the day's TVL and share prices, and
+      # each vault's Curator Action History (tools/build-explorer.js).
       - name: Build the Explorer's files
         if: always()
         continue-on-error: true
@@ -136,7 +136,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # One at a time: a single missing file makes `git add a b c` add none
           # of them, and the snapshots would go uncommitted with it.
-          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json share-prices.json earnings-daily.json explorer/vaults; do
+          for f in tvl-snapshots.json vault-deployments.json stocks-data.json tvl-latest.json tvl-daily.json share-prices.json earnings-daily.json explorer/vaults explorer/actions; do
             [ -e "$f" ] && git add -f "$f"
           done
           FILES=$(git diff --cached --name-only)
@@ -179,7 +179,7 @@ jobs:
             node tools/build-tvl-latest.js && git add -f tvl-latest.json || true
             node tools/build-tvl-daily.js && git add -f tvl-daily.json || true
             node tools/build-share-prices.js && git add -f share-prices.json || true
-            node tools/build-explorer.js && git add -f explorer/vaults || true
+            node tools/build-explorer.js && git add -f explorer/vaults explorer/actions || true
             git add -f $FILES
             if git diff --cached --quiet; then echo "Remote already current"; exit 0; fi
             git commit -m "$MSG"

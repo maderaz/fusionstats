@@ -124,6 +124,7 @@
       || vaults.find(x => x.address.toLowerCase() === a));
     if (!a) return showHome();
     if (!v) return showMissing(a);
+    showTab(p.get('tab'));
     showVault(v);
   }
   window.addEventListener('popstate', route);
@@ -175,6 +176,9 @@
     tags(null);
     figures(null);
     $('perfChart').innerHTML = $('allocChart').innerHTML = '<div class="ui-empty">Loading…</div>';
+    holdersPage = 1; actionsPage = 1;
+    if (tab === 'holders') holdersView();
+    if (tab === 'actions') actionsView();
     const want = v;
     const f = await fetch('/explorer/vaults/' + String(v.chain).toLowerCase() + '-' + v.address.toLowerCase() + '.json')
       .then(r => (r.ok ? r.json() : null)).catch(() => null);
@@ -187,8 +191,160 @@
     facts(file);
     const at = file.markets && file.markets.readAt || file.builtAt;
     $('status').innerHTML = at ? 'Updated <b>' + UI.ago(Date.parse(at) / 1000) + '</b>' : '';
-    await Promise.all([drawPerf(), drawAlloc()]);
+    if (tab === 'holders') holdersView();
+    // A chart drawn while its tab is hidden has no size: drawn when it shows.
+    if (tab === 'perf') await Promise.all([drawPerf(), drawAlloc()]);
   }
+
+  // ---- Tabs: Performance, All Holders, Curator Action History -------------------
+  // The tab is kept in the address bar (&tab=holders), so a view can be linked
+  // to; switching tabs doesn't add to Back's history.
+  const TABS = ['perf', 'holders', 'actions'];
+  let tab = 'perf';
+  function showTab(t, fromClick) {
+    const was = tab;
+    tab = TABS.includes(t) ? t : 'perf';
+    for (const k of TABS) {
+      $('tab-' + k).setAttribute('aria-selected', String(k === tab));
+      $('tab-' + k).tabIndex = k === tab ? 0 : -1;
+      $('pane-' + k).hidden = k !== tab;
+    }
+    if (!fromClick) return;
+    const u = new URL(location.href);
+    if (tab === 'perf') u.searchParams.delete('tab'); else u.searchParams.set('tab', tab);
+    history.replaceState(history.state, '', u.pathname + u.search);
+    if (tab === 'holders') holdersView();
+    if (tab === 'actions') actionsView();
+    if (tab === 'perf' && was !== 'perf' && file) { drawPerf(); drawAlloc(); }
+  }
+  $('tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) showTab(b.dataset.tab, true); });
+  // Arrow keys move along the tabs, as a tab list does.
+  $('tabs').addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = TABS[(TABS.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+    showTab(next, true);
+    $('tab-' + next).focus();
+  });
+
+  // ---- All holders ------------------------------------------------------------------------
+  // Every holder, largest first (tools/build-explorer.js, from the holders
+  // collector's balances), 25 a page. What each holds is in the vault's
+  // asset (its shares at the latest share price) and in dollars (its share
+  // of the TVL now); a holder that is itself a Fusion vault is named.
+  const PAGE = 25;
+  let holdersPage = 1, actionsPage = 1;
+  const lastOf = (s) => { s = series(s); if (!s) return null; for (let i = s.v.length - 1; i >= 0; i--) if (s.v[i] != null) return s.v[i]; return null; };
+  const debank = (a) => `<a class="debank" href="https://debank.com/profile/${a}" target="_blank" rel="noopener" title="View on DeBank" aria-label="View on DeBank"><img src="/icons/debank.svg" alt="" width="18" height="18"></a>`;
+  function holderRows() {
+    const f = file || {}, all = (f.holders && f.holders.all) || [];
+    const supply = all.reduce((a, h) => a + h[1], 0);
+    const sp = lastOf(f.days && f.days.sharePrice);
+    return all.map(([a, shares], i) => {
+      const share = supply > 0 ? shares / supply : null;
+      const v = vaults.find(x => x.address.toLowerCase() === a);
+      return { rank: i + 1, address: a, shares, asset: sp ? shares * sp : null, usd: share != null && cur.tvl ? cur.tvl * share : null, share, name: v ? v.name : null };
+    });
+  }
+  function holdersView() {
+    if (!cur) return;
+    const body = $('holders').querySelector('tbody');
+    if (!file) { body.innerHTML = '<tr class="ui-loading-row"><td colspan="5"></td></tr>'; $('holdersList').innerHTML = ''; $('holdersPager').innerHTML = ''; $('holdersNote').textContent = ''; return; }
+    const rows = holderRows();
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="dim">Not read yet: the holders collector reads every vault above $10K.</td></tr>';
+      $('holdersList').innerHTML = '<div class="empty-state">Not read yet: the holders collector reads every vault above $10K.</div>';
+      $('holdersPager').innerHTML = ''; $('holdersNote').textContent = '';
+      return;
+    }
+    const top10 = rows.slice(0, 10).reduce((a, r) => a + (r.share || 0), 0);
+    $('holdersNote').textContent = rows.length.toLocaleString('en-US') + ' holders. The largest holds ' + pctTxt((rows[0].share || 0) * 100, 1)
+      + (rows.length > 10 ? ', the ten largest ' + pctTxt(top10 * 100, 1) : '') + ' of the vault.';
+    const last = Math.ceil(rows.length / PAGE);
+    holdersPage = Math.min(Math.max(1, holdersPage), last);
+    const page = rows.slice((holdersPage - 1) * PAGE, holdersPage * PAGE);
+    const who = (r, rank) => `<span class="hd">${rank ? `<span class="rkn">${r.rank}</span>` : ''}<a class="mono" href="/address/?a=${r.address}" title="${esc(r.address)}">${esc(shortAddr(r.address))}</a>${debank(r.address)}`
+      + (r.name ? `<span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>` : '') + '</span>';
+    const holds = (r) => (r.asset != null ? amount(r.asset) + ' ' + esc(cur.token) : amount(r.shares) + ' shares');
+    body.innerHTML = page.map(r => `<tr><td class="rk">${r.rank}</td><td>${who(r)}</td><td class="n">${holds(r)}</td>`
+      + `<td class="n">${r.usd != null ? usd(r.usd) : '—'}</td><td class="n">${r.share != null ? pctTxt(r.share * 100, 2) : '—'}</td></tr>`).join('');
+    // A phone: a holder a block, its value and share under it.
+    const line = (cls, left, right) => `<div class="l ${cls}">${left.startsWith('<span class="hd">') ? left : `<span>${left}</span>`}<span>${right}</span></div>`;
+    $('holdersList').innerHTML = page.map(r => `<div class="mk-item">${line('l1', who(r, true), r.usd != null ? usd(r.usd) : '—')}`
+      + line('', holds(r), r.share != null ? pctTxt(r.share * 100, 2) : '—') + '</div>').join('');
+    $('holdersPager').innerHTML = UI.pager({ total: rows.length, page: holdersPage, size: PAGE, noun: 'holders' });
+  }
+  UI.onPage($('holdersPager'), (n) => { holdersPage = n; holdersView(); $('holdersSec').scrollIntoView({ block: 'start' }); });
+  $('holdersCsv').addEventListener('click', () => {
+    if (!cur || !file) return;
+    const rows = holderRows();
+    if (!rows.length) return;
+    UI.csv('fusion-' + slug() + '-holders-' + stamp(), [['rank', 'address', 'shares', 'holds_' + String(cur.token).toLowerCase(), 'value_usd', 'share_pct', 'fusion_vault']]
+      .concat(rows.map(r => [r.rank, r.address, r.shares, r.asset != null ? r.asset.toFixed(6) : '', r.usd != null ? r.usd.toFixed(2) : '', r.share != null ? (r.share * 100).toFixed(4) : '', r.name || ''])));
+  });
+
+  // ---- Curator action history ---------------------------------------------------------------
+  // Each rebalance the curator made, newest first (explorer/actions/…, from
+  // the rebalance scan's on-chain token transfers): what moved, out of the
+  // vault (↗) or into it (↙), a market by its protocol and a token by its
+  // symbol; and what the rebalance moved in all, counted once.
+  let acts = null, actsFor = null;
+  const TXS = { ethereum: 'https://etherscan.io/tx/', base: 'https://basescan.org/tx/', arbitrum: 'https://arbiscan.io/tx/' };
+  async function actionsView() {
+    if (!cur) return;
+    const want = cur, key = String(cur.chain).toLowerCase() + '-' + cur.address.toLowerCase();
+    if (actsFor !== key) {
+      actsFor = key; acts = null; actionsPage = 1;
+      $('actList').innerHTML = '<div class="ui-empty">Loading…</div>';
+      $('actPager').innerHTML = ''; $('actNote').textContent = '';
+      $('actFigures').querySelectorAll('.v').forEach(n => { n.textContent = ''; });
+      const a = await fetch('/explorer/actions/' + key + '.json').then(r => (r.ok ? r.json() : null)).catch(() => null);
+      if (cur !== want || actsFor !== key) return;
+      acts = a || { actions: [], count: 0, missing: true };
+    }
+    if (!acts) return;
+    renderActions();
+  }
+  function renderActions() {
+    const list = acts.actions || [], set = (i, v, sub) => { const f = $('actFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub; };
+    if (!list.length) {
+      $('actFigures').hidden = true;
+      $('actList').innerHTML = '<div class="empty-state">' + (acts.missing
+        ? 'Not read yet: the rebalance scan reads the vaults above $10K once a day.'
+        : 'No rebalances found: the vault has not moved its capital between markets since the scan began.') + '</div>';
+      $('actPager').innerHTML = ''; $('actNote').textContent = '';
+      return;
+    }
+    $('actFigures').hidden = false;
+    const now = Date.now() / 1000, month = list.filter(a => a[0] && now - a[0] <= 30 * 86400);
+    const oldest = list[list.length - 1][0];
+    const partial = acts.count > list.length && oldest && now - oldest < 30 * 86400;
+    set(0, acts.count.toLocaleString('en-US'), oldest ? 'since ' + dateTxt(oldest * 1000) : '');
+    set(1, (partial ? '≥ ' : '') + usd(month.reduce((s, a) => s + (a[2] || 0), 0)), month.length.toLocaleString('en-US') + (month.length === 1 ? ' rebalance' : ' rebalances'));
+    set(2, list[0][0] ? UI.ago(list[0][0]) : '—', list[0][0] ? dateTxt(list[0][0] * 1000) : '');
+    const last = Math.ceil(list.length / PAGE);
+    actionsPage = Math.min(Math.max(1, actionsPage), last);
+    const txBase = TXS[String(cur.chain).toLowerCase()];
+    const when = (ts) => { if (!ts) return '—'; const d = new Date(ts * 1000);
+      return dateTxt(ts * 1000) + '<span>' + d.toISOString().slice(11, 16) + ' UTC</span>'; };
+    $('actList').innerHTML = list.slice((actionsPage - 1) * PAGE, actionsPage * PAGE).map(([ts, tx, vol, moves]) => '<div class="act">'
+      + '<div class="act-when">' + when(ts) + '</div>'
+      + '<div class="act-moves">' + moves.map(([pi, out, v]) => `<span class="mv"><i>${out ? '↗' : '↙'}</i>${esc(acts.protocols[pi] || '?')}<b>${usd(v)}</b></span>`).join('') + '</div>'
+      + '<div class="act-vol">' + usd(vol) + '</div>'
+      + (txBase ? `<a class="act-tx" href="${txBase}${tx}" target="_blank" rel="noopener" title="${esc(tx)}" aria-label="The transaction"><span class="m-hide">${esc(tx.slice(0, 6) + '…' + tx.slice(-4))} </span>↗</a>` : '<span></span>')
+      + '</div>').join('');
+    $('actPager').innerHTML = UI.pager({ total: list.length, page: actionsPage, size: PAGE, noun: 'rebalances' });
+    $('actNote').innerHTML = '↗ left the vault, ↙ came into it: a market by its protocol, a token by its symbol. Each rebalance is read from the vault\'s token transfers on-chain, deposits and withdrawals left out, and what it moved is counted once, the larger of what left and what came in.'
+      + (acts.count > list.length ? ' The newest ' + list.length.toLocaleString('en-US') + ' of ' + acts.count.toLocaleString('en-US') + ' are here; every one is on <a href="/address/?a=' + cur.address.toLowerCase() + '">its Address page</a>.' : '')
+      + (acts.scannedAt ? ' Scanned ' + UI.ago(Date.parse(acts.scannedAt) / 1000) + '.' : '');
+  }
+  UI.onPage($('actPager'), (n) => { actionsPage = n; renderActions(); $('actionsSec').scrollIntoView({ block: 'start' }); });
+  $('actionsCsv').addEventListener('click', () => {
+    if (!acts || !(acts.actions || []).length) return;
+    UI.csv('fusion-' + slug() + '-curator-actions-' + stamp(), [['time_utc', 'tx', 'moved_usd', 'moves']]
+      .concat(acts.actions.map(([ts, tx, vol, moves]) => [ts ? new Date(ts * 1000).toISOString() : '', tx, vol,
+        moves.map(([pi, out, v]) => (out ? 'out ' : 'in ') + (acts.protocols[pi] || '?') + ' ' + v).join('; ')])));
+  });
 
   // Total value managed: everything in the markets (supplied, and held as
   // collateral); the TVL is that less what is borrowed.
@@ -539,7 +695,7 @@
   seg('perfView', (v) => { perfView = v; if (file) drawPerf(); });
   seg('perfRange', (v) => { perfRange = v; if (file) drawPerf(); });
   seg('allocRange', (v) => { allocRange = v; if (file) drawAlloc(); });
-  const redraw = () => { if (file) { drawPerf(); drawAlloc(); } };
+  const redraw = () => { if (file && tab === 'perf') { drawPerf(); drawAlloc(); } };
   window.addEventListener('fusion:theme', redraw);
   FusionChart.onChange(redraw);
   // The picks and the list's rows are links: an ordinary press stays here.
