@@ -111,21 +111,23 @@
   // ---- Figures -----------------------------------------------------------------------
   function figures(list, prev) {
     const set = (i, v, s) => { const f = $('figures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = s || ' '; };
+    // A view the beacon sent without an id counts as a view, but as no visitor.
     const visitors = new Map();
-    for (const r of list) visitors.set(r.session_id, (visitors.get(r.session_id) || 0) + 1);
-    // Against the same span just before, when the log reaches back that far.
+    for (const r of list) if (r.session_id) visitors.set(r.session_id, (visitors.get(r.session_id) || 0) + 1);
+    const known = [...visitors.values()].reduce((a, n) => a + n, 0);
+    // Against the same span just before, when the log reaches back over all of it.
     const first = log.length ? ts(log[log.length - 1]) : Date.now();
-    const vsPrev = range !== 'all' && first <= since() - RANGE_DAYS[range] * DAY / 2 && prev.length
+    const vsPrev = range !== 'all' && first <= since() - RANGE_DAYS[range] * DAY && prev.length
       ? Math.round((list.length / prev.length - 1) * 100) : null;
     set(0, num(list.length), vsPrev == null ? (range === 'all' ? 'since ' + new Date(first).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : RANGE_WORDS[range])
       : (vsPrev >= 0 ? '+' : '') + vsPrev + '% on the ' + (range === '1' ? 'day' : range + ' days') + ' before');
     // New: first seen in the log within the range.
     const firstSeen = new Map();
-    for (let i = log.length - 1; i >= 0; i--) if (!firstSeen.has(log[i].session_id)) firstSeen.set(log[i].session_id, ts(log[i]));
+    for (let i = log.length - 1; i >= 0; i--) if (log[i].session_id && !firstSeen.has(log[i].session_id)) firstSeen.set(log[i].session_id, ts(log[i]));
     const fresh = [...visitors.keys()].filter(id => firstSeen.get(id) >= since()).length;
     set(1, num(visitors.size), range === 'all' ? 'in the whole log' : num(fresh) + ' new');
     const one = [...visitors.values()].filter(n => n === 1).length;
-    set(2, visitors.size ? (list.length / visitors.size).toFixed(1) : '—', visitors.size ? Math.round(one / visitors.size * 100) + '% saw one page' : '');
+    set(2, visitors.size ? (known / visitors.size).toFixed(1) : '—', visitors.size ? Math.round(one / visitors.size * 100) + '% saw one page' : '');
     const top = tally(list, pageOf)[0];
     set(3, top ? top[0] : '—', top ? num(top[1]) + ' views · ' + Math.round(top[1] / list.length * 100) + '%' : '');
   }
@@ -149,14 +151,14 @@
     const hourly = range === '1';
     const step = hourly ? HOUR : DAY;
     const end = Math.floor(Date.now() / step) * step;
-    const start = range === 'all'
-      ? Math.floor((list.length ? ts(list[list.length - 1]) : Date.now()) / step) * step
-      : end - (RANGE_DAYS[range] * DAY / step - 1) * step;
+    // From the bucket the range begins in, so every view the figures count is
+    // in a bar: the first is part of a day (an hour, over 24 hours).
+    const start = Math.floor((range === 'all' ? (list.length ? ts(list[list.length - 1]) : Date.now()) : since()) / step) * step;
     const out = [];
     for (let t = start; t <= end; t += step) out.push({ t, views: 0, who: new Set() });
     for (const r of list) {
       const i = Math.floor((Math.floor(ts(r) / step) * step - start) / step);
-      if (i >= 0 && i < out.length) { out[i].views++; out[i].who.add(r.session_id); }
+      if (i >= 0 && i < out.length) { out[i].views++; if (r.session_id) out[i].who.add(r.session_id); }
     }
     return { out, hourly, step };
   }
@@ -252,6 +254,7 @@
   function visitors(list) {
     const by = new Map();
     for (const r of list) {
+      if (!r.session_id) continue;
       let v = by.get(r.session_id);
       if (!v) by.set(r.session_id, v = { id: r.session_id, last: ts(r), first: ts(r), views: 0, pages: new Set(), row: r });
       v.views++; v.pages.add(pageOf(r));
