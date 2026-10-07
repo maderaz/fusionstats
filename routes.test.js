@@ -186,4 +186,47 @@ test('a wave is one wallet: the largest net depositor comes first, with its rout
   assert.strictEqual(T[1].net, 500);
 });
 
+console.log('\nrelay hops');
+
+const { markRelays, RELAY_SEC } = window.FusionRoutes;
+const AAPL = '0xb200000000000000000000c2e324d24d7eecd1fb', NVDA = '0xb20000000000000000000078ee7ce2fe4908108c';
+const W1 = '0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1', W2 = '0xa2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2', W3 = '0xa3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3';
+const ev = (type, owner, ts, assets, extra = {}) => ({ type, owner, sender: owner, timestamp: ts, assets, usdValue: assets * 266, underlyingToken: AAPL, symbol: 'AAPLc', ...extra });
+
+test('a chain of hops: each wallet withdraws to the next, which deposits it 16 s later', () => {
+  const list = [
+    ev('deposit', W1, 1000, 0.94),
+    ev('withdraw', W1, 2000, 0.94, { receiver: W2 }), ev('deposit', W2, 2016, 0.94),
+    ev('withdraw', W2, 3000, 0.94, { receiver: W3 }), ev('deposit', W3, 3016, 0.94),
+    ev('withdraw', W3, 4000, 0.94, { receiver: W3 }),
+  ];
+  assert.strictEqual(markRelays(list), 2);
+  assert.deepStrictEqual(list.map(e => e.relay || '-'), ['-', 'out', 'in', 'out', 'in', '-']);
+});
+
+test('not a hop: the money goes back to its owner, or arrives too late, or is another amount or token', () => {
+  const list = [
+    ev('withdraw', W1, 2000, 1, { receiver: W1 }), ev('deposit', W1, 2010, 1),                       // its own wallet
+    ev('withdraw', W2, 5000, 1, { receiver: W3 }), ev('deposit', W3, 5000 + RELAY_SEC + 1, 1),      // too late
+    ev('withdraw', W2, 9000, 1, { receiver: W3 }), ev('deposit', W3, 9010, 1.2),                    // another amount
+    ev('withdraw', W2, 12000, 1, { receiver: W3 }), ev('deposit', W3, 12010, 1, { underlyingToken: NVDA }), // another token
+  ];
+  assert.strictEqual(markRelays(list), 0);
+  assert.ok(list.every(e => !e.relay));
+});
+
+test('each deposit is one hop\'s leg at most, and the first that fits is the one', () => {
+  const list = [
+    ev('withdraw', W1, 2000, 1, { receiver: W3 }), ev('withdraw', W2, 2005, 1, { receiver: W3 }),
+    ev('deposit', W3, 2010, 1), ev('deposit', W3, 2020, 1),
+  ];
+  assert.strictEqual(markRelays(list), 2);
+  assert.deepStrictEqual(list.map(e => e.relay), ['out', 'out', 'in', 'in']);
+});
+
+test('without underlying addresses, the symbol stands for the token', () => {
+  const list = [ev('withdraw', W1, 2000, 1, { receiver: W2, underlyingToken: undefined }), ev('deposit', W2, 2016, 1, { underlyingToken: undefined })];
+  assert.strictEqual(markRelays(list), 1);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

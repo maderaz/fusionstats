@@ -5,7 +5,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { buildStocks, STOCK_RE, KEEP } = require('./build-stocks-data.js');
+const { buildStocks, STOCK_RE, KEEP, OPTIONAL } = require('./build-stocks-data.js');
 
 let passed = 0;
 function test(name, fn) {
@@ -91,6 +91,17 @@ test("names every sender and owner the events have, and every contract of those 
   // the bot (synthetic only) and the USDC vault's router are not this page's.
   assert.deepStrictEqual(Object.keys(out.identity), ['_meta', '0xother', '0xrouter', '0xharvest1', '0xwallet2']);
   assert.deepStrictEqual(out.identity._meta, identity._meta);
+});
+
+test('a relay hop: both legs marked, found while the receiver is still there', () => {
+  const hop = buildStocks({ ipor, activity: { events: [
+    ev('0xaaa1', { tx: '0xa', type: 'withdraw', owner: '0xw1', sender: '0xw1', receiver: '0xw2', timestamp: 500 }),
+    ev('0xaaa1', { tx: '0xb', owner: '0xw2', sender: '0xw2', timestamp: 516 }),
+    ev('0xaaa1', { tx: '0xc', owner: '0xw3', sender: '0xw3', timestamp: 600 }),
+  ] } });
+  assert.deepStrictEqual(hop.activity.events.map(e => e.relay || '-'), ['out', 'in', '-']);
+  for (const e of hop.activity.events) for (const k of Object.keys(e)) assert.ok(KEEP.includes(k) || OPTIONAL.includes(k), k);
+  assert.ok(!('receiver' in hop.activity.events[0]));
 });
 
 test('matches the Stocks page on what a stock vault is', () => {

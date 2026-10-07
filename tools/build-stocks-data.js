@@ -15,7 +15,9 @@
 //   tvl        tvl-snapshots.json's entries for those vaults, as they are
 //   activity   activity-events.json's non-synthetic events on those vaults,
 //              in file order, with only the fields the page reads, and the
-//              file's updatedAt
+//              file's updatedAt; a relay hop's two legs (routes.js
+//              markRelays: one wallet's withdrawal deposited by the next) carry
+//              relay: 'out' / 'in', found here where the receiver still is
 //   identity   router-identity.json's entries for every address those events
 //              were sent or owned by, plus every entry sharing a protocol name
 //              with one of them (a route row describes its protocol from all
@@ -35,6 +37,16 @@ const STOCK_RE = /^0xb20{20}/;
 // Event fields the page and routes.js read. tx, logIdx, chain, vaultName,
 // underlyingToken and usdPrice they do not.
 const KEEP = ['type', 'vault', 'symbol', 'sender', 'owner', 'assets', 'shares', 'block', 'timestamp', 'usdValue'];
+// Set on a relay hop's legs only.
+const OPTIONAL = ['relay'];
+
+// routes.js is the page's script (window.FusionRoutes); its relay rule is read
+// from there rather than copied, so the page and this file cannot disagree.
+const ROUTES = (() => {
+  const win = {};
+  new Function('window', fs.readFileSync(path.join(__dirname, '..', 'routes.js'), 'utf8'))(win);
+  return win.FusionRoutes;
+})();
 
 const lc = (a) => (a || '').toLowerCase();
 
@@ -47,12 +59,15 @@ function buildStocks({ ipor, tvl, activity, identity }) {
     if (addrs.has(lc(k))) snaps[k] = entry;
   }
 
+  const full = ((activity && activity.events) || [])
+    .filter(e => addrs.has(lc(e.vault)) && e.synthetic !== true)
+    .map(e => ({ ...e }));
+  ROUTES.markRelays(full);
   const events = [];
   const seen = new Set();
-  for (const e of (activity && activity.events) || []) {
-    if (!addrs.has(lc(e.vault)) || e.synthetic === true) continue;
+  for (const e of full) {
     const out = {};
-    for (const k of KEEP) if (e[k] !== undefined) out[k] = e[k];
+    for (const k of KEEP.concat(OPTIONAL)) if (e[k] !== undefined) out[k] = e[k];
     events.push(out);
     if (e.sender) seen.add(lc(e.sender));
     if (e.owner) seen.add(lc(e.owner));
@@ -103,4 +118,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { buildStocks, STOCK_RE, KEEP };
+module.exports = { buildStocks, STOCK_RE, KEEP, OPTIONAL };

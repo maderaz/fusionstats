@@ -29,6 +29,13 @@ const MIN_TVL_USD = Number(process.env.MIN_TVL_USD || 50);
 // (collect-ipor-vaults.js stamps firstSeen), so its first deposits are caught.
 const NEW_VAULT_DAYS = 14;
 const isNewVault = (v) => !!v.firstSeen && Date.now() - Date.parse(v.firstSeen) < NEW_VAULT_DAYS * 864e5;
+// A vault backed by tokenised stock is tracked whatever its TVL, from its
+// deployment: the Stocks page counts every one of their deposits, and such a
+// vault can sit near zero between campaigns (Coinbase and Microsoft Carry
+// Trade went unread for ten weeks under the floor, Google Carry Trade Tezos
+// from the day it dipped below it).
+const { STOCK_RE } = require('./tools/build-stocks-data.js');
+const isStockVault = (v) => STOCK_RE.test((v.assetAddress || '').toLowerCase());
 
 // Initial backfill window for newly-discovered vaults (~48 hours per chain block time)
 const NEW_VAULT_BACKFILL = {
@@ -247,14 +254,14 @@ function loadVaults() {
   const supportedChains = new Set(Object.keys(CHAIN_RPCS));
   const all = (iporData.vaults || []).filter(v => supportedChains.has(v.chain));
   // recheck: IPOR shows it empty, our last (old) reading didn't: read it again.
-  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD || isNewVault(v) || v.recheck);
+  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD || isNewVault(v) || v.recheck || isStockVault(v));
 
   const byChain = {};
   tracked.forEach(v => { byChain[v.chain] = (byChain[v.chain] || 0) + 1; });
   const chainSummary = Object.entries(byChain).map(([c, n]) => `${c}:${n}`).join(', ');
   const young = tracked.filter(v => v.tvl < MIN_TVL_USD).length;
   console.log(`Loaded ${iporData.vaults.length} total vaults, ${all.length} on supported chains, ` +
-              `${tracked.length} above $${MIN_TVL_USD} TVL or new [${chainSummary}]` + (young ? ` (${young} new, under $${MIN_TVL_USD})` : ''));
+              `${tracked.length} above $${MIN_TVL_USD} TVL, new or stock [${chainSummary}]` + (young ? ` (${young} under $${MIN_TVL_USD})` : ''));
 
   const decCache = loadDecimalsCache();
   return tracked.map(v => {
@@ -268,6 +275,7 @@ function loadVaults() {
       decimals: cached != null ? cached : decimalsFor(v.token),
       underlyingToken: v.assetAddress || null,
       tvl: v.tvl || 0,
+      ...(isStockVault(v) ? { stock: true } : {}),
     };
   });
 }
@@ -815,18 +823,21 @@ function parseWithdrawLog(log, vault) {
 //
 // Heuristics (defensive — multiple may apply, first match sets the reason):
 //   1. atomic              — deposit + withdraw in the SAME tx hash
-//   2. same-block-pair     — D+W in the SAME block on the same vault, amounts within 1%
-//   3. near-block-pair     — D+W within NEAR_BLOCK_WINDOW blocks, amounts within 1%
-//   4. tvl-ratio           — single event size > SYNTHETIC_TVL_MULT * vault TVL
-//   5. recurring-keeper    — same (vault, sender, type) repeats ≥ KEEPER_REPEATS
-//                            times within KEEPER_WINDOW_SEC, all amounts within 5%
+//   2. same-block-pair     — D+W in the SAME block on the same vault by the same
+//                            owner, amounts within 1%
+//   3. near-block-pair     — the same, within NEAR_BLOCK_WINDOW blocks
+//   4. tvl-ratio           — single event size > SYNTHETIC_TVL_MULT * the vault's
+//                            TVL, today's or around the event's day, the larger
+//   5. recurring-keeper    — same (vault, sender, owner, type) repeats ≥
+//                            KEEPER_REPEATS times within KEEPER_WINDOW_SEC, all
+//                            amounts within 5%
 //   6. address-pair        — recurring (depositSender → withdrawSender) pair on
 //                            same vault with matched amounts, ≥ PAIR_REPEATS times
 //
 // Frontend hides synthetic events by default and re-classifies on the client
 // using the same rule set when needed (so existing JSONs benefit from a
 // tightened rule without a re-scan).
-function tagSyntheticEvents(events, vaults) {
+function tagSyntheticEvents(events, vaults, snapshots) {
   const SYNTHETIC_TVL_MULT  = 3;
   const NEAR_BLOCK_WINDOW   = 3;
   const PAIR_BLOCK_WINDOW   = 50;       // address-pair search window (~10min on ETH)
@@ -838,6 +849,27 @@ function tagSyntheticEvents(events, vaults) {
 
   const tvlByVault = {};
   vaults.forEach(v => { tvlByVault[v.address] = v.tvl || 0; });
+  // The vault's TVL around the event (tvl-snapshots.json), not only today's:
+  // a vault that has since drained made every one of its old deposits look
+  // three times its size. The larger of the two is the yardstick.
+  const SNAP_DAYS = 2;
+  const snapsByVault = {};
+  for (const [a, entry] of Object.entries((snapshots && snapshots.vaults) || {})) {
+    snapsByVault[a.toLowerCase()] = (entry.snapshots || []).filter(x => x.tvlUsd > 0 && x.timestamp).sort((x, y) => x.timestamp - y.timestamp);
+  }
+  const tvlAround = (vault, ts) => {
+    const list = snapsByVault[vault];
+    if (!list || !list.length || !ts) return 0;
+    let best = 0;
+    for (const x of list) {
+      if (x.timestamp < ts - SNAP_DAYS * 86400) continue;
+      if (x.timestamp > ts + SNAP_DAYS * 86400) break;
+      if (x.tvlUsd > best) best = x.tvlUsd;
+    }
+    return best;
+  };
+  // Whose money moved: the shares' owner (a router deposits for its user).
+  const who = (e) => (e.owner || e.sender || '').toLowerCase();
 
   // Reset first so heuristic tweaks re-classify cleanly on the next run.
   events.forEach(e => { delete e.synthetic; delete e.syntheticReason; });
@@ -879,6 +911,9 @@ function tagSyntheticEvents(events, vaults) {
         const blockDiff = b.block - a.block;
         if (blockDiff > NEAR_BLOCK_WINDOW) break;
         if (a.type === b.type) continue;
+        // One holder in and out again. Two strangers each moving ~$250 in
+        // the same block (a campaign's standard size) are not a round trip.
+        if (who(a) !== who(b)) continue;
         if (!amountsClose(a.assets, b.assets, AMOUNT_MATCH_PCT)) continue;
         const reason = blockDiff === 0 ? 'same-block-pair' : 'near-block-pair';
         tag(a, reason);
@@ -889,18 +924,20 @@ function tagSyntheticEvents(events, vaults) {
 
   // 4. TVL ratio — only when we have a positive TVL to compare against
   events.forEach(e => {
-    const tvl = tvlByVault[e.vault];
+    const tvl = Math.max(tvlByVault[e.vault] || 0, tvlAround(e.vault, e.timestamp));
     if (!tvl || tvl <= 0) return;
     const usd = e.usdValue != null ? Math.abs(e.usdValue) : 0;
     if (usd > SYNTHETIC_TVL_MULT * tvl) tag(e, 'tvl-ratio');
   });
 
-  // 5. recurring-keeper: same (vault, sender, type) ≥ KEEPER_REPEATS times in
-  //    a 24h window with amounts within 5% of each other
+  // 5. recurring-keeper: same (vault, sender, owner, type) ≥ KEEPER_REPEATS
+  //    times in a 24h window with amounts within 5% of each other. The owner
+  //    too: a router depositing ~$250 for each of many different users is
+  //    not a keeper repeating itself.
   const keeperGroups = {};
   events.forEach(e => {
     if (!e.sender) return;
-    const k = `${e.vault}|${e.sender}|${e.type}`;
+    const k = `${e.vault}|${e.sender}|${who(e)}|${e.type}`;
     (keeperGroups[k] ||= []).push(e);
   });
   for (const evs of Object.values(keeperGroups)) {
@@ -1101,7 +1138,7 @@ async function deepestScanVault(vaultAddr, chain, fromBlockArg, opts = {}) {
       return true;
     });
 
-  tagSyntheticEvents(data.events, VAULTS);
+  tagSyntheticEvents(data.events, VAULTS, loadTvlSnapshots());
 
   data.updatedAt = new Date().toISOString();
   data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
@@ -1209,7 +1246,7 @@ async function rescanRange(chain, fromArg, toArg) {
   if (added.length) {
     data.events.push(...added);
     data.events.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || b.block - a.block || b.logIdx - a.logIdx);
-    tagSyntheticEvents(data.events, VAULTS);
+    tagSyntheticEvents(data.events, VAULTS, loadTvlSnapshots());
     // updatedAt, lastBlock and chainHealth describe the scheduled collection
     // and stay as they are: this adds history, it does not collect the head.
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify({ ...data, minTvlUsd: MIN_TVL_USD }, null, 2) + '\n');
@@ -1834,6 +1871,23 @@ async function main() {
   // first scan is the gap-fill job's work (--gap-fill), which finds it from
   // the vault's deployment block, cursor or not.
 
+  // Where a vault's scan starts: its cursor; for a stock vault never read,
+  // its deployment (the Stocks page counts from a vault's first deposit, and
+  // there are few of them), marked as covered from there so --gap-fill skips
+  // it; for any other vault, NEW_VAULT_BACKFILL back (older history is the
+  // gap-fill job's).
+  const DEPLOYED = loadDeployments().deployments || {};
+  function scanStart(vault, currentBlock, backfill) {
+    const at = data.lastBlock[vault.address];
+    if (at) return at;
+    const dep = vault.stock && DEPLOYED[vault.address];
+    if (dep && dep.block > 0 && dep.block <= currentBlock) {
+      data.lastBlock[`${vault.address}:from`] = dep.block;
+      return dep.block - 1;
+    }
+    return currentBlock - backfill;
+  }
+
   // Group vaults by chain
   const byChain = {};
   VAULTS.forEach(v => {
@@ -1859,7 +1913,7 @@ async function main() {
     const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
     const vaultsToScan = [];
     for (const vault of chainVaults) {
-      const lastBlock = data.lastBlock[vault.address] || (currentBlock - backfill);
+      const lastBlock = scanStart(vault, currentBlock, backfill);
       const fromBlock = lastBlock + 1;
       if (fromBlock <= currentBlock) vaultsToScan.push({ vault, fromBlock });
     }
@@ -2010,7 +2064,7 @@ async function main() {
     // Where each vault starts this run (a vault never scanned starts its
     // backfill window back): moving past it is progress.
     const backfill = NEW_VAULT_BACKFILL[chain] || NEW_VAULT_BACKFILL._default;
-    const start = Object.fromEntries(chainVaults.map(v => [v.address, data.lastBlock[v.address] || (currentBlock - backfill)]));
+    const start = Object.fromEntries(chainVaults.map(v => [v.address, scanStart(v, currentBlock, backfill)]));
     // Whichever runs out first: this chain's slice, or the run as a whole.
     const r = await scanChain(chain, chainVaults, currentBlock, Date.now() + Math.min(CHAIN_TIMEOUT_MS, budgetLeft()));
     if (r.scanned === 0) console.log(`  All vaults up to date`);
@@ -2091,7 +2145,7 @@ async function main() {
     console.log('\nSkipping repair passes — run budget spent (they resume next run)');
   }
 
-  tagSyntheticEvents(data.events, VAULTS);
+  tagSyntheticEvents(data.events, VAULTS, loadTvlSnapshots());
 
   data.updatedAt = new Date().toISOString();
   data.vaults = VAULTS.map(v => ({ address: v.address, name: v.name, symbol: v.symbol, chain: v.chain, underlyingToken: v.underlyingToken, tvl: v.tvl }));
@@ -2111,4 +2165,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { nextCursors, chainHealth, scanCohorts, HEALTHY_LAG_HOURS };
+module.exports = { nextCursors, chainHealth, scanCohorts, tagSyntheticEvents, HEALTHY_LAG_HOURS };
