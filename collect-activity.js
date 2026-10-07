@@ -25,6 +25,10 @@ const DECIMALS_CACHE_FILE = path.join(__dirname, 'vault-decimals.json');
 // change. Vaults entering the set later still backfill from their deployment
 // block, so a raised floor delays history rather than losing it.
 const MIN_TVL_USD = Number(process.env.MIN_TVL_USD || 50);
+// A vault new to IPOR's list is tracked for its first days whatever its TVL
+// (collect-ipor-vaults.js stamps firstSeen), so its first deposits are caught.
+const NEW_VAULT_DAYS = 14;
+const isNewVault = (v) => !!v.firstSeen && Date.now() - Date.parse(v.firstSeen) < NEW_VAULT_DAYS * 864e5;
 
 // Initial backfill window for newly-discovered vaults (~48 hours per chain block time)
 const NEW_VAULT_BACKFILL = {
@@ -242,13 +246,15 @@ function loadVaults() {
 
   const supportedChains = new Set(Object.keys(CHAIN_RPCS));
   const all = (iporData.vaults || []).filter(v => supportedChains.has(v.chain));
-  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD);
+  // recheck: IPOR shows it empty, our last (old) reading didn't: read it again.
+  const tracked = all.filter(v => v.tvl >= MIN_TVL_USD || isNewVault(v) || v.recheck);
 
   const byChain = {};
   tracked.forEach(v => { byChain[v.chain] = (byChain[v.chain] || 0) + 1; });
   const chainSummary = Object.entries(byChain).map(([c, n]) => `${c}:${n}`).join(', ');
+  const young = tracked.filter(v => v.tvl < MIN_TVL_USD).length;
   console.log(`Loaded ${iporData.vaults.length} total vaults, ${all.length} on supported chains, ` +
-              `${tracked.length} above $${MIN_TVL_USD} TVL [${chainSummary}]`);
+              `${tracked.length} above $${MIN_TVL_USD} TVL or new [${chainSummary}]` + (young ? ` (${young} new, under $${MIN_TVL_USD})` : ''));
 
   const decCache = loadDecimalsCache();
   return tracked.map(v => {
