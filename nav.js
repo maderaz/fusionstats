@@ -744,4 +744,16 @@
 
   if (document.body) inject();
   else document.addEventListener('DOMContentLoaded', inject);
+
+  // "Copy as .md" at the top right of the page (copy-md.js): a desktop's,
+  // loaded once the window is wide enough to show it.
+  const wide = window.matchMedia ? window.matchMedia('(min-width: 901px)') : null;
+  const copyMd = () => {
+    if (!wide || !wide.matches || document.getElementById('md-copy-js')) return;
+    const js = document.createElement('script');
+    js.id = 'md-copy-js'; js.src = '/copy-md.js'; js.async = true;
+    document.head.appendChild(js);
+  };
+  copyMd();
+  if (wide) { if (wide.addEventListener) wide.addEventListener('change', copyMd); else if (wide.addListener) wide.addListener(copyMd); }
 })();

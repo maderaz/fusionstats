@@ -1843,6 +1843,9 @@
     }
     glideBars(document.getElementById('flowChartBars'), () => flowDays);
     glideBars(document.getElementById('tvlWeeklyBars'), () => tvlWeeks);
+    // "Copy as .md" (copy-md.js) reads each bar's point from here.
+    Object.assign(document.getElementById('flowChartBars'), { mdPoints: () => flowDays, mdLabel: 'Day' });
+    Object.assign(document.getElementById('tvlWeeklyBars'), { mdPoints: () => tvlWeeks, mdLabel: 'Period' });
 
     // TVL growth: every Fusion vault's TVL at the end of each week, from
     // tvl-daily.json (tools/build-tvl-daily.js), weeks cut as the TVL page

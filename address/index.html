@@ -2201,6 +2201,7 @@
       const fmtDay = daysAgo => { const d = new Date(now - daysAgo * 86400000); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}); };
 
       let html = '';
+      const points = [];
       for (let i = 0; i < days; i++) {
         const val = buckets[i];
         const daysAgo = days - 1 - i;
@@ -2209,8 +2210,11 @@
         const cls = val > 0 ? 'positive' : val < 0 ? 'negative' : 'zero';
         const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
         html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div><div class="flow-tip">${label}<br><strong>${fmtUsd(val)}</strong></div></div>`;
+        points.push({ label, rows: [['Net flow', fmtUsd(val)]] });
       }
       barsEl.innerHTML = html;
+      // "Copy as .md" (copy-md.js) reads each bar's point from here.
+      Object.assign(barsEl, { mdPoints: () => points, mdLabel: 'Day' });
 
       // Touch support
       barsEl.onclick = function(ev) {

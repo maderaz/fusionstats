@@ -62,3 +62,16 @@ when it ends `clean`.
   (sandboxes), so charts draw from a local copy.
 - Geist must be installed or reachable on Google Fonts. Widths measured in a
   fallback font mean nothing, and the tool warns when that happens.
+
+## Copy as .md
+
+On a desktop (over 900px) every page has "Copy as .md" at its masthead's top
+right, level with the title (`copy-md.js`, loaded by `nav.js`). It copies what
+the page shows as Markdown, and every point of every chart. A Plotly chart
+needs nothing. Anything else needs a hook:
+
+- A chart a page draws itself sets `el.mdPoints = () => [{ label, rows: [[name, value], …] }]`
+  on its box (`mdLabel` names the first column), as Key Metrics' bars do.
+- A sparkline carries `data-md-points` and `data-md-name` on its `<svg>`.
+- A table drawn as a grid of divs reads as a table when its rows share a class
+  and its header row's class ends in `head` (`.mhead`, `.vhead`).
