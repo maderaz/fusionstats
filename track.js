@@ -21,10 +21,13 @@
           : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
         localStorage.setItem(KEY, sid);
       }
-      const payload = JSON.stringify({
-        path: location.pathname + location.search,
-        sessionId: sid,
-      });
+      // Where the visit came from: another site's host, or '' for none (typed
+      // in, a bookmark). A step within the site sends nothing: it isn't a source.
+      let ref = '';
+      try { if (document.referrer) ref = new URL(document.referrer).host; } catch {}
+      const body = { path: location.pathname + location.search, sessionId: sid };
+      if (ref !== location.host) body.ref = ref;
+      const payload = JSON.stringify(body);
       if (navigator.sendBeacon) {
         navigator.sendBeacon('/api/log', new Blob([payload], { type: 'application/json' }));
       } else {

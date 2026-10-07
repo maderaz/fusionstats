@@ -1,489 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/data-source.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
-  <title>Admin — Traffic — Fusion Stats</title>
+  <title>Traffic — Fusion Stats</title>
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://cdn.plot.ly">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
+  <script src="/nav.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg: #F5F5FA;
-      --bg-alt: #E9E9F3;
-      --surface: #FFFFFF;
-      --stroke: #E5E5E5;
-      --text: #000000;
-      --text-body: #70747A;
-      --text-secondary: #9BA3AF;
-      --accent: #8429FF;
-      --accent-end: #6C00FF;
-      --accent-bg: rgba(132, 41, 255, 0.10);
-      --warn: #d97706;
-      --red: #dc2626;
-      --green: #16a34a;
-      --code-bg: #F0F0F8;
+    /* You: this browser's visitor, and the switch that leaves it out. */
+    .me-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px;
+      margin: 0 0 4px; padding: 12px 16px;
+      border: 1px solid var(--line); border-radius: 14px; background: var(--bg-subtle);
+      font-size: 13.5px; color: var(--text-2);
     }
-    [data-theme="dark"] {
-      --bg: #0F0F14;
-      --bg-alt: #1A1A24;
-      --surface: #16161E;
-      --stroke: #2A2A3A;
-      --text: #E8E8F0;
-      --text-body: #9A9AB0;
-      --text-secondary: #6A6A80;
-      --accent: #A37FFF;
-      --accent-end: #8429FF;
-      --accent-bg: rgba(132, 41, 255, 0.15);
-      --warn: #f59e0b;
-      --red: #ef4444;
-      --green: #22c55e;
-      --code-bg: #1A1A24;
+    .me-bar b { color: var(--text); font-weight: 600; }
+    .me-bar .mono { font: 13px var(--mono); color: var(--text); }
+    .me-bar .also { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 6px 0 10px;
+      border: 1px solid var(--line-strong); border-radius: 999px; background: var(--bg);
+      font: 12.5px var(--mono); color: var(--text-2); white-space: nowrap;
     }
-    body {
-      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-      font-weight: 400;
-    }
-    .container { max-width: 1200px; margin: 0 auto; }
+    .chip button { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: none; color: var(--text-3); cursor: pointer; font-size: 13px; line-height: 1; }
+    .chip button:hover { background: var(--bg-subtle); color: var(--text); }
+    .switch { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; white-space: nowrap; color: var(--text); font-weight: 500; }
+    .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .switch i { position: relative; width: 36px; height: 20px; flex: none; border-radius: 999px; background: var(--line-strong); transition: background 0.15s; }
+    .switch i::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform 0.15s; }
+    .switch input:checked + i { background: var(--accent); }
+    .switch input:checked + i::after { transform: translateX(16px); }
+    .switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-    header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-    h1 {
-      font-size: 1.4rem;
-      font-weight: 500;
-      letter-spacing: -0.02em;
-      background: linear-gradient(90deg, var(--accent), var(--accent-end));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    header .sub { color: var(--text-secondary); font-size: 0.78rem; }
-    .theme-toggle {
-      margin-left: auto;
-      width: 32px; height: 32px;
-      border-radius: 6px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-      font-size: 0.9rem;
-    }
+    /* Breakdowns: a ranked list a card, a thin bar under each row. */
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+    .card h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--text); }
+    .rank { list-style: none; margin: 0; padding: 0; }
+    .rank li { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0 9px; font-size: 13.5px; }
+    .rank li + li { border-top: 1px solid var(--line); }
+    .rank .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .rank .nm .fl { margin-right: 6px; }
+    .rank .ct { flex: none; color: var(--text-2); font-variant-numeric: tabular-nums; }
+    .rank .ct b { color: var(--text); font-weight: 600; }
+    .rank .bar { position: absolute; left: 0; bottom: 2px; height: 2px; border-radius: 2px; background: var(--accent); opacity: 0.35; }
+    .rank li.pick { cursor: pointer; }
+    .rank li.pick:hover .nm { color: var(--accent); }
+    .rank li.on .nm { color: var(--accent); font-weight: 600; }
+    .rank .more { justify-content: flex-start; color: var(--text-3); font-size: 12.5px; }
+    .card .none { padding: 8px 0; font-size: 13px; color: var(--text-3); }
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 0.85rem 1rem;
-    }
-    .stat .label {
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-secondary);
-      margin-bottom: 0.3rem;
-    }
-    .stat .value {
-      font-size: 1.3rem;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -0.02em;
-    }
-    .stat .sub { font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.15rem; }
+    /* Tables: views and visitors. */
+    .t td.n, .t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .t td { white-space: nowrap; }
+    .t .mono { font: 12.5px var(--mono); color: var(--text); }
+    .t .dim { color: var(--text-3); }
+    .t .path { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+    .t .you { display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 6px; border-radius: 5px; background: var(--accent-bg); color: var(--accent); font: 600 10.5px var(--sans); text-transform: uppercase; letter-spacing: 0.02em; }
+    .t tr.out td { opacity: 0.45; }
+    .t input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; vertical-align: middle; }
+    .lst { display: none; }
+    .lst .it { padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .lst .l { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+    .lst .l + .l { margin-top: 3px; font-size: 12.5px; color: var(--text-3); }
+    .lst .l .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+    .lst .it.out { opacity: 0.45; }
+    .lst label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); cursor: pointer; }
+    .lst input[type=checkbox] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 
-    .filters {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      margin-bottom: 0.75rem;
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .filter-group { display: flex; align-items: center; gap: 0.4rem; }
-    .filter-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-secondary);
-    }
-    .filters input, .filters select {
-      font-family: inherit;
-      font-size: 0.78rem;
-      padding: 0.35rem 0.6rem;
-      background: var(--bg);
-      border: 1px solid var(--stroke);
-      border-radius: 6px;
-      color: var(--text);
-    }
-    .filters input:focus, .filters select:focus { outline: none; border-color: var(--accent); }
-    .filters button {
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 6px;
-      border: 1px solid var(--stroke);
-      background: var(--surface);
-      color: var(--text-body);
-      cursor: pointer;
-    }
-    .filters button:hover { border-color: var(--accent); color: var(--accent); }
+    .setup { max-width: 640px; padding: 8px 0; font-size: 14px; color: var(--text-2); }
+    .setup ol { margin: 12px 0 0; padding-left: 20px; }
+    .setup li { margin: 8px 0; }
+    .setup code, .setup pre { font: 12.5px var(--mono); }
+    .setup pre { margin: 6px 0; padding: 10px 12px; border-radius: 8px; background: var(--bg-subtle); white-space: pre-wrap; }
 
-    .table-wrap {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      overflow: hidden;
+    @container (max-width: 900px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    /* Narrow phones: "All pages", "All countries" are "All" under their labels. */
+    @container (max-width: 360px) {
+      .ui-filters .fs-wide { display: none; }
+      .ui-filters .fs-narrow { display: inline; }
     }
-    table { width: 100%; border-collapse: collapse; }
-    th, td {
-      padding: 0.55rem 0.85rem;
-      text-align: left;
-      font-size: 0.76rem;
-      border-bottom: 1px solid var(--stroke);
-    }
-    th {
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-secondary);
-      background: var(--bg-alt);
-      font-weight: 500;
-    }
-    td { color: var(--text-body); }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--accent-bg); }
-
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      color: var(--text);
-    }
-    .path-cell { color: var(--text); font-weight: 500; }
-    .country-flag {
-      display: inline-block;
-      min-width: 1.4em;
-      margin-right: 0.25rem;
-      font-size: 0.95em;
-      vertical-align: -0.05em;
-    }
-    .device-pill {
-      display: inline-block;
-      padding: 0.05rem 0.4rem;
-      border-radius: 4px;
-      font-size: 0.65rem;
-      font-weight: 500;
-      background: var(--accent-bg);
-      color: var(--accent);
-      text-transform: lowercase;
-    }
-    .session-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; color: var(--text-secondary); }
-
-    .empty, .err {
-      padding: 2.5rem 1.5rem;
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-    }
-    .err { color: var(--red); }
-
-    pre.setup {
-      background: var(--code-bg);
-      border: 1px solid var(--stroke);
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      line-height: 1.5;
-      color: var(--text);
-      text-align: left;
-      max-width: 720px;
-      margin: 0.75rem auto;
-      overflow-x: auto;
-    }
-    .setup-card {
-      background: var(--surface);
-      border: 1px solid var(--stroke);
-      border-radius: 10px;
-      padding: 1.5rem;
-      text-align: center;
-    }
-    .setup-card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-      color: var(--text);
-    }
-    .setup-card .step {
-      display: inline-block;
-      width: 22px; height: 22px;
-      line-height: 22px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
-      font-weight: 600;
-      font-size: 0.7rem;
-      margin-right: 0.4rem;
-    }
-    .setup-card ol { list-style: none; padding: 0; margin: 1rem 0; text-align: left; max-width: 720px; margin-left: auto; margin-right: auto; }
-    .setup-card li { padding: 0.6rem 0; color: var(--text-body); font-size: 0.82rem; }
-    .setup-card a { color: var(--accent); text-decoration: none; }
-    .setup-card a:hover { text-decoration: underline; }
-
-    @media (max-width: 700px) {
-      body { padding: 0.75rem; }
-      .stats { grid-template-columns: repeat(2, 1fr); }
-      th, td { padding: 0.45rem 0.55rem; font-size: 0.7rem; }
-      th:nth-child(7), td:nth-child(7), /* OS */
-      th:nth-child(8), td:nth-child(8) { display: none; } /* Session */
+    @container (max-width: 700px) {
+      .cards { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .tbl { display: none; }
+      .lst { display: block; }
+      .switch { margin-left: 0; }
     }
   </style>
-  <script src="/nav.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Traffic</h1>
-      <span class="sub" id="updatedLabel">loading…</span>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Traffic</h1>
+        <p class="ui-lede">Who visits the site: every page view the site's own beacon records, kept in a private gist. Not in the menu, and not counted itself.</p>
+      </div>
+      <div class="ui-meta"><span id="status">Loading…</span><button type="button" class="ui-btn" id="refresh"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.25 8a5.25 5.25 0 1 1-1.54-3.71M13.25 2.75v3.5h-3.5"/></svg>Refresh</button></div>
     </header>
 
-    <div id="dashboard" style="display:none">
-      <div class="stats">
-        <div class="stat"><div class="label">Page views</div><div class="value" id="statTotal">—</div><div class="sub" id="statRange"></div></div>
-        <div class="stat"><div class="label">Unique sessions</div><div class="value" id="statSessions">—</div></div>
-        <div class="stat"><div class="label">Top page</div><div class="value" id="statTopPage" style="font-size:0.95rem">—</div><div class="sub" id="statTopPageHits"></div></div>
-        <div class="stat"><div class="label">Top country</div><div class="value" id="statTopCountry" style="font-size:0.95rem">—</div><div class="sub" id="statTopCountryHits"></div></div>
+    <div id="dash" hidden>
+      <div class="me-bar" id="meBar"></div>
+
+      <div class="ui-toolbar" style="margin-top:16px">
+        <div class="ui-seg" id="range" role="group" aria-label="Range">
+          <button type="button" data-v="1">24h</button><button type="button" data-v="7" class="on">7d</button><button type="button" data-v="30">30d</button><button type="button" data-v="all">All</button>
+        </div>
+        <div class="ui-filters" style="--cols: 3">
+          <label class="ui-filter"><span class="ui-filter-label">Page</span><select id="fPage" data-fs><option value="" data-narrow="All">All pages</option></select></label>
+          <label class="ui-filter"><span class="ui-filter-label">Country</span><select id="fCountry" data-fs><option value="" data-narrow="All">All countries</option></select></label>
+          <label class="ui-filter"><span class="ui-filter-label">Device</span><select id="fDevice" data-fs><option value="" data-narrow="All">All devices</option><option value="desktop">Desktop</option><option value="mobile">Mobile</option><option value="tablet">Tablet</option></select></label>
+        </div>
       </div>
 
-      <div class="filters">
-        <div class="filter-group">
-          <span class="filter-label">Window</span>
-          <select id="filterWindow">
-            <option value="86400">Last 24h</option>
-            <option value="604800" selected>Last 7d</option>
-            <option value="2592000">Last 30d</option>
-            <option value="">All time</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Path</span>
-          <input type="text" id="filterPath" placeholder="/" style="width:140px">
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Country</span>
-          <select id="filterCountry"><option value="">All</option></select>
-        </div>
-        <div class="filter-group">
-          <span class="filter-label">Device</span>
-          <select id="filterDevice">
-            <option value="">All</option>
-            <option value="desktop">Desktop</option>
-            <option value="mobile">Mobile</option>
-            <option value="tablet">Tablet</option>
-          </select>
-        </div>
-        <button id="refreshBtn">Refresh</button>
-        <span style="margin-left:auto;font-size:0.7rem;color:var(--text-secondary)" id="rowCount"></span>
+      <div class="ui-figures" style="--n:4" id="figures">
+        <div class="ui-figure"><div class="k">Page views</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Visitors</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Views per visitor</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Top page</div><div class="v"></div><div class="s">&nbsp;</div></div>
       </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Path</th>
-              <th>Country</th>
-              <th>City</th>
-              <th>Device</th>
-              <th>Browser</th>
-              <th>OS</th>
-              <th>Session</th>
-            </tr>
-          </thead>
-          <tbody id="rowsBody"></tbody>
-        </table>
-        <div id="emptyState" class="empty" style="display:none">No traffic in this window yet.</div>
-      </div>
+      <section class="ui-section">
+        <div class="ui-head"><h2 id="chartTitle">Views a day</h2></div>
+        <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+        <p class="chart-note" id="chartNote"></p>
+      </section>
+
+      <section class="ui-section">
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section class="ui-section" id="viewsSec">
+        <div class="ui-head"><h2>Recent views</h2></div>
+        <div class="tbl ui-table-wrap"><table class="ui-table t" id="views">
+          <thead><tr><th>When</th><th>Page</th><th>From</th><th>Device</th><th>Visitor</th></tr></thead><tbody></tbody>
+        </table></div>
+        <div class="lst" id="viewsList"></div>
+        <div id="viewsPager"></div>
+      </section>
+
+      <section class="ui-section" id="visitorsSec">
+        <div class="ui-head"><h2>Visitors</h2></div>
+        <p class="chart-note" style="margin:0 0 10px">Tick a visitor to leave it out of everything above: one of your own devices, a bot. Kept in this browser.</p>
+        <div class="tbl ui-table-wrap"><table class="ui-table t" id="visitors">
+          <thead><tr><th>Visitor</th><th>Last seen</th><th class="n">Views</th><th class="n">Pages</th><th>From</th><th>Device</th><th class="n">Leave out</th></tr></thead><tbody></tbody>
+        </table></div>
+        <div class="lst" id="visitorsList"></div>
+        <div id="visitorsPager"></div>
+      </section>
     </div>
 
-    <div id="setupState" class="setup-card" style="display:none">
-      <h2>Storage not configured</h2>
-      <p style="color:var(--text-body);font-size:0.85rem;max-width:560px;margin:0.5rem auto;">
-        The traffic logger uses a private GitHub Gist as storage. Two one-time steps:
-      </p>
+    <section class="ui-section setup" id="setup" hidden>
+      <h2>The log isn't set up yet</h2>
+      <p>The beacon writes to a private GitHub gist. Two one-time steps:</p>
       <ol>
-        <li><span class="step">1</span> Create a <strong>secret gist</strong> at <a href="https://gist.github.com/" target="_blank" rel="noopener">gist.github.com</a> with one file named <code>traffic-log.json</code> containing exactly:
-          <pre class="setup">{"entries":[]}</pre>
-          Click <em>Create secret gist</em>. Copy the gist id from the URL — it's the long hex segment after your username (<code>https://gist.github.com/&lt;you&gt;/<strong>abc123…</strong></code>).
-        </li>
-        <li><span class="step">2</span> Create a <strong>fine-grained personal access token</strong> at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with scope <code>Gists: read and write</code>. No repo access needed.</li>
-        <li><span class="step">3</span> In Vercel → Project Settings → Environment Variables, add (Production + Preview + Development):
-          <pre class="setup">GITHUB_TOKEN  = ghp_…   (the PAT)
-GIST_ID       = abc123…  (the gist id)</pre>
-        </li>
-        <li><span class="step">4</span> Trigger a redeploy (Deployments → Redeploy on the latest one, or push any commit).</li>
-        <li><span class="step">5</span> Visit the homepage once, refresh this page — you should see your own visit logged.</li>
+        <li>Create a <b>secret gist</b> at <a href="https://gist.github.com/" target="_blank" rel="noopener">gist.github.com</a> with one file, <code>traffic-log.json</code>, holding <code>{"entries":[]}</code>. Its id is the long hex part of its address.</li>
+        <li>Create a fine-grained token at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with <code>Gists: read and write</code>, then add to Vercel (Project Settings → Environment Variables):
+          <pre>GITHUB_TOKEN = the token
+GIST_ID      = the gist's id</pre>
+          and redeploy. Visit any page once, then refresh this one.</li>
       </ol>
-      <p style="color:var(--text-secondary);font-size:0.7rem;margin-top:0.75rem;">
-        Internal log only — entries never leave your gist. Auto-trims to the last 5,000 entries (FIFO) so the file stays small forever.
-      </p>
-    </div>
-
-    <div id="errorState" class="err" style="display:none"></div>
+    </section>
+    <div class="ui-error" id="error" hidden></div>
   </div>
 
-  <script>
-
-    function timeAgo(iso) {
-      const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-      if (diff < 60) return diff + 's ago';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-      return Math.floor(diff / 86400) + 'd ago';
-    }
-
-    // ISO 3166-1 alpha-2 → flag emoji (regional indicator letters)
-    function flag(cc) {
-      if (!cc || cc.length !== 2) return '';
-      const A = 0x1F1E6, base = 'A'.charCodeAt(0);
-      const c = cc.toUpperCase();
-      return String.fromCodePoint(A + (c.charCodeAt(0) - base), A + (c.charCodeAt(1) - base));
-    }
-
-    let allRows = [];
-
-    async function load() {
-      try {
-        const res = await fetch('/api/logs?limit=2000', { cache: 'no-store' });
-        const json = await res.json();
-        if (json.error === 'storage_not_configured') {
-          document.getElementById('setupState').style.display = 'block';
-          document.getElementById('updatedLabel').textContent = 'storage not configured';
-          return;
-        }
-        if (!json.ok) {
-          document.getElementById('errorState').style.display = 'block';
-          document.getElementById('errorState').textContent = `Error loading logs: ${json.error || 'unknown'}${json.detail ? ' — ' + json.detail : ''}`;
-          document.getElementById('updatedLabel').textContent = 'error';
-          return;
-        }
-        allRows = json.rows || [];
-        document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('updatedLabel').textContent = `loaded ${allRows.length} rows · ${new Date().toLocaleTimeString()}`;
-        populateCountryFilter();
-        applyFilters();
-      } catch (e) {
-        document.getElementById('errorState').style.display = 'block';
-        document.getElementById('errorState').textContent = 'Failed to fetch /api/logs: ' + e.message;
-      }
-    }
-
-    function populateCountryFilter() {
-      const sel = document.getElementById('filterCountry');
-      const counts = {};
-      allRows.forEach(r => { if (r.country) counts[r.country] = (counts[r.country] || 0) + 1; });
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      const current = sel.value;
-      sel.innerHTML = '<option value="">All</option>'
-        + sorted.map(([c, n]) => `<option value="${c}">${flag(c)} ${c} (${n})</option>`).join('');
-      if (current) sel.value = current;
-    }
-
-    function filteredRows() {
-      const w = parseInt(document.getElementById('filterWindow').value || '0', 10);
-      const path = document.getElementById('filterPath').value.trim().toLowerCase();
-      const country = document.getElementById('filterCountry').value;
-      const device = document.getElementById('filterDevice').value;
-      const cutoff = w > 0 ? Date.now() - w * 1000 : 0;
-      return allRows.filter(r => {
-        if (cutoff && new Date(r.ts).getTime() < cutoff) return false;
-        if (path && !(r.path || '').toLowerCase().includes(path)) return false;
-        if (country && r.country !== country) return false;
-        if (device && r.device !== device) return false;
-        return true;
-      });
-    }
-
-    function applyFilters() {
-      const rows = filteredRows();
-      renderStats(rows);
-      renderTable(rows);
-      document.getElementById('rowCount').textContent = `${rows.length} matched / ${allRows.length} total`;
-    }
-
-    function renderStats(rows) {
-      document.getElementById('statTotal').textContent = rows.length.toLocaleString();
-      const sessions = new Set(rows.map(r => r.session_id).filter(Boolean));
-      document.getElementById('statSessions').textContent = sessions.size.toLocaleString();
-
-      const byPath = {};
-      rows.forEach(r => { byPath[r.path || '/'] = (byPath[r.path || '/'] || 0) + 1; });
-      const topPage = Object.entries(byPath).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById('statTopPage').textContent = topPage ? topPage[0] : '—';
-      document.getElementById('statTopPageHits').textContent = topPage ? topPage[1] + ' views' : '';
-
-      const byCountry = {};
-      rows.forEach(r => { if (r.country) byCountry[r.country] = (byCountry[r.country] || 0) + 1; });
-      const topCountry = Object.entries(byCountry).sort((a, b) => b[1] - a[1])[0];
-      document.getElementById('statTopCountry').innerHTML = topCountry ? `${flag(topCountry[0])} ${topCountry[0]}` : '—';
-      document.getElementById('statTopCountryHits').textContent = topCountry ? topCountry[1] + ' views' : '';
-
-      const w = document.getElementById('filterWindow');
-      document.getElementById('statRange').textContent = w.options[w.selectedIndex].text.toLowerCase();
-    }
-
-    function renderTable(rows) {
-      const body = document.getElementById('rowsBody');
-      const empty = document.getElementById('emptyState');
-      if (!rows.length) {
-        body.innerHTML = '';
-        empty.style.display = 'block';
-        return;
-      }
-      empty.style.display = 'none';
-      body.innerHTML = rows.slice(0, 1000).map(r => {
-        const cc = r.country || '';
-        const ccCell = cc ? `<span class="country-flag">${flag(cc)}</span>${cc}` : '';
-        const sess = (r.session_id || '').slice(0, 8);
-        return `<tr>
-          <td title="${new Date(r.ts).toLocaleString()}">${timeAgo(r.ts)}</td>
-          <td class="path-cell">${escapeHtml(r.path || '/')}</td>
-          <td>${ccCell}</td>
-          <td>${escapeHtml(r.city || '')}</td>
-          <td>${r.device ? `<span class="device-pill">${r.device}</span>` : ''}</td>
-          <td>${escapeHtml(r.browser || '')}</td>
-          <td>${escapeHtml(r.os || '')}</td>
-          <td class="session-cell">${sess}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    document.getElementById('filterWindow').addEventListener('change', applyFilters);
-    document.getElementById('filterPath').addEventListener('input', applyFilters);
-    document.getElementById('filterCountry').addEventListener('change', applyFilters);
-    document.getElementById('filterDevice').addEventListener('change', applyFilters);
-    document.getElementById('refreshBtn').addEventListener('click', load);
-
-    load();
-  </script>
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script src="/admin/traffic.js"></script>
 </body>
 </html>
