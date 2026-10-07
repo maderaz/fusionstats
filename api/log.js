@@ -111,10 +111,15 @@ export default async function handler(req) {
   const { device, browser, os } = parseUserAgent(ua);
   const referrer = req.headers.get('referer') || '';
 
+  // Vercel's headers are percent-encoded ("Wroc%C5%82aw"): stored as read.
+  const decode = (s) => { if (!s) return s; try { return decodeURIComponent(s); } catch { return s; } };
   const geo = req.geo || {};
   const country = geo.country || req.headers.get('x-vercel-ip-country') || null;
-  const region  = geo.region  || req.headers.get('x-vercel-ip-country-region') || null;
-  const city    = geo.city    || req.headers.get('x-vercel-ip-city')    || null;
+  const region  = decode(geo.region  || req.headers.get('x-vercel-ip-country-region') || null);
+  const city    = decode(geo.city    || req.headers.get('x-vercel-ip-city')    || null);
+  // Where the visit came from (track.js): another site's host, '' for none.
+  // A step within the site sends nothing and keeps none.
+  const ref = typeof body.ref === 'string' ? body.ref.toLowerCase().replace(/[^a-z0-9.:-]/g, '').slice(0, 100) : undefined;
 
   const entry = {
     ts: new Date().toISOString(),
@@ -125,6 +130,7 @@ export default async function handler(req) {
     country, region, city,
     device, browser, os,
   };
+  if (ref !== undefined) entry.ref = ref;
 
   try {
     const data = await readGist();

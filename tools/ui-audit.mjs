@@ -35,11 +35,12 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { trafficRows } from './traffic-fixture.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (name, def) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : def; };
 const WIDTHS = arg('widths', '320,335,350,360,375,380,390,400,412,430,480,560,640,700,768,834,900,1024,1180,1280,1440,1920').split(',').map(Number);
-const PAGES = arg('pages', '/,/stocks,/stocks/aave-v4/,/finances/dao,/finances/curator,/explorer,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base&tab=holders,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base&tab=actions,/explorer/?v=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e&c=base,/all-vaults,/switchers,/dust,/dominance,/monitor,/tvl,/address/?a=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e,/spark,/rebalance-methodology,/logs,/video,/socials').split(',');
+const PAGES = arg('pages', '/,/stocks,/stocks/aave-v4/,/finances/dao,/finances/curator,/explorer,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base&tab=holders,/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base&tab=actions,/explorer/?v=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e&c=base,/all-vaults,/switchers,/dust,/dominance,/monitor,/tvl,/address/?a=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e,/spark,/rebalance-methodology,/logs,/video,/socials,/admin').split(',');
 const PLOTLY = arg('plotly', process.env.PLOTLY_JS || '');
 const JSON_OUT = arg('json', '');
 const PARALLEL = +arg('parallel', 3);
@@ -70,6 +71,8 @@ function serve() {
   return new Promise((ok) => {
     const s = http.createServer((req, res) => {
       const u = new URL(req.url, 'http://x');
+      // The Traffic page's log: made-up visits (tools/traffic-fixture.mjs).
+      if (u.pathname === '/api/logs') { const rows = trafficRows(Date.now()); res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, count: rows.length, rows })); }
       if (u.pathname.startsWith('/api/')) { res.writeHead(u.pathname === '/api/refresh' ? 200 : 204, { 'content-type': 'application/json' }); return res.end(u.pathname === '/api/refresh' ? '{"configured":false}' : ''); }
       const f = resolveFile(u.pathname);
       if (!f) { res.writeHead(404, { 'content-type': 'text/html' }); return res.end('not found'); }
