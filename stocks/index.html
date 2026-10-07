@@ -10,8 +10,19 @@
   <script>window.FusionData && FusionData.preload(['stocks-data.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
   <title>Stocks — Fusion Stats</title>
   <meta name="description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/stocks">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Stats">
+  <meta property="og:title" content="Stocks — Fusion Stats">
+  <meta property="og:description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/stocks">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Stocks — Fusion Stats">
+  <meta name="twitter:description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
+  <!-- /page-meta -->
   <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -506,9 +517,9 @@
       /* A phone: less said, more shown. The subtitle steps aside; the
          figures pack into a tight grid. */
       .ui-masthead .ui-lede { display: none; }
-      /* The status close under the title and from its left edge, as on Activity. */
+      /* The title is the top bar's on a phone (nav.js): "Updated" keeps the
+         right, as on Key Metrics, Aave V4 Data and the Finances pages. */
       .ui-masthead { gap: 6px; }
-      .ui-masthead > .ui-meta { margin-left: 0; }
       .stat-row { row-gap: 0; padding: 14px 0 18px; }
       .stat-row .stat { padding-top: 12px; padding-bottom: 12px; }
       .stat-row .stat:nth-child(n+3) { border-top: 1px solid var(--line); }

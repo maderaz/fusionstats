@@ -18,7 +18,7 @@
   // own pages it is open, so the current page always shows.
   const GROUPS = [
     { pages: [
-      { href: '/',                      label: 'Key Metrics',    icon: 'activity' },
+      { href: '/',                      label: 'Key Metrics',    icon: 'home' },
       { href: '/stocks',                label: 'Stocks',         icon: 'stocks', badge: 'New',
         sub: [{ href: '/stocks/aave-v4', label: 'Aave V4 Data', icon: 'aave' }] },
       { href: '/explorer',              label: 'Explorer',       icon: 'explorer' },
@@ -49,8 +49,8 @@
   // The part marked "a" lights up in the accent colour on hover; the whole
   // icon does on the current page. "f" parts are filled, not stroked.
   const ICONS = {
-    // Deposits drop into the vault, withdrawals rise out of it.
-    activity: '<path d="M2.5 9.5v2.25A2.25 2.25 0 0 0 4.75 14h6.5a2.25 2.25 0 0 0 2.25-2.25V9.5"/><path class="a" d="M6 2v7.75M4 7.75l2 2 2-2"/><path d="M10 9.75V2M8 4l2-2 2 2"/>',
+    // The house of it all: where every figure starts, its door the accent.
+    home: '<path d="M2.5 7.25L8 2.75l5.5 4.5"/><path d="M3.75 6.25v6.5c0 .69.56 1.25 1.25 1.25h6c.69 0 1.25-.56 1.25-1.25v-6.5"/><path class="a" d="M6.5 14v-3.25a1.5 1.5 0 0 1 3 0V14"/>',
     // A lens over a vault: one looked at closely.
     explorer: '<circle cx="6.75" cy="6.75" r="4.75"/><path class="a" d="M10.25 10.25L14 14"/><rect class="a f" x="5" y="5" width="3.5" height="3.5" rx=".9"/>',
     // Candles: hollow up, filled down.
@@ -332,6 +332,36 @@
       .fnav-topbar .fnav-brand { padding: 0; }
       .fnav-topbar .fnav-mark { width: 22px; height: 22px; }
       .fnav-topbar .fnav-word { font-size: 16.5px; }
+      /* The page you're on, at the right: lit as the current tab is, and a
+         tap opens the pages menu (More's sheet). */
+      .fnav-here {
+        display: flex; align-items: center; gap: 6px;
+        min-width: 0; height: 34px; margin: 0 -4px 0 auto; padding: 0 10px 0 11px;
+        border: 0; border-radius: 999px;
+        background: var(--accent-bg, rgba(132, 41, 255, 0.10));
+        color: var(--accent, #8429FF);
+        font: 600 14px/1 var(--fnav-font);
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s, transform 0.12s;
+      }
+      .fnav-here .fnav-ic, .fnav-here .fnav-ic .a { color: inherit; }
+      .fnav-here .fnav-chev { margin-left: 2px; transition: transform 0.2s ease; }
+      .fnav-here[aria-expanded="true"] .fnav-chev { transform: rotate(180deg); }
+      .fnav-here:active { transform: scale(0.97); }
+      .fnav-here:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 2px; }
+      .fnav-here .fl-n { display: none; }
+      .fnav-here.short .fl-w { display: none; }
+      .fnav-here.short .fl-n { display: inline; }
+      /* The page's own heading says the same: it steps aside, kept for
+         screen readers and search. */
+      .fnav-titled {
+        position: absolute !important; width: 1px !important; height: 1px !important;
+        margin: -1px !important; padding: 0 !important; overflow: hidden !important;
+        clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap !important; border: 0 !important;
+      }
 
       /* The tab bar: the key pages, then More. */
       .fnav-tabbar {
@@ -464,6 +494,7 @@
   const here = (p) => (current(p) ? ' aria-current="page"' : '');
   const KEY = GROUPS.filter(g => !g.label).flatMap(g => g.pages);
   const MORE = GROUPS.filter(g => g.label);
+  const HERE = GROUPS.flatMap(g => g.pages.flatMap(p => [p].concat(p.sub || []))).find(current) || null;
 
   // Sidebar links (desktop).
   const link = (p) => {
@@ -565,6 +596,9 @@
     wrap.innerHTML = `
       <header class="fnav-topbar">
         <a class="fnav-brand" href="/" aria-label="Fusion Ecosystem home">${LOGO}</a>
+        ${HERE ? `<button type="button" class="fnav-here" id="fnav-here" aria-expanded="false" aria-controls="fnav-sheet" aria-haspopup="dialog"`
+          + ` aria-label="${HERE.label}, the page you're on: open the pages menu">${icon(HERE.icon)}`
+          + `<span>${HERE.short ? `<span class="fl-w">${HERE.label}</span><span class="fl-n">${HERE.short}</span>` : HERE.label}</span>${CHEVRON}</button>` : ''}
       </header>
       <aside class="fnav-sidebar" id="fnav-aside">
         <a class="fnav-brand" href="/" aria-label="Fusion Ecosystem home">${LOGO}</a>
@@ -624,19 +658,22 @@
     const sheet = document.getElementById('fnav-sheet');
     const scrim = document.getElementById('fnav-sheet-scrim');
     const more = document.getElementById('fnav-more');
-    let lastFocus = null;
+    const hereBtn = document.getElementById('fnav-here');
+    let lastFocus = null, opener = more;
     const setOpen = (v) => {
       if (v === sheet.classList.contains('open')) return;
       sheet.classList.toggle('open', v);
       scrim.classList.toggle('open', v);
       more.parentNode.classList.toggle('sheet-open', v);
       more.setAttribute('aria-expanded', String(v));
+      if (hereBtn) hereBtn.setAttribute('aria-expanded', String(v));
       document.documentElement.style.overflow = v ? 'hidden' : '';   // the page stays put behind it
       sheet.style.transform = '';
       if (v) { lastFocus = document.activeElement; sheet.scrollTop = 0; sheet.focus({ preventScroll: true }); }
-      else if (lastFocus && sheet.contains(document.activeElement)) more.focus({ preventScroll: true });
+      else if (lastFocus && sheet.contains(document.activeElement)) opener.focus({ preventScroll: true });
     };
-    more.addEventListener('click', () => setOpen(!sheet.classList.contains('open')));
+    more.addEventListener('click', () => { opener = more; setOpen(!sheet.classList.contains('open')); });
+    if (hereBtn) hereBtn.addEventListener('click', () => { opener = hereBtn; setOpen(!sheet.classList.contains('open')); });
     scrim.addEventListener('click', () => setOpen(false));
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && sheet.classList.contains('open')) setOpen(false);
@@ -674,6 +711,33 @@
     };
     sheet.addEventListener('touchend', endDrag);
     sheet.addEventListener('touchcancel', endDrag);
+
+    if (HERE) {
+      // A long name takes its short form when the bar runs out of room.
+      const bar = wrap.querySelector('.fnav-topbar'), brand = bar.querySelector('.fnav-brand');
+      const fit = () => {
+        if (!HERE.short || !bar.offsetWidth) return;
+        hereBtn.classList.remove('short');
+        if (hereBtn.getBoundingClientRect().left < brand.getBoundingClientRect().right + 12) hereBtn.classList.add('short');
+      };
+      fit();
+      if (window.ResizeObserver) new ResizeObserver(fit).observe(bar);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+      // The page's heading, when it names the page: on a phone the bar says it.
+      // Watched, as a page may change it (a vault's name on the Explorer).
+      const same = (t) => t.replace(/\s+/g, ' ').trim().toLowerCase() === HERE.label.toLowerCase();
+      let watched = null;
+      const mark = () => {
+        const h1 = document.querySelector('h1');
+        if (!h1) return;
+        h1.classList.toggle('fnav-titled', same(h1.textContent));
+        if (watched !== h1 && window.MutationObserver) {
+          watched = h1;
+          new MutationObserver(() => h1.classList.toggle('fnav-titled', same(h1.textContent))).observe(h1, { childList: true, characterData: true, subtree: true });
+        }
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mark); else mark();
+    }
 
     speculate();
   };
