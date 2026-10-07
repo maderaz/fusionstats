@@ -1,8 +1,10 @@
 name: Collect DAO Fees
 
 # Each vault's fee rates and the IPOR DAO's share of them, read on-chain
-# (collect-dao-fees.js), for Activity's Annualized earnings. Fee terms change
-# rarely: twice a day is plenty. Keyed endpoints (RPC_URL_*) go first.
+# (collect-dao-fees.js), for Key Metrics' earnings and the Finances pages,
+# whose day-by-day file is rebuilt from them here (tools/build-earnings.js).
+# Fee terms change rarely: twice a day is plenty. Keyed endpoints (RPC_URL_*)
+# go first.
 
 on:
   schedule:
@@ -32,11 +34,18 @@ jobs:
       - name: Read the fee terms
         run: node collect-dao-fees.js
 
+      # The Finances pages' earnings, day by day, with the terms just read.
+      - name: Build the Finances pages' earnings
+        continue-on-error: true
+        run: node tools/build-earnings.js
+
       - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add dao-fees.json
+          for f in dao-fees.json earnings-daily.json; do
+            [ -f "$f" ] && git add -f "$f"
+          done
           FILES=$(git diff --cached --name-only)
           if [ -z "$FILES" ]; then echo "No changes"; exit 0; fi
           git commit -m "Update dao-fees.json [skip ci]"

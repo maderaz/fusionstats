@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['earnings-daily.json', 'ipor-vaults.json', 'dao-fees.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAO Earnings — Fusion Stats</title>
+  <meta name="description" content="The IPOR DAO's share of the fees Fusion vaults charge, month by month from the start of their history.">
+  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
+  <script src="/nav.js"></script>
+  <style>
+    .chart-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .ui-chart { margin: 0 -4px; }
+    .empty-state { padding: 48px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
+  </style>
+  <script defer src="/track.js"></script>
+</head>
+<body data-kind="dao">
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>DAO Earnings</h1>
+        <p class="ui-lede">The IPOR DAO's share of the fees Fusion vaults charge, from the start of their history.</p>
+        <div class="ui-status" id="status"></div>
+      </div>
+    </header>
+
+    <div id="body">
+      <div class="ui-figures" style="--n:4" id="figures">
+        <div class="ui-figure"><div class="k">Annualized <span class="ui-tip" tabindex="0" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K: Key Metrics' DAO earnings.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Last 30 days</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Last 12 months</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">All time</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      </div>
+
+      <section class="ui-section" id="chartSec">
+        <div class="ui-head">
+          <h2 id="chartTitle">Earned per month</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-k">Image size</div>
+              <div class="ui-seg" id="pngSize">
+                <button type="button" data-v="wide" class="on">Page</button><button type="button" data-v="43">4:3</button><button type="button" data-v="square">1:1</button>
+              </div>
+              <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="pngBtn">Download PNG</button>
+                <button type="button" class="ui-btn" id="csvBtn" title="A row a day: what the DAO earned that day, and in all to that day">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
+          <div class="ui-seg" id="view" role="group" aria-label="View">
+            <button type="button" data-v="monthly" class="on">Monthly</button>
+            <button type="button" data-v="weekly">Weekly</button>
+            <button type="button" data-v="cumulative">Cumulative</button>
+          </div>
+          <div class="ui-seg" id="range" role="group" aria-label="Range">
+            <button type="button" data-v="90">90d</button>
+            <button type="button" data-v="365">1y</button>
+            <button type="button" data-v="all" class="on">All</button>
+          </div>
+        </div>
+        <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+        <p class="chart-note" id="coverage"></p>
+      </section>
+    </div>
+
+    <details class="ui-more">
+      <summary>Methodology</summary>
+      <div>A Fusion vault charges a performance fee on its profit and a management fee on its assets, both paid in new shares, so its share price is what depositors keep. Each fee is split between the vault's own recipients (its curator or operator) and the IPOR DAO, at rates read on-chain from the vault's fee manager (<code>dao-fees.json</code>); an older vault whose fees go straight to the DAO's treasury pays the DAO all of them. This page runs Key Metrics' arithmetic over every day of every vault's history (<code>tvl-snapshots.json</code>): the management fee accrues each day on the day's TVL, and the performance fee on each rise of the share price to a new high, grossed up for the fees taken (a recovery after a fall is not new profit). A rise read across more than three days, a share price out of range and a move of over 5% a day earn nothing. Today's fee terms stand for the whole history. <b>Annualized</b> is Key Metrics' figure, the year ahead at today's TVL and APY. Built by <code>tools/build-earnings.js</code> (<code>earnings-daily.json</code>) each time the snapshots or the fee terms update.</div>
+    </details>
+  </div>
+
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script src="/earnings.js"></script>
+  <script src="/finances/earnings-page.js"></script>
+</body>
+</html>

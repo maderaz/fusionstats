@@ -12,7 +12,7 @@
   // The pages, in three groups: the key pages, the insights that support
   // them, and tools. A group's label is its heading; the key pages need none.
   // A page's short name is its tile's on the narrowest phones, where the full
-  // one won't fit on a line.
+  // one won't fit on a line; a long name's (long: true) from 370px down.
   // A folding group starts closed and remembers being opened; on one of its
   // own pages it is open, so the current page always shows.
   const GROUPS = [
@@ -26,6 +26,10 @@
       { href: '/switchers',             label: 'Switchers',      icon: 'switchers' },
       { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust' },
       { href: '/dominance',             label: 'Dominance',      icon: 'dominance' },
+    ] },
+    { label: 'Finances', pages: [
+      { href: '/finances/dao',          label: 'DAO Earnings',     icon: 'dao', short: 'DAO' },
+      { href: '/finances/curator',      label: 'Curator Earnings', icon: 'curator', short: 'Curators', long: true },
     ] },
     { label: 'Tools', folds: true, pages: [
       { href: '/monitor',               label: 'Monitor',        icon: 'monitor' },
@@ -71,6 +75,10 @@
     video: '<rect x="2" y="2" width="12" height="8.5" rx="2"/><path class="f" d="M6.9 4.6l2.9 1.65-2.9 1.65z"/><path d="M2 13.5h12"/><path class="a f" d="M10 11.85l1.65 1.65L10 15.15 8.35 13.5z"/>',
     // A post: avatar, name, media.
     socials: '<rect x="2" y="2" width="12" height="12" rx="2.75"/><circle class="a f" cx="5.25" cy="5.25" r="1.25"/><path d="M8 5.25h3.25"/><rect class="a f soft2" x="4.25" y="8" width="7.5" height="3.75" rx="1.1"/>',
+    // A treasury: its pediment, columns and floor.
+    dao: '<path class="a" d="M2 6.25L8 2.5l6 3.75z"/><path d="M4 8.5v3.5M8 8.5v3.5M12 8.5v3.5M2.25 14h11.5"/>',
+    // The one who runs the vault, and the fee they keep.
+    curator: '<circle cx="6" cy="4.75" r="2.25"/><path d="M1.75 13.75c.45-2.6 2.1-4 4.25-4 .9 0 1.7.24 2.4.7"/><circle class="a" cx="11.75" cy="11" r="2.75"/><path class="a" d="M11.75 9.9v2.2"/>',
     // Everything else, four tiles.
     more: '<rect x="2" y="2" width="5" height="5" rx="1.5"/><rect class="a" x="9" y="2" width="5" height="5" rx="1.5"/><rect x="2" y="9" width="5" height="5" rx="1.5"/><rect x="9" y="9" width="5" height="5" rx="1.5"/>',
   };
@@ -430,6 +438,7 @@
          the narrowest take a page's short name. */
       @media (max-width: 380px) { .fnav-tile { gap: 9px; padding: 0 12px; } }
       @media (max-width: 352px) { .fnav-tile .fl-w { display: none; } .fnav-tile .fl-n { display: inline; } }
+      @media (max-width: 370px) { .fnav-tile .fl-long .fl-w { display: none; } .fnav-tile .fl-long .fl-n { display: inline; } }
       .fnav-tile:active { transform: scale(0.98); background: var(--bg-hover, var(--bg-alt, rgba(127, 127, 127, 0.08))); }
       .fnav-tile:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 1px; }
       .fnav-tile.active { border-color: transparent; background: var(--accent-bg, rgba(132, 41, 255, 0.08)); color: var(--accent, #8429FF); font-weight: 600; }
@@ -494,7 +503,7 @@
   const tiles = SUBS.concat(MORE).map(g => `<div class="fnav-sheet-group" role="group" aria-label="${g.label}">`
       + `<div class="fnav-sheet-label">${g.label}</div><div class="fnav-tiles">`
       + g.pages.map(p => `<a class="fnav-tile${isActive(p.href) ? ' active' : ''}" href="${p.href}"${here(p)}>`
-          + `${icon(p.icon)}<span class="fnav-label">${p.short ? `<span class="fl-w">${p.label}</span><span class="fl-n">${p.short}</span>` : p.label}</span></a>`).join('')
+          + `${icon(p.icon)}<span class="fnav-label${p.long ? ' fl-long' : ''}">${p.short ? `<span class="fl-w">${p.label}</span><span class="fl-n">${p.short}</span>` : p.label}</span></a>`).join('')
       + `</div></div>`).join('');
 
   const THEME_SWITCH = `<div class="fnav-foot">

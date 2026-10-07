@@ -22,17 +22,22 @@
 // DAO's (daoVia 'treasury'). Any other wallet is someone else's: null DAO
 // rates, and the page leaves the vault out and says how many.
 //
-// Every vault above $10K in ipor-vaults.json, on the chains with endpoints
-// here.
+// Every vault above $10K in ipor-vaults.json, and every one that held more
+// than that at any time in its history (tvl-snapshots.json, as the TVL page
+// reads it; listed or not), so the Finances pages count its fees for the
+// days it had them — on the chains with endpoints here.
 //
 //   node collect-dao-fees.js
 
 const fs = require('fs');
 const path = require('path');
 const { rpcEndpoints } = require('./rpc-endpoints.js');
+const TvlSeries = require('./tvl-series.js');
 
 const OUT = path.join(__dirname, 'dao-fees.json');
 const IPOR = path.join(__dirname, 'ipor-vaults.json');
+const SNAPSHOTS = path.join(__dirname, 'tvl-snapshots.json');
+const CHAIN_ID = { ethereum: 1, base: 8453, arbitrum: 42161 };
 const FLOOR = 10000;
 const CHAINS = {
   1: ['ethereum', ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://rpc.mevblocker.io']],
@@ -115,10 +120,29 @@ async function resolveTreasury(result) {
   }
 }
 
-async function main({ out: OUT_FILE = OUT, ipor: IPOR_FILE = IPOR } = {}) {
+// Each vault's highest TVL in its history, its chain and symbol.
+function peaks(file) {
+  const out = {};
+  try {
+    for (const [a, s] of Object.entries(JSON.parse(fs.readFileSync(file, 'utf8')).vaults || {})) {
+      const days = TvlSeries.vaultDailySnapshots(s);
+      if (days) out[a.toLowerCase()] = { peak: Math.max(...days.values()), chain: s.chain, symbol: s.symbol };
+    }
+  } catch { /* no history: today's TVL alone */ }
+  return out;
+}
+
+async function main({ out: OUT_FILE = OUT, ipor: IPOR_FILE = IPOR, snapshots: SNAP_FILE = SNAPSHOTS } = {}) {
   let ipor;
   try { ipor = JSON.parse(fs.readFileSync(IPOR_FILE, 'utf8')); } catch { console.log('dao-fees.json: ipor-vaults.json unreadable; left as it was'); return; }
-  const vaults = (ipor.vaults || []).filter(v => v.tvl > FLOOR && CHAINS[Number(v.chainId)]);
+  const past = peaks(SNAP_FILE);
+  const listed = new Set((ipor.vaults || []).map(v => String(v.address).toLowerCase()));
+  const vaults = (ipor.vaults || []).filter(v => (v.tvl > FLOOR || (past[String(v.address).toLowerCase()] || {}).peak > FLOOR) && CHAINS[Number(v.chainId)]);
+  // A vault IPOR no longer lists, that held more than the floor once.
+  for (const [a, p] of Object.entries(past)) {
+    if (listed.has(a) || !(p.peak > FLOOR) || !CHAIN_ID[p.chain]) continue;
+    vaults.push({ address: a, chainId: CHAIN_ID[p.chain], name: (p.symbol || 'Unlisted') + ' vault, ' + p.chain, tvl: 0 });
+  }
   const prev = (() => { try { return JSON.parse(fs.readFileSync(OUT_FILE, 'utf8')).vaults || {}; } catch { return {}; } })();
   const result = {};
   let failed = 0;

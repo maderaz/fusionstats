@@ -39,7 +39,7 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (name, def) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : def; };
 const WIDTHS = arg('widths', '320,335,350,360,375,380,390,400,412,430,480,560,640,700,768,834,900,1024,1180,1280,1440,1920').split(',').map(Number);
-const PAGES = arg('pages', '/,/stocks,/stocks/aave-v4/,/all-vaults,/switchers,/dust,/dominance,/monitor,/tvl,/address/?a=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e,/spark,/rebalance-methodology,/logs,/video,/socials').split(',');
+const PAGES = arg('pages', '/,/stocks,/stocks/aave-v4/,/finances/dao,/finances/curator,/all-vaults,/switchers,/dust,/dominance,/monitor,/tvl,/address/?a=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e,/spark,/rebalance-methodology,/logs,/video,/socials').split(',');
 const PLOTLY = arg('plotly', process.env.PLOTLY_JS || '');
 const JSON_OUT = arg('json', '');
 const PARALLEL = +arg('parallel', 3);
