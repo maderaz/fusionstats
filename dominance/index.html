@@ -111,6 +111,10 @@
         <details class="ui-export">
           <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
           <div class="ui-menu">
+            <div class="ui-menu-k">Image size</div>
+            <div class="ui-seg" id="pngSize">
+              <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
+            </div>
             <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
             <div class="ui-menu-actions">
               <button type="button" class="ui-btn primary" id="chartPng">Download PNG</button>
@@ -616,12 +620,22 @@
         ...pts.map(p => [p.time.toISOString(), p.live ? 'live' : p.daily ? 'daily_average' : 'reading', p.totalLoans.toFixed(2), p.borrowed.toFixed(2), p.share.toFixed(4)]),
       ]);
     }
+    // The image: 4:3 unless asked otherwise, saying what it shows: the chart,
+    // the range, what a point stands for.
+    const SHAPES = { '43': [680, 510], square: [480, 480] };
+    let pngSize = '43';
     function downloadChartPng() {
       const el = document.getElementById('chart');
       if (!el.data) return;
       const layout = layoutFor(windowed().pts, true);
-      return FusionChart.png({ data: el.data, layout }, {
-        width: el.clientWidth, height: el.clientHeight,
+      const shape = SHAPES[pngSize];
+      // The chart's lines again, in the light theme's colours: the image is on white.
+      const data = FusionChart.inLight(() => tracesFor(shown));
+      return FusionChart.png({ data, layout }, {
+        width: shape ? shape[0] : el.clientWidth, height: shape ? shape[1] : el.clientHeight,
+        title: document.getElementById('chartTitle').textContent,
+        subtitle: (range === 'all' ? 'All readings' : 'Last ' + range + ' days')
+          + ' · each point is a reading of Morpho, a day\'s average further back',
         dots: document.getElementById('pngDots').checked,
         filename: `fusion-morpho-${metric}-${new Date().toISOString().slice(0, 10)}.png`,
       });
@@ -648,6 +662,12 @@
       document.getElementById('vaultCsv').addEventListener('click', downloadVaultCsv);
       document.getElementById('chartCsv').addEventListener('click', downloadChartCsv);
       document.getElementById('chartPng').addEventListener('click', downloadChartPng);
+      document.getElementById('pngSize').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-v]');
+        if (!b) return;
+        pngSize = b.dataset.v;
+        document.querySelectorAll('#pngSize button').forEach(x => x.classList.toggle('on', x === b));
+      });
       // Theme and screen width change the axes: draw again.
       const repaint = () => { if (window.Plotly && document.getElementById('chart').data) drawChart(); };
       window.addEventListener('fusion:theme', repaint);
