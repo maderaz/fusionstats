@@ -171,6 +171,11 @@
     @container (max-width: 520px) {
       .xp-phead, .xp-prow { gap: 0 12px; padding-left: 8px; padding-right: 8px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 22px) minmax(max-content, 44px); }
       .xp-prow { min-height: 52px; padding-top: 7px; padding-bottom: 7px; font-size: 13.5px; }
+      /* Straight lines between the rows, edge to edge: no rounded row, so a
+         row's line doesn't curl up at its ends. The headings sit closer to
+         their line. */
+      .xp-prow { border-radius: 0; }
+      .xp-phead { padding-bottom: 6px; }
       .xp-phead .o, .xp-prow .xp-op { display: none; }
       .xp-prow .by { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--text-3); }
       .xp-prow > .n { font-size: 13px; }
