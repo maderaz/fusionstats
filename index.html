@@ -11,12 +11,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
   <meta name="robots" content="noindex">
-  <title>Key Metrics — Fusion Stats</title>
+  <title>Key Metrics • Fusion Ecosystem</title>
   <meta name="description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
   <link rel="canonical" href="https://fusionecosystem.xyz/">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Fusion Stats">
-  <meta property="og:title" content="Key Metrics — Fusion Stats">
+  <meta property="og:site_name" content="Fusion Ecosystem">
+  <meta property="og:title" content="Key Metrics • Fusion Ecosystem">
   <meta property="og:description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
   <meta property="og:url" content="https://fusionecosystem.xyz/">
   <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/key-metrics.png">
@@ -24,7 +24,7 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Key Metrics: Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Key Metrics — Fusion Stats">
+  <meta name="twitter:title" content="Key Metrics • Fusion Ecosystem">
   <meta name="twitter:description" content="Fusion vaults at a glance: TVL, annualized earnings, net inflow over 24 hours, 7 and 30 days, and every deposit and withdrawal as it happens.">
   <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/key-metrics.png">
   <!-- /page-meta -->
@@ -2143,7 +2143,7 @@
     function clearFire() {
       if (!fireActive) return;
       fireActive = false;
-      document.title = 'Key Metrics \u2014 Fusion Stats';
+      document.title = 'Key Metrics \u2022 Fusion Ecosystem';
       setFavicon('\u26d4'); // default: no-entry circle (neutral)
       // restore original favicon
       const link = document.querySelector("link[rel~='icon']");
@@ -2169,7 +2169,7 @@
         const label = totalUsd >= 1e6
           ? '$' + (totalUsd / 1e6).toFixed(1) + 'M'
           : '$' + (totalUsd / 1e3).toFixed(0) + 'K';
-        document.title = `\uD83D\uDD25 ${label} new \u2014 Fusion Stats`;
+        document.title = `\uD83D\uDD25 ${label} new \u2022 Fusion Ecosystem`;
         setFavicon('\uD83D\uDD25');
       }
     }

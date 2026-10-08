@@ -44,9 +44,9 @@ test('each page has one <title> and one description, in its block, and the block
 test('the block: title, description, canonical address, and the share card once there is one', () => {
   const p = PAGES.find(x => x.path === '/stocks');
   const b = block(p, '');
-  assert.ok(b.includes('<title>Stocks — Fusion Stats</title>'));
+  assert.ok(b.includes('<title>Stocks • Fusion Ecosystem</title>'));
   assert.ok(b.includes('<link rel="canonical" href="https://fusionecosystem.xyz/stocks">'));
-  assert.ok(b.includes('<meta property="og:title" content="Stocks — Fusion Stats">'));
+  assert.ok(b.includes('<meta property="og:title" content="Stocks • Fusion Ecosystem">'));
   if (cardUrl(p)) {
     assert.ok(b.includes('<meta property="og:image" content="' + cardUrl(p) + '">'));
     assert.ok(b.includes('<meta name="twitter:card" content="summary_large_image">'));
@@ -54,7 +54,7 @@ test('the block: title, description, canonical address, and the share card once 
     assert.ok(!b.includes('og:image') && !b.includes('twitter:image'), 'no image before the cards exist');
     assert.ok(b.includes('<meta name="twitter:card" content="summary">'));
   }
-  assert.strictEqual(title(p), 'Stocks — Fusion Stats');
+  assert.strictEqual(title(p), 'Stocks • Fusion Ecosystem');
   assert.strictEqual(url(PAGES[0]), 'https://fusionecosystem.xyz/');
 });
 test('while the site is kept out of search, every page in the repo says noindex, once', () => {
