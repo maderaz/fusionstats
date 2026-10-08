@@ -205,6 +205,9 @@
     .av-badge.dep { background: var(--pos-soft); color: var(--pos); }
     .av-badge.wd { background: var(--neg-soft); color: var(--neg); }
     .xp-act-tools .ui-filters { flex: 1 1 420px; }
+    /* The type switch as tall as the filter boxes beside it. */
+    .xp-act-tools { align-items: stretch; }
+    .xp-act-tools > .ui-seg button { height: auto; min-height: 34px; }
     .av-list { display: none; }
 
     /* Curator actions, administrative: a row a change (or a transaction's
@@ -353,6 +356,9 @@
         <div class="ui-toolbar">
           <div class="ui-seg" id="perfView" role="group" aria-label="Measure">
             <button type="button" data-v="apy" class="on">APY</button><button type="button" data-v="sp">Share price</button><button type="button" data-v="tvl">TVL</button>
+          </div>
+          <div class="ui-seg" id="tvlUnit" role="group" aria-label="TVL in" hidden>
+            <button type="button" data-v="usd" class="on">$</button><button type="button" data-v="asset" id="tvlUnitAsset">Asset</button>
           </div>
           <div class="ui-seg" id="perfRange" role="group" aria-label="Range">
             <button type="button" data-v="30">30d</button><button type="button" data-v="90" class="on">90d</button><button type="button" data-v="365">1y</button><button type="button" data-v="all">All</button>
