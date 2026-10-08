@@ -369,13 +369,14 @@
       .fnav-topbar .fnav-brand { padding: 0; }
       .fnav-topbar .fnav-mark { width: 22px; height: 22px; }
       .fnav-topbar .fnav-word { font-size: 16.5px; }
-      /* The page you're on, at the right: lit as the current tab is, and a
-         tap opens the pages menu (More's sheet). */
+      /* The page you're on, at the right: its icon, name and chevron, and a
+         tap opens the pages menu (More's sheet). The pill shows only while
+         it is pressed or the menu is open. */
       .fnav-here {
         display: flex; align-items: center; gap: 6px;
         min-width: 0; height: 34px; margin: 0 -4px 0 auto; padding: 0 10px 0 11px;
         border: 0; border-radius: 999px;
-        background: var(--accent-bg, rgba(132, 41, 255, 0.10));
+        background: transparent;
         color: var(--accent, #8429FF);
         font: 600 14px/1 var(--fnav-font);
         letter-spacing: -0.01em;
@@ -387,6 +388,7 @@
       .fnav-here .fnav-ic, .fnav-here .fnav-ic .a { color: inherit; }
       .fnav-here .fnav-chev { margin-left: 2px; transition: transform 0.2s ease; }
       .fnav-here[aria-expanded="true"] .fnav-chev { transform: rotate(180deg); }
+      .fnav-here[aria-expanded="true"], .fnav-here:active { background: var(--accent-bg, rgba(132, 41, 255, 0.10)); }
       .fnav-here:active { transform: scale(0.97); }
       .fnav-here:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 2px; }
       .fnav-here .fl-n { display: none; }

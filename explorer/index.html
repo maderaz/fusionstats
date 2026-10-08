@@ -185,6 +185,10 @@
       .xp-prow .byc img { width: 11px; height: 11px; border-radius: 2px; }
     }
     @container (max-width: 700px) { .xp-field { height: 48px; } }
+    /* A figure's name in its shorter words where the narrowest phones have
+       no room for the long ones (Total Value Managed: Value Managed). */
+    .k-short { display: none; }
+    @container (max-width: 340px) { .k-long { display: none; } .k-short { display: inline; } }
 
     /* A vault: what it is, in a row of tags under its name. */
     .xp-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0; }
@@ -459,7 +463,7 @@
     <div id="vault" hidden>
       <div class="ui-figures" style="--n:4" id="figures">
         <div class="ui-figure"><div class="k">APY <span class="ui-tip" tabindex="0" data-tip="What depositors earn now, after fees, as IPOR reports it. Under it, what the share price actually did over the last 30 days, a year's worth.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
-        <div class="ui-figure"><div class="k">Total value managed <span class="ui-tip" tabindex="0" data-tip="Everything the vault has in its markets: what it supplied and what it holds as collateral, including what it bought with borrowed money. TVL is that less what it owes.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k"><span class="k-long">Total value managed</span><span class="k-short">Value managed</span> <span class="ui-tip" tabindex="0" data-tip="Everything the vault has in its markets: what it supplied and what it holds as collateral, including what it bought with borrowed money. TVL is that less what it owes.">ⓘ</span></div><div class="v"></div><div class="s">&nbsp;</div></div>
         <div class="ui-figure"><div class="k">TVL</div><div class="v"></div><div class="s">&nbsp;</div></div>
         <div class="ui-figure"><div class="k">Holders</div><div class="v"></div><div class="s">&nbsp;</div></div>
       </div>
