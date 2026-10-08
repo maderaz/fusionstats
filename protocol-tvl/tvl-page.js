@@ -79,7 +79,7 @@
     let traces;
     if (view === 'total') {
       const c = cssVar('--accent', '#8429FF');
-      traces = [{ type: 'scatter', mode: 'lines', name: 'TVL', x, y: days.map(d => at(total, d)), line: { color: c, width: 2 }, fill: 'tozeroy', fillcolor: tint(c, 0.1) }];
+      traces = [FusionChart.growth({ type: 'scatter', name: 'TVL', x, y: days.map(d => at(total, d)) })];
     } else {
       traces = chains.map((c, k) => ({ type: 'scatter', mode: 'lines', name: c.label, x, y: days.map(d => at(c.s, d)), stackgroup: 'tvl',
         line: { color: colorOf(c, k), width: 1 }, fillcolor: tint(colorOf(c, k), 0.55) }));

@@ -256,7 +256,7 @@
   window.addEventListener('resize', fitTitle);
   function showHome() {
     cur = null;   // a vault still loading draws nothing now
-    document.title = 'Explorer — Fusion Stats';
+    document.title = 'Explorer • Fusion Ecosystem';
     $('title').textContent = 'Explorer';
     requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = 'Every Fusion vault, one at a time: search by name, token or network, or paste its address.';
@@ -278,7 +278,7 @@
   let cur = null, file = null, perfView = 'apy', perfRange = '90', allocRange = '90', tvlUnit = 'usd';
   async function showVault(v) {
     cur = v; file = null;
-    document.title = v.name + ' — Explorer — Fusion Stats';
+    document.title = v.name + ' • Fusion Ecosystem';
     $('title').textContent = v.name;
     requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = categoryOf(v.name);
@@ -823,8 +823,10 @@
     const pts = all.filter(p => p[0] >= from && p[1] != null);
     if (pts.length < 2) return null;
     const c = cssVar('--accent', '#8429FF');
-    const traces = [{ type: 'scatter', mode: 'lines', name: { apy: 'APY', sp: 'Share price', tvl: 'TVL' }[perfView] || 'Value', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
-      line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? cssVar('--accent-bg', 'rgba(132,41,255,0.08)') : undefined }];
+    const t = { type: 'scatter', mode: 'lines', name: { apy: 'APY', sp: 'Share price', tvl: 'TVL' }[perfView] || 'Value', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
+      line: { color: c, width: 2 } };
+    // TVL, a running total, in TVL Growth's look; APY and share price stay lines.
+    const traces = [perfView === 'tvl' ? FusionChart.growth(t) : t];
     const layout = LAYOUT(forExport, perfRange);
     layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : inAsset() ? ',.3~s' : '$,.2~s';
     if (perfView === 'apy') layout.yaxis.ticksuffix = '%';

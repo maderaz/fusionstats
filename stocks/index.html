@@ -12,12 +12,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
   <meta name="robots" content="noindex">
-  <title>Stocks — Fusion Stats</title>
+  <title>Stocks • Fusion Ecosystem</title>
   <meta name="description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
   <link rel="canonical" href="https://fusionecosystem.xyz/stocks">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Fusion Stats">
-  <meta property="og:title" content="Stocks — Fusion Stats">
+  <meta property="og:site_name" content="Fusion Ecosystem">
+  <meta property="og:title" content="Stocks • Fusion Ecosystem">
   <meta property="og:description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
   <meta property="og:url" content="https://fusionecosystem.xyz/stocks">
   <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/stocks.png">
@@ -25,7 +25,7 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Stocks: TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Stocks — Fusion Stats">
+  <meta name="twitter:title" content="Stocks • Fusion Ecosystem">
   <meta name="twitter:description" content="TVL, participating wallets and live flows for Fusion vaults backed by tokenised equities.">
   <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/stocks.png">
   <!-- /page-meta -->
@@ -1335,9 +1335,9 @@
         ? '<b>%{x|%b %d, %Y}</b><br>%{y:$,.0f}<extra></extra>'
         : '<b>%{x|%b %d, %Y}</b><br>%{y:,.4f} ' + unitLabel + '<extra></extra>';
       const marks = pts.map(p => p.anchor ? 'anchor' : null);
-      const trace = { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
-        line: { color: ACCENT, width: 2.5, shape: 'linear' }, fill: 'tozeroy',
-        fillcolor: 'rgba(132,41,255,0.10)', hovertemplate: hover };
+      // TVL Growth's look, in the theme's accent (FusionChart.growth).
+      const trace = FusionChart.growth({ type: 'scatter', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(yOf), customdata: marks,
+        line: { shape: 'linear' }, hovertemplate: hover });
       const hourly = stepFor(S.tvlRange) === HOUR_SEC;
       draw('tvlPlot', quiet([trace]), baseLayout(usd ? '$,.2s' : ',.4~f', true), CONFIG, () =>
         glide('tvlPlot', (pts) => hvWhen(pts[0].x, hourly)
@@ -1379,9 +1379,8 @@
         ? { type: 'bar', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
             marker: { color: ACCENT, cornerradius: 5, line: { width: 0 } },
             hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets<extra></extra>' }
-        : { type: 'scatter', mode: 'lines', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
-            line: { color: ACCENT, width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(132,41,255,0.10)',
-            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' };
+        : FusionChart.growth({ type: 'scatter', x: pts.map(p => new Date(p.ts * 1000)), y: pts.map(p => p.pad ? null : p.v),
+            hovertemplate: '<b>%{x|%b %d, %Y}</b><br>%{y} wallets total<extra></extra>' });
       const what = S.walMode === 'active' ? 'wallets active' : 'wallets in total';
       const r = relaysIn(S.walVault, S.walRange);
       document.getElementById('walNote').textContent = r.n
