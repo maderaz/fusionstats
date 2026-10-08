@@ -813,10 +813,32 @@
     if (forExport) Object.assign(layout, { showlegend: true, legend: { orientation: 'h', x: 0, y: 1.12, font: { size: 12 } }, margin: { l: 70, r: 20, t: 50, b: 50 } });
     return { traces, layout, ids, name, pal, inRange };
   }
+  // A range the history can't fill draws the same as the one before it: it
+  // is offered only once the history reaches past that one (and the pick
+  // steps back to the longest that shows something new).
+  function allocRanges(days) {
+    const span = days.length ? days[days.length - 1][0] - days[0][0] + 1 : 0;
+    const prev = { 30: 0, 90: 30, 365: 90, all: 365 };
+    let best = '30';
+    $('allocRange').querySelectorAll('button[data-v]').forEach(b => {
+      const ok = span > prev[b.dataset.v];
+      b.disabled = !ok;
+      b.title = ok ? '' : 'The history doesn\'t reach that far back yet';
+      if (ok) best = b.dataset.v;
+    });
+    const order = ['30', '90', '365', 'all'];
+    if (order.indexOf(allocRange) > order.indexOf(best)) {
+      allocRange = best;
+      $('allocRange').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === best));
+    }
+    return span;
+  }
   async function drawAlloc() {
     const gd = $('allocChart'), a = file && file.allocation, days = (a && a.days) || [];
     $('allocKey').innerHTML = '';
-    $('allocNote').textContent = days.length ? 'Each market\'s balance as the vault keeps it, in dollars, at a reading a day for the last 120 days and a week apart before.' : '';
+    const span = allocRanges(days);
+    $('allocNote').textContent = days.length ? 'Each market\'s balance as the vault keeps it, in dollars, at a reading a day for the last 120 days and a week apart before.'
+      + (span <= 90 ? ' Read since ' + dateTxt(days[0][0] * 864e5) + ': earlier days are read back a few at a time' + (String(cur.chain).toLowerCase() === 'ethereum' ? '.' : ', where the network\'s free endpoints serve past states.') : '') : '';
     const f = allocFigure(false);
     if (!f) return empty(gd, days.length ? 'The history is still being read: a few days at a time, newest first.' : 'No allocation history yet: the markets are read every six hours.');
     if (!(await ready(gd))) return;
