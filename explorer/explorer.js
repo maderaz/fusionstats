@@ -171,7 +171,7 @@
   }
 
   // ---- A vault -----------------------------------------------------------------
-  let cur = null, file = null, perfView = 'apy', perfRange = '90', allocRange = '90';
+  let cur = null, file = null, perfView = 'apy', perfRange = '90', allocRange = '90', tvlUnit = 'usd';
   async function showVault(v) {
     cur = v; file = null;
     document.title = v.name + ' — Explorer — Fusion Stats';
@@ -599,8 +599,8 @@
   // (a year's worth), the share price, or the TVL.
   function perfPoints(view) {
     const d = file && file.days;
-    if (view === 'tvl') {
-      const t = series(d && d.tvl);
+    if (view === 'tvl' || view === 'assets') {
+      const t = series(d && (view === 'assets' ? d.assets : d.tvl));
       return t ? t.v.map((v, i) => [t.from + i, v]) : [];
     }
     const sp = series(d && d.sharePrice);
@@ -617,24 +617,28 @@
     return out;
   }
   // The chart's figure, or null when the range has too little to draw.
+  // TVL in dollars, or in the vault's asset when that is picked and read.
+  const inAsset = () => perfView === 'tvl' && tvlUnit === 'asset' && !!(file && file.days && file.days.assets);
   function perfFigure(forExport) {
-    const all = perfPoints(perfView);
+    const all = perfPoints(inAsset() ? 'assets' : perfView);
     const from = all.length ? all[all.length - 1][0] - rangeDays(perfRange) + 1 : 0;
     const pts = all.filter(p => p[0] >= from && p[1] != null);
     if (pts.length < 2) return null;
     const c = cssVar('--accent', '#8429FF');
     const traces = [{ type: 'scatter', mode: 'lines', name: { apy: 'APY', sp: 'Share price', tvl: 'TVL' }[perfView] || 'Value', x: pts.map(p => iso(p[0])), y: pts.map(p => p[1]),
-      line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? 'rgba(132,41,255,0.08)' : undefined }];
+      line: { color: c, width: 2 }, fill: perfView === 'tvl' ? 'tozeroy' : 'none', fillcolor: perfView === 'tvl' ? cssVar('--accent-bg', 'rgba(132,41,255,0.08)') : undefined }];
     const layout = LAYOUT(forExport, perfRange);
-    layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : '$,.2~s';
+    layout.yaxis.tickformat = perfView === 'apy' ? '.1f' : perfView === 'sp' ? '.4~f' : inAsset() ? ',.3~s' : '$,.2~s';
     if (perfView === 'apy') layout.yaxis.ticksuffix = '%';
     if (perfView === 'tvl') layout.yaxis.rangemode = 'tozero';
     return { traces, layout };
   }
   async function drawPerf() {
     const gd = $('perfChart');
+    showUnit();
     $('perfNote').textContent = perfView === 'apy' ? 'Each day, the share price\'s pace over the week before it, a year\'s worth, after fees.'
-      : perfView === 'sp' ? 'What one share is worth in ' + cur.token + ', after fees.' : 'Total value locked, in dollars, at a reading a day.';
+      : perfView === 'sp' ? 'What one share is worth in ' + cur.token + ', after fees.'
+      : inAsset() ? 'Total value locked, in ' + cur.token + ', at a reading a day.' : 'Total value locked, in dollars, at a reading a day.';
     const f = perfFigure(false);
     if (!f) return empty(gd, file && file.days ? 'Not enough history in this range yet.' : 'No history yet: the vault\'s first daily readings fill this in.');
     if (!(await ready(gd))) return;
@@ -642,7 +646,7 @@
     await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(f.traces)), FusionChart.fit(f.layout, f.traces), CONFIG);
     FusionChart.glide(gd, (p) => {
       const y = p[0].y;
-      const val = perfView === 'apy' ? pctTxt(y) : perfView === 'sp' ? y.toFixed(6) + ' ' + esc(cur.token) : usd(y);
+      const val = perfView === 'apy' ? pctTxt(y) : perfView === 'sp' ? y.toFixed(6) + ' ' + esc(cur.token) : inAsset() ? amount(y) + ' ' + esc(cur.token) : usd(y);
       return FusionChart.when(p[0].x) + '<div class="hv-big">' + val + '</div>';
     });
   }
@@ -710,7 +714,7 @@
         + (range === '30' || range === '90' ? 'read once a day' : 'read daily over the last 120 days, weekly before')
       : perfView === 'apy' ? 'each point is a day: the share price\'s pace over the week before, a year\'s worth'
       : perfView === 'sp' ? 'each point is a day: what one share is worth in ' + cur.token
-      : 'each point is a day\'s TVL in dollars';
+      : inAsset() ? 'each point is a day\'s TVL in ' + cur.token : 'each point is a day\'s TVL in dollars';
     await FusionChart.png({ data: traces, layout: f.layout }, { width: shape ? shape[0] : gd.clientWidth, height: shape ? shape[1] : gd.clientHeight,
       title, subtitle: span + ' · ' + what,
       dots: $(key + 'Dots').checked, filename: 'fusion-' + slug() + '-' + (key === 'perf' ? perfView : 'allocation') + '-' + (key === 'perf' ? perfRange : allocRange) + '-' + stamp() + '.png' });
@@ -719,11 +723,11 @@
     if (!file) return;
     if (key === 'perf') {
       const by = new Map();
-      for (const [view, col] of [['apy', 1], ['sp', 2], ['tvl', 3]]) for (const [d, v] of perfPoints(view)) {
-        if (!by.has(d)) by.set(d, [iso(d), '', '', '']);
-        by.get(d)[col] = v == null ? '' : view === 'sp' ? v.toFixed(6) : view === 'apy' ? v.toFixed(3) : v.toFixed(0);
+      for (const [view, col] of [['apy', 1], ['sp', 2], ['tvl', 3], ['assets', 4]]) for (const [d, v] of perfPoints(view)) {
+        if (!by.has(d)) by.set(d, [iso(d), '', '', '', '']);
+        by.get(d)[col] = v == null ? '' : view === 'sp' ? v.toFixed(6) : view === 'apy' ? v.toFixed(3) : view === 'assets' ? String(v) : v.toFixed(0);
       }
-      const rows = [['date', 'apy_7d_pct', 'share_price', 'tvl_usd']].concat([...by.keys()].sort((a, b) => a - b).map(d => by.get(d)));
+      const rows = [['date', 'apy_7d_pct', 'share_price', 'tvl_usd', 'tvl_' + String(cur.token).toLowerCase()]].concat([...by.keys()].sort((a, b) => a - b).map(d => by.get(d)));
       return UI.csv('fusion-' + slug() + '-performance-' + stamp(), rows);
     }
     const a = file.allocation, days = (a && a.days) || [];
@@ -849,6 +853,13 @@
     else { history.pushState(null, '', location.pathname); route(); window.scrollTo({ top: 0 }); }
   });
   seg('perfView', (v) => { perfView = v; if (file) drawPerf(); });
+  // The TVL's unit: shown with TVL, named by the vault's asset, when it is read.
+  function showUnit() {
+    const has = !!(file && file.days && file.days.assets);
+    $('tvlUnit').hidden = perfView !== 'tvl' || !has;
+    $('tvlUnitAsset').textContent = cur ? cur.token : '';
+  }
+  seg('tvlUnit', (v) => { tvlUnit = v; if (file) drawPerf(); });
   seg('perfRange', (v) => { perfRange = v; if (file) drawPerf(); });
   seg('allocRange', (v) => { allocRange = v; if (file) drawAlloc(); });
   const redraw = () => { if (file && tab === 'perf') { drawPerf(); drawAlloc(); } };

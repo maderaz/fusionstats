@@ -27,7 +27,7 @@
       { href: '/finances/dao',          label: 'DAO Earnings',     icon: 'dao', short: 'DAO' },
       { href: '/finances/curator',      label: 'Curator Earnings', icon: 'curator', short: 'Curators', long: true },
     ] },
-    { label: 'Insights', pages: [
+    { label: 'Insights', folds: true, pages: [
       { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
       { href: '/switchers',             label: 'Switchers',      icon: 'switchers' },
       { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust' },
@@ -104,12 +104,28 @@
   // A page with no dark styles says so with
   //   <meta name="fusion-theme" content="light-only">
   // ahead of this script: it stays light, and the switch is not offered there.
+  // Purple, the flagship's colour, is dark mode on a purple ground: the page
+  // keeps every dark rule (data-theme="dark") and data-palette="purple"
+  // repaints the tokens. Charts are told 'dark', with the palette beside it.
   const THEME_KEY = 'fusionstats_theme';
   const lightOnly = !!document.querySelector('meta[name="fusion-theme"][content="light-only"]');
+  const PURPLE = `:root[data-theme="dark"][data-palette="purple"] {
+    --bg: #2E0D82; --bg-subtle: #37128F; --bg-hover: #3D169C; --dots: rgba(255, 255, 255, 0.09);
+    --line: #4A22AB; --line-strong: #5B33BE;
+    --text: #FFFFFF; --text-2: #DCD0FF; --text-3: #AE9BEA;
+    --accent: #E4D6FF; --accent-bg: rgba(255, 255, 255, 0.13);
+    --pos: #5EE89A; --pos-bar: #4ADE80; --pos-soft: rgba(74, 222, 128, 0.18);
+    --neg: #FF8A8A; --neg-bar: #FF6B6B; --neg-soft: rgba(255, 107, 107, 0.18);
+    --amber: #FCD34D; --amber-soft: rgba(252, 211, 77, 0.16);
+    --tip-bg: #FFFFFF; --tip-fg: #2E0D82; --tint-strong: rgba(255, 255, 255, 0.16);
+    --accent-end: #C9B0FF; --accent-light: #EDE4FF;
+    --chart-1: #5EEAD4; --chart-2: #FDE047; --chart-3: #F9A8D4; --chart-4: #7DD3FC; --chart-5: #FDBA74;
+  }`;
+  (() => { const st = document.createElement('style'); st.id = 'fusion-palette'; st.textContent = PURPLE; document.head.appendChild(st); })();
   function storedTheme() {
     try {
       const v = localStorage.getItem(THEME_KEY);
-      if (v === 'dark' || v === 'light') return v;
+      if (v === 'dark' || v === 'light' || v === 'purple') return v;
       if (v === '') return 'light';                 // how Activity and its siblings wrote light
       const old = localStorage.getItem('theme') || localStorage.getItem('fusionstats_stocks_theme');
       if (old === 'dark' || old === 'light') return old;
@@ -117,15 +133,20 @@
     return 'light';
   }
   // Pages that draw in theme colours (charts) listen for 'fusion:theme'.
+  let chosen = 'light';
   function applyTheme(t) {
-    const dark = t === 'dark' && !lightOnly;
-    if (dark) document.documentElement.setAttribute('data-theme', 'dark');
-    else document.documentElement.removeAttribute('data-theme');
-    window.dispatchEvent(new CustomEvent('fusion:theme', { detail: { theme: dark ? 'dark' : 'light' } }));
+    chosen = lightOnly ? 'light' : t;
+    const root = document.documentElement, dark = chosen !== 'light';
+    if (dark) root.setAttribute('data-theme', 'dark');
+    else root.removeAttribute('data-theme');
+    if (chosen === 'purple') root.setAttribute('data-palette', 'purple');
+    else root.removeAttribute('data-palette');
+    window.dispatchEvent(new CustomEvent('fusion:theme', { detail: { theme: dark ? 'dark' : 'light', palette: chosen } }));
   }
   applyTheme(storedTheme());
   window.FusionTheme = {
     get: () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'),
+    choice: () => chosen,   // light, dark or purple
   };
 
   const SIDEBAR_W = 220;
@@ -263,6 +284,9 @@
       transition: color 0.15s, background 0.15s, box-shadow 0.15s;
     }
     .fnav-theme button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    /* Three choices in the sidebar's 220px: words only there; the More sheet
+       has room for the icons too. */
+    .fnav-foot:not(.fnav-sheet .fnav-foot) .fnav-theme button svg { display: none; }
     .fnav-theme button:hover { color: var(--text, #000); }
     .fnav-theme button[aria-pressed="true"] {
       background: var(--surface, #fff);
@@ -549,6 +573,7 @@
       <div class="fnav-theme" role="group" aria-label="Theme">
         <button type="button" data-theme-pick="light" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.3M8 13.2v1.3M1.5 8h1.3M13.2 8h1.3M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9"/></svg>Light</button>
         <button type="button" data-theme-pick="dark" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z"/></svg>Dark</button>
+        <button type="button" data-theme-pick="purple" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l1.8 4.4 4.4 1.8-4.4 1.8L8 14.2l-1.8-4.4L1.8 8l4.4-1.8z"/></svg>Purple</button>
       </div>
     </div>`;
 
@@ -621,7 +646,7 @@
     // followed by other open tabs of the site.
     const picks = wrap.querySelectorAll('button[data-theme-pick]');
     const showPick = () => picks.forEach(b =>
-      b.setAttribute('aria-pressed', String(b.dataset.themePick === window.FusionTheme.get())));
+      b.setAttribute('aria-pressed', String(b.dataset.themePick === window.FusionTheme.choice())));
     picks.forEach(b => b.addEventListener('click', () => {
       try { localStorage.setItem(THEME_KEY, b.dataset.themePick); } catch (e) {}
       applyTheme(b.dataset.themePick);

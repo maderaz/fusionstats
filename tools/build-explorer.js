@@ -93,6 +93,13 @@ function buildExplorer({ snapshots, holders, holderState, markets, history, fees
     const v = at(snap.chain, addr);
     const t = dense(tvl, r0, true), sp = dense(dailySharePrices(snap), r6);
     v.days = { tvl: t, sharePrice: sp };
+    // The same days' TVL in the vault's asset (the page's TVL in $ / in the asset).
+    const assets = new Map();
+    for (const s of snap.snapshots || []) {
+      const day = s.day != null ? s.day : Math.floor(s.timestamp / 86400);
+      if (tvl.has(day) && typeof s.assets === 'number' && s.assets >= 0) assets.set(day, s.assets);
+    }
+    if (assets.size) v.days.assets = dense(assets, sig, true);
     v.symbol = snap.symbol || null;
   }
   for (const h of (holders && holders.vaults) || []) {
