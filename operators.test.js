@@ -40,6 +40,11 @@ test('a pinned vault takes its operator, its owner unknown and IPOR\'s alpha run
   ]);
   assert.deepStrictEqual(m, { '0x5900c3b72458f12967dc1bef35b92d271f5cdbc1': 'clearstar', '0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c': 'sentinel', g: 'sentinel' });
 });
+test('pinnedTo: the operator a vault is pinned to, by its address in any case', () => {
+  assert.strictEqual(O.pinnedTo('0x5900C3B72458F12967DC1BEF35B92D271F5CDBC1').id, 'clearstar');
+  assert.strictEqual(O.pinnedTo('0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c').name, 'Sentinel Codes');
+  assert.strictEqual(O.pinnedTo('0x0'), null);
+});
 test('every operator\'s logo is on disk', () => {
   const fs = require('fs');
   for (const o of O.OPERATORS) if (o.logo) assert.ok(fs.existsSync(__dirname + '/icons/operators/' + o.logo), o.logo);

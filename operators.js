@@ -55,7 +55,9 @@
     for (const v of vaults) if (!out[v.address] && v.iporAlpha) out[v.address] = 'ipor';
     return out;
   }
-  const api = { OPERATORS, byName, assign, get: (id) => OPERATORS.find(o => o.id === id) || null };
+  // The operator a vault is pinned to by its address, or null.
+  const pinnedTo = (address) => OPERATORS.find(o => (o.vaults || []).includes(String(address || '').toLowerCase())) || null;
+  const api = { OPERATORS, byName, assign, pinnedTo, get: (id) => OPERATORS.find(o => o.id === id) || null };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.FusionOperators = api;
 })(typeof window !== 'undefined' ? window : globalThis);

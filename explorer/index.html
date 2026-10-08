@@ -58,6 +58,8 @@
     .xp-back:hover { color: var(--text); background: var(--bg-subtle); }
     .xp-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .xp-back[hidden] { display: none; }
+    .xp-backrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .xp-open-top { padding: 0 11px 0 13px; display: none; }
     .xp-field {
       display: flex; align-items: center; gap: 10px;
       height: 52px; padding: 0 16px;
@@ -111,7 +113,20 @@
       grid-template-columns: 20px minmax(0, 1fr) minmax(max-content, 92px) minmax(max-content, 64px) minmax(max-content, 150px) minmax(max-content, 76px);
     }
     .xp-phead { padding: 0 12px 9px; border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
-    .xp-phead > span:first-child { grid-column: 1 / 3; }
+    .xp-phead > :first-child { grid-column: 1 / 3; }
+    /* A heading sorts by its column: it is the button, no arrow; the one the
+       list is sorted by reads in the text colour. */
+    .xp-sort {
+      padding: 0; border: none; background: none; font: inherit; color: inherit; text-align: left;
+      cursor: pointer; white-space: nowrap; transition: color 0.15s ease; -webkit-tap-highlight-color: transparent;
+    }
+    .xp-sort.n { text-align: right; }
+    .xp-sort.c { justify-self: center; }
+    .xp-sort:hover { color: var(--text-2); }
+    .xp-sort.on { color: var(--text); }
+    .xp-sort:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 2px var(--accent); }
+    .xp-prow .nmw { min-width: 0; display: flex; flex-direction: column; }
+    .xp-prow .by { display: none; }
     .xp-prow {
       position: relative; min-height: 48px; padding: 0 12px; border-radius: 10px;
       box-shadow: inset 0 -1px 0 var(--line);
@@ -151,19 +166,23 @@
       .xp-phead, .xp-prow { gap: 0 18px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 40px) minmax(max-content, 28px) max-content; }
       .xp-op .t { display: none; }
     }
-    /* A phone: the name has the row's width, its figures on a line under it,
-       each under its heading. */
+    /* A phone: one row a vault. Its asset, its name with the operator under
+       it, then TVM, the network and APY; the operator's own column goes. */
     @container (max-width: 520px) {
-      .xp-phead, .xp-prow { gap: 0 12px; padding-left: 8px; padding-right: 8px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 28px) minmax(max-content, 28px) max-content; }
-      .xp-prow { padding-top: 9px; padding-bottom: 9px; row-gap: 3px; }
-      .xp-prow > :nth-child(1) { grid-row: 1; grid-column: 1; }
-      .xp-prow .nm { grid-row: 1; grid-column: 2 / -1; }
-      .xp-prow > :nth-child(n+3) { grid-row: 2; font-size: 13px; color: var(--text-2); }
-      .xp-prow > :nth-child(3) { grid-column: 3; }
-      .xp-prow > :nth-child(4) { grid-column: 4; }
-      .xp-prow > :nth-child(5) { grid-column: 5; justify-self: center; }
-      .xp-prow > :nth-child(6) { grid-column: 6; }
-      .xp-phead > :nth-child(4) { text-align: center; }
+      .xp-phead, .xp-prow { gap: 0 12px; padding-left: 8px; padding-right: 8px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 22px) minmax(max-content, 44px); }
+      .xp-prow { min-height: 52px; padding-top: 7px; padding-bottom: 7px; font-size: 13.5px; }
+      .xp-phead .o, .xp-prow .xp-op { display: none; }
+      .xp-prow .by { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--text-3); }
+      .xp-prow > .n { font-size: 13px; }
+    }
+    /* The narrowest: the network moves under the name, beside the operator,
+       to give the name its room. */
+    .xp-prow .byc { display: none; }
+    @container (max-width: 360px) {
+      .xp-phead, .xp-prow { gap: 0 8px; padding-left: 6px; padding-right: 6px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 40px); }
+      .xp-phead .c, .xp-prow > .c { display: none; }
+      .xp-prow .byc { display: inline-flex; vertical-align: -1px; margin-right: 5px; }
+      .xp-prow .byc img { width: 11px; height: 11px; border-radius: 2px; }
     }
     @container (max-width: 700px) { .xp-field { height: 48px; } }
 
@@ -182,7 +201,6 @@
     .xp-tag img { width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%; }
     .xp-tag img.chain { border-radius: 4px; }
     [data-theme="dark"] .xp-tag img.ink { filter: invert(1); }
-    .xp-tag.lev { color: var(--accent); border-color: var(--accent-bg, rgba(132, 41, 255, 0.2)); background: var(--accent-bg, rgba(132, 41, 255, 0.08)); }
     .xp-tag a { color: inherit; text-decoration: none; }
     .xp-tag.addr { font-family: var(--mono); font-size: 12.5px; }
     .xp-tag button { display: inline-flex; padding: 0; border: 0; background: none; color: var(--text-3); cursor: pointer; }
@@ -381,6 +399,16 @@
       .xp-tags { gap: 6px; }
       .xp-tag { height: 28px; padding: 0 10px; font-size: 12.5px; }
     }
+    /* A phone: Open in app goes up beside Back, and the tags are 30% smaller. */
+    @container (max-width: 520px) {
+      .xp-open-top:not([hidden]) { display: inline-flex; }
+      .xp-tags .xp-open { display: none; }
+      .xp-tags { gap: 5px; margin-top: 10px; }
+      .xp-tag { height: 20px; gap: 4px; padding: 0 7px; font-size: 10px; }
+      .xp-tag img, .xp-tag .ic, .xp-tag .mono { width: 11px; height: 11px; }
+      .xp-tag.addr { font-size: 9.5px; }
+      .xp-tag button svg { width: 10px; height: 10px; }
+    }
   </style>
   <script defer src="/track.js"></script>
 </head>
@@ -389,7 +417,11 @@
     <header class="ui-masthead">
       <div>
         <!-- A vault's page: back to the search. -->
-        <a class="xp-back" id="back" href="/explorer" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>Back</a>
+        <div class="xp-backrow">
+          <a class="xp-back" id="back" href="/explorer" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>Back</a>
+          <!-- On a phone, Open in app sits here, on the Back button's line. -->
+          <a class="xp-back xp-open-top" id="openTop" href="#" target="_blank" rel="noopener" hidden>Open in app<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 8 8M11.5 9v3.25c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-6.5c0-.69.56-1.25 1.25-1.25H7"/></svg></a>
+        </div>
         <h1 id="title">Explorer</h1>
         <p class="ui-lede keep" id="lede">Every Fusion vault, one at a time: search by name, token or network, or paste its address.</p>
         <div class="xp-tags" id="tags" hidden></div>
