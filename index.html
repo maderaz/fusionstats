@@ -976,21 +976,19 @@
       .stat-card:last-child { padding-right: 0; }
       .ov-half + .ov-half .stat-card:first-child { margin-left: 0; padding-left: 0; border-left: none; }
       /* A phone shows three figures, one row: TVL, DAO Earnings and Net
-         24h, in three equal thirds, so the two separators split the row
-         evenly and each figure starts the same way after its line; the
+         24h, no lines between them, spread across the row with equal room
+         between (the first at its left edge, the last at its right); the
          chart follows right under them. */
-      .ov { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto; gap: 0; }
-      .ov .stat-card { padding: 0 0 0 14px; }
-      .ov .fig-tvl { padding-left: 0; }
+      .ov { grid-template-columns: repeat(3, max-content); justify-content: space-between; grid-template-rows: auto auto; gap: 0 12px; }
+      .ov .stat-card { padding: 0; border-left: none; }
       .ov-half, .ov-half .figs { display: contents; }
       .fig-curator, #statsRow > .stat-card:nth-child(n+2) { display: none !important; }
-      #statsRow > .stat-card:first-child { padding-left: 14px; border-left: 1px solid var(--line); }
+      #statsRow > .stat-card:first-child { padding-left: 0; border-left: none; }
       #statsRow:empty { display: none; }
       .combo-chart { margin-top: 20px; }
       .stat-card .value { margin-top: 4px; letter-spacing: -0.035em; font-size: clamp(15px, calc(6.9cqi - 6px), 28px); }
       .stat-card .label { font-size: clamp(11px, calc(2.2cqi + 4px), 13px); }
       /* The narrowest phones: the three figures a little closer. */
-      @container (max-width: 340px) { .ov .stat-card, #statsRow > .stat-card:first-child { padding-left: 10px; } .ov .fig-tvl { padding-left: 0; } }
       /* The amount filter says just "Min" where its cell is narrow. */
       @container (max-width: 345px) { .fl-long { display: none; } }
       #statsRow:empty { height: 52px; }
