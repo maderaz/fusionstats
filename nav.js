@@ -245,6 +245,19 @@
     .fnav-links a:hover .fnav-ic .a,
     .fnav-links a.active .fnav-ic,
     .fnav-links a.active .fnav-ic .a { color: var(--accent, #8429FF); }
+    /* Scroll bars, every page and every box: a thin rounded thumb in the
+       theme's muted text colour, no track and no arrows. */
+    ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+    ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in srgb, var(--text-3, #9A9AA6) 45%, transparent);
+      border: 3px solid transparent; border-radius: 10px; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--text-3, #9A9AA6); }
+    @supports not selector(::-webkit-scrollbar) {
+      * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-3, #9A9AA6) 45%, transparent) transparent; }
+    }
     /* A folding group: its heading opens and closes it. */
     .fnav-fold-toggle {
       display: flex; align-items: center; gap: 4px;
