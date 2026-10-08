@@ -75,16 +75,41 @@
   const keyOf = (v) => String(v.chain).toLowerCase() + '-' + v.address.toLowerCase();
   const tvm = (v) => { const t = tvmOf[keyOf(v)]; return t > 0 ? t : null; };
   const size = (v) => tvm(v) || v.tvl || 0;
-  const opOfV = (v) => (OPS ? OPS.get(opOf[keyOf(v)] || (OPS.byName(v.name) || {}).id) : null);
+  const opOfV = (v) => (OPS ? OPS.pinnedTo(v.address) || OPS.get(opOf[keyOf(v)] || (OPS.byName(v.name) || {}).id) : null);
   const opMark = (o) => (o && o.logo ? `<img src="/icons/operators/${esc(o.logo)}" alt="" width="20" height="20" loading="lazy" decoding="async">`
     : `<span class="mono" aria-hidden="true">${esc((o ? o.name : '?')[0])}</span>`);
   const PAGE_PICKS = 20;
+  // Sorted by a heading: a click sorts by its column, figures largest first and
+  // names A to Z; a second click turns the order round. Largest first to start.
+  const apyOf = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? Number(v.apy) : null);
+  // By name or APY, a vault holding under $10K (a test, or dust: its APY is
+  // noise) goes after the rest, and so does a name that isn't words.
+  const DUST = 1e4;
+  const SORTS = {
+    name: { text: true, of: (v) => String(v.name || '').trim(), last: (v) => size(v) < DUST || !/^[a-z]/i.test(String(v.name || '').trim()) },
+    tvm: { of: size },
+    net: { text: true, of: (v) => chainName(v.chain) },
+    op: { text: true, of: (v) => (opOfV(v) || {}).name || null },
+    apy: { of: apyOf, last: (v) => size(v) < DUST },
+  };
+  let sortBy = 'tvm', sortDesc = true;
+  function sorted(rows) {
+    const s = SORTS[sortBy], dir = sortDesc ? -1 : 1;
+    const none = (x) => x == null || x === '';
+    // A vault without the figure (or the name) goes last either way round.
+    return rows.slice().sort((a, b) => {
+      const la = s.last ? s.last(a) : false, lb = s.last ? s.last(b) : false;
+      if (la !== lb) return la - lb;
+      const x = s.of(a), y = s.of(b);
+      if (none(x) || none(y)) return none(x) - none(y) || size(b) - size(a);
+      return (s.text ? x.localeCompare(y, 'en', { sensitivity: 'base' }) : x - y) * dir || size(b) - size(a);
+    });
+  }
   function filtered() {
     const net = $('fNet').value, asset = $('fAsset').value, op = $('fOp').value, acc = $('fAccess').value;
-    return vaults.filter(v => (!net || String(v.chain).toLowerCase() === net) && (!asset || v.token === asset)
+    return sorted(vaults.filter(v => (!net || String(v.chain).toLowerCase() === net) && (!asset || v.token === asset)
       && (!op || (op === '-' ? !opOfV(v) : (opOfV(v) || {}).id === op))
-      && (!acc || (acc === 'pub') === (accessOf(v) === 'public')))
-      .sort((a, b) => size(b) - size(a));
+      && (!acc || (acc === 'pub') === (accessOf(v) === 'public'))));
   }
   // The filters' choices, from the vaults themselves, most common first.
   function fillFilters() {
@@ -104,14 +129,31 @@
     picksPage = Math.min(Math.max(1, picksPage), last);
     $('picksPager').innerHTML = rows.length > PAGE_PICKS ? UI.pager({ total: rows.length, page: picksPage, size: PAGE_PICKS, noun: 'vaults' }) : '';
     if (!rows.length) return '<div class="empty-state">No vault matches these filters.</div>';
-    const apy = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? pctTxt(Number(v.apy)) : '—');
+    const apy = (v) => (apyOf(v) != null ? pctTxt(apyOf(v)) : '—');
     const opCell = (v) => { const o = opOfV(v); return o ? `<span class="xp-op" title="${esc(o.name)}">${opMark(o)}<span class="t">${esc(o.name)}</span></span>` : '<span class="xp-op none">—</span>'; };
-    return '<div class="xp-phead"><span>Vault</span><span class="n" title="Total value managed: what its markets hold, borrowing included">TVM</span>'
-      + '<span class="c"><span class="m-hide">Network</span><span class="m-show">Net</span></span><span><span class="m-hide">Operator</span><span class="m-show">By</span></span>'
-      + '<span class="n"><span class="m-hide">Spot APY</span><span class="m-show">APY</span></span></div>'
-      + rows.slice((picksPage - 1) * PAGE_PICKS, picksPage * PAGE_PICKS).map(v => `<a class="xp-prow vault-row" role="listitem" href="${hrefOf(v)}">${mark(v.token)}<span class="nm">${esc(v.name)}</span>`
+    const head = (key, cls, label, tip) => `<button type="button" class="xp-sort${cls ? ' ' + cls : ''}${sortBy === key ? ' on' : ''}" data-sort="${key}"`
+      + ` aria-sort="${sortBy === key ? (sortDesc ? 'descending' : 'ascending') : 'none'}"${tip ? ` title="${tip}"` : ''}>${label}</button>`;
+    // On a phone the operator goes under the name (.by), and its column away.
+    return '<div class="xp-phead">' + head('name', 'v', 'Vault')
+      + head('tvm', 'n', 'TVM', 'Total value managed: what its markets hold, borrowing included')
+      + head('net', 'c', '<span class="m-hide">Network</span><span class="m-show">Net</span>')
+      + head('op', 'o', 'Operator')
+      + head('apy', 'n', '<span class="m-hide">Spot APY</span><span class="m-show">APY</span>') + '</div>'
+      + rows.slice((picksPage - 1) * PAGE_PICKS, picksPage * PAGE_PICKS).map(v => `<a class="xp-prow vault-row" role="listitem" href="${hrefOf(v)}">${mark(v.token)}`
+        + `<span class="nmw"><span class="nm">${esc(v.name)}</span><span class="by"><span class="byc">${chainMark(v.chain)}</span>${esc((opOfV(v) || {}).name || '—')}</span></span>`
         + `<span class="n">${size(v) >= 1 ? usd(size(v)) : '—'}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span>${opCell(v)}<span class="n">${apy(v)}</span></a>`).join('');
   }
+  $('picks').addEventListener('click', (e) => {
+    const b = e.target.closest('.xp-sort');
+    if (!b) return;
+    const key = b.dataset.sort;
+    if (sortBy === key) sortDesc = !sortDesc;
+    else { sortBy = key; sortDesc = !SORTS[key].text; }
+    picksPage = 1;
+    redrawPicks();
+    const again = $('picks').querySelector(`.xp-sort[data-sort="${key}"]`);
+    if (again) again.focus({ preventScroll: true });
+  });
   const redrawPicks = () => { if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); };
   const FILTERS = ['fNet', 'fAsset', 'fOp', 'fAccess'];
   const showClear = () => { $('fClear').disabled = FILTERS.every(id => !$(id).value); };
@@ -219,6 +261,7 @@
     $('vault').hidden = true;
     $('search').hidden = false;
     $('back').hidden = true;
+    $('openTop').hidden = true;
     $('picks').innerHTML = picksHtml();
   }
   function showMissing(a) {
@@ -667,6 +710,8 @@
       + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 8 8M11.5 9v3.25c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-6.5c0-.69.56-1.25 1.25-1.25H7"/></svg></a>');
     $('tags').innerHTML = t.join('');
     $('tags').hidden = false;
+    $('openTop').href = 'https://app.ipor.io/fusion/' + encodeURIComponent(String(v.chain).toLowerCase()) + '/' + v.address.toLowerCase();
+    $('openTop').hidden = false;
     $('copyAddr').addEventListener('click', () => {
       if (navigator.clipboard) navigator.clipboard.writeText(v.address).then(() => { $('copyAddr').title = 'Copied'; }).catch(() => {});
     });
