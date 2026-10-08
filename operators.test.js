@@ -16,6 +16,10 @@ test('by name', () => {
   assert.strictEqual(O.byName('К3 Capital ETH Maxi').name, 'K3 Capital');   // a Cyrillic К
   assert.strictEqual(O.byName('Taurus Vault'), null);
   assert.strictEqual(O.byName('Apple Carry Trade'), null);
+  // by its share symbol, where the name says nothing
+  assert.strictEqual(O.byName('USDC Lending Optimizer Tezos', 'TAUUSDCTZS').name, 'Tau Labs');
+  assert.strictEqual(O.byName('cbBTC Carry', '$TAUSIUSDcbBTC').name, 'Tau Labs');
+  assert.strictEqual(O.byName('Apple Carry Trade', 'AAPLCT'), null);
 });
 test('a vault named for no one takes its owner\'s other vaults\' operator, else IPOR where its alpha runs it', () => {
   const m = O.assign([

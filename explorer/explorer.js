@@ -34,11 +34,7 @@
   const cents = (v) => (v == null ? '—' : v > 0 && v < 0.005 ? '<$0.01' : usd(v));
   const EXPLORERS = { ethereum: ['Etherscan', 'https://etherscan.io/address/'], base: ['Basescan', 'https://basescan.org/address/'], arbitrum: ['Arbiscan', 'https://arbiscan.io/address/'] };
 
-  // What a name says about a vault: who runs it, and what kind it is.
-  const CURATORS = [[/^TAU\b/i, 'TAU Labs'], [/^(TESS|Tesseract)\b/i, 'Tesseract'], [/^Harvest\b/i, 'Harvest'], [/^Reservoir\b/i, 'Reservoir'],
-    [/^(IPOR|Fusion)\b/i, 'IPOR'], [/^Hyperithm\b/i, 'Hyperithm'], [/^Origin\b/i, 'Origin Protocol'], [/^Strata/i, 'Strata'],
-    [/^Llamarisk/i, 'LlamaRisk'], [/^Ensuro\b/i, 'Ensuro'], [/^Tanken\b/i, 'Tanken'], [/^AlphaYields/i, 'AlphaYields'], [/^yo(USD|ETH|BTC)\b/i, 'Yo']];
-  const curatorOf = (name) => { for (const [re, c] of CURATORS) if (re.test(name || '')) return c; return null; };
+  // What a name says about a vault: what kind it is (who runs it: operators.js).
   function categoryOf(name) {
     const n = String(name || '');
     if (/loop|looper|looping|leverage/i.test(n)) return 'Leveraged looping';
@@ -71,7 +67,11 @@
   // TVM and the operator come from explorer/vaults/index.json; a vault whose
   // markets aren't read yet shows its TVL.
   const OPS = window.FusionOperators;
-  let tvmOf = {}, opOf = {}, picksPage = 1;
+  let tvmOf = {}, opOf = {}, gateOf = {}, picksPage = 1;
+  // Who may deposit: public, private (not on IPOR's public list), gated
+  // (deposit() asks a whitelist role) or closed, read on-chain by the
+  // markets collector (index.json's gate).
+  const accessOf = (v) => gateOf[keyOf(v)] || (v.isPublic === false ? 'private' : 'public');
   const keyOf = (v) => String(v.chain).toLowerCase() + '-' + v.address.toLowerCase();
   const tvm = (v) => { const t = tvmOf[keyOf(v)]; return t > 0 ? t : null; };
   const size = (v) => tvm(v) || v.tvl || 0;
@@ -83,7 +83,7 @@
     const net = $('fNet').value, asset = $('fAsset').value, op = $('fOp').value, acc = $('fAccess').value;
     return vaults.filter(v => (!net || String(v.chain).toLowerCase() === net) && (!asset || v.token === asset)
       && (!op || (op === '-' ? !opOfV(v) : (opOfV(v) || {}).id === op))
-      && (!acc || (acc === 'pub' ? v.isPublic !== false : v.isPublic === false)))
+      && (!acc || (acc === 'pub') === (accessOf(v) === 'public')))
       .sort((a, b) => size(b) - size(a));
   }
   // The filters' choices, from the vaults themselves, most common first.
@@ -113,7 +113,12 @@
         + `<span class="n">${size(v) >= 1 ? usd(size(v)) : '—'}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span>${opCell(v)}<span class="n">${apy(v)}</span></a>`).join('');
   }
   const redrawPicks = () => { if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); };
-  ['fNet', 'fAsset', 'fOp', 'fAccess'].forEach(id => $(id).addEventListener('change', () => { picksPage = 1; redrawPicks(); }));
+  const FILTERS = ['fNet', 'fAsset', 'fOp', 'fAccess'];
+  const showClear = () => { $('fClear').disabled = FILTERS.every(id => !$(id).value); };
+  FILTERS.forEach(id => $(id).addEventListener('change', () => { picksPage = 1; showClear(); redrawPicks(); }));
+  $('fClear').addEventListener('click', () => {
+    FILTERS.forEach(id => { $(id).value = ''; $(id).dispatchEvent(new Event('change')); });
+  });
   UI.onPage($('picksPager'), (n) => { picksPage = n; redrawPicks(); $('allSec').scrollIntoView({ block: 'start' }); });
 
   // ---- Search ----------------------------------------------------------------
@@ -203,6 +208,7 @@
   }
   window.addEventListener('resize', fitTitle);
   function showHome() {
+    cur = null;   // a vault still loading draws nothing now
     document.title = 'Explorer — Fusion Stats';
     $('title').textContent = 'Explorer';
     requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
@@ -648,12 +654,17 @@
     t.push(`<span class="xp-tag">${ic ? `<img class="chain${ic.ink ? ' ink' : ''}" src="${esc(ic.src)}" alt="" width="16" height="16">` : ''}${esc(chainName(v.chain))}</span>`);
     const tok = FS && FS.tokenIcon ? FS.tokenIcon(v.token) : null;
     t.push(`<span class="xp-tag">${tok ? `<img src="${esc(tok)}" alt="" width="16" height="16">` : ''}${esc(v.token)}</span>`);
-    const c = curatorOf(v.name);
-    if (c) t.push(`<span class="xp-tag">${esc(c)}</span>`);
+    const o = opOfV(v);
+    if (o) t.push(`<span class="xp-tag op">${opMark(o)}${esc(o.name)}</span>`);
+    const g = accessOf(v);
+    if (g !== 'public') t.push(`<span class="xp-tag gate" title="${g === 'gated' ? 'Deposits are open to whitelisted wallets only' : g === 'closed' ? 'The vault is closed to deposits' : 'Not on IPOR\'s public list'}">${{ gated: 'Whitelisted', closed: 'Closed', private: 'Private' }[g]}</span>`);
     const m = managed(f);
     if (m && m.net > 0 && m.assets / m.net >= 1.05) t.push(`<span class="xp-tag lev">${(m.assets / m.net).toFixed(1)}× leverage</span>`);
     t.push(`<span class="xp-tag addr">${esc(shortAddr(v.address))}<button type="button" id="copyAddr" aria-label="Copy the address" title="Copy the address">`
       + '<svg viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.75"/><path d="M10.5 5.5V3.75A1.25 1.25 0 0 0 9.25 2.5h-5.5A1.25 1.25 0 0 0 2.5 3.75v5.5a1.25 1.25 0 0 0 1.25 1.25H5.5"/></svg></button></span>');
+    // The vault on IPOR's own app, in a new tab.
+    t.push(`<a class="ui-btn xp-open" href="https://app.ipor.io/fusion/${esc(String(v.chain).toLowerCase())}/${esc(v.address.toLowerCase())}" target="_blank" rel="noopener">Open in app`
+      + '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 8 8M11.5 9v3.25c0 .69-.56 1.25-1.25 1.25h-6.5c-.69 0-1.25-.56-1.25-1.25v-6.5c0-.69.56-1.25 1.25-1.25H7"/></svg></a>');
     $('tags').innerHTML = t.join('');
     $('tags').hidden = false;
     $('copyAddr').addEventListener('click', () => {
@@ -940,7 +951,7 @@
     add('Address', `<span class="mono">${esc(shortAddr(v.address))}</span>`);
     add('Network', esc(chainName(v.chain)));
     add('Asset', esc(v.token) + (v.assetAddress ? ` <span class="mono muted">${esc(shortAddr(v.assetAddress))}</span>` : ''));
-    add('Curator', esc(curatorOf(v.name) || '—'));
+    add('Operator', esc((opOfV(v) || {}).name || '—'));
     if (f.deployedAt) add('Deployed', esc(dateTxt(Date.parse(f.deployedAt))));
     const fee = f.fees;
     if (fee) {
@@ -1005,7 +1016,7 @@
 
   // ---- Load ----------------------------------------------------------------------------------
   const index = fetch('/explorer/vaults/index.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
-    .then((j) => { tvmOf = (j && j.tvm) || {}; opOf = (j && j.op) || {}; if (vaults.length) { fillFilters(); redrawPicks(); } });
+    .then((j) => { tvmOf = (j && j.tvm) || {}; opOf = (j && j.op) || {}; gateOf = (j && j.gate) || {}; if (vaults.length) { fillFilters(); redrawPicks(); } });
   fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
     vaults = ((j && j.vaults) || []).filter(v => v.address && v.name)
       .map(v => Object.assign({}, v, { tvl: Number(v.tvl) || 0 }))

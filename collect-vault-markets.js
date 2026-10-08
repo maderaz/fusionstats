@@ -85,6 +85,10 @@ const SEL = {
   depositFee: '0x0de705b5',            // getDepositFee()           (FeeManager, WAD)
   instantFuses: '0x3d357c40',          // getInstantWithdrawalFuses()
   redemptionDelay: '0x5f0f55da',       // getRedemptionDelay()      (access manager, seconds)
+  functionRole: '0x6d5115bd',          // getTargetFunctionRole(address,bytes4)  (access manager)
+  targetClosed: '0xa166aa89',          // isTargetClosed(address)                (access manager)
+  hasRole: '0xd1f856ee',               // hasRole(uint64,address)                (access manager)
+  depositSel: '6e553f65',              // deposit(uint256,address), as an argument
   redemptionDelayAlt: '0xfeeb4e6a',    // REDEMPTION_DELAY_IN_SECONDS()
   asset: '0x38d52e0f',                 // asset()
   decimals: '0x313ce567',              // decimals()
@@ -289,6 +293,23 @@ async function readVault(call, vaultAddr, past = null, known = {}) {
     let depositFee = null;
     for (const c of [feeManager, feeAccount].filter(Boolean)) { const r = await tryCall(c, SEL.depositFee); if (r) { depositFee = wad(r); break; } }
     const instant = array(await tryCall(v, SEL.instantFuses));
+    // Who may deposit: the role the access manager asks of deposit(): the
+    // public role, or another (a whitelist: the vault is gated).
+    const PUBLIC_ROLE = (1n << 64n) - 1n;
+    let depositRole = null, closed = null;
+    if (access) {
+      const r = await tryCall(access, SEL.functionRole + pad(v) + SEL.depositSel.padEnd(64, '0'));
+      if (r) depositRole = big(r) === PUBLIC_ROLE ? 'public' : String(big(r));
+      const c = await tryCall(access, SEL.targetClosed + pad(v));
+      if (c) closed = big(c) === 1n;
+    }
+    // Its atomist, where its history doesn't say: the known operators'
+    // atomists (from the other vaults' histories), asked one by one.
+    let atomist = known.atomist || null;
+    if (!atomist && access) for (const cand of known.candidates || []) {
+      const r = await tryCall(access, SEL.hasRole + pad(100n) + pad(cand));
+      if (r && big(r) === 1n) { atomist = cand; break; }
+    }
     let redemptionDelay = null;
     if (access) for (const s of [SEL.redemptionDelay, SEL.redemptionDelayAlt]) { const r = await tryCall(access, s); if (r) { redemptionDelay = Number(big(r)); break; } }
     const byMarket = {};
@@ -312,6 +333,7 @@ async function readVault(call, vaultAddr, past = null, known = {}) {
     });
     return { access, rewards, withdraw, oracle, feeManager: feeManager || feeAccount,
       withdrawWindow: win ? Number(big(win)) : null, requestFee: wad(rq), withdrawFee: wad(wd), depositFee, redemptionDelay,
+      depositRole, closed, atomist,
       instantFuses: instant.length, permissions };
   }
 
@@ -454,8 +476,12 @@ async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNA
   const snaps = (read(snapshots) || {}).vaults || {};
   // Each vault's withdraw manager, from its governance history (collect-vault-changes.js).
   const govern = (read(changes) || {}).vaults || {};
-  const { currentWithdraw } = require('./tools/describe-changes.js');
+  const { currentWithdraw, currentAtomist } = require('./tools/describe-changes.js');
   const withdrawOf = (a) => (govern[a] ? currentWithdraw(govern[a]) : null);
+  const atomistOf = (a) => (govern[a] ? currentAtomist(govern[a]) : null);
+  // The atomists the histories know, and the operators' own: asked of a vault
+  // whose history doesn't name its atomist (Base, read without its history).
+  const candidates = [...new Set([...Object.keys(govern).map(atomistOf), ...require('./operators.js').OPERATORS.flatMap(o => o.owners || [])].filter(Boolean))];
   const today = Math.floor(now / 1000 / DAY);
   const result = {};
   let failed = 0;
@@ -471,7 +497,7 @@ async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNA
         .sort((x, y) => Math.abs(today - x.day - 30) - Math.abs(today - y.day - 30))[0];
       try {
         result[a] = Object.assign({ chain, name: v.name, readAt: new Date(now).toISOString() },
-          await readVault(call, a, month ? { block: month.block, days: today - month.day } : null, { withdraw: withdrawOf(a) }));
+          await readVault(call, a, month ? { block: month.block, days: today - month.day } : null, { withdraw: withdrawOf(a), atomist: atomistOf(a), candidates }));
       } catch (e) {
         failed++;
         if (prev[a]) result[a] = prev[a];

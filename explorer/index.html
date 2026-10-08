@@ -27,7 +27,7 @@
   <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/explorer.png">
   <!-- /page-meta -->
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png"><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -134,6 +134,17 @@
     .xp-op .mono { display: inline-flex; align-items: center; justify-content: center; background: var(--bg-subtle); color: var(--text-2); font: 600 10px var(--sans); }
     .xp-op.none { color: var(--text-3); }
     .xp-tools { margin-bottom: 14px; }
+    .xp-clear-cell { flex: 0 0 auto; border-left: 1px solid var(--line); }
+    .xp-clear {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      height: 100%; padding: 0 18px 0 16px; border: none; border-radius: 0 13px 13px 0;
+      background: transparent; color: var(--text-2); font: 500 14px var(--sans); white-space: nowrap;
+      cursor: pointer; transition: color 0.15s, background 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .xp-clear svg { width: 15px; height: 15px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .xp-clear:not(:disabled):hover { color: var(--text); background: var(--bg-hover); }
+    .xp-clear:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+    .xp-clear:disabled { color: var(--text-3); cursor: default; opacity: 0.6; }
     #picksPager { margin-top: 14px; }
     /* A tablet: the operator by its logo alone. */
     @container (max-width: 760px) {
@@ -158,6 +169,10 @@
 
     /* A vault: what it is, in a row of tags under its name. */
     .xp-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0; }
+    .xp-tags[hidden] { display: none; }
+    .xp-tag.gate { color: var(--amber); border-color: var(--amber-soft); background: var(--amber-soft); }
+    .xp-open { margin-left: auto; }
+    .xp-open svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .xp-tag {
       display: inline-flex; align-items: center; gap: 6px;
       height: 30px; padding: 0 11px;
@@ -329,6 +344,12 @@
       .xp-tab { font-size: 13.5px; }
     }
     /* Narrow phones: "Any amount" is "Any" under its label. */
+    /* A phone: the filters two by two, Clear a row of its own under them. */
+    @container (max-width: 700px) {
+      .xp-tools .xp-clear-cell { grid-column: 1 / -1; height: 42px; margin: -1px 0 0 -1px; border-left: 1px solid var(--line); border-top: 1px solid var(--line); }
+      .xp-tools .xp-clear { width: 100%; border-radius: 0; }
+      .xp-tools .xp-clear span::after { content: ' filters'; }
+    }
     @container (max-width: 380px) {
       .xp-act-tools .fs-wide { display: none; }
       .xp-act-tools .fs-narrow { display: inline; }
@@ -393,7 +414,9 @@
             <label class="ui-filter"><span class="ui-filter-label">Network</span><select id="fNet" data-fs><option value="" data-glyph="all" data-narrow="All">All networks</option></select></label>
             <label class="ui-filter"><span class="ui-filter-label">Asset</span><select id="fAsset" data-fs><option value="" data-narrow="All">All assets</option></select></label>
             <label class="ui-filter"><span class="ui-filter-label">Operator</span><select id="fOp" data-fs><option value="" data-narrow="All">All operators</option></select></label>
-            <label class="ui-filter"><span class="ui-filter-label">Access</span><select id="fAccess" data-fs><option value="" data-narrow="All">Public and private</option><option value="pub">Public</option><option value="priv">Private</option></select></label>
+            <label class="ui-filter"><span class="ui-filter-label">Access</span><select id="fAccess" data-fs><option value="" data-narrow="All">All vaults</option><option value="pub">Public</option><option value="priv" data-label="Private">Private or whitelisted</option></select></label>
+            <!-- Clear: the bar's last cell, as Key Metrics' More. -->
+            <div class="xp-clear-cell"><button type="button" class="xp-clear" id="fClear" disabled title="Clear the filters"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.77"/><path d="M2.5 2.5v2.75h2.75"/></svg><span>Clear</span></button></div>
           </div>
         </div>
         <div class="xp-picks" id="picks" role="list"><div class="ui-empty">Loading…</div></div>
