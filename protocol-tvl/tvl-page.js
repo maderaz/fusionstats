@@ -167,11 +167,26 @@
   FusionChart.onChange(() => draw());
 
   // ---- Load ----------------------------------------------------------------
-  fetch('/tvl-daily.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
+  // Today is each vault's TVL as IPOR's API reports it now (ipor-vaults.json,
+  // refreshed every run), the figure Key Metrics shows; the days before are
+  // the on-chain snapshots, read once a day and so up to a day behind.
+  const get = (f) => fetch('/' + f).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  function liveToday(j, ipor) {
+    const vaults = (ipor && ipor.vaults) || [];
+    if (!vaults.length) return;
+    const live = {};
+    for (const v of vaults) if (v.tvl > 0) { const c = String(v.chain || 'ethereum').toLowerCase(); live[c] = (live[c] || 0) + v.tvl; }
+    const n = j.anchorDay - j.minDay + 1;
+    for (const c of Object.keys(live)) if (!j.perChain[c]) j.perChain[c] = new Array(n).fill(0);
+    for (const [c, s] of Object.entries(j.perChain)) s[n - 1] = live[c] || 0;
+    j.currentByChain = live;
+  }
+  Promise.all([get('tvl-daily.json'), get('ipor-vaults.json')]).then(([j, ipor]) => {
     if (!j || !j.perChain || !Object.keys(j.perChain).length) {
       $('body').innerHTML = '<div class="empty-state">No TVL history yet: it is built from the vaults\' daily on-chain readings, and the next update fills this page.</div>';
       return;
     }
+    liveToday(j, ipor);
     file = j;
     build();
     figures();
