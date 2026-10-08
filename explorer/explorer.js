@@ -242,9 +242,10 @@
 
   // ---- All holders ------------------------------------------------------------------------
   // Every holder, largest first (tools/build-explorer.js, from the holders
-  // collector's balances), 25 a page. What each holds is in the vault's
-  // asset (its shares at the latest share price) and in dollars (its share
-  // of the TVL now); a holder that is itself a Fusion vault is named.
+  // collector's balances), 25 a page. What each holds is its share of the
+  // vault: of its assets as the markets read them (else its shares at the
+  // latest share price) and of the TVL now; a holder that is itself a Fusion
+  // vault is named.
   const PAGE = 25;
   let holdersPage = 1, actionsPage = 1, admPage = 1, avPage = 1;
   const lastOf = (s) => { s = series(s); if (!s) return null; for (let i = s.v.length - 1; i >= 0; i--) if (s.v[i] != null) return s.v[i]; return null; };
@@ -252,11 +253,12 @@
   function holderRows() {
     const f = file || {}, all = (f.holders && f.holders.all) || [];
     const supply = all.reduce((a, h) => a + h[1], 0);
-    const sp = lastOf(f.days && f.days.sharePrice);
+    const sp = lastOf(f.days && f.days.sharePrice), total = f.markets && f.markets.totalAssets;
     return all.map(([a, shares], i) => {
       const share = supply > 0 ? shares / supply : null;
       const v = vaults.find(x => x.address.toLowerCase() === a);
-      return { rank: i + 1, address: a, shares, asset: sp ? shares * sp : null, usd: share != null && cur.tvl ? cur.tvl * share : null, share, name: v ? v.name : null };
+      const asset = share != null && total > 0 ? total * share : sp ? shares * sp : null;
+      return { rank: i + 1, address: a, shares, asset, usd: share != null && cur.tvl ? cur.tvl * share : null, share, name: v ? v.name : null };
     });
   }
   function holdersView() {
@@ -276,14 +278,17 @@
     const last = Math.ceil(rows.length / PAGE);
     holdersPage = Math.min(Math.max(1, holdersPage), last);
     const page = rows.slice((holdersPage - 1) * PAGE, holdersPage * PAGE);
+    const name = (r) => (r.name ? `<span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>` : '');
     const who = (r, rank) => `<span class="hd">${rank ? `<span class="rkn">${r.rank}</span>` : ''}<a class="mono" href="/address/?a=${r.address}" title="${esc(r.address)}">${esc(shortAddr(r.address))}</a>${debank(r.address)}`
-      + (r.name ? `<span class="nm" title="${esc(r.name)}">${esc(r.name)}</span>` : '') + '</span>';
+      + (rank ? '' : name(r)) + '</span>';
     const holds = (r) => (r.asset != null ? amount(r.asset) + ' ' + esc(cur.token) : amount(r.shares) + ' shares');
     body.innerHTML = page.map(r => `<tr><td class="rk">${r.rank}</td><td>${who(r)}</td><td class="n">${holds(r)}</td>`
       + `<td class="n">${r.usd != null ? usd(r.usd) : '—'}</td><td class="n">${r.share != null ? pctTxt(r.share * 100, 2) : '—'}</td></tr>`).join('');
-    // A phone: a holder a block, its value and share under it.
+    // A phone: a holder a block, its value and share under it; a holder that
+    // is a Fusion vault has its name on a line of its own, the width of the row.
     const line = (cls, left, right) => `<div class="l ${cls}">${left.startsWith('<span class="hd">') ? left : `<span>${left}</span>`}<span>${right}</span></div>`;
     $('holdersList').innerHTML = page.map(r => `<div class="mk-item">${line('l1', who(r, true), r.usd != null ? usd(r.usd) : '—')}`
+      + (r.name ? `<div class="l nm-l">${name(r)}</div>` : '')
       + line('', holds(r), r.share != null ? pctTxt(r.share * 100, 2) : '—') + '</div>').join('');
     $('holdersPager').innerHTML = UI.pager({ total: rows.length, page: holdersPage, size: PAGE, noun: 'holders' });
   }
@@ -410,8 +415,9 @@
     const set = (i, v, sub) => { const f = $('admFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub || ' '; };
     if (!rows.length) {
       $('admFigures').hidden = true;
-      $('admList').innerHTML = '<div class="empty-state">' + (adm
+      $('admList').innerHTML = '<div class="empty-state">' + (adm && adm.complete
         ? 'No changes found: nothing about the vault or the contracts that run it has been changed.'
+        : adm ? 'Being read: changes to the vault and its contracts are read from their events on-chain, from the vault\'s deployment on, a stretch every six hours.'
         : 'Not read yet: changes to the vault and its contracts are read from their events on-chain every six hours, from the vault\'s deployment on.') + '</div>';
       $('admPager').innerHTML = ''; $('admNote').textContent = '';
       return;
@@ -441,6 +447,7 @@
     $('admPager').innerHTML = UI.pager({ total: rows.length, page: admPage, size: PAGE, noun: rows.length === 1 ? 'change' : 'changes' });
     $('admNote').innerHTML = 'What was changed in the vault and in the contracts that run it, its access manager, fee, withdraw and rewards managers and its own price oracle, read from their events on-chain: fuses and markets, roles and who may call what, fees, limits and caps. '
       + 'Executed by is who sent the transaction, or the contract with a role it went through (a Safe), with its roles at the time. The set-up made at deployment carries that moment.'
+      + (adm.complete ? '' : ' Still being read back: earlier changes may yet appear.')
       + (adm.readAt ? ' Read ' + esc(UI.ago(Date.parse(adm.readAt) / 1000)) + '.' : '');
   }
   UI.onPage($('admPager'), (n) => { admPage = n; renderAdmin(); $('actionsSec').scrollIntoView({ block: 'start' }); });

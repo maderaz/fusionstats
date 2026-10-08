@@ -31,7 +31,7 @@ const T = (sig) => topic(sig);
 const log = (address, block, index, sig, topics, data, tx) => ({ address, blockNumber: '0x' + block.toString(16), logIndex: '0x' + index.toString(16),
   transactionHash: tx || '0x' + block.toString(16).padStart(4, '0') + index.toString(16).padStart(60, '0'), topics: [T(sig), ...topics], data: '0x' + (data || '') });
 
-function fakeChain(logs, { head = 1000, refuseAbove = Infinity } = {}) {
+function fakeChain(logs, { head = 1000, refuseAbove = Infinity, maxTopics = Infinity } = {}) {
   const calls = { getLogs: 0, refused: 0 };
   const connect = () => async (method, params) => {
     if (method === 'eth_blockNumber') return '0x' + (head + 3).toString(16);
@@ -51,6 +51,7 @@ function fakeChain(logs, { head = 1000, refuseAbove = Infinity } = {}) {
       const from = parseInt(fromBlock, 16), to = parseInt(toBlock, 16);
       calls.getLogs++;
       if (to - from + 1 > refuseAbove) { calls.refused++; throw new Error('range too large'); }
+      if (topics[0].length > maxTopics) { calls.refused++; throw new Error('HTTP 400'); }
       const want = new Set([].concat(address)), ev = new Set(topics[0]);
       return logs.filter(l => want.has(l.address) && ev.has(l.topics[0]) && parseInt(l.blockNumber, 16) >= from && parseInt(l.blockNumber, 16) <= to);
     }
@@ -143,6 +144,25 @@ const deployments = { deployments: { [VAULT]: { chain: 'base', block: 100 } } };
     assert.ok(chain3.calls.refused >= 1, 'refused ' + chain3.calls.refused);
     assert.strictEqual(s3.changes.length, 9);
     assert.ok(Object.values(s3.contracts).every(c => c.scanned === 50_000));
+  });
+
+  await test('a node that caps the topics a call may name: the events are asked for in groups, every change still found', async () => {
+    fs.unlinkSync(files.out);
+    const chain4 = fakeChain([...at100, ...later], { head: 1000, maxTopics: 12 });
+    await quiet(() => C.main({ ...files, connect: chain4.connect }));
+    const s4 = JSON.parse(fs.readFileSync(files.out, 'utf8')).vaults[VAULT];
+    assert.ok(chain4.calls.refused >= 1, 'refused ' + chain4.calls.refused);
+    assert.strictEqual(s4.changes.length, 8);
+    assert.ok(Object.values(s4.contracts).every(c => c.scanned === 1000));
+    assert.strictEqual(s4.complete, true);
+  });
+
+  await test('a vault not yet read to the head says so', async () => {
+    const s = JSON.parse(fs.readFileSync(files.out, 'utf8'));
+    s.vaults[VAULT].complete = false;
+    const { buildAdmin } = require('./tools/build-explorer.js');
+    assert.strictEqual(buildAdmin(s.vaults[VAULT]).complete, false);
+    assert.strictEqual(buildAdmin({ ...s.vaults[VAULT], complete: true }).complete, true);
   });
 
   console.log(`\n${passed} passed${process.exitCode ? ' (with failures)' : ''}\n`);

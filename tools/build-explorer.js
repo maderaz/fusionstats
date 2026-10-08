@@ -162,7 +162,7 @@ function buildActions(scan, opts = {}) {
 function buildAdmin(state, opts = {}) {
   if (!state || !Array.isArray(state.changes)) return null;
   const rows = describeVault(state, opts);
-  return { readAt: state.readAt || null, deployBlock: state.deployBlock || null, count: rows.length, rows };
+  return { readAt: state.readAt || null, deployBlock: state.deployBlock || null, complete: state.complete === true, count: rows.length, rows };
 }
 
 // Every vault's deposits and withdrawals, newest first: one entry a vault.
