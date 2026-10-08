@@ -92,6 +92,9 @@ async function fetchFromApi() {
     assetAddress: (v.assetAddress || '').toLowerCase() || null,
     tvl: typeof v.tvl === 'number' ? v.tvl : (parseFloat(v.tvl) || 0),
     apy: typeof v.apy === 'number' ? v.apy : (parseFloat(v.apy) || null),
+    // IPOR's own alpha executes it: the Explorer names IPOR as its operator
+    // when nothing else does (operators.js).
+    ...(v.managedByIporAlpha === true ? { iporAlpha: true } : {}),
     source: 'api',
   })).filter(v => /^0x[a-f0-9]{40}$/.test(v.address));
 }

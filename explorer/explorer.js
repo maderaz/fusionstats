@@ -65,19 +65,56 @@
   const row = (v, i, pick) => `<a class="xp-opt vault-row"${pick ? '' : ` role="option" id="xp-o${i}" data-i="${i}"`} href="${hrefOf(v)}">${mark(v.token)}`
     + `<span class="nm">${esc(v.name)}</span><span class="nt">${chainMark(v.chain)}${v.tvl >= 1 ? usd(v.tvl) : '—'}</span></a>`;
   const hrefOf = (v) => '/explorer/?v=' + v.address.toLowerCase() + '&c=' + encodeURIComponent(v.chain);
-  // The start page's largest vaults: a thin row each, its asset, name, total
-  // value managed (explorer/vaults/index.json; its TVL until read), network
-  // and spot APY, under light headings. Largest by what they manage.
-  let tvmOf = {};
-  const tvm = (v) => { const t = tvmOf[String(v.chain).toLowerCase() + '-' + v.address.toLowerCase()]; return t > 0 ? t : null; };
-  function picksHtml() {
-    const top = vaults.slice(0, 40).sort((a, b) => (tvm(b) || b.tvl) - (tvm(a) || a.tvl)).slice(0, 15);
-    const apy = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? pctTxt(Number(v.apy)) : '—');
-    return '<div class="xp-phead"><span>Vault</span><span class="n" title="Total value managed: what its markets hold, borrowing included">TVM</span>'
-      + '<span class="c"><span class="m-hide">Network</span><span class="m-show">Net</span></span><span class="n"><span class="m-hide">Spot APY</span><span class="m-show">APY</span></span></div>'
-      + top.map(v => `<a class="xp-prow" role="listitem" href="${hrefOf(v)}">${mark(v.token)}<span class="nm">${esc(v.name)}</span>`
-        + `<span class="n">${usd(tvm(v) || v.tvl)}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span><span class="n">${apy(v)}</span></a>`).join('');
+  // The start page: every vault, a thin row each (its asset, name, total value
+  // managed, network, operator and spot APY), largest first, 20 a page, under
+  // filters by network, asset, operator and access (public or private).
+  // TVM and the operator come from explorer/vaults/index.json; a vault whose
+  // markets aren't read yet shows its TVL.
+  const OPS = window.FusionOperators;
+  let tvmOf = {}, opOf = {}, picksPage = 1;
+  const keyOf = (v) => String(v.chain).toLowerCase() + '-' + v.address.toLowerCase();
+  const tvm = (v) => { const t = tvmOf[keyOf(v)]; return t > 0 ? t : null; };
+  const size = (v) => tvm(v) || v.tvl || 0;
+  const opOfV = (v) => (OPS ? OPS.get(opOf[keyOf(v)] || (OPS.byName(v.name) || {}).id) : null);
+  const opMark = (o) => (o && o.logo ? `<img src="/icons/operators/${esc(o.logo)}" alt="" width="20" height="20" loading="lazy" decoding="async">`
+    : `<span class="mono" aria-hidden="true">${esc((o ? o.name : '?')[0])}</span>`);
+  const PAGE_PICKS = 20;
+  function filtered() {
+    const net = $('fNet').value, asset = $('fAsset').value, op = $('fOp').value, acc = $('fAccess').value;
+    return vaults.filter(v => (!net || String(v.chain).toLowerCase() === net) && (!asset || v.token === asset)
+      && (!op || (op === '-' ? !opOfV(v) : (opOfV(v) || {}).id === op))
+      && (!acc || (acc === 'pub' ? v.isPublic !== false : v.isPublic === false)))
+      .sort((a, b) => size(b) - size(a));
   }
+  // The filters' choices, from the vaults themselves, most common first.
+  function fillFilters() {
+    const count = (f) => { const c = new Map(); vaults.forEach(v => { const k = f(v); if (k) c.set(k, (c.get(k) || 0) + 1); }); return [...c.entries()].sort((a, b) => b[1] - a[1]); };
+    const keep = (sel, html) => { const was = sel.value; sel.innerHTML = sel.options[0].outerHTML + html; sel.value = was; };
+    keep($('fNet'), count(v => String(v.chain).toLowerCase()).map(([c, n]) => `<option value="${esc(c)}" data-chain="${esc(c)}" data-note="${n}">${esc(chainName(c))}</option>`).join(''));
+    keep($('fAsset'), count(v => v.token).map(([t, n]) => `<option value="${esc(t)}" data-token="${esc(t)}" data-note="${n}">${esc(t)}</option>`).join(''));
+    const ops = count(v => (opOfV(v) || {}).id);
+    const none = vaults.filter(v => !opOfV(v)).length;
+    keep($('fOp'), ops.map(([id, n]) => { const o = OPS.get(id); return `<option value="${esc(id)}"${o.logo ? ` data-icon="/icons/operators/${esc(o.logo)}"` : ''} data-note="${n}">${esc(o.name)}</option>`; }).join('')
+      + (none ? `<option value="-" data-note="${none}">Not named</option>` : ''));
+  }
+  function picksHtml() {
+    const rows = filtered();
+    $('picksCount').textContent = rows.length.toLocaleString('en-US');
+    const last = Math.max(1, Math.ceil(rows.length / PAGE_PICKS));
+    picksPage = Math.min(Math.max(1, picksPage), last);
+    $('picksPager').innerHTML = rows.length > PAGE_PICKS ? UI.pager({ total: rows.length, page: picksPage, size: PAGE_PICKS, noun: 'vaults' }) : '';
+    if (!rows.length) return '<div class="empty-state">No vault matches these filters.</div>';
+    const apy = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? pctTxt(Number(v.apy)) : '—');
+    const opCell = (v) => { const o = opOfV(v); return o ? `<span class="xp-op" title="${esc(o.name)}">${opMark(o)}<span class="t">${esc(o.name)}</span></span>` : '<span class="xp-op none">—</span>'; };
+    return '<div class="xp-phead"><span>Vault</span><span class="n" title="Total value managed: what its markets hold, borrowing included">TVM</span>'
+      + '<span class="c"><span class="m-hide">Network</span><span class="m-show">Net</span></span><span><span class="m-hide">Operator</span><span class="m-show">By</span></span>'
+      + '<span class="n"><span class="m-hide">Spot APY</span><span class="m-show">APY</span></span></div>'
+      + rows.slice((picksPage - 1) * PAGE_PICKS, picksPage * PAGE_PICKS).map(v => `<a class="xp-prow vault-row" role="listitem" href="${hrefOf(v)}">${mark(v.token)}<span class="nm">${esc(v.name)}</span>`
+        + `<span class="n">${size(v) >= 1 ? usd(size(v)) : '—'}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span>${opCell(v)}<span class="n">${apy(v)}</span></a>`).join('');
+  }
+  const redrawPicks = () => { if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); };
+  ['fNet', 'fAsset', 'fOp', 'fAccess'].forEach(id => $(id).addEventListener('change', () => { picksPage = 1; redrawPicks(); }));
+  UI.onPage($('picksPager'), (n) => { picksPage = n; redrawPicks(); $('allSec').scrollIntoView({ block: 'start' }); });
 
   // ---- Search ----------------------------------------------------------------
   const input = $('q'), pop = $('xpPop'), list = $('xpList');
@@ -968,12 +1005,13 @@
 
   // ---- Load ----------------------------------------------------------------------------------
   const index = fetch('/explorer/vaults/index.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
-    .then((j) => { tvmOf = (j && j.tvm) || {}; if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); });
+    .then((j) => { tvmOf = (j && j.tvm) || {}; opOf = (j && j.op) || {}; if (vaults.length) { fillFilters(); redrawPicks(); } });
   fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
     vaults = ((j && j.vaults) || []).filter(v => v.address && v.name)
       .map(v => Object.assign({}, v, { tvl: Number(v.tvl) || 0 }))
       .sort((a, b) => b.tvl - a.tvl);
     if (!vaults.length) { $('picks').innerHTML = '<div class="ui-error">The vault list did not load.</div>'; return; }
+    fillFilters();
     route();
     if (document.activeElement === input) open();
   });
