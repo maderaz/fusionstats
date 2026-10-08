@@ -25,11 +25,12 @@
 //   FusionChart.touch(gd)               a finger slid across the plot moves it
 //   FusionChart.quiet(traces)           traces that report hovers, draw none
 //   FusionChart.soft(traces)            the marks drawn soft and lean (below)
-//   FusionChart.png(fig, { width, height, title, subtitle, dots, filename })
+//   FusionChart.png(fig, { width, height, title, subtitle, details, dots, filename })
 //                                       download a chart as an image: 4:3 or
-//                                       as asked, white, titled
-//   FusionChart.inLight(fn)             fn() with the page in its light theme,
-//                                       for a figure drawn on white
+//                                       as asked, in the page's theme, titled,
+//                                       its details under it
+//   FusionChart.inLight(fn)             fn() (images follow the page's theme
+//                                       now; kept for the pages that call it)
 //   FusionChart.markBars(gd)            each stacked bar trace's mark
 //                                       (meta.mark: an icon's URL) inside its
 //                                       part of every bar with room; kept
@@ -638,11 +639,14 @@
     + (color ? '<span class="hv-sw" style="background:' + color + '"></span>' : '') + esc(label)
     + '</span><span class="hv-v">' + value + '</span></div>';
 
-  // A chart as a PNG for a deck or a doc, at twice the display size: white,
-  // the chart's title and under it what it shows (the range, what a bar or a
-  // point stands for), then Plotly's render over the dot grid (when dots).
-  // fig is { data, layout } with the layout built for export (light axes), or
-  // a drawn chart; width × height is the whole image, header included.
+  // A chart as a PNG for a deck or a doc, at twice the display size, in the
+  // page's own theme (light, dark or purple): the chart's title and under it
+  // what it shows, Plotly's render over the dot grid (when dots) with the
+  // Fusion mark faint in the middle, and under the chart its details: the
+  // span and its days, the cadence, the kind of chart, its series and unit,
+  // the choices made on the page, and when and where it was exported.
+  // fig is { data, layout } (a figure built for export, or a drawn chart);
+  // width × height is the whole image.
   const SANS = 'Geist, -apple-system, "Segoe UI", Roboto, sans-serif';
   function wrapLines(c, text, max) {
     const out = [];
@@ -654,24 +658,100 @@
     if (line) out.push(line);
     return out;
   }
-  // fn() with the page in its light theme: the colours a chart reads from the
-  // CSS while it runs are the light ones, as an image on white wants, whatever
-  // the page shows. The theme is back before anything paints.
-  function inLight(fn) {
-    const root = document.documentElement, was = root.getAttribute('data-theme');
-    if (was === 'light') return fn();
-    root.setAttribute('data-theme', 'light');
-    try { return fn(); } finally {
-      if (was == null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', was);
-    }
+  // fn() as the page is: a figure for an image is drawn in the page's theme,
+  // as the image is. (Named for when images were always light.)
+  function inLight(fn) { return fn(); }
+  // The theme's colours, from a chart's box (the dots are set there).
+  function themeInk() {
+    const at = document.querySelector('.ui-chart') || document.documentElement;
+    const cs = getComputedStyle(at), v = (n, f) => (cs.getPropertyValue(n) || '').trim() || f;
+    const root = document.documentElement;
+    const dark = root.getAttribute('data-theme') === 'dark'
+      || (root.getAttribute('data-theme') !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    const purple = dark && root.getAttribute('data-palette') === 'purple';
+    return { dark, purple, bg: v('--bg', dark ? '#0B0B0F' : '#FFFFFF'), text: v('--text', dark ? '#F4F4F6' : '#0B0B0F'),
+      text2: v('--text-2', dark ? '#B4B4BE' : '#5E5E6B'), text3: v('--text-3', dark ? '#70707C' : '#9A9AA6'),
+      dots: v('--dots', dark ? 'rgba(255, 255, 255, 0.09)' : 'rgba(11, 11, 15, 0.14)') };
   }
-  // The header's measure for an image width: its lines and its height. A page
-  // that draws its chart for the image first (marks placed for its size)
-  // draws it pngHead(...).chartH tall.
+  // The figure's layout in the theme's ink, on a clear ground, with no rules.
+  function inked(layout, ink) {
+    const lay = Object.assign({}, layout, { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+    lay.font = Object.assign({}, lay.font, { color: ink.text2 });
+    if (lay.legend) lay.legend = Object.assign({}, lay.legend, { font: Object.assign({}, lay.legend.font, { color: ink.text2 }), bgcolor: 'rgba(0,0,0,0)' });
+    for (const k of Object.keys(lay)) {
+      if (!/^[xy]axis\d*$/.test(k)) continue;
+      lay[k] = Object.assign({}, lay[k], { showgrid: false, zeroline: false,
+        tickfont: Object.assign({}, lay[k].tickfont, { color: ink.text3 }) });
+      if (lay[k].showline) lay[k].linecolor = ink.text3;
+    }
+    return lay;
+  }
+  // What the chart shows, read from the figure: its span and days, its
+  // cadence, its kind, its series and its unit.
+  function described(fig) {
+    const out = [], data = (fig.data || []).filter(t => t.visible !== false && t.visible !== 'legendonly');
+    const lay = fig.layout || {};
+    const xs = [];
+    for (const t of data) {
+      if (!t.x) continue;
+      const cd = Array.isArray(t.customdata) ? t.customdata : null;
+      for (let i = 0; i < t.x.length; i++) {
+        if (cd && cd[i] === 'anchor') continue;
+        if (t.y && (t.y[i] == null || t.y[i] === '')) continue;
+        const d = t.x[i] instanceof Date ? +t.x[i] : typeof t.x[i] === 'string' && /^\d{4}-\d\d/.test(t.x[i]) ? Date.parse(t.x[i].replace(' ', 'T') + (/[zZ+]|T.*-/.test(t.x[i]) || t.x[i].length <= 10 ? '' : 'Z')) : NaN;
+        if (Number.isFinite(d)) xs.push(d);
+      }
+    }
+    const r = lay.xaxis && lay.xaxis.range;
+    let lo = xs.length ? Math.min(...xs) : NaN, hi = xs.length ? Math.max(...xs) : NaN;
+    if (Array.isArray(r)) { const a = Date.parse(r[0]), b = Date.parse(r[1]); if (Number.isFinite(a) && a > lo) lo = a; if (Number.isFinite(b) && b < hi) hi = b; }
+    const day = 864e5, fmt = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    if (Number.isFinite(lo) && Number.isFinite(hi)) {
+      const days = Math.max(1, Math.round((hi - lo) / day) + 1);
+      out.push(fmt(lo) + ' – ' + fmt(hi) + ' (' + days.toLocaleString('en-US') + ' day' + (days === 1 ? '' : 's') + ')');
+      const u = [...new Set(xs)].sort((a, b) => a - b), gaps = [];
+      for (let i = 1; i < u.length; i++) gaps.push(u[i] - u[i - 1]);
+      gaps.sort((a, b) => a - b);
+      const g = gaps.length ? gaps[gaps.length >> 1] : 0;
+      if (g) out.push(g < 2 * 3600e3 ? 'Hourly' : g < 2 * day ? 'Daily' : g < 10 * day ? 'Weekly' : g < 40 * day ? 'Monthly' : 'By period');
+    }
+    const named = data.filter(t => t.showlegend !== false && t.hoverinfo !== 'skip' && (t.name || t.type === 'pie'));
+    const bars = data.filter(t => t.type === 'bar'), lines = data.filter(t => t.type === 'scatter' || t.type === 'scattergl');
+    const kind = data.some(t => t.type === 'pie') ? 'Pie'
+      : bars.length && lines.length ? 'Bars and lines'
+      : bars.length ? (bars.length > 1 && /stack|relative/.test(lay.barmode || '') ? 'Stacked bars' : bars.length > 1 ? 'Grouped bars' : 'Bars')
+      : lines.some(t => t.stackgroup) ? (lines.some(t => t.groupnorm) ? 'Stacked areas, share of total' : 'Stacked areas')
+      : lines.some(t => t.fill && t.fill !== 'none') ? 'Area' : lines.length > 1 ? 'Lines' : lines.length ? 'Line' : '';
+    if (kind) out.push(kind);
+    if (named.length > 1) out.push(named.length + ' series');
+    const tf = String((lay.yaxis && lay.yaxis.tickformat) || '');
+    if (/\$/.test(tf)) out.push('USD'); else if (/%/.test(tf) || (lay.yaxis && lay.yaxis.ticksuffix === '%')) out.push('Percent');
+    return out.join(' · ');
+  }
+  // The choices made beside the chart: its pressed buttons and its dropdowns,
+  // from the section the export was asked from.
+  function chosen() {
+    const from = document.activeElement && document.activeElement.closest
+      && document.activeElement.closest('section, .ui-section, .chart-card, .card');
+    if (!from) return '';
+    const seen = [];
+    from.querySelectorAll('.ui-seg button.on, .ui-seg button[aria-pressed="true"], .range button.active, .seg button.active, button.active[data-v], select').forEach(el => {
+      if (el.closest('.ui-export, .ui-menu, details, .xport')) return;
+      const t = el.tagName === 'SELECT' ? (el.selectedOptions[0] ? el.selectedOptions[0].textContent : '') : el.textContent;
+      const s = String(t || '').replace(/\s+/g, ' ').trim();
+      if (s && !seen.includes(s)) seen.push(s);
+    });
+    return seen.length ? 'Selected: ' + seen.join(' · ') : '';
+  }
+  // The header's measure for an image width: its lines and its height, and
+  // the room kept under the chart for its details. A page that draws its
+  // chart for the image first (marks placed for its size) draws it
+  // pngHead(...).chartH tall.
   function pngHead(width, height, title = '', subtitle = '') {
     const pad = Math.round(width * 0.042);
     const tSize = Math.round(Math.min(26, Math.max(17, width / 27)));
     const sSize = Math.round(Math.min(15, Math.max(11.5, width / 50)) * 2) / 2;
+    const fSize = Math.round(Math.max(10.5, sSize * 0.86) * 2) / 2;
     const probe = document.createElement('canvas').getContext('2d');
     probe.font = '600 ' + tSize + 'px ' + SANS;
     const tLines = title ? wrapLines(probe, title, width - pad * 2) : [];
@@ -679,43 +759,74 @@
     const sLines = subtitle ? wrapLines(probe, subtitle, width - pad * 2) : [];
     const head = tLines.length || sLines.length
       ? Math.round(pad + tLines.length * tSize * 1.22 + (sLines.length ? 6 + sLines.length * sSize * 1.45 : 0) + pad * 0.35) : 0;
-    return { pad, tSize, sSize, tLines, sLines, head, chartH: Math.max(160, height - head) };
+    const foot = Math.round(pad * 0.4 + 3 * fSize * 1.5 + pad * 0.7);
+    return { pad, tSize, sSize, fSize, tLines, sLines, head, foot, chartH: Math.max(160, height - head - foot) };
   }
-  async function png(fig, { width, height, title = '', subtitle = '', dots = true, filename = 'chart.png' }) {
+  // The Fusion mark from the page's own menu, as an image in the given colour.
+  function markImage(color) {
+    const svg = document.querySelector('.fnav-mark');
+    if (!svg) return Promise.resolve(null);
+    const c = svg.cloneNode(true);
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.removeAttribute('class');
+    c.querySelectorAll('[fill]').forEach(el => { if (el.getAttribute('fill') !== 'none') el.setAttribute('fill', color); });
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(c.outerHTML);
+    return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
+  }
+  async function png(fig, { width, height, title = '', subtitle = '', details = '', dots = true, filename = 'chart.png' }) {
     const scale = 2;
     if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* draw anyway */ } }
-    const { pad, tSize, sSize, tLines, sLines, head, chartH } = pngHead(width, height, title, subtitle);
+    const ink = themeInk();
+    const { pad, tSize, sSize, fSize, tLines, sLines, head, chartH } = pngHead(width, height, title, subtitle);
+    // Under the chart: what the page says of it, what the figure shows, the
+    // choices made, then when and where.
+    const when = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }) + ' UTC';
+    const probe = document.createElement('canvas').getContext('2d');
+    probe.font = '400 ' + fSize + 'px ' + SANS;
+    const fLines = [[].concat(details || []).filter(Boolean).join(' · '), described(fig), chosen(),
+      'Exported ' + when + ' · fusionecosystem.xyz' + location.pathname.replace(/\/$/, '') + location.search]
+      .filter(Boolean).flatMap(t => wrapLines(probe, t, width - pad * 2));
+    const foot = Math.round(pad * 0.4 + fLines.length * fSize * 1.5 + pad * 0.7);
     // Display size and scale 2, not twice the size at scale 1: Plotly keeps
     // the layout's font sizes, and the labels would come out half-size.
-    const url = await Plotly.toImage(fig, { format: 'png', width, height: chartH, scale });
+    const url = await Plotly.toImage({ data: fig.data, layout: inked(fig.layout || {}, ink) }, { format: 'png', width, height: chartH, scale });
     const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
     if (!img) return;
+    const H = head + chartH + foot;
     const cv = document.createElement('canvas');
-    cv.width = width * scale; cv.height = (head + chartH) * scale;
+    cv.width = width * scale; cv.height = H * scale;
     const c = cv.getContext('2d');
     c.scale(scale, scale);
-    c.fillStyle = '#FFFFFF';
-    c.fillRect(0, 0, width, head + chartH);
+    c.fillStyle = ink.bg;
+    c.fillRect(0, 0, width, H);
     let y = pad;
     c.textBaseline = 'alphabetic';
-    c.fillStyle = '#0B0B0F';
+    c.fillStyle = ink.text;
     c.font = '600 ' + tSize + 'px ' + SANS;
     tLines.forEach((l) => { y += tSize; c.fillText(l, pad, y); y += tSize * 0.22; });
     if (sLines.length) {
       y += 6;
-      c.fillStyle = '#5E5E6B';
+      c.fillStyle = ink.text2;
       c.font = '400 ' + sSize + 'px ' + SANS;
       sLines.forEach((l) => { y += sSize * 1.1; c.fillText(l, pad, y); y += sSize * 0.35; });
     }
     if (dots) {
       // The page's dot grid under the chart, at its pitch on screen.
       const pitch = 16;
-      c.fillStyle = 'rgba(25, 23, 23, 0.16)';
+      c.fillStyle = ink.dots;
       for (let yy = head + chartH - pitch / 2; yy > head; yy -= pitch) {
         for (let x = pitch / 2; x < width; x += pitch) { c.beginPath(); c.arc(x, yy, 0.85, 0, Math.PI * 2); c.fill(); }
       }
     }
+    // The mark: its own violet on light and dark, white on purple (violet on
+    // violet would not show); faint, under the data.
+    const m = Math.round(Math.min(chartH, width) * 0.34);
+    await drawMark(c, (width - m) / 2, head + (chartH - m) / 2, m, ink);
     c.drawImage(img, 0, head, width, chartH);
+    c.fillStyle = ink.text3;
+    c.font = '400 ' + fSize + 'px ' + SANS;
+    let fy = head + chartH + pad * 0.4;
+    fLines.forEach((l) => { fy += fSize * 1.15; c.fillText(l, pad, fy); fy += fSize * 0.35; });
     await new Promise((resolve) => cv.toBlob((blob) => {
       const href = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -791,5 +902,17 @@
     return place();
   }
 
-  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks };
+  // For a page that composes its own image (Stocks): the theme's colours,
+  // the faint mark, and the lines under the chart.
+  async function drawMark(c, x, y, size, ink) {
+    const mark = await markImage(ink.purple ? '#FFFFFF' : '#8429FF');
+    if (!mark) return;
+    c.save();
+    c.globalAlpha = ink.purple ? 0.07 : ink.dark ? 0.1 : 0.07;
+    c.drawImage(mark, x, y, size, size);
+    c.restore();
+  }
+  const exportDetails = (fig, withChoices = true) => [described(fig), withChoices ? chosen() : ''].filter(Boolean).join(' · ');
+  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks,
+    themeInk, drawMark, exportDetails, inked };
 })();
