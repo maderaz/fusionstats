@@ -174,6 +174,26 @@ const dep = (extra = {}) => ({ type: 'deposit', vault: VAULT, owner: USER, sende
     assert.ok(Object.keys(rpc.errors).every(k => !/SECRET|https?:/.test(k)), JSON.stringify(rpc.errors));
   });
 
+  await test('two callers: when its endpoint refuses, a caller moves to one still free, not to one the other caller just saw refuse', async () => {
+    const c = clock();
+    let release;
+    const gate = new Promise(r => { release = r; });
+    const asked = [];
+    const fetchFn = async (url) => {
+      asked.push(url);
+      if (url === 'https://a') { await gate; return { ok: false, status: 429 }; }
+      if (url === 'https://b') { release(); return { ok: false, status: 429 }; }
+      return { ok: true, json: async () => ({ result: 'c' }) };
+    };
+    const rpc = F.rpcFor('base', { urls: ['https://a', 'https://b', 'https://c'], keyed: 0, ...c, fetchFn });
+    const t0 = c.t;
+    const [x, y] = await Promise.all([rpc('eth_blockNumber', []), rpc('eth_blockNumber', [])]);
+    assert.deepStrictEqual([x, y], ['c', 'c']);
+    assert.deepStrictEqual(asked.slice(0, 3), ['https://a', 'https://b', 'https://c']);
+    assert.ok(!asked.slice(3).includes('https://b'), asked.join(' '));
+    assert.ok(c.t - t0 < F.COOL_MS, 'waited ' + (c.t - t0));
+  });
+
   await test('a keyed endpoint is asked first when free', async () => {
     const c = clock(), f = answers();
     const rpc = F.rpcFor('base', { urls: ['https://keyed', 'https://a'], keyed: 1, ...c, fetchFn: f.fetchFn });

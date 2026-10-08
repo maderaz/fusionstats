@@ -159,7 +159,11 @@ function rpcFor(chain, { urls = rpcEndpoints(chain, PUBLIC_RPCS[chain] || []), k
     let last;
     for (let pass = 0; pass < PASSES; pass++) {
       if (pass) await sleep(BACKOFF_MS * 2 ** (pass - 1));
-      for (const i of order()) {
+      // Chosen afresh before each attempt: the other worker may have put the
+      // next endpoint to rest meanwhile.
+      for (const tried = new Set(); tried.size < urls.length;) {
+        const i = order().find(k => !tried.has(k));
+        tried.add(i);
         const wait = free[i] - now();
         if (wait > 0) await sleep(wait);
         if (now() >= until) throw new Error('out of time');
