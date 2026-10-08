@@ -177,7 +177,7 @@
     // so a bar reads like the key's marks; anything else, the palette.
     const darkPage = () => document.documentElement.getAttribute('data-theme') === 'dark';
     const brand = (sym, i, forExport) => (window.FusionSelect && FusionSelect.tokenColor
-      && FusionSelect.tokenColor(sym, darkPage() && !forExport)) || colors()[i % 7];
+      && FusionSelect.tokenColor(sym, darkPage())) || colors()[i % 7];
 
     let data = null, view = 'markets', range = 'all', size = '43';
 

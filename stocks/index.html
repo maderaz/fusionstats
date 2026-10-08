@@ -1003,10 +1003,7 @@
     const pendingPlots = {}, drawnPlots = new Set(), nearPlots = new Set();
     const canWatch = 'IntersectionObserver' in window;
     let plotlyIn = !!window.Plotly;
-    // An export's figure, built again and kept rather than drawn (lightFigure).
-    let capture = null;
     function draw(id, traces, layout, config, after) {
-      if (capture && capture.id === id) { capture.fig = { data: traces, layout }; return; }
       pendingPlots[id] = [traces, layout, config, after];
       if (drawnPlots.has(id) || nearPlots.has(id) || !canWatch) flushPlot(id);
     }
@@ -2632,8 +2629,10 @@
 
     function paintDots(c, x, y, w, h) {
       const pitch = Math.max(14, Math.round(w / 96));
-      c.fillStyle = '#191717';
-      c.globalAlpha = 0.18;   // stronger than on screen: no card behind it
+      // The theme's dot colour, stronger than on screen: no card behind it.
+      const ink = FusionChart.themeInk();
+      c.fillStyle = ink.dark ? '#FFFFFF' : '#191717';
+      c.globalAlpha = ink.dark ? 0.12 : 0.18;
       for (let yy = y + h - pitch / 2; yy > y; yy -= pitch) {
         for (let xx = x + pitch / 2; xx < x + w; xx += pitch) {
           c.beginPath(); c.arc(xx, yy, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
@@ -2659,7 +2658,10 @@
     // is the whole file (a shape picked in the menu): the plot takes the
     // height the headline, the caption and the key leave it. Without, the
     // plot is h tall and the file grows around it.
-    async function composeExport(render, w, h, filename, meta, fit) {
+    async function composeExport(render, w, h, filename, meta, fit, details) {
+      // In the page's theme (light, dark or purple), the Fusion mark faint in
+      // the middle, and under the chart what it shows and the choices made.
+      const ink = FusionChart.themeInk(), accent = cssVar('--accent') || '#8429FF';
       if (meta && meta.legend) {
         const marks = await Promise.all(meta.legend.map(l => loadImage(l.icon)));
         meta.legend.forEach((l, i) => { l.mark = marks[i]; });
@@ -2676,8 +2678,8 @@
       const titleSize = Math.round(w / 26);
       const whatSize = Math.round(w / 50);
       const subSize = Math.round(w / 44);
-      const scopeSize = Math.round(w / 104);
-      const noteSize = Math.round(w / 116);
+      const scopeSize = Math.round(w / 80);
+      const noteSize = Math.round(w / 90);
 
       // Measure first: the header and footer grow with however many lines
       // the text wraps to, so nothing is ever clipped.
@@ -2685,6 +2687,8 @@
       const maxW = w - pad * 2;
       probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
       const titleLines = hasHeader ? wrapText(probe, meta.title, maxW) : [];
+      probe.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
+      const detailLines = hasHeader && details ? wrapText(probe, details, maxW) : [];
       // Under the headline: the range, and what one bar or point stands for.
       probe.font = '400 ' + whatSize + 'px Poppins, sans-serif';
       const whatLines = hasHeader && meta.what ? wrapText(probe, meta.what, maxW) : [];
@@ -2767,7 +2771,7 @@
       // Scope is caption material — which vaults, which range, which day —
       // so it sits under the chart with the note rather than wedged between
       // the headline and the plot, where it was crowding both.
-      const scopeH = hasHeader ? Math.round(scopeSize * 2.4) : 0;
+      const scopeH = hasHeader ? Math.round(scopeSize * 2.4) + detailLines.length * Math.round(scopeSize * 1.5) : 0;
       const footH = scopeH
         + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
 
@@ -2779,26 +2783,27 @@
       cv.width = w; cv.height = h + headH + footH;
       const c = cv.getContext('2d');
 
-      if (opaque) { c.fillStyle = '#FFFFFF'; c.fillRect(0, 0, cv.width, cv.height); }
+      if (opaque) { c.fillStyle = ink.bg; c.fillRect(0, 0, cv.width, cv.height); }
       if (S.exportDots) paintDots(c, 0, headH, w, h);
+      { const m = Math.round(Math.min(w, h) * 0.34); await FusionChart.drawMark(c, (w - m) / 2, headH + (h - m) / 2, m, ink); }
       c.drawImage(img, 0, headH, w, h);
 
       let headLegendY = null;
       if (hasHeader) {
         c.textBaseline = 'top';
         let y = pad;
-        c.fillStyle = '#000000';
+        c.fillStyle = ink.text;
         c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
         titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
         if (whatLines.length) {
           y += Math.round(whatSize * 0.3);
-          c.fillStyle = '#5E5E6B';
+          c.fillStyle = ink.text2;
           c.font = '400 ' + whatSize + 'px Poppins, sans-serif';
           whatLines.forEach((ln) => { c.fillText(ln, pad, y); y += whatLH; });
           y += Math.round(whatSize * 0.5);
         }
         if (meta.sub) {
-          c.fillStyle = '#8429FF';                 // the counterweight figure
+          c.fillStyle = accent;                    // the counterweight figure
           c.font = '500 ' + subSize + 'px Poppins, sans-serif';
           c.fillText(meta.sub, pad, y + Math.round(subSize * 0.12));
           y += Math.round(subSize * 1.35);
@@ -2807,12 +2812,13 @@
         // helpers exist, below. Only the position is decided at this point.
         if (inHeader) { headLegendY = y + Math.round(legSize * 0.2); y += headLegH; }
 
-        c.fillStyle = '#9BA3AF';
+        c.fillStyle = ink.text3;
         c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
         c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
                    pad, headH + h + footLegH + Math.round(scopeSize * 0.9));
+        detailLines.forEach((ln, i) => c.fillText(ln, pad, headH + h + footLegH + Math.round(scopeSize * 2.4) + i * Math.round(scopeSize * 1.5)));
         if (noteLines.length) {
-          c.fillStyle = '#70747A';
+          c.fillStyle = ink.text3;
           c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
           const lh = Math.round(noteSize * 1.5);
           noteLines.forEach((ln, i) =>
@@ -2854,17 +2860,17 @@
           c.restore();
           // A hairline keeps a white-on-white mark from dissolving into the page.
           c.beginPath(); c.arc(cx, cy, d / 2, 0, Math.PI * 2);
-          c.strokeStyle = 'rgba(0,0,0,0.10)'; c.lineWidth = Math.max(1, legSize * 0.04); c.stroke();
+          c.strokeStyle = ink.dark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.10)'; c.lineWidth = Math.max(1, legSize * 0.04); c.stroke();
         } else {
           c.fillStyle = item.color;
           c.beginPath(); c.arc(cx, cy, legSize * 0.5, 0, Math.PI * 2); c.fill();
         }
         c.textBaseline = 'top';
-        c.fillStyle = hasHeader ? '#000000' : '#191717';
+        c.fillStyle = ink.text;
         c.font = '600 ' + legSize + 'px Poppins, sans-serif';
         c.fillText(item.label, x + legSize * 1.7, y);
         const lw = tm.width;
-        c.fillStyle = '#70747A';
+        c.fillStyle = ink.text3;
         c.font = '400 ' + legSize + 'px Poppins, sans-serif';
         c.fillText(item.value, x + legSize * 1.7 + lw + legSize * 0.7, y);
       };
@@ -2876,9 +2882,9 @@
         c.font = '600 ' + totValSize + 'px Poppins, sans-serif';
         const vw = c.measureText(legTotal.value).width;
         const x = rightAlign ? pad + maxW - (vw + totLblSize * 0.7 + lw) : pad;
-        c.fillStyle = '#8429FF';
+        c.fillStyle = accent;
         c.fillText(legTotal.value, x, y - Math.round(totValSize * 0.1));
-        c.fillStyle = '#70747A';
+        c.fillStyle = ink.text3;
         c.font = '400 ' + totLblSize + 'px Poppins, sans-serif';
         c.fillText(legTotal.label, x + vw + totLblSize * 0.7,
                    y + Math.round((totValSize - totLblSize) * 0.55));
@@ -2918,20 +2924,6 @@
     // stands on screen.
     const EXPORT_SHAPES = { widescreen: [960, 540], fourthree: [680, 510], compact: [480, 480] };
 
-    // An image with a headline is for a light page: in a dark theme its chart
-    // is built again in the light theme's colours, with the headline's words
-    // and key, and kept rather than drawn; then built again in the page's own.
-    // A bare image (transparent, no headline) keeps the page's theme.
-    const RENDER = { tvlPlot: renderTvl, walPlot: renderWallets, flowPlot: renderFlows, routePie: renderRoutePie, retPlot: renderReturns };
-    function lightFigure(id) {
-      let meta = null, fig = null;
-      capture = { id, fig: null };
-      try { FusionChart.inLight(() => { RENDER[id](); meta = chartMeta(id); }); }
-      finally { fig = capture.fig; capture = null; }
-      RENDER[id]();
-      return fig ? { fig, meta } : null;
-    }
-
     async function downloadPlot(id, slug, size) {
       // A chart not yet scrolled to has not been drawn: draw it now.
       nearPlots.add(id); flushPlot(id);
@@ -2948,11 +2940,12 @@
       const scale = 2;
       // Display size + scale:2, not width*2 + scale:1 — otherwise Plotly keeps
       // the layout font sizes and labels come out half-size.
-      const light = S.pngStyle !== 'bare' && document.documentElement.getAttribute('data-theme') !== 'light' ? lightFigure(id) : null;
-      const fig = light ? light.fig : gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : gd;
-      await composeExport((ch) => Plotly.toImage(fig, { format: 'png', width: w, height: Math.round(ch / scale), scale }),
-                          w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png', light ? light.meta : chartMeta(id),
-                          !!(size || shape));
+      // The image is in the page's theme, as the chart on screen is.
+      const fig = gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : { data: gd.data, layout: gd.layout };
+      const inked = { data: fig.data, layout: FusionChart.inked(fig.layout || {}, FusionChart.themeInk()) };
+      await composeExport((ch) => Plotly.toImage(inked, { format: 'png', width: w, height: Math.round(ch / scale), scale }),
+                          w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id),
+                          !!(size || shape), FusionChart.exportDetails(fig, false));
     }
 
     // The export shape. It used to reshape the page itself as a preview, which
@@ -2982,7 +2975,7 @@
                       .map(([v, t]) => '<button type="button" data-v="' + v + '">' + t + '</button>').join('')
                   + '</div>')
                 + '<div class="xport-k">Style</div><div class="xport-opts">'
-                + [['bare', 'Transparent, chart only'], ['clear', 'Transparent + headline'], ['titled', 'White + headline']]
+                + [['bare', 'Transparent, chart only'], ['clear', 'Transparent + headline'], ['titled', 'Solid + headline']]
                     .map(([v, t]) => '<label class="xport-opt"><input type="radio" name="' + id + '-style" value="' + v
                       + '" data-x="style">' + t + '</label>').join('')
                 + '</div>'
