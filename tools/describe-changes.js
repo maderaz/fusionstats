@@ -29,6 +29,22 @@ const ROLES = {
   1200: 'Price oracle manager', '18446744073709551615': 'Public',
 };
 const roleName = (id) => ROLES[String(id)] || 'Role ' + id;
+// A vault's withdraw manager now, from its history: the last holder of the
+// withdraw manager's role (6) not since revoked, or the last one the vault
+// was set to; a replaced manager stays among the contracts read, so the
+// first one found may be the old one.
+function currentWithdraw(st) {
+  const contracts = (st && st.contracts) || {};
+  let cur = null;
+  for (const c of (st && st.changes) || []) {
+    const a = c.args || {};
+    if (c.event === 'RoleGranted' && String(a.roleId) === '6') cur = String(a.account).toLowerCase();
+    else if ((c.event === 'RoleRevoked' || c.event === 'RoleRenounced') && String(a.roleId) === '6' && String(a.account).toLowerCase() === cur) cur = null;
+    else if (c.event === 'WithdrawManagerChanged' && a.newWithdrawManager) cur = String(a.newWithdrawManager).toLowerCase();
+  }
+  if (cur && /[1-9a-f]/.test(cur.slice(2))) return cur;
+  return (Object.entries(contracts).find(([, x]) => x.kind === 'withdraw') || [])[0] || null;
+}
 // Which of an address's roles to name first: the one that governs most.
 const PRIORITY = ['100', '1', '0', '2', '200', '300', '4', '301', '1200', '900', '600', '700', '800', '1000', '1100'];
 
@@ -188,4 +204,4 @@ function describeVault(v, opts = {}) {
   }).reverse();
 }
 
-module.exports = { describeVault, roleName, fnName, ROLES };
+module.exports = { currentWithdraw, describeVault, roleName, fnName, ROLES };

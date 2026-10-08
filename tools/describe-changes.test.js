@@ -4,7 +4,7 @@
 // Action History words them. Run: node tools/describe-changes.test.js
 
 const assert = require('assert');
-const { describeVault, roleName, fnName } = require('./describe-changes.js');
+const { describeVault, roleName, fnName, currentWithdraw } = require('./describe-changes.js');
 const { buildAdmin, buildActivity } = require('./build-explorer.js');
 const { selector } = require('../keccak.js');
 
@@ -74,6 +74,16 @@ test('roles and functions by name, the unknown ones as they are', () => {
   assert.strictEqual(roleName(4242), 'Role 4242');
   assert.strictEqual(fnName(selector('execute((address,bytes)[])')), 'execute');
   assert.strictEqual(fnName('0x12345678'), '0x12345678');
+});
+
+test('the withdraw manager now: a replaced one is passed over', () => {
+  const OLD = '0x8138000000000000000000000000000000004e10', NEW = '0xa901000000000000000000000000000000000077';
+  const st = { contracts: { [OLD]: { kind: 'withdraw' }, [NEW]: { kind: 'withdraw' } }, changes: [
+    { event: 'RoleGranted', args: { roleId: '6', account: OLD } },
+    { event: 'RoleGranted', args: { roleId: '6', account: NEW } },
+    { event: 'RoleRevoked', args: { roleId: '6', account: OLD } }] };
+  assert.strictEqual(currentWithdraw(st), NEW);
+  assert.strictEqual(currentWithdraw({ contracts: { [OLD]: { kind: 'withdraw' } }, changes: [] }), OLD);
 });
 
 console.log('\nthe Explorer\'s files');

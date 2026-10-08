@@ -447,7 +447,8 @@ async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNA
   const snaps = (read(snapshots) || {}).vaults || {};
   // Each vault's withdraw manager, from its governance history (collect-vault-changes.js).
   const govern = (read(changes) || {}).vaults || {};
-  const withdrawOf = (a) => { const c = (govern[a] || {}).contracts || {}; return (Object.entries(c).find(([, x]) => x.kind === 'withdraw') || [])[0] || null; };
+  const { currentWithdraw } = require('./tools/describe-changes.js');
+  const withdrawOf = (a) => (govern[a] ? currentWithdraw(govern[a]) : null);
   const today = Math.floor(now / 1000 / DAY);
   const result = {};
   let failed = 0;
