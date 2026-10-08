@@ -305,7 +305,28 @@
     .tvl-line .tl-stroke { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
     .tvl-line .tl-end { position: absolute; z-index: 3; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
       background: var(--accent); box-shadow: 0 0 0 2px var(--bg); pointer-events: none; }
-    .tvl-line.hv-live .tl-end { opacity: 0.35; }
+    .combo.hv-live .tl-end { opacity: 0.35; }
+    /* One chart the page wide: the TVL line (195px: 30% over the halves'
+       150px), a thin key, then the net flow on the same days as a strip of
+       bars, one hover over both. */
+    .combo-chart { margin-top: 30px; }
+    .combo { position: relative; isolation: isolate; }
+    .combo .tvl-line { height: 195px; }
+    .combo .flow-strip { height: 64px; }
+    .combo .flow-strip::before { display: none; }
+    .combo-k { display: flex; gap: 6px; margin: 10px 0 6px; font-size: 12px; color: var(--text-3); white-space: nowrap; }
+    .combo-k span:first-child { color: var(--text-2); font-weight: 500; }
+    .combo > .hv-line { z-index: 4; }
+    .combo.hv-live > .hv-line { opacity: 0.5; }
+    .combo > .hv-line.hv-jump { transition: opacity 0.14s ease; }
+    /* A bar is placed and sized by the page, from the zero (--zero) out. */
+    .km-bar { position: absolute; z-index: 2; min-height: 1px; transition: opacity 0.18s; }
+    .km-bar.pos { bottom: calc(100% - var(--zero)); background: var(--pos-bar); border-radius: 99px 99px 2px 2px; }
+    .km-bar.neg { top: var(--zero); background: var(--neg-bar); border-radius: 2px 2px 99px 99px; }
+    .combo.hv-live .km-bar { opacity: 0.35; }
+    .combo.hv-live .km-bar.on { opacity: 1; }
+    .flow-chart-header { gap: 12px; }
+    .seg.km-range button { height: 30px; padding: 0 11px; font-size: 12.5px; }
     .flow-chart-header {
       display: flex;
       justify-content: space-between;
@@ -328,7 +349,7 @@
         radial-gradient(circle, var(--dots) 0.9px, transparent 1.3px) center / 12px 12px;
     }
     :root[data-theme="dark"] .flow-chart-bars { --dots: rgba(255, 255, 255, 0.09); }
-    /* --zero: how far down the zero line sits, set by renderFlowChart from
+    /* --zero: how far down the zero line sits, set by the page from
        the data so the bars fill the height whichever way the month went. */
     .flow-chart-bars { --zero: 50%; }
     .flow-chart-bars::before {
@@ -921,6 +942,7 @@
     @container (max-width: 860px) {
       .activity-filters { flex-basis: 100%; }
       .seg { width: 100%; }
+      .seg.km-range { width: auto; }
       .seg button { flex: 1; height: 38px; }
     }
 
@@ -966,6 +988,11 @@
       .flow-chart-header { margin-bottom: 10px; }
       .flow-chart-axis { display: none; }
       .flow-chart-bars { height: 120px; gap: 2px; }
+      .combo .tvl-line { height: 156px; }
+      .combo .flow-strip { height: 52px; }
+      .combo-chart .flow-chart-header { flex-wrap: wrap; align-items: center; row-gap: 10px; }
+      .seg.km-range { width: 100%; }
+      .seg.km-range button { flex: 1; height: 34px; }
       .flow-bar { left: 14%; right: 14%; }
       .ov-half .flow-chart { margin-top: 16px; }
       .ov .flow-chart-bars { gap: 2px; }
@@ -1052,8 +1079,9 @@
     </header>
 
     <section id="overview" class="overview">
-      <!-- Two halves: TVL and what it earns over the TVL chart, the net flow
-           over the daily chart. A phone stacks them. -->
+      <!-- TVL and what it earns; the net flow over three windows. Then one
+           chart the page wide: the TVL line over the net flow bars, on the
+           same days, with one hover. -->
       <div class="ov" id="charts2">
         <div class="ov-half">
           <div class="figs figs-3">
@@ -1061,32 +1089,28 @@
             <a class="stat-card fig-earn" href="/finances/dao"><div class="label">DAO <span class="nw">earnings<span class="info-tip" tabindex="0" id="earnTip" data-tip="What the IPOR DAO earns in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="earnValue"></div></a>
             <a class="stat-card fig-curator" href="/finances/curator"><div class="label">Curator <span class="nw">earnings<span class="info-tip" tabindex="0" id="curatorTip" data-tip="What the vaults' curators and operators earn in fees over a year at today's TVL and APY, from every vault above $10K.">&#9432;</span></span></div><div class="value earn" id="curatorValue"></div></a>
           </div>
-          <div id="tvlWeekly" class="flow-chart">
-            <div class="flow-chart-header">
-              <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Every Fusion vault's TVL together, day by day since the first deposits, from the vaults' on-chain snapshots: the Protocol TVL page's chart. Today's point is the TVL figure above.">&#9432;</span></span>
-              <span class="flow-chart-range" id="tvlRangeSpan">all time</span>
-            </div>
-            <div class="flow-chart-bars tvl-line" id="tvlLine"></div>
-            <div class="flow-chart-axis">
-              <span id="tvlLineStart"></span>
-              <span>today</span>
-            </div>
-          </div>
         </div>
         <div class="ov-half">
           <div class="figs figs-3" id="statsRow"></div>
           <span hidden id="flowTip"><span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
-          <div id="flowChart" class="flow-chart">
-            <div class="flow-chart-header">
-              <span class="flow-chart-title label">Daily net flow</span>
-              <span class="flow-chart-range"><span class="m-hide">last <span id="flowRangeLabel">30d</span></span><span class="m-show" id="flowRangeSpan"></span></span>
-            </div>
-            <div class="flow-chart-bars" id="flowChartBars"></div>
-            <div class="flow-chart-axis">
-              <span id="flowChartStart"></span>
-              <span id="flowChartEnd"></span>
-            </div>
+        </div>
+      </div>
+      <div id="tvlWeekly" class="flow-chart combo-chart">
+        <div class="flow-chart-header">
+          <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Every Fusion vault's TVL together, day by day since the first deposits, from the vaults' on-chain snapshots: the Protocol TVL page's chart. Today's point is the TVL figure above. Under it, the net flow on the same days: deposits minus withdrawals in dollars at the time, synthetic flow left out; a bar a day on 30d and 90d, a week on 1y and All.">&#9432;</span></span>
+          <div class="seg km-range" id="kmRange" role="group" aria-label="Range">
+            <button type="button" data-r="30" aria-pressed="false">30d</button><button type="button" data-r="90" aria-pressed="false">90d</button><button type="button" data-r="365" aria-pressed="false">1y</button><button type="button" data-r="all" class="on" aria-pressed="true">All</button>
           </div>
+        </div>
+        <div class="combo" id="combo">
+          <div class="flow-chart-bars tvl-line" id="tvlLine"></div>
+          <div class="combo-k"><span>Net flow</span><span id="flowCadence"></span></div>
+          <div class="flow-chart-bars flow-strip" id="flowStrip"></div>
+          <div class="hv-line"></div><div class="hv"><span class="hv-dot"></span><div class="hv-bubble"></div></div>
+        </div>
+        <div class="flow-chart-axis">
+          <span id="tvlLineStart"></span>
+          <span>today</span>
         </div>
       </div>
     </section>
@@ -1706,7 +1730,7 @@
 
         renderStats({ net24h, net7d, net30d });
         renderTvl(ipor);
-        renderFlowChart(events, 30);
+        setRecentFlows(events);
         applyFilters({ resetPage: false });
         checkForFireEvents(events);
         if (inOrder) attachTx(data, inOrder);
@@ -1800,136 +1824,149 @@
         + `each vault's fee less the DAO's part.`);
     }
 
-    // What each chart's bars stand for, for their hovers: per bar, its label,
-    // the bubble's rows ([name, value, colour]) and the colour of its dot.
-    let flowDays = [];
-
-    // One hairline, one dot and one bubble glide to the nearest bar — the
-    // pointer anywhere over the chart picks one — and that bar stays lit
-    // while the rest step back. On a touch screen a finger slid across the
-    // bars carries them along (the chart keeps sideways moves, the page still
-    // scrolls up and down); lifted, the last bar stays lit until a tap
-    // elsewhere.
-    function glideBars(bars, itemsOf) {
-      let live = false;
-      const hide = () => {
-        live = false;
-        bars.classList.remove('hv-live');
-        const h = bars.querySelector('.hv'); if (h) h.classList.remove('hv-on');
-        bars.querySelectorAll('.flow-bar-slot.on').forEach(el => el.classList.remove('on'));
-      };
-      function show(clientX) {
-        const items = itemsOf();
-        const h = bars.querySelector('.hv'), slots = [...bars.querySelectorAll('.flow-bar-slot')];
-        if (!h || !slots.length || slots.length !== items.length) return;
-        const box = bars.getBoundingClientRect();
-        let i = 0, best = Infinity;
-        slots.forEach((el, k) => { const r = el.getBoundingClientRect(); const d = Math.abs(clientX - (r.left + r.width / 2)); if (d < best) { best = d; i = k; } });
-        const r = slots[i].getBoundingClientRect(), bar = slots[i].querySelector('.flow-bar').getBoundingClientRect();
-        const it = items[i];
-        const x = r.left + r.width / 2 - box.left;
-        const y = (it.down ? bar.bottom : bar.top) - box.top;
-        if (!live) h.classList.add('hv-jump');
-        slots.forEach((el, k) => el.classList.toggle('on', k === i));
-        bars.classList.add('hv-live');
-        const line = bars.querySelector(':scope > .hv-line');
-        if (!live) line.classList.add('hv-jump');
-        line.style.transform = 'translateX(' + x + 'px)';
-        const dot = h.querySelector('.hv-dot');
-        dot.style.color = it.color;
-        dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-        const b = h.querySelector('.hv-bubble');
-        b.innerHTML = '<div class="hv-when">' + it.label + '</div>' + it.rows.map(([k, v, c]) => '<div class="hv-row"><span class="hv-k">'
-          + (c ? '<span class="hv-sw" style="background:' + c + '"></span>' : '') + k + '</span><span class="hv-v">' + v + '</span></div>').join('');
-        // Above the chart, centred on the bar, kept within it.
-        const bw = b.offsetWidth, bh = b.offsetHeight;
-        b.style.transform = 'translate(' + Math.max(0, Math.min(x - bw / 2, box.width - bw)) + 'px,' + (-bh - 10) + 'px)';
-        h.classList.add('hv-on');
-        if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => { h.classList.remove('hv-jump'); line.classList.remove('hv-jump'); })); }
-      }
-      bars.style.touchAction = 'pan-y';
-      bars.addEventListener('pointermove', (e) => show(e.clientX));
-      bars.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hide(); });
-      bars.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(e.clientX); });
-      document.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !bars.contains(e.target)) hide(); });
-    }
-    glideBars(document.getElementById('flowChartBars'), () => flowDays);
-    // "Copy as .md" (copy-md.js) reads each bar's point from here.
-    Object.assign(document.getElementById('flowChartBars'), { mdPoints: () => flowDays, mdLabel: 'Day' });
-
-    // TVL growth: Protocol TVL's chart (protocol-tvl/tvl-page.js), all time:
-    // every Fusion vault's TVL together, a day a point, from tvl-daily.json
-    // (tools/build-tvl-daily.js). It starts where real deposits first lift the
-    // total $10K above the floor of vaults held flat for want of history, and
-    // today's point is the TVL figure above (IPOR's live figures). Drawn here
-    // as an SVG, not with Plotly: this page loads no chart library. Loaded
-    // once the page has drawn; without the file the net flow takes the row.
-    let tvlDaily, tvlDailyLoad = null, tvlDays = [];
+    // TVL growth: Protocol TVL's chart (protocol-tvl/tvl-page.js) the page
+    // wide, and under it the net flow on the same days, one hover over both.
+    //
+    // The line: every Fusion vault's TVL together, a day a point, from
+    // tvl-daily.json (tools/build-tvl-daily.js), from where real deposits
+    // first lift the total $10K above the floor of vaults held flat for want
+    // of history; today's point is the TVL figure above (IPOR's live
+    // figures). The bars: each day's deposits minus withdrawals in dollars at
+    // the time, synthetic flow left out, from flows-daily.json
+    // (tools/build-flows-daily.js), and from this page's own recent events
+    // for the days after it (or without it: the last five weeks only). A bar a
+    // day on 30d and 90d, a week on 1y and All. Both drawn here (an SVG line,
+    // placed bars), not with Plotly: this page loads no chart library.
+    const DAYMS = 86400000;
+    let tvlDaily, flowsDaily = null, tvlDailyLoad = null, kmRange = 'all', recentNet = new Map(), combo = null;
     function loadTvlWeekly() {
-      if (!tvlDailyLoad) tvlDailyLoad = getJson('tvl-daily.json').then((f) => { tvlDaily = f; renderTvlWeekly(); });
+      if (!tvlDailyLoad) tvlDailyLoad = Promise.all([getJson('tvl-daily.json'), getJson('flows-daily.json').catch(() => null)])
+        .then(([f, fl]) => { tvlDaily = f; flowsDaily = fl && fl.firstDay != null ? fl : null; renderTvlWeekly(); });
       return tvlDailyLoad;
     }
+    // The page's recent events, a day's net each, for the days the file has not reached.
+    function setRecentFlows(events) {
+      recentNet = new Map();
+      events.forEach(e => {
+        if (e.synthetic || !e.timestamp) return;
+        const usd = eventUsd(e);
+        if (usd == null) return;
+        const d = Math.floor(e.timestamp / 86400);
+        recentNet.set(d, (recentNet.get(d) || 0) + (e.type === 'deposit' ? usd : -usd));
+      });
+      if (tvlDaily) renderTvlWeekly();
+    }
+    // A day's net flow, or null where no flow is known (before the history).
+    function netOn(day) {
+      const f = flowsDaily;
+      if (f && day >= f.firstDay && day <= f.lastDay) return (f.inflow[day - f.firstDay] || 0) - (f.outflow[day - f.firstDay] || 0);
+      if (recentNet.has(day)) return recentNet.get(day);
+      if (f && day > f.lastDay) return 0;
+      const lo = recentNet.size ? Math.min(...recentNet.keys()) : Infinity;
+      return day >= lo ? 0 : null;
+    }
+    const kmFmt = (day, y) => new Date(day * DAYMS).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', timeZone: 'UTC' }, y ? { year: 'numeric' } : {}));
+    const kmWhole = (v) => '$' + Math.round(v).toLocaleString('en-US');
+    const kmSigned = (v) => { const a = Math.abs(v); return (v < 0 ? '−' : '+') + (a >= 1e6 ? '$' + (a / 1e6).toFixed(2) + 'M' : a >= 1e3 ? '$' + (a / 1e3).toFixed(1) + 'K' : '$' + Math.round(a)); };
     function renderTvlWeekly() {
-      const chart = document.getElementById('tvlWeekly'), box = document.getElementById('tvlLine');
+      const chart = document.getElementById('tvlWeekly'), lineBox = document.getElementById('tvlLine'), strip = document.getElementById('flowStrip');
       const f = tvlDaily;
-      const none = () => { chart.hidden = true; document.getElementById('charts2').classList.add('one'); };
-      if (!f || !f.perChain || !(f.anchorDay >= f.minDay)) return none();
+      if (!f || !f.perChain || !(f.anchorDay >= f.minDay)) { chart.hidden = true; return; }
       const n = f.anchorDay - f.minDay + 1;
       const total = new Array(n).fill(0);
       for (const vals of Object.values(f.perChain)) vals.forEach((v, i) => { if (i < n) total[i] += Math.max(0, v || 0); });
       if (lastTvlTotal > 0) total[n - 1] = lastTvlTotal;
-      const floor = Math.min(...total.slice(0, -1).concat(total[n - 1]));
-      const first = Math.max(0, total.findIndex(v => v >= floor + 1e4));
-      const pts = total.slice(first).map((tvl, i) => ({ day: f.minDay + first + i, tvl }));
-      if (pts.length < 2) return none();
+      const floor = Math.min(...total);
+      const firstDay = f.minDay + Math.max(0, total.findIndex(v => v >= floor + 1e4)), last = f.anchorDay;
+      const d0 = kmRange === 'all' ? firstDay : Math.max(firstDay, last - Number(kmRange) + 1);
+      const N = last - d0 + 1;
+      if (N < 2) { chart.hidden = true; return; }
+      const tvlOn = (d) => total[d - f.minDay] || 0;
+      const xOf = (d) => (d - d0 + 0.5) / N;
 
-      const fmt = (day, y) => new Date(day * 86400000).toLocaleDateString('en-US', Object.assign({ month: 'short', day: 'numeric', timeZone: 'UTC' }, y ? { year: 'numeric' } : {}));
-      const usd = (v) => (v >= 1e9 ? '$' + (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : '$' + (v / 1e3).toFixed(1) + 'K');
-      const whole = (v) => '$' + Math.round(v).toLocaleString('en-US');
-      // A round top a little above the highest day, from zero.
-      const max = Math.max(...pts.map(p => p.tvl), 1);
+      // The line, from zero to a round top a little above its highest day.
+      const max = Math.max(...Array.from({ length: N }, (_, i) => tvlOn(d0 + i)), 1);
       const step = Math.pow(10, Math.floor(Math.log10(max))) / 2;
       const top = Math.ceil(max * 1.04 / step) * step;
-      const W = 1000, H = 300, last = pts.length - 1;
-      const X = (i) => i / last * W, Y = (v) => H - v / top * H;
-      let line = '';
-      pts.forEach((p, i) => { line += (i ? 'L' : 'M') + X(i).toFixed(2) + ' ' + Y(p.tvl).toFixed(2); });
-      const area = line + 'L' + W + ' ' + H + 'L0 ' + H + 'Z';
-      const pct = (i, v) => 'left:' + (X(i) / W * 100).toFixed(3) + '%;top:' + (Y(v) / H * 100).toFixed(3) + '%';
-      box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">'
-        + '<path class="tl-area" d="' + area + '"/><path class="tl-stroke" d="' + line + '"/></svg>'
-        + '<span class="tl-end" style="' + pct(0, pts[0].tvl) + '"></span><span class="tl-end" style="' + pct(last, pts[last].tvl) + '"></span>'
-        + '<div class="hv-line"></div><div class="hv"><span class="hv-dot"></span><div class="hv-bubble"></div></div>';
-      const today = Math.floor(Date.now() / 86400000);
-      tvlDays = pts.map((p, i) => ({ label: i === last && p.day >= today - 1 ? 'Today' : fmt(p.day, true), rows: [['TVL', whole(p.tvl), 'var(--accent)']], color: 'var(--accent)', x: X(i) / W, y: Y(p.tvl) / H }));
-      document.getElementById('tvlLineStart').textContent = fmt(pts[0].day, true);
-      document.getElementById('tvlRangeSpan').textContent = 'all time, since ' + fmt(pts[0].day, true);
+      const W = 1000, H = 300, yOf = (v) => 1 - v / top;
+      let path = '';
+      for (let d = d0; d <= last; d++) path += (d === d0 ? 'M' : 'L') + (xOf(d) * W).toFixed(2) + ' ' + (yOf(tvlOn(d)) * H).toFixed(2);
+      const area = path + 'L' + (xOf(last) * W).toFixed(2) + ' ' + H + 'L' + (xOf(d0) * W).toFixed(2) + ' ' + H + 'Z';
+      const pct = (d) => 'left:' + (xOf(d) * 100).toFixed(3) + '%;top:' + (yOf(tvlOn(d)) * 100).toFixed(3) + '%';
+      lineBox.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">'
+        + '<path class="tl-area" d="' + area + '"/><path class="tl-stroke" d="' + path + '"/></svg>'
+        + '<span class="tl-end" style="' + pct(d0) + '"></span><span class="tl-end" style="' + pct(last) + '"></span>';
+
+      // The bars: a day each on 30d and 90d, a week each (Monday to Sunday,
+      // cut at the range's ends) on 1y and All, the zero placed so the
+      // biggest in reaches the top and the biggest out the bottom.
+      const weekly = kmRange === 'all' || Number(kmRange) > 90;
+      const buckets = [];
+      for (let d = d0; d <= last;) {
+        // Day 0 (Jan 1, 1970) was a Thursday: (d + 3) % 7 is 0 on a Monday.
+        const end = weekly ? Math.min(last, d + 6 - ((d + 3) % 7)) : d;
+        let v = null;
+        for (let k = d; k <= end; k++) { const x = netOn(k); if (x != null) v = (v || 0) + x; }
+        buckets.push({ from: d, to: end, v });
+        d = end + 1;
+      }
+      const vals = buckets.filter(b => b.v != null).map(b => b.v);
+      const maxPos = Math.max(0, ...vals), maxNeg = Math.max(0, ...vals.map(v => -v));
+      const zero = Math.min(0.9, Math.max(0.1, maxPos + maxNeg > 0 ? maxPos / (maxPos + maxNeg) : 0.5));
+      const scale = Math.max(maxPos / zero, maxNeg / (1 - zero), 1);
+      strip.style.setProperty('--zero', (zero * 100).toFixed(2) + '%');
+      strip.innerHTML = buckets.map((b, i) => {
+        if (b.v == null || b.v === 0) return '<span class="km-bar" hidden></span>';
+        const span = (b.to - b.from + 1) / N * 100, w = span * (N <= 31 ? 0.56 : 0.62);
+        const left = (b.from - d0) / N * 100 + (span - w) / 2;
+        return '<span class="km-bar ' + (b.v > 0 ? 'pos' : 'neg') + '" style="left:' + left.toFixed(3) + '%;width:' + w.toFixed(3) + '%;height:' + (Math.abs(b.v) / scale * 100).toFixed(2) + '%"></span>';
+      }).join('');
+
+      combo = { d0, last, N, xOf, yOf, tvlOn, buckets, weekly };
+      document.getElementById('flowCadence').textContent = weekly ? 'a week a bar' : 'a day a bar';
+      document.getElementById('tvlLineStart').textContent = kmFmt(d0, true);
       chart.hidden = false;
-      document.getElementById('charts2').classList.remove('one');
     }
-    // The line's hover: the nearest day to the pointer, its hairline, its dot
-    // on the line and the bubble, as the bars' hover draws them.
-    (function glideLine(box) {
+    // The range: 30d, 90d, 1y or All (the default), for the line and the bars.
+    document.getElementById('kmRange').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-r]');
+      if (!b || b.dataset.r === kmRange) return;
+      kmRange = b.dataset.r;
+      document.querySelectorAll('#kmRange button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+      renderTvlWeekly();
+    });
+    // One hover over both: the nearest day to the pointer, its hairline
+    // through the line and the bars, its dot on the line, its bar lit, and a
+    // bubble with the day's TVL and its net flow (its week's, on weekly bars).
+    (function glideCombo(box) {
       let live = false;
-      const hide = () => { live = false; box.classList.remove('hv-live'); const h = box.querySelector('.hv'); if (h) h.classList.remove('hv-on'); };
+      const lineBox = document.getElementById('tvlLine');
+      const hide = () => { live = false; box.classList.remove('hv-live'); box.querySelector('.hv').classList.remove('hv-on'); box.querySelectorAll('.km-bar.on').forEach(b => b.classList.remove('on')); };
       function show(clientX) {
+        if (!combo) return;
         const h = box.querySelector('.hv'), line = box.querySelector(':scope > .hv-line');
-        if (!h || !line || !tvlDays.length) return;
         const r = box.getBoundingClientRect();
-        const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-        const it = tvlDays[Math.round(f * (tvlDays.length - 1))];
-        const x = it.x * r.width, y = it.y * r.height;
+        const f = Math.max(0, Math.min(0.999999, (clientX - r.left) / r.width));
+        const day = combo.d0 + Math.floor(f * combo.N);
+        const bi = combo.buckets.findIndex(b => day >= b.from && day <= b.to), bk = combo.buckets[bi];
+        const x = combo.xOf(day) * r.width, y = lineBox.offsetTop + combo.yOf(combo.tvlOn(day)) * lineBox.offsetHeight;
         if (!live) { h.classList.add('hv-jump'); line.classList.add('hv-jump'); }
         box.classList.add('hv-live');
+        box.querySelectorAll('.km-bar').forEach((el, k) => el.classList.toggle('on', k === bi));
         line.style.transform = 'translateX(' + x + 'px)';
         const dot = h.querySelector('.hv-dot');
-        dot.style.color = it.color;
+        dot.style.color = 'var(--accent)';
         dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        const rows = [['TVL', kmWhole(combo.tvlOn(day)), 'var(--accent)']];
+        if (bk && bk.v != null) rows.push([combo.weekly ? 'Net flow, ' + kmFmt(bk.from) + (bk.to > bk.from ? ' – ' + kmFmt(bk.to) : '') : 'Net flow', kmSigned(bk.v), bk.v >= 0 ? 'var(--pos-bar)' : 'var(--neg-bar)']);
         const b = h.querySelector('.hv-bubble');
-        b.innerHTML = '<div class="hv-when">' + it.label + '</div>' + it.rows.map(([k, v, c]) => '<div class="hv-row"><span class="hv-k">'
+        b.innerHTML = '<div class="hv-when">' + (day === combo.last ? 'Today' : kmFmt(day, true)) + '</div>' + rows.map(([k, v, c]) => '<div class="hv-row"><span class="hv-k">'
           + (c ? '<span class="hv-sw" style="background:' + c + '"></span>' : '') + k + '</span><span class="hv-v">' + v + '</span></div>').join('');
-        const bw = b.offsetWidth, bh = b.offsetHeight;
-        b.style.transform = 'translate(' + Math.max(0, Math.min(x - bw / 2, r.width - bw)) + 'px,' + (-bh - 10) + 'px)';
+        // Inside the chart, at its top, beside the hairline (on its left past
+        // the middle): over the figures above it would hide them.
+        const bw = b.offsetWidth;
+        const bx = x > r.width / 2 ? x - bw - 14 : x + 14;
+        b.style.transform = 'translate(' + Math.max(0, Math.min(bx, r.width - bw)) + 'px,8px)';
         h.classList.add('hv-on');
         if (!live) { live = true; requestAnimationFrame(() => requestAnimationFrame(() => { h.classList.remove('hv-jump'); line.classList.remove('hv-jump'); })); }
       }
@@ -1938,74 +1975,17 @@
       box.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch') hide(); });
       box.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') show(e.clientX); });
       document.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !box.contains(e.target)) hide(); });
-      // "Copy as .md" (copy-md.js): every day of the line.
-      Object.assign(box, { mdPoints: () => tvlDays, mdLabel: 'Day' });
-    })(document.getElementById('tvlLine'));
-
-    function renderFlowChart(events, days = 30) {
-      const chart = document.getElementById('flowChart');
-      const bars = document.getElementById('flowChartBars');
-      // Drop synthetic flow so flashloan-loop bars don't dwarf real activity.
-      events = events.filter(e => !e.synthetic);
-      if (!events.length) { chart.style.display = 'none'; return; }
-
-      const now = Date.now();
-      const today = Math.floor(now / 86400000);
-      const buckets = new Array(days).fill(0);
-
-      events.forEach(e => {
-        if (!e.timestamp) return;
-        const usd = eventUsd(e);   // shared most-recent-by-time fallback
-        if (usd == null) return;
-        const day = Math.floor(e.timestamp / 86400);
-        const idx = days - 1 - (today - day);
-        if (idx < 0 || idx >= days) return;
-        buckets[idx] += e.type === 'deposit' ? usd : -usd;
-      });
-
-      // One scale for both signs, the zero line placed so the biggest inflow
-      // day reaches the top and the biggest outflow day the bottom: a month
-      // of mostly inflows no longer leaves the lower half empty. Each side
-      // keeps at least a tenth of the height.
-      const maxPos = Math.max(0, ...buckets), maxNeg = Math.max(0, ...buckets.map(v => -v));
-      const zero = Math.min(0.9, Math.max(0.1, maxPos + maxNeg > 0 ? maxPos / (maxPos + maxNeg) : 0.5));
-      const scale = Math.max(maxPos / zero, maxNeg / (1 - zero), 1);   // value per full height
-      bars.style.setProperty('--zero', (zero * 100).toFixed(2) + '%');
-
-      // Format helpers
-      const fmtDay = daysAgo => {
-        const d = new Date(now - daysAgo * 86400000);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-      };
-      const fmtUsd = v => {
-        const abs = Math.abs(v);
-        const sign = v >= 0 ? '+' : '-';
-        if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(2) + 'M';
-        if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
-        if (abs === 0) return '$0';
-        return sign + '$' + abs.toFixed(0);
-      };
-
-      let html = '';
-      flowDays = [];
-      for (let i = 0; i < days; i++) {
-        const val = buckets[i];
-        const daysAgo = days - 1 - i;
-        const heightPct = Math.abs(val) / scale * 100;
-        const cls = val >= 0 ? 'positive' : 'negative';
-        const label = daysAgo === 0 ? 'today' : fmtDay(daysAgo);
-        html += `<div class="flow-bar-slot"><div class="flow-bar ${cls}" style="height:${heightPct}%"></div></div>`;
-        const c = val >= 0 ? 'var(--pos-bar)' : 'var(--neg-bar)';
-        flowDays.push({ label, rows: [['Net flow', fmtUsd(val), c]], color: c, down: val < 0 });
-      }
-      bars.innerHTML = html + '<div class="hv-line"></div><div class="hv"><span class="hv-dot"></span><div class="hv-bubble"></div></div>';
-
-      document.getElementById('flowChartStart').textContent = fmtDay(days - 1);
-      document.getElementById('flowChartEnd').textContent = 'today';
-      document.getElementById('flowRangeLabel').textContent = days + 'd';
-      document.getElementById('flowRangeSpan').textContent = fmtDay(days - 1) + ' – today';
-      chart.style.display = 'block';
-    }
+      // "Copy as .md" (copy-md.js): every day in the range, its TVL and net flow.
+      Object.assign(box, { mdLabel: 'Day', mdPoints: () => {
+        if (!combo) return [];
+        const out = [];
+        for (let d = combo.d0; d <= combo.last; d++) {
+          const nf = netOn(d);
+          out.push({ label: kmFmt(d, true), rows: [['TVL', kmWhole(combo.tvlOn(d))]].concat(nf == null ? [] : [['Net flow', kmSigned(nf)]]) });
+        }
+        return out;
+      } });
+    })(document.getElementById('combo'));
 
     function renderTable(events, updatedAt, pg = { total: events.length, start: 0 }) {
       const content = document.getElementById('activityContent');

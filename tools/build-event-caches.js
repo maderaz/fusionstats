@@ -7,10 +7,11 @@
 //   stocks-data.json            Stocks         tools/build-stocks-data.js
 //   switch-events(-tx).json     Switchers      tools/build-switch-events.js
 //   dust-events(-tx).json       Dust Tracker   tools/build-dust-events.js
+//   flows-daily.json            Key Metrics    tools/build-flows-daily.js
 //
 // The pages read these instead of the whole history, so every workflow that
 // writes the events (the backfills, the rescans) runs this before it commits:
-// a page never shows less than the history holds. collect.yml runs the four
+// a page never shows less than the history holds. collect.yml runs the five
 // builders as steps of their own. One builder failing does not stop the
 // others, nor the run.
 //
@@ -25,6 +26,7 @@ const BUILDERS = [
   ['build-stocks-data.js', ['stocks-data.json']],
   ['build-switch-events.js', ['switch-events.json', 'switch-events-tx.json']],
   ['build-dust-events.js', ['dust-events.json', 'dust-events-tx.json']],
+  ['build-flows-daily.js', ['flows-daily.json']],
 ];
 const FILES = BUILDERS.flatMap(([, files]) => files);
 
