@@ -25,6 +25,7 @@
 //   FusionChart.touch(gd)               a finger slid across the plot moves it
 //   FusionChart.quiet(traces)           traces that report hovers, draw none
 //   FusionChart.soft(traces)            the marks drawn soft and lean (below)
+//   FusionChart.growth(trace)           a running total in TVL Growth's look
 //   FusionChart.png(fig, { width, height, title, subtitle, details, dots, filename })
 //                                       download a chart as an image: 4:3 or
 //                                       as asked, in the page's theme, titled,
@@ -913,6 +914,15 @@
     c.restore();
   }
   const exportDetails = (fig, withChoices = true) => [described(fig), withChoices ? chosen() : ''].filter(Boolean).join(' · ');
-  window.FusionChart = { fit, compact, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks,
+  // A running total in TVL Growth's look (Key Metrics, Protocol TVL): the
+  // theme's accent, a 2px line over a tenth of it from zero. soft() then
+  // smooths it and rings its two ends.
+  function growth(trace) {
+    const c = cssVar('--accent', '#8429FF');
+    const m = /^#([0-9a-f]{6})$/i.exec(c), n = m ? parseInt(m[1], 16) : 0x8429FF;
+    return Object.assign(trace, { mode: 'lines', line: Object.assign({}, trace.line, { color: c, width: 2 }),
+      fill: 'tozeroy', fillcolor: 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',0.1)' });
+  }
+  window.FusionChart = { fit, compact, growth, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks,
     themeInk, drawMark, exportDetails, inked };
 })();

@@ -86,8 +86,8 @@
     let traces, xaxis = { type: 'date', tickformat: range === '90' ? '%b %-d' : "%b '%y", nticks: 6 };
     if (view === 'cumulative') {
       const d = cumulative();
-      traces = [{ type: 'scatter', mode: 'lines', name: 'Earned', x: d.map(p => iso(p[0])), y: d.map(p => p[1]),
-        line: { color: c, width: 2 }, fill: 'tozeroy', fillcolor: tint(c, 0.1) }];
+      // The running total in TVL Growth's look, in the theme's accent.
+      traces = [FusionChart.growth({ type: 'scatter', name: 'Earned', x: d.map(p => iso(p[0])), y: d.map(p => p[1]) })];
     } else {
       const monthly = view === 'monthly', b = monthly ? months() : weeks();
       // Thin bars, as on every chart here, spread over the whole plot: each
