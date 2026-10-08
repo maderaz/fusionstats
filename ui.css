@@ -640,3 +640,10 @@ body {
 .ui-more[open] > summary::after { transform: rotate(180deg); }
 .ui-more > div { padding: 0 0 18px; max-width: 760px; font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
 .ui-more code { font: 12px var(--mono); padding: 1px 5px; border-radius: 5px; background: var(--bg-subtle); }
+
+/* Labels, site-wide: every word starts with a capital (TVL Growth, Total
+   Value Managed, Spot APY). Figure names, section titles, tabs, table
+   headings, filter names, buttons and segments; not the keys, chips or
+   dropdown values, which carry markets' and tokens' own spelling (cbETH). */
+.ui-figure .k, .ui-head h2, h2, th, .ui-filter-label, .ui-menu-k, .ui-seg button, .ui-btn,
+.xp-tab, .xp-sort, .chart-section-title, .xport-k, .xport-btn, .seg button { text-transform: capitalize; }

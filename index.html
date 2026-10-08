@@ -435,6 +435,10 @@
       color: var(--text-3);
     }
 
+    /* Labels: every word starts with a capital (TVL Growth, DAO Earnings),
+       as across the site (ui.css). */
+    .stat-card .label, .flow-chart-title, .combo-k span:first-child, .filter-label, .feed-title h2, .seg button, h2, th { text-transform: capitalize; }
+
     /* ---------- Feed ---------- */
     .feed { padding-top: 32px; border-top: 1px solid var(--line); }
     .feed-title h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
@@ -971,15 +975,18 @@
       .stat-card:first-child { padding-left: 0; }
       .stat-card:last-child { padding-right: 0; }
       .ov-half + .ov-half .stat-card:first-child { margin-left: 0; padding-left: 0; border-left: none; }
+      /* A phone shows three figures, one row: TVL, DAO Earnings and Net
+         24h; the chart follows right under them. */
+      .ov { grid-template-columns: repeat(3, minmax(max-content, 1fr)); grid-template-rows: auto auto; gap: 0; }
+      .ov-half, .ov-half .figs { display: contents; }
+      .fig-curator, #statsRow > .stat-card:nth-child(n+2) { display: none !important; }
+      #statsRow > .stat-card:first-child { padding-left: 12px; border-left: 1px solid var(--line); }
+      #statsRow:empty { display: none; }
+      .combo-chart { margin-top: 20px; }
       .stat-card .value { margin-top: 4px; letter-spacing: -0.035em; font-size: clamp(15px, calc(6.9cqi - 6px), 28px); }
       .stat-card .label { font-size: clamp(11px, calc(2.2cqi + 4px), 13px); }
-      /* The narrowest phones, where three labels cannot share a line: TVL
-         on a line of its own, the two earnings under it. */
-      @container (max-width: 320px) {
-        .ov-half:first-child .figs { grid-template-columns: repeat(2, minmax(max-content, 1fr)); row-gap: 14px; }
-        .fig-tvl { grid-column: 1 / -1; }
-        .fig-earn { padding-left: 0; border-left: none; }
-      }
+      /* The narrowest phones: the three figures a little closer. */
+      @container (max-width: 340px) { .stat-card { padding: 0 9px; } #statsRow > .stat-card:first-child { padding-left: 9px; } }
       /* The amount filter says just "Min" where its cell is narrow. */
       @container (max-width: 345px) { .fl-long { display: none; } }
       #statsRow:empty { height: 52px; }
@@ -990,9 +997,11 @@
       .flow-chart-bars { height: 120px; gap: 2px; }
       .combo .tvl-line { height: 156px; }
       .combo .flow-strip { height: 52px; }
-      .combo-chart .flow-chart-header { flex-wrap: wrap; align-items: center; row-gap: 10px; }
-      .seg.km-range { width: 100%; }
-      .seg.km-range button { flex: 1; height: 34px; }
+      .combo-chart .flow-chart-header { align-items: center; }
+      /* The range: small, at the right of the title's line. */
+      .combo-chart .flow-chart-header { flex-wrap: nowrap; }
+      .seg.km-range { width: auto; padding: 2px; border-radius: 9px; }
+      .seg.km-range button { flex: none; height: 24px; padding: 0 8px; font-size: 12px; border-radius: 7px; }
       .flow-bar { left: 14%; right: 14%; }
       .ov-half .flow-chart { margin-top: 16px; }
       .ov .flow-chart-bars { gap: 2px; }
@@ -1097,7 +1106,7 @@
       </div>
       <div id="tvlWeekly" class="flow-chart combo-chart">
         <div class="flow-chart-header">
-          <span class="flow-chart-title label">TVL growth <span class="info-tip" tabindex="0" data-tip="Every Fusion vault's TVL together, day by day since the first deposits, from the vaults' on-chain snapshots: the Protocol TVL page's chart. Today's point is the TVL figure above. Under it, the net flow on the same days: deposits minus withdrawals in dollars at the time, synthetic flow left out; a bar a day on 30d and 90d, a week on 1y and All.">&#9432;</span></span>
+          <span class="flow-chart-title label">TVL Growth <span class="info-tip" tabindex="0" data-tip="Every Fusion vault's TVL together, day by day since the first deposits, from the vaults' on-chain snapshots: the Protocol TVL page's chart. Today's point is the TVL figure above. Under it, the net flow on the same days: deposits minus withdrawals in dollars at the time, synthetic flow left out; a bar a day on 30d and 90d, a week on 1y and All.">&#9432;</span></span>
           <div class="seg km-range" id="kmRange" role="group" aria-label="Range">
             <button type="button" data-r="30" aria-pressed="false">30d</button><button type="button" data-r="90" aria-pressed="false">90d</button><button type="button" data-r="365" aria-pressed="false">1y</button><button type="button" data-r="all" class="on" aria-pressed="true">All</button>
           </div>
