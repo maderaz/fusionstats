@@ -10,7 +10,7 @@
 // checks the names against nav.js and each page's <h1>.
 
 const SITE = 'https://fusionecosystem.xyz';
-const SITE_NAME = 'Fusion Stats';
+const SITE_NAME = 'Fusion Ecosystem';
 // The share cards: drawn every day by a workflow (og-cards.yml, with
 // tools/og-cards.mjs) onto a branch of their own, which keeps one copy of
 // each; GitHub's raw CDN serves the latest within minutes, with no deploy.
@@ -48,7 +48,7 @@ const PAGES = [
 // their own). Turn it on and run node tools/page-meta.js to be listed.
 const INDEXED = false;
 
-const title = (p) => p.name + ' — ' + SITE_NAME;
+const title = (p) => p.name + ' • ' + SITE_NAME;
 const url = (p) => SITE + p.path;
 const cardUrl = (p) => (CARDS ? CARDS + p.card + '.png' : null);
 

@@ -256,7 +256,7 @@
   window.addEventListener('resize', fitTitle);
   function showHome() {
     cur = null;   // a vault still loading draws nothing now
-    document.title = 'Explorer — Fusion Stats';
+    document.title = 'Explorer • Fusion Ecosystem';
     $('title').textContent = 'Explorer';
     requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = 'Every Fusion vault, one at a time: search by name, token or network, or paste its address.';
@@ -278,7 +278,7 @@
   let cur = null, file = null, perfView = 'apy', perfRange = '90', allocRange = '90', tvlUnit = 'usd';
   async function showVault(v) {
     cur = v; file = null;
-    document.title = v.name + ' — Explorer — Fusion Stats';
+    document.title = v.name + ' • Fusion Ecosystem';
     $('title').textContent = v.name;
     requestAnimationFrame(fitTitle);   // after nav.js has seen the new heading
     $('lede').textContent = categoryOf(v.name);
