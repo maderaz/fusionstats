@@ -28,7 +28,7 @@
       { href: '/finances/curator',      label: 'Curator Earnings', icon: 'curator', short: 'Curators', long: true },
     ] },
     { label: 'Insights', folds: true, pages: [
-      { href: '/all-vaults',            label: 'All Vaults',     icon: 'vaults' },
+      { href: '/protocol-tvl',          label: 'Protocol TVL',   icon: 'growth', short: 'TVL' },
       { href: '/switchers',             label: 'Switchers',      icon: 'switchers' },
       { href: '/dust',                  label: 'Dust Tracker',   icon: 'dust' },
       { href: '/dominance',             label: 'Dominance',      icon: 'dominance' },
@@ -65,6 +65,8 @@
     dominance: '<path class="dim" d="M3.07 9.8A5.25 5.25 0 0 1 8 2.75" stroke-width="2.25" stroke-linecap="butt"/><path class="a" d="M8 2.75a5.25 5.25 0 1 1-4.93 7.05" stroke-width="2.25" stroke-linecap="butt"/>',
     // The advertised rate (dashed) against the realised share price.
     monitor: '<path class="dim2" d="M2 7.25L14 3" stroke-dasharray="2 2.4"/><path class="a" d="M2 12.75c2.4-.2 3.6-2.9 5.6-3.1 2-.2 3.3-1.2 6.4-3.4"/>',
+    // Everything held, climbing since the first deposit.
+    growth: '<path d="M2 14h12"/><path class="a f soft" d="M2 11.5l3.5-3 3 1.75L14 4.5V14H2z"/><path class="a" d="M2 11.5l3.5-3 3 1.75L14 4.5"/>',
     // How full the vessel is.
     tvl: '<path class="a f soft" d="M3 8.9c1.6-.9 3.2.9 5 0s3.4-.9 5 0V11.5a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 3 11.5z"/><path class="a" d="M3 8.9c1.6-.9 3.2.9 5 0s3.4-.9 5 0"/><rect x="3" y="2" width="10" height="12" rx="2.5"/>',
     // 0x…
