@@ -527,9 +527,10 @@
     const cls = [current(p) ? 'active' : '', inSub ? 'parent-active' : '', KEY.includes(p) ? 'fnav-key' : ''].filter(Boolean).join(' ');
     const a = `<a href="${p.href}"${cls ? ` class="${cls}"` : ''}${here(p)}>${icon(p.icon)}<span class="fnav-label">${p.label}</span>${badge}</a>`;
     if (!p.sub) return a;
-    // Open on its own pages and on itself, else as last left.
-    let open = inSub || exact(p.href);
-    if (!open) { try { open = localStorage.getItem(subKey(p)) === 'open'; } catch {} }
+    // Closed whenever the site is entered; open on its own pages, and as left
+    // while browsing (this visit's choice, not a remembered one).
+    let open = inSub;
+    if (!open) { try { open = sessionStorage.getItem(subKey(p)) === 'open'; } catch {} }
     const id = 'fnav-sub-' + p.label.toLowerCase().replace(/\W+/g, '-');
     return `<div class="fnav-item${open ? '' : ' closed'}" data-key="${subKey(p)}">${a}`
       + `<button type="button" class="fnav-sub-toggle" aria-expanded="${open}" aria-controls="${id}" aria-label="${p.label} pages">${CHEVRON}</button>`
@@ -674,7 +675,7 @@
         const item = btn.closest('.fnav-item');
         const isOpen = !item.classList.toggle('closed');
         btn.setAttribute('aria-expanded', String(isOpen));
-        try { localStorage.setItem(item.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
+        try { sessionStorage.setItem(item.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
       });
     });
 
