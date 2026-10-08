@@ -21,24 +21,29 @@ const word = (n) => BigInt(n).toString(16).padStart(64, '0');
 const str = (s) => { const b = Buffer.from(s, 'utf8').toString('hex'); return word(s.length) + b.padEnd(Math.ceil(b.length / 64) * 64 || 64, '0'); };
 const DEC = 18;
 const raw = (x) => '0x' + word(BigInt(Math.round(x * 1e6)) * 10n ** BigInt(DEC - 6));
+const hex = (n) => '0x' + n.toString(16);
 // LiFiGenericSwapCompleted's data: two strings, three addresses, two amounts.
 function swapData(integrator) {
   const s1 = str(integrator), s2 = str('');
   return '0x' + word(7 * 32) + word(7 * 32 + s1.length / 2) + word(USER) + word(0) + word(AAPL) + word(1) + word(1) + s1 + s2;
 }
-const transfer = (from, to, amount, tx, block, logIndex = 3) => ({ address: AAPL, topics: [F.TRANSFER, pad(from), pad(to)], data: raw(amount), transactionHash: tx, blockNumber: '0x' + block.toString(16), logIndex: '0x' + logIndex.toString(16) });
+const transfer = (from, to, amount, tx, block, logIndex = 3) => ({ address: AAPL, topics: [F.TRANSFER, pad(from), pad(to)], data: raw(amount), transactionHash: tx, blockNumber: hex(block), logIndex: hex(logIndex) });
+const swapLog = (tx, block, integrator) => ({ address: F.LIFI_DIAMOND, topics: [F.LIFI_SWAP, pad('0xab')], data: swapData(integrator), transactionHash: tx, blockNumber: hex(block), logIndex: '0x1' });
+const arrivedLog = (tx, block) => ({ address: F.LIFI_EXECUTOR, topics: [F.LIFI_ARRIVED, pad('0xcd')], data: '0x', transactionHash: tx, blockNumber: hex(block), logIndex: '0x1' });
 
-// A fake node: getLogs filtered as a node would, receipts by hash.
-function node({ logs = [], receipts = {}, fail = new Set() } = {}) {
+// A fake node: getLogs filtered as a node would (one address or several, a
+// topic or a choice of them); `fail` holds the blocks whose LI.FI read fails.
+function node({ logs = [], fail = new Set() } = {}) {
   const calls = [];
   const rpc = async (method, [p]) => {
     calls.push(method);
-    if (method === 'eth_getLogs') {
-      const from = parseInt(p.fromBlock, 16), to = parseInt(p.toBlock, 16), want = p.topics[2].map(t => t.toLowerCase());
-      return logs.filter(l => l.address === p.address && parseInt(l.blockNumber, 16) >= from && parseInt(l.blockNumber, 16) <= to && want.includes(l.topics[2]));
-    }
-    if (method === 'eth_getTransactionReceipt') { if (fail.has(p)) throw new Error('timeout'); return receipts[p] || null; }
-    throw new Error('unexpected ' + method);
+    if (method !== 'eth_getLogs') throw new Error('unexpected ' + method);
+    const from = parseInt(p.fromBlock, 16), to = parseInt(p.toBlock, 16);
+    const addrs = [].concat(p.address).map(a => a.toLowerCase());
+    const match = (want, got) => want == null || [].concat(want).map(t => t.toLowerCase()).includes(got);
+    if (addrs.length > 1 && fail.has(from)) throw new Error('HTTP 429');
+    return logs.filter(l => addrs.includes(l.address) && parseInt(l.blockNumber, 16) >= from && parseInt(l.blockNumber, 16) <= to
+      && p.topics.every((t, i) => match(t, l.topics[i])));
   };
   rpc.calls = calls;
   return rpc;
@@ -49,48 +54,41 @@ const dep = (extra = {}) => ({ type: 'deposit', vault: VAULT, owner: USER, sende
   console.log('\nfunding of one deposit');
 
   await test('a swap through LI.FI on Jumper a minute before: lifi, and its integrator', async () => {
-    const rpc = node({
-      logs: [transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xswap', 970)],
-      receipts: { '0xswap': { logs: [{ address: F.LIFI_DIAMOND, topics: [F.LIFI_SWAP, pad('0xab')], data: swapData('jumperrwa') }] } },
-    });
+    const rpc = node({ logs: [transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xswap', 970), swapLog('0xswap', 970, 'jumperrwa')] });
     assert.deepStrictEqual(await F.fundingOf(rpc, dep(), AAPL, DEC), { via: 'lifi', integrator: 'jumperrwa', tx: '0xswap', block: 970 });
+    assert.deepStrictEqual(rpc.calls, ['eth_getLogs', 'eth_getLogs']);   // the transfers, then LI.FI's events of that block: no receipt
   });
 
   await test('an arrival through LI.FI\'s Executor: a LI.FI bridge, no integrator on this chain', async () => {
     const EXECUTOR = '0x4dac9d1769b9b304cb04741dcdeb2fc14abdf110';
-    const rpc = node({
-      logs: [transfer(EXECUTOR, USER, 0.94056415, '0xbridge', 990)],
-      receipts: { '0xbridge': { logs: [{ address: EXECUTOR, topics: [F.LIFI_ARRIVED, pad('0xcd')], data: '0x' }] } },
-    });
+    const rpc = node({ logs: [transfer(EXECUTOR, USER, 0.94056415, '0xbridge', 990), arrivedLog('0xbridge', 990)] });
     assert.strictEqual((await F.fundingOf(rpc, dep(), AAPL, DEC)).via, 'lifi-bridge');
   });
 
-  await test('the tokens of a withdrawal from a vault (a relay hop): vault, and which', async () => {
-    const rpc = node({
-      logs: [transfer(OTHER_VAULT, USER, 0.94056415, '0xexit', 995)],
-      receipts: { '0xexit': { logs: [{ address: OTHER_VAULT, topics: [F.WITHDRAW, pad(POOL), pad(USER), pad(POOL)], data: '0x' }] } },
-    });
-    assert.deepStrictEqual(await F.fundingOf(rpc, dep(), AAPL, DEC), { via: 'vault', from: OTHER_VAULT, tx: '0xexit', block: 995 });
+  await test('the tokens of a withdrawal from a vault (a relay hop): vault, and which, without another call', async () => {
+    const rpc = node({ logs: [transfer(OTHER_VAULT, USER, 0.94056415, '0xexit', 995)] });
+    const out = await F.fundingOf(rpc, dep(), AAPL, DEC, new Map([['0xexit', OTHER_VAULT]]));
+    assert.deepStrictEqual(out, { via: 'vault', from: OTHER_VAULT, tx: '0xexit', block: 995 });
+    assert.strictEqual(rpc.calls.length, 1);
+  });
+
+  await test('a withdrawal passed on by a router in the same transaction: still the vault', async () => {
+    const rpc = node({ logs: [transfer(POOL, USER, 0.94056415, '0xexit2', 995)] });
+    const out = await F.fundingOf(rpc, dep(), AAPL, DEC, new Map([['0xexit2', OTHER_VAULT]]));
+    assert.deepStrictEqual([out.via, out.from], ['vault', OTHER_VAULT]);
   });
 
   await test('a deposit through the user\'s own proxy: the move into the proxy is passed over for the swap before it', async () => {
-    const rpc = node({
-      logs: [transfer(USER, PROXY, 0.94056415, '0xdeposit', 1000, 4), transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xswap2', 980)],
-      receipts: {
-        '0xdeposit': { logs: [] },
-        '0xswap2': { logs: [{ address: F.LIFI_DIAMOND, topics: [F.LIFI_SWAP, pad('0xef')], data: swapData('jumper.exchange.earn') }] },
-      },
-    });
+    const rpc = node({ logs: [transfer(USER, PROXY, 0.94056415, '0xdeposit', 1000, 4), transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xswap2', 980),
+      swapLog('0xswap2', 980, 'jumper.exchange.earn')] });
     const out = await F.fundingOf(rpc, dep({ sender: PROXY }), AAPL, DEC);
     assert.strictEqual(out.via, 'lifi'); assert.strictEqual(out.integrator, 'jumper.exchange.earn');
   });
 
   await test('the latest transfer of the same amount wins over an older or a different one', async () => {
-    const rpc = node({
-      logs: [transfer(POOL, USER, 5, '0xbig', 999), transfer(POOL, USER, 0.94056415, '0xold', 900), transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xnew', 960)],
-      receipts: { '0xnew': { logs: [] }, '0xold': { logs: [] }, '0xbig': { logs: [] } },
-    });
-    assert.strictEqual((await F.fundingOf(rpc, dep(), AAPL, DEC)).tx, '0xnew');
+    const rpc = node({ logs: [transfer(POOL, USER, 5, '0xbig', 999), transfer(POOL, USER, 0.94056415, '0xold', 900), transfer(F.LIFI_DIAMOND, USER, 0.94056415, '0xnew', 960)] });
+    const out = await F.fundingOf(rpc, dep(), AAPL, DEC);
+    assert.deepStrictEqual([out.tx, out.via], ['0xnew', 'lifi']);
   });
 
   await test('nothing came in within the hour: none', async () => {
@@ -98,8 +96,8 @@ const dep = (extra = {}) => ({ type: 'deposit', vault: VAULT, owner: USER, sende
     assert.deepStrictEqual(await F.fundingOf(rpc, dep(), AAPL, DEC), { via: 'none' });
   });
 
-  await test('another exchange or wallet: other, with who sent it', async () => {
-    const rpc = node({ logs: [transfer(POOL, USER, 0.94056415, '0xdex', 990)], receipts: { '0xdex': { logs: [] } } });
+  await test('another exchange or wallet: other, with who sent it; a LI.FI swap of someone else in that block does not count', async () => {
+    const rpc = node({ logs: [transfer(POOL, USER, 0.94056415, '0xdex', 990), swapLog('0xsomeone-else', 990, 'jumperrwa')] });
     assert.deepStrictEqual(await F.fundingOf(rpc, dep(), AAPL, DEC), { via: 'other', from: POOL, tx: '0xdex', block: 990 });
   });
 
@@ -121,13 +119,86 @@ const dep = (extra = {}) => ({ type: 'deposit', vault: VAULT, owner: USER, sende
     assert.ok(Object.values(state.deposits).every(d => d.via === 'none'));
   });
 
-  await test('what is read stays read; what failed is left for the next run', async () => {
+  await test('what is read stays read; what failed is tried again, then left for the next run', async () => {
     const OTHER = '0x2222222222222222222222222222222222222222';
     const act = { events: activity.events.map(e => (e.tx === '0xa' ? { ...e, owner: OTHER, sender: OTHER } : e)) };
-    const rpc = node({ logs: [transfer(POOL, OTHER, 0.94056415, '0xslow', 990)], fail: new Set(['0xslow']) });
+    const rpc = node({ logs: [transfer(POOL, OTHER, 0.94056415, '0xslow', 990)], fail: new Set([990]) });
     const state = await quiet(() => F.main({ rpc, files: { ipor, activity: act, decimals, state: { deposits: { '0xc:9': { via: 'none' } } } } }));
-    assert.deepStrictEqual(Object.keys(state.deposits).sort(), ['0xb:9', '0xc:9']);   // 0xa's receipt failed
-    assert.ok(!rpc.calls.includes('eth_getLogs') || state.deposits['0xc:9'].via === 'none');
+    assert.deepStrictEqual(Object.keys(state.deposits).sort(), ['0xb:9', '0xc:9']);   // 0xa's LI.FI read failed
+    assert.strictEqual(rpc.calls.filter(c => c === 'eth_getLogs').length, 1 + 2 * 2);   // 0xb; 0xa twice, two reads each
+  });
+
+  await test('a run of failures stops the run instead of emptying the queue', async () => {
+    const many = { events: Array.from({ length: 40 }, (_, i) => dep({ tx: '0xd' + i, block: 1000 + i * 10 })) };
+    const rpc = async () => { rpc.n = (rpc.n || 0) + 1; throw new Error('HTTP 429'); };
+    const state = await quiet(() => F.main({ rpc, files: { ipor, activity: many, decimals, state: { deposits: {} } } }));
+    assert.strictEqual(Object.keys(state.deposits).length, 0);
+    assert.ok(rpc.n < 20, 'calls ' + rpc.n);
+  });
+
+  console.log('\nthe endpoints');
+
+  const clock = () => { const c = { t: 1_000_000 }; c.now = () => c.t; c.sleep = async (ms) => { c.t += ms; }; return c; };
+  const answers = (refuse = () => false) => {
+    const asked = [];
+    const fetchFn = async (url) => { asked.push(url); const r = refuse(url, asked.length);
+      if (r instanceof Error) throw r;
+      return r ? { ok: false, status: r } : { ok: true, json: async () => ({ result: '0x1' }) }; };
+    return { asked, fetchFn };
+  };
+
+  await test('calls take turns across the endpoints, each at most once every GAP_MS', async () => {
+    const c = clock(), f = answers();
+    const rpc = F.rpcFor('base', { urls: ['https://a', 'https://b', 'https://c'], keyed: 0, ...c, fetchFn: f.fetchFn });
+    const t0 = c.t;
+    for (let i = 0; i < 6; i++) await rpc('eth_blockNumber', []);
+    assert.deepStrictEqual(f.asked, ['https://a', 'https://b', 'https://c', 'https://a', 'https://b', 'https://c']);
+    assert.ok(c.t - t0 >= F.GAP_MS, 'waited ' + (c.t - t0));
+  });
+
+  await test('one that refuses rests, and the others answer meanwhile; why is counted, never the URL', async () => {
+    const c = clock(), f = answers((url) => (url === 'https://b' ? 429 : 0));
+    const rpc = F.rpcFor('base', { urls: ['https://a', 'https://b', 'https://c'], keyed: 0, ...c, fetchFn: f.fetchFn });
+    for (let i = 0; i < 6; i++) assert.strictEqual(await rpc('eth_blockNumber', []), '0x1');
+    assert.strictEqual(f.asked.filter(u => u === 'https://b').length, 1);
+    assert.deepStrictEqual(rpc.errors, { 'HTTP 429': 1 });
+  });
+
+  await test('all refusing: the call fails after its rounds, backing off between them', async () => {
+    const c = clock(), f = answers(() => new Error('request to https://key.example/v2/SECRET failed'));
+    const rpc = F.rpcFor('base', { urls: ['https://a', 'https://b'], keyed: 0, ...c, fetchFn: f.fetchFn });
+    const t0 = c.t;
+    await assert.rejects(rpc('eth_blockNumber', []));
+    assert.strictEqual(f.asked.length, 2 * 3);
+    assert.ok(c.t - t0 >= 3000, 'waited ' + (c.t - t0));
+    assert.ok(Object.keys(rpc.errors).every(k => !/SECRET|https?:/.test(k)), JSON.stringify(rpc.errors));
+  });
+
+  await test('two callers: when its endpoint refuses, a caller moves to one still free, not to one the other caller just saw refuse', async () => {
+    const c = clock();
+    let release;
+    const gate = new Promise(r => { release = r; });
+    const asked = [];
+    const fetchFn = async (url) => {
+      asked.push(url);
+      if (url === 'https://a') { await gate; return { ok: false, status: 429 }; }
+      if (url === 'https://b') { release(); return { ok: false, status: 429 }; }
+      return { ok: true, json: async () => ({ result: 'c' }) };
+    };
+    const rpc = F.rpcFor('base', { urls: ['https://a', 'https://b', 'https://c'], keyed: 0, ...c, fetchFn });
+    const t0 = c.t;
+    const [x, y] = await Promise.all([rpc('eth_blockNumber', []), rpc('eth_blockNumber', [])]);
+    assert.deepStrictEqual([x, y], ['c', 'c']);
+    assert.deepStrictEqual(asked.slice(0, 3), ['https://a', 'https://b', 'https://c']);
+    assert.ok(!asked.slice(3).includes('https://b'), asked.join(' '));
+    assert.ok(c.t - t0 < F.COOL_MS, 'waited ' + (c.t - t0));
+  });
+
+  await test('a keyed endpoint is asked first when free', async () => {
+    const c = clock(), f = answers();
+    const rpc = F.rpcFor('base', { urls: ['https://keyed', 'https://a'], keyed: 1, ...c, fetchFn: f.fetchFn });
+    await rpc('eth_blockNumber', []);
+    assert.strictEqual(f.asked[0], 'https://keyed');
   });
 
   await test('an event\'s strings, read from its data', () => {
