@@ -104,20 +104,22 @@
   // A page with no dark styles says so with
   //   <meta name="fusion-theme" content="light-only">
   // ahead of this script: it stays light, and the switch is not offered there.
+  // The ground is the logo's own hue (#8429FF, 266°), dark enough that the
+  // mark keeps standing out on it (about 3:1).
   // Purple, the flagship's colour, is dark mode on a purple ground: the page
   // keeps every dark rule (data-theme="dark") and data-palette="purple"
   // repaints the tokens. Charts are told 'dark', with the palette beside it.
   const THEME_KEY = 'fusionstats_theme';
   const lightOnly = !!document.querySelector('meta[name="fusion-theme"][content="light-only"]');
   const PURPLE = `:root[data-theme="dark"][data-palette="purple"] {
-    --bg: #2E0D82; --bg-subtle: #37128F; --bg-hover: #3D169C; --dots: rgba(255, 255, 255, 0.09);
-    --line: #4A22AB; --line-strong: #5B33BE;
-    --text: #FFFFFF; --text-2: #DCD0FF; --text-3: #AE9BEA;
-    --accent: #E4D6FF; --accent-bg: rgba(255, 255, 255, 0.13);
+    --bg: #2C0C55; --bg-subtle: #351363; --bg-hover: #3D186D; --dots: rgba(255, 255, 255, 0.09);
+    --line: #4C247F; --line-strong: #5D3097;
+    --text: #FFFFFF; --text-2: #E2CDFE; --text-3: #B794E6;
+    --accent: #D7B8FF; --accent-bg: rgba(255, 255, 255, 0.13);
     --pos: #5EE89A; --pos-bar: #4ADE80; --pos-soft: rgba(74, 222, 128, 0.18);
     --neg: #FF8A8A; --neg-bar: #FF6B6B; --neg-soft: rgba(255, 107, 107, 0.18);
     --amber: #FCD34D; --amber-soft: rgba(252, 211, 77, 0.16);
-    --tip-bg: #FFFFFF; --tip-fg: #2E0D82; --tint-strong: rgba(255, 255, 255, 0.16);
+    --tip-bg: #FFFFFF; --tip-fg: #2C0C55; --tint-strong: rgba(255, 255, 255, 0.16);
     --accent-end: #C9B0FF; --accent-light: #EDE4FF;
     --chart-1: #5EEAD4; --chart-2: #FDE047; --chart-3: #F9A8D4; --chart-4: #7DD3FC; --chart-5: #FDBA74;
   }`;

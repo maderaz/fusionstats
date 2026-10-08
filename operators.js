@@ -14,7 +14,7 @@
     { id: 'tesseract', name: 'Tesseract', logo: 'tesseract.png', match: /^(tess|tesseract)/i, sym: /^tess/i },
     { id: 'harvest', name: 'Harvest', logo: 'harvest.png', match: /^harvest\b/i },
     { id: 'autopilot', name: 'Autopilot', logo: 'autopilot.png', match: /^(autopilot|pilot)\b/i },
-    { id: 'ipor', name: 'IPOR', logo: 'ipor.png', match: /^(ipor|fusion)\b|^base (eth|usdc|cbeth|cbbtc)\b/i },
+    { id: 'ipor', name: 'IPOR', logo: 'ipor.png', match: /^(ipor|fusion)\b/i },
     { id: 'reservoir', name: 'Reservoir', logo: 'reservoir.png', match: /^reservoir\b/i },
     { id: 'ensuro', name: 'Ensuro', logo: 'ensuro.png', match: /^ensuro\b/i },
     { id: 'yo', name: 'Yo', logo: 'yo.png', match: /^yo(usd|eth|gold|btc)?\b|^yo\s/i },
@@ -24,7 +24,11 @@
     { id: 'strata', name: 'Strata', logo: 'strata.png', match: /^strata\b/i },
     { id: 'tanken', name: 'Tanken Capital', logo: 'tanken.png', match: /^tanken\b/i },
     { id: 'k3', name: 'K3 Capital', logo: 'k3.png', match: /^[kк]3\b/i },
-    { id: 'clearstar', name: 'Clearstar', logo: 'clearstar.png', match: /^clearstar\b/i },
+    // Clearstar's Safes: the Base Lending Optimizers' and Loooper's atomist,
+    // and Clearstar Core's (also AlchemistCS's); they share an alpha and a
+    // management-fee recipient (read with the IPOR tool).
+    { id: 'clearstar', name: 'Clearstar', logo: 'clearstar.png', match: /^clearstar\b/i,
+      owners: ['0xb3cf59a5f12ca319861376c5e63eef4790a42b44', '0x30988479c2e6a03e7fb65138b94762d41a733458'] },
     { id: 'alphayields', name: 'AlphaYields', logo: null, match: /^alphayields\b/i },
     { id: 'sentinel', name: 'Sentinel', logo: null, match: /^sentinel\b/i },
   ];
