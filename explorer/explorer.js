@@ -415,8 +415,9 @@
     const set = (i, v, sub) => { const f = $('admFigures').querySelectorAll('.ui-figure')[i]; f.querySelector('.v').textContent = v; f.querySelector('.s').textContent = sub || ' '; };
     if (!rows.length) {
       $('admFigures').hidden = true;
-      $('admList').innerHTML = '<div class="empty-state">' + (adm
+      $('admList').innerHTML = '<div class="empty-state">' + (adm && adm.complete
         ? 'No changes found: nothing about the vault or the contracts that run it has been changed.'
+        : adm ? 'Being read: changes to the vault and its contracts are read from their events on-chain, from the vault\'s deployment on, a stretch every six hours.'
         : 'Not read yet: changes to the vault and its contracts are read from their events on-chain every six hours, from the vault\'s deployment on.') + '</div>';
       $('admPager').innerHTML = ''; $('admNote').textContent = '';
       return;
@@ -446,6 +447,7 @@
     $('admPager').innerHTML = UI.pager({ total: rows.length, page: admPage, size: PAGE, noun: rows.length === 1 ? 'change' : 'changes' });
     $('admNote').innerHTML = 'What was changed in the vault and in the contracts that run it, its access manager, fee, withdraw and rewards managers and its own price oracle, read from their events on-chain: fuses and markets, roles and who may call what, fees, limits and caps. '
       + 'Executed by is who sent the transaction, or the contract with a role it went through (a Safe), with its roles at the time. The set-up made at deployment carries that moment.'
+      + (adm.complete ? '' : ' Still being read back: earlier changes may yet appear.')
       + (adm.readAt ? ' Read ' + esc(UI.ago(Date.parse(adm.readAt) / 1000)) + '.' : '');
   }
   UI.onPage($('admPager'), (n) => { admPage = n; renderAdmin(); $('actionsSec').scrollIntoView({ block: 'start' }); });

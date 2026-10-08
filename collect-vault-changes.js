@@ -48,10 +48,12 @@ const OUT = path.join(ROOT, 'vault-changes.json');
 const IPOR = path.join(ROOT, 'ipor-vaults.json');
 const DEPLOYMENTS = path.join(ROOT, 'vault-deployments.json');
 const FLOOR = 1000;                 // vaults above this TVL
-const CALLS = 600;                  // per chain per run
+const CALLS = 3000;                 // per chain per run (the deadline bounds it too)
 const DEADLINE_MS = 9 * 60_000;
-// Blocks an eth_getLogs asks for at first, a chain; it halves on a refusal
-// (down to MIN_SPAN) and grows back on success.
+// Blocks an eth_getLogs asks for at first, a chain; it shrinks on a refusal
+// (down to MIN_SPAN) and grows back on success. Refused even then, the events
+// are asked for in smaller groups: some free endpoints cap how many topics one
+// call may name (on Base, every endpoint refused all of them at once).
 const SPAN = { ethereum: 500_000, base: 2_000_000, arbitrum: 8_000_000 };
 const MIN_SPAN = 2_000;
 
@@ -281,12 +283,17 @@ async function scan(ctx, a, v, shared) {
     const group = open.filter(([, c]) => c.scanned + 1 === from).map(([x]) => x);
     const to = Math.min(ctx.head, from + ctx.span - 1);
     if (ctx.budget <= 0 || Date.now() > ctx.deadline) return { fresh, done: false };
-    ctx.budget--;
     let logs;
     try {
-      logs = await req('eth_getLogs', [{ address: group, topics, fromBlock: hexBlock(from), toBlock: hexBlock(to) }]);
+      logs = [];
+      const size = Math.ceil(topics[0].length / (ctx.parts || 1));
+      for (let i = 0; i < topics[0].length; i += size) {
+        ctx.budget--;
+        logs.push(...((await req('eth_getLogs', [{ address: group, topics: [topics[0].slice(i, i + size)], fromBlock: hexBlock(from), toBlock: hexBlock(to) }])) || []));
+      }
     } catch (e) {
       if (ctx.span > MIN_SPAN) { ctx.span = Math.max(MIN_SPAN, Math.floor(ctx.span / 4)); continue; }
+      if ((ctx.parts || 1) < topics[0].length) { ctx.parts = Math.min(topics[0].length, (ctx.parts || 1) * 4); continue; }
       throw e;
     }
     for (const log of logs || []) {
@@ -365,6 +372,7 @@ async function main({ out = OUT, ipor = IPOR, deployments = DEPLOYMENTS, only = 
         if (fresh.length) await enrich(ctx, w.a, w.v, fresh);
         total += fresh.length;
         if (!done) behind++;
+        w.v.complete = done;   // read to the head: what it shows is all there is
         w.v.readAt = new Date(now).toISOString();
       } catch (e) {
         failed++;
