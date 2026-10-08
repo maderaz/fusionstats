@@ -7,7 +7,7 @@
 //   trafficRows(Date.now()) → [{ ts, path, session_id, ref?, country, region, city, device, browser, os, ... }]  newest first
 
 const PAGES = ['/', '/', '/', '/stocks', '/stocks', '/stocks/aave-v4', '/explorer', '/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&c=base',
-  '/finances/dao', '/finances/curator', '/all-vaults', '/switchers', '/dust', '/dominance', '/monitor', '/tvl',
+  '/finances/dao', '/finances/curator', '/protocol-tvl', '/all-vaults', '/switchers', '/dust', '/dominance', '/monitor', '/tvl',
   '/address/?a=0x17d0f109ee895bad0b68aa104aa72bd0b003ad8e', '/spark', '/logs'];
 const PLACES = [['PL', '02', 'Wroc%C5%82aw'], ['PL', '14', 'Warsaw'], ['US', 'NY', 'New%20York'], ['US', 'CA', 'San%20Francisco'],
   ['DE', 'BE', 'Berlin'], ['GB', 'ENG', 'London'], ['SG', '', 'Singapore'], ['KR', '11', 'Seoul'], ['CH', 'ZH', 'Z%C3%BCrich'], ['AE', 'DU', 'Dubai']];

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.plot.ly">
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['tvl-daily.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <meta name="robots" content="noindex">
+  <title>Protocol TVL — Fusion Stats</title>
+  <meta name="description" content="What every Fusion vault holds together, day by day since the first deposits, in total and by network.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/protocol-tvl">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Stats">
+  <meta property="og:title" content="Protocol TVL — Fusion Stats">
+  <meta property="og:description" content="What every Fusion vault holds together, day by day since the first deposits, in total and by network.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/protocol-tvl">
+  <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/protocol-tvl.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Protocol TVL: What every Fusion vault holds together, day by day since the first deposits, in total and by network.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Protocol TVL — Fusion Stats">
+  <meta name="twitter:description" content="What every Fusion vault holds together, day by day since the first deposits, in total and by network.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/protocol-tvl.png">
+  <!-- /page-meta -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/ui.css">
+  <script async id="plotlyJs" src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js" onload="this.dataset.state='in'" onerror="this.dataset.state='failed'"></script>
+  <script src="/nav.js"></script>
+  <style>
+    .chart-note { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+    .ui-chart { margin: 0 -4px; }
+    .empty-state { padding: 48px 12px; text-align: center; font-size: 14px; color: var(--text-3); }
+    .ui-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0 0; font-size: 13px; color: var(--text-2); }
+    .ui-legend[hidden] { display: none; }
+    .ui-legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .ui-legend i { width: 10px; height: 10px; border-radius: 3px; }
+  </style>
+  <script defer src="/track.js"></script>
+</head>
+<body>
+  <div class="ui-page">
+    <header class="ui-masthead">
+      <div>
+        <h1>Protocol TVL</h1>
+        <p class="ui-lede">What every Fusion vault holds together, day by day since the first deposits, on every network.</p>
+      </div>
+      <div class="ui-meta"><span id="status"></span></div>
+    </header>
+
+    <div id="body">
+      <div class="ui-figures" style="--n:4" id="figures">
+        <div class="ui-figure"><div class="k">TVL now</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Last 30 days</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">Last 12 months</div><div class="v"></div><div class="s">&nbsp;</div></div>
+        <div class="ui-figure"><div class="k">All-time high</div><div class="v"></div><div class="s">&nbsp;</div></div>
+      </div>
+
+      <section class="ui-section" id="chartSec">
+        <div class="ui-head">
+          <h2 id="chartTitle">Total value locked</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-k">Image size</div>
+              <div class="ui-seg" id="pngSize">
+                <button type="button" data-v="wide">Page</button><button type="button" data-v="43" class="on">4:3</button><button type="button" data-v="square">1:1</button>
+              </div>
+              <label class="ui-check"><input type="checkbox" id="pngDots" checked> Dot grid in the image</label>
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="pngBtn">Download PNG</button>
+                <button type="button" class="ui-btn" id="csvBtn" title="A row a day: the TVL on each network and in all">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
+        <div class="ui-toolbar">
+          <div class="ui-seg" id="view" role="group" aria-label="View">
+            <button type="button" data-v="total" class="on">Total</button>
+            <button type="button" data-v="chains">By network</button>
+          </div>
+          <div class="ui-seg" id="range" role="group" aria-label="Range">
+            <button type="button" data-v="90">90d</button>
+            <button type="button" data-v="365">1y</button>
+            <button type="button" data-v="all" class="on">All</button>
+          </div>
+        </div>
+        <div class="ui-chart" id="chart"><div class="ui-empty">Loading…</div></div>
+        <div class="ui-legend" id="legend" hidden></div>
+        <p class="chart-note" id="coverage"></p>
+      </section>
+    </div>
+
+    <details class="ui-more">
+      <summary>Methodology</summary>
+      <div>Each vault's TVL is read on-chain once a day (<code>tvl-snapshots.json</code>: its total assets at that day's block, at the asset's price that day) and summed by network into <code>tvl-daily.json</code> by <code>tools/build-tvl-daily.js</code>. A vault's last reading carries forward over a day it wasn't read. Today's figure is the same as Key Metrics' and the TVL page's. Vaults with no daily readings yet (on HyperEVM and Katana, some $15K in all) are held at today's TVL across the whole history, so the chart starts where the first deposits lift the total above that floor. <b>By network</b> stacks the three largest networks today and puts the rest together.</div>
+    </details>
+  </div>
+
+  <script src="/fusion-select.js"></script>
+  <script src="/ui.js"></script>
+  <script src="/ui-chart.js"></script>
+  <script src="/protocol-tvl/tvl-page.js"></script>
+</body>
+</html>
