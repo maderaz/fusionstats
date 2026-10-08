@@ -68,10 +68,15 @@
   // markets aren't read yet shows its TVL.
   const OPS = window.FusionOperators;
   let tvmOf = {}, opOf = {}, gateOf = {}, picksPage = 1;
-  // Who may deposit: public, private (not on IPOR's public list), gated
-  // (deposit() asks a whitelist role) or closed, read on-chain by the
-  // markets collector (index.json's gate).
-  const accessOf = (v) => gateOf[keyOf(v)] || (v.isPublic === false ? 'private' : 'public');
+  // Who may deposit: public, or private, or closed. Private is a vault whose
+  // deposit() asks a whitelist role (read on-chain by the markets collector,
+  // index.json's gate: vaults over $10K), every Tesseract vault (they take
+  // approved wallets only, read or not), or one off IPOR's public list.
+  // whyPrivate says which.
+  const whyPrivate = (v) => (gateOf[keyOf(v)] === 'gated' ? 'whitelist'
+    : (opOfV(v) || {}).id === 'tesseract' ? 'tesseract'
+    : v.isPublic === false ? 'unlisted' : null);
+  const accessOf = (v) => (gateOf[keyOf(v)] === 'closed' ? 'closed' : whyPrivate(v) ? 'private' : 'public');
   const keyOf = (v) => String(v.chain).toLowerCase() + '-' + v.address.toLowerCase();
   const tvm = (v) => { const t = tvmOf[keyOf(v)]; return t > 0 ? t : null; };
   const size = (v) => tvm(v) || v.tvl || 0;
@@ -700,7 +705,8 @@
     const o = opOfV(v);
     if (o) t.push(`<span class="xp-tag op">${opMark(o)}${esc(o.name)}</span>`);
     const g = accessOf(v);
-    if (g !== 'public') t.push(`<span class="xp-tag gate" title="${g === 'gated' ? 'Deposits are open to whitelisted wallets only' : g === 'closed' ? 'The vault is closed to deposits' : 'Not on IPOR\'s public list'}">${{ gated: 'Whitelisted', closed: 'Closed', private: 'Private' }[g]}</span>`);
+    const WHY = { whitelist: 'Deposits are open to whitelisted wallets only', tesseract: 'Tesseract\'s vaults take deposits from approved wallets only', unlisted: 'Not on IPOR\'s public list' };
+    if (g !== 'public') t.push(`<span class="xp-tag gate" title="${g === 'closed' ? 'The vault is closed to deposits' : WHY[whyPrivate(v)]}">${g === 'closed' ? 'Closed' : 'Private'}</span>`);
     const m = managed(f);
     if (m && m.net > 0 && m.assets / m.net >= 1.05) t.push(`<span class="xp-tag lev">${(m.assets / m.net).toFixed(1)}× leverage</span>`);
     t.push(`<span class="xp-tag addr">${esc(shortAddr(v.address))}<button type="button" id="copyAddr" aria-label="Copy the address" title="Copy the address">`
