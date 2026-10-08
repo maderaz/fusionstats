@@ -89,15 +89,25 @@ const fileOf = (chain, addr) => `${String(chain).toLowerCase()}-${String(addr).t
 const TECH_ROLES = new Set(['0', '3', '4', '5', '6', '7', '400', '500', '601', '800', '18446744073709551615']);
 function buildParams(p, m, st) {
   if (!p || p.error) return null;
-  const { roleName } = require('./describe-changes.js');
+  const { roleName, currentWithdraw } = require('./describe-changes.js');
   const kind = (k) => (st && st.contracts ? (Object.entries(st.contracts).find(([, c]) => c.kind === k) || [])[0] || null : null);
-  const contracts = { access: p.access || kind('access'), withdraw: p.withdraw || kind('withdraw'), oracle: p.oracle || kind('oracle'),
+  const contracts = { access: p.access || kind('access'), withdraw: p.withdraw || (st ? currentWithdraw(st) : null), oracle: p.oracle || kind('oracle'),
     rewards: p.rewards || kind('rewards'), fee: p.feeManager || kind('fee') };
   const out = { readAt: m.readAt || null, cap: m.cap != null ? m.cap : null, depositFee: p.depositFee, requestFee: p.requestFee, withdrawFee: p.withdrawFee,
     withdrawWindow: p.withdrawWindow, redemptionDelay: p.redemptionDelay != null ? p.redemptionDelay : null, instantFuses: p.instantFuses || 0,
     contracts: Object.fromEntries(Object.entries(contracts).filter(([, a]) => a)),
     permissions: (p.permissions || []).map(x => ({ id: x.id, key: x.key, name: x.name, fuses: (x.fuses || []).length,
       subs: (x.subs || []).map(s => (s.a ? [s.a, s.sym || null] : [s.raw, null])), more: x.more || 0 })) };
+  // The withdraw manager's settings, as its last change set them, where the
+  // chain wasn't asked (or didn't answer).
+  if (st && Array.isArray(st.changes) && contracts.withdraw) {
+    const last = (ev) => { for (let i = st.changes.length - 1; i >= 0; i--) { const c = st.changes[i]; if (c.event === ev && c.contract === contracts.withdraw) return c.args; } return null; };
+    const fee = (a) => (a && a.fee != null ? Math.round(Number(BigInt(a.fee)) / 1e12) / 1e4 : null);
+    const w = last('WithdrawWindowLengthUpdated');
+    if (out.withdrawWindow == null && w) out.withdrawWindow = Number(w.withdrawWindowLength);
+    if (out.requestFee == null) out.requestFee = fee(last('RequestFeeUpdated'));
+    if (out.withdrawFee == null) out.withdrawFee = fee(last('WithdrawFeeUpdated'));
+  }
   if (st && Array.isArray(st.changes) && contracts.access) {
     const held = new Map();
     for (const ch of st.changes) {

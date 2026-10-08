@@ -54,7 +54,7 @@ global.fetch = async (url, init) => {
     if (sel === SEC.getFuses) return ok(arr(Object.values(F)));
     if (sel === SEC.oracle) return ok('0x' + w(ORACLE));
     if (sel === SEC.accessManager) return ok('0x' + w(ACCESS));
-    if (sel === SEC.withdrawManagerAlt) return ok('0x' + w(WM));               // the older getter name reverts, this one answers
+
     if (sel === SEC.perfData) return ok('0x' + w(FEEACC) + w(1000));
     if (sel === SEC.instantFuses) return ok(arr([F.aave]));
     if (sel === SEC.inMarket) { const m = Number(BigInt(arg(0))); const v = (IN_MARKET[block] || {})[m]; return ok('0x' + w(v || 0n)); }
@@ -127,7 +127,9 @@ global.fetch = async (url, init) => {
 (async () => {
   console.log('\nvault markets');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-markets-'));
-  const files = { out: path.join(dir, 'out.json'), history: path.join(dir, 'hist.json'), ipor: path.join(dir, 'ipor.json'), snapshots: path.join(dir, 'snaps.json') };
+  const files = { out: path.join(dir, 'out.json'), history: path.join(dir, 'hist.json'), ipor: path.join(dir, 'ipor.json'), snapshots: path.join(dir, 'snaps.json'), changes: path.join(dir, 'changes.json') };
+  // No getter names the withdraw manager: the governance history does.
+  fs.writeFileSync(files.changes, JSON.stringify({ vaults: { [VAULT]: { contracts: { [WM]: { kind: 'withdraw' } } } } }));
   const now = Date.UTC(2026, 9, 7, 12);
   const today = Math.floor(now / 864e5);
   fs.writeFileSync(files.ipor, JSON.stringify({ vaults: [

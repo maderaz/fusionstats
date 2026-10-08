@@ -47,6 +47,7 @@ const OUT = path.join(ROOT, 'vault-markets.json');
 const HISTORY = path.join(ROOT, 'vault-markets-history.json');
 const IPOR = path.join(ROOT, 'ipor-vaults.json');
 const SNAPSHOTS = path.join(ROOT, 'tvl-snapshots.json');
+const CHANGES = path.join(ROOT, 'vault-changes.json');
 const FLOOR = 10000;
 const DAY = 86400;
 const YEAR = 365 * DAY;
@@ -199,7 +200,9 @@ async function pool(items, n, fn) {
 // ---- One vault --------------------------------------------------------------
 // past: { block, days }, a reading about a month back (a TVL snapshot's), to
 // measure a loop's collateral by.
-async function readVault(call, vaultAddr, past = null) {
+// known: what the governance history knows of the vault (its withdraw
+// manager, which no getter on the vault names).
+async function readVault(call, vaultAddr, past = null, known = {}) {
   const v = vaultAddr.toLowerCase();
   const tryCall = (to, data, block) => call(to, data, block).catch(() => null);
   const [ta, assetHex, capHex, fusesHex, oracleHex] = await Promise.all([
@@ -280,7 +283,7 @@ async function readVault(call, vaultAddr, past = null) {
     const first = async (to, sels) => { for (const s of sels) { const a = live(addr(await tryCall(to, s))); if (a) return a; } return null; };
     const wad = (r) => (r ? Math.round(Number(big(r)) / 1e12) / 1e4 : null);   // a WAD fraction, in percent
     const [access, rewards, withdraw, feeAccount] = await Promise.all([first(v, [SEL.accessManager]), first(v, [SEL.rewardsManager]),
-      first(v, [SEL.withdrawManager, SEL.withdrawManagerAlt]), first(v, [SEL.perfData])]);
+      first(v, [SEL.withdrawManager, SEL.withdrawManagerAlt]).then(a => a || known.withdraw || null), first(v, [SEL.perfData])]);
     const feeManager = feeAccount ? await first(feeAccount, [SEL.feeManager]) : null;
     const [win, rq, wd] = withdraw ? await Promise.all([tryCall(withdraw, SEL.withdrawWindow), tryCall(withdraw, SEL.requestFee), tryCall(withdraw, SEL.withdrawFee)]) : [];
     let depositFee = null;
@@ -433,7 +436,7 @@ function wantedDays(snap, today) {
     .sort((a, b) => b[0] - a[0]).map(([day, s]) => ({ day, block: s.block, price: s.priceUsd }));
 }
 
-async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNAPSHOTS, only = null, now = Date.now() } = {}) {
+async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNAPSHOTS, changes = CHANGES, only = null, now = Date.now() } = {}) {
   const started = Date.now();
   const read = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
   const list = read(ipor);
@@ -442,6 +445,10 @@ async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNA
   const prev = (read(out) || {}).vaults || {};
   const hist = read(history) || { vaults: {} };
   const snaps = (read(snapshots) || {}).vaults || {};
+  // Each vault's withdraw manager, from its governance history (collect-vault-changes.js).
+  const govern = (read(changes) || {}).vaults || {};
+  const { currentWithdraw } = require('./tools/describe-changes.js');
+  const withdrawOf = (a) => (govern[a] ? currentWithdraw(govern[a]) : null);
   const today = Math.floor(now / 1000 / DAY);
   const result = {};
   let failed = 0;
@@ -457,7 +464,7 @@ async function main({ out = OUT, history = HISTORY, ipor = IPOR, snapshots = SNA
         .sort((x, y) => Math.abs(today - x.day - 30) - Math.abs(today - y.day - 30))[0];
       try {
         result[a] = Object.assign({ chain, name: v.name, readAt: new Date(now).toISOString() },
-          await readVault(call, a, month ? { block: month.block, days: today - month.day } : null));
+          await readVault(call, a, month ? { block: month.block, days: today - month.day } : null, { withdraw: withdrawOf(a) }));
       } catch (e) {
         failed++;
         if (prev[a]) result[a] = prev[a];
