@@ -4,7 +4,7 @@
 
 const assert = require('assert');
 const TvlSeries = require('../tvl-series.js');
-const { buildExplorer, buildActions, fileOf, dense, shares } = require('./build-explorer.js');
+const { buildExplorer, buildActions, buildParams, fileOf, dense, shares } = require('./build-explorer.js');
 const RebalanceFlows = require('../rebalance-flows.js');
 
 let passed = 0;
@@ -89,6 +89,24 @@ test('classify: Euler V2 vault tokens, Aave receipts and debt, stables', () => {
   assert.strictEqual(RebalanceFlows.classify({ symbol: 'variableDebtBasWETH' }).protocol, 'Aave');
   assert.deepStrictEqual(RebalanceFlows.classify({ symbol: 'USDC' }), { protocol: 'Stable', kind: 'collateral' });
   assert.strictEqual(RebalanceFlows.classify({ symbol: 'eETH' }).protocol, 'LST');
+});
+
+test('parameters: the readings, and who holds each role now from the history, technical roles left out', () => {
+  const AC = '0x00000000000000000000000000000000000000ac', WM = '0x00000000000000000000000000000000000000e1';
+  const S = '0x00000000000000000000000000000000000005af', K = '0x000000000000000000000000000000000000000b';
+  const grant = (roleId, account, block) => ({ block, index: 0, contract: AC, event: 'RoleGranted', args: { roleId, account } });
+  const st = { complete: true, contracts: { [AC]: { kind: 'access' }, [WM]: { kind: 'withdraw' } }, changes: [
+    grant('1', S, 1), grant('100', S, 1), grant('200', K, 1), grant('200', S, 2), grant('3', A, 1), grant('800', B, 1),
+    { block: 3, index: 0, contract: AC, event: 'RoleRevoked', args: { roleId: '200', account: K } }] };
+  const p = buildParams({ access: AC, oracle: B, feeManager: null, depositFee: 0.2, requestFee: 0.2, withdrawFee: 0.1, withdrawWindow: 86400, instantFuses: 0,
+    permissions: [{ id: 7, key: 'ERC20_VAULT_BALANCE', name: 'Tokens held', fuses: [], subs: [{ a: A, sym: 'WETH' }, { raw: '0x' + 'ab'.repeat(32) }] }] },
+    { cap: 6022.48, readAt: 'r' }, st);
+  assert.deepStrictEqual(p.roles, [['Owner', [S]], ['Atomist', [S]], ['Alpha', [S]]]);
+  assert.strictEqual(p.rolesComplete, true);
+  assert.deepStrictEqual(p.contracts, { access: AC, withdraw: WM, oracle: B });
+  assert.deepStrictEqual(p.permissions[0].subs, [[A, 'WETH'], ['0x' + 'ab'.repeat(32), null]]);
+  assert.deepStrictEqual([p.cap, p.depositFee, p.withdrawWindow], [6022.48, 0.2, 86400]);
+  assert.strictEqual(buildParams({ error: 'x' }, {}, null), null);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ', some FAILED' : ''}`);

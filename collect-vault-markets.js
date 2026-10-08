@@ -71,6 +71,20 @@ const SEL = {
   oracle: '0xa462da02',                // getPriceOracleMiddleware()
   price: '0xb3596f07',                 // getAssetPrice(address)
   substrates: '0x2ede66bc',            // getMarketSubstrates(uint256)
+  // The vault's parameters (the Explorer's Parameters tab).
+  accessManager: '0x978dcd38',         // getAccessManagerAddress()
+  rewardsManager: '0xa81b0b42',        // getRewardsClaimManagerAddress()
+  withdrawManager: '0x42022932',       // getWithdrawManager()
+  withdrawManagerAlt: '0x930df82e',    // getWithdrawManagerAddress()
+  withdrawWindow: '0x78ae0d8a',        // getWithdrawWindow()       (WithdrawManager)
+  requestFee: '0x0d37b537',            // getRequestFee()           (WithdrawManager, WAD)
+  withdrawFee: '0x1540aa89',           // getWithdrawFee()          (WithdrawManager, WAD)
+  perfData: '0x90acbe9c',              // getPerformanceFeeData()   (its account)
+  feeManager: '0xea26266c',            // FEE_MANAGER()             (on that account)
+  depositFee: '0x0de705b5',            // getDepositFee()           (FeeManager, WAD)
+  instantFuses: '0x3d357c40',          // getInstantWithdrawalFuses()
+  redemptionDelay: '0x5f0f55da',       // getRedemptionDelay()      (access manager, seconds)
+  redemptionDelayAlt: '0xfeeb4e6a',    // REDEMPTION_DELAY_IN_SECONDS()
   asset: '0x38d52e0f',                 // asset()
   decimals: '0x313ce567',              // decimals()
   symbol: '0x95d89b41',                // symbol()
@@ -253,8 +267,43 @@ async function readVault(call, vaultAddr, past = null) {
   // The cap is in shares: in assets at the vault's own rate.
   const capShares = capHex ? big(capHex) : null;
   const capAssets = capShares != null && capShares < 2n ** 255n ? big(await tryCall(v, SEL.toAssets + pad(capShares))) : null;
+  const params = await readParams().catch(e => ({ error: String(e.message || e).replace(/https?:\/\/\S+/g, '<url>').slice(0, 80) }));
   return { asset, symbol: sym, decimals: dec, priceUsd: price, totalAssets: round(units(big(ta), dec)),
-    cap: capAssets != null ? round(units(capAssets, dec)) : null, markets };
+    cap: capAssets != null ? round(units(capAssets, dec)) : null, markets, params };
+
+  // -- What the vault may do and who runs it: its managers, its entry and exit
+  //    contributions and withdraw window, and each market's fuses with the
+  //    assets or markets (substrates) granted to them. The roles' holders are
+  //    the governance history's (collect-vault-changes.js).
+  async function readParams() {
+    const live = (a) => (a && /[1-9a-f]/.test(a.slice(2)) ? a : null);
+    const first = async (to, sels) => { for (const s of sels) { const a = live(addr(await tryCall(to, s))); if (a) return a; } return null; };
+    const wad = (r) => (r ? Math.round(Number(big(r)) / 1e12) / 1e4 : null);   // a WAD fraction, in percent
+    const [access, rewards, withdraw, feeAccount] = await Promise.all([first(v, [SEL.accessManager]), first(v, [SEL.rewardsManager]),
+      first(v, [SEL.withdrawManager, SEL.withdrawManagerAlt]), first(v, [SEL.perfData])]);
+    const feeManager = feeAccount ? await first(feeAccount, [SEL.feeManager]) : null;
+    const [win, rq, wd] = withdraw ? await Promise.all([tryCall(withdraw, SEL.withdrawWindow), tryCall(withdraw, SEL.requestFee), tryCall(withdraw, SEL.withdrawFee)]) : [];
+    let depositFee = null;
+    for (const c of [feeManager, feeAccount].filter(Boolean)) { const r = await tryCall(c, SEL.depositFee); if (r) { depositFee = wad(r); break; } }
+    const instant = array(await tryCall(v, SEL.instantFuses));
+    let redemptionDelay = null;
+    if (access) for (const s of [SEL.redemptionDelay, SEL.redemptionDelayAlt]) { const r = await tryCall(access, s); if (r) { redemptionDelay = Number(big(r)); break; } }
+    const byMarket = {};
+    fuses.forEach((f, i) => { const id = ids[i]; if (id != null && id < 10n ** 9n) (byMarket[Number(id)] = byMarket[Number(id)] || []).push(f); });
+    const permIds = [...new Set([...Object.keys(byMarket).map(Number), TOKENS])].sort((a, b) => a - b);
+    const permissions = await pool(permIds, 3, async (id) => {
+      const ws = array(await tryCall(v, SEL.substrates + pad(BigInt(id))));
+      const subs = await pool(ws.slice(0, 40), 4, async (w) => {
+        if (/^0{24}/.test(w) && /[1-9a-f]/.test(w)) { const a = '0x' + w.slice(24); return { a, sym: (await tokenMeta(a)).sym || null }; }
+        return { raw: '0x' + w };
+      });
+      const [key, label] = MARKETS[id] || ['MARKET_' + id, 'Market ' + id];
+      return { id, key, name: label, fuses: byMarket[id] || [], subs, more: Math.max(0, ws.length - 40) };
+    });
+    return { access, rewards, withdraw, oracle, feeManager: feeManager || feeAccount,
+      withdrawWindow: win ? Number(big(win)) : null, requestFee: wad(rq), withdrawFee: wad(wd), depositFee, redemptionDelay,
+      instantFuses: instant.length, permissions };
+  }
 
   // -- A loop's collateral earns its own yield (a staked token's), which its
   //    market does not pay: its price against the token borrowed against it,

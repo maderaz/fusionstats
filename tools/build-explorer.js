@@ -81,7 +81,40 @@ function shares(raw, decimals) {
 }
 const fileOf = (chain, addr) => `${String(chain).toLowerCase()}-${String(addr).toLowerCase()}.json`;
 
-function buildExplorer({ snapshots, holders, holderState, markets, history, fees, deployments }, opts = {}) {
+// The Parameters tab: what the markets collector read of a vault's set-up
+// (its contracts, entry and exit contributions, limits, each market's fuses
+// and substrates) and who holds each role now, replayed from its governance
+// history. The technical roles (a contract of the vault's own, the DAO, the
+// whitelist) are left out, as the IPOR app leaves them.
+const TECH_ROLES = new Set(['0', '3', '4', '5', '6', '7', '400', '500', '601', '800', '18446744073709551615']);
+function buildParams(p, m, st) {
+  if (!p || p.error) return null;
+  const { roleName } = require('./describe-changes.js');
+  const kind = (k) => (st && st.contracts ? (Object.entries(st.contracts).find(([, c]) => c.kind === k) || [])[0] || null : null);
+  const contracts = { access: p.access || kind('access'), withdraw: p.withdraw || kind('withdraw'), oracle: p.oracle || kind('oracle'),
+    rewards: p.rewards || kind('rewards'), fee: p.feeManager || kind('fee') };
+  const out = { readAt: m.readAt || null, cap: m.cap != null ? m.cap : null, depositFee: p.depositFee, requestFee: p.requestFee, withdrawFee: p.withdrawFee,
+    withdrawWindow: p.withdrawWindow, redemptionDelay: p.redemptionDelay != null ? p.redemptionDelay : null, instantFuses: p.instantFuses || 0,
+    contracts: Object.fromEntries(Object.entries(contracts).filter(([, a]) => a)),
+    permissions: (p.permissions || []).map(x => ({ id: x.id, key: x.key, name: x.name, fuses: (x.fuses || []).length,
+      subs: (x.subs || []).map(s => (s.a ? [s.a, s.sym || null] : [s.raw, null])), more: x.more || 0 })) };
+  if (st && Array.isArray(st.changes) && contracts.access) {
+    const held = new Map();
+    for (const ch of st.changes) {
+      if (ch.contract !== contracts.access || !ch.args || ch.args.roleId == null) continue;
+      const id = String(ch.args.roleId), who = String(ch.args.account || '').toLowerCase();
+      if (!held.has(id)) held.set(id, new Set());
+      if (ch.event === 'RoleGranted') held.get(id).add(who);
+      else if (ch.event === 'RoleRevoked' || ch.event === 'RoleRenounced') held.get(id).delete(who);
+    }
+    out.roles = [...held.entries()].filter(([id, s]) => s.size && !TECH_ROLES.has(id))
+      .sort((a, b) => Number(a[0]) - Number(b[0])).map(([id, s]) => [roleName(id), [...s]]);
+    out.rolesComplete = st.complete === true;
+  }
+  return out;
+}
+
+function buildExplorer({ snapshots, holders, holderState, markets, history, fees, deployments, changes }, opts = {}) {
   const out = {};
   const at = (chain, addr) => {
     const k = fileOf(chain, addr);
@@ -122,6 +155,8 @@ function buildExplorer({ snapshots, holders, holderState, markets, history, fees
     if (!m.chain) continue;
     const v = at(m.chain, addr);
     v.markets = { readAt: m.readAt || (markets && markets.readAt) || null, totalAssets: m.totalAssets, cap: m.cap, priceUsd: m.priceUsd, markets: m.markets || [] };
+    const params = buildParams(m.params, m, changes && changes.vaults && changes.vaults[addr.toLowerCase()]);
+    if (params) v.params = params;
   }
   for (const [addr, h] of Object.entries((history && history.vaults) || {})) {
     if (!h.chain) continue;
@@ -195,7 +230,7 @@ function buildActivity(events, opts = {}) {
 function main() {
   const read = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8')); } catch { return null; } };
   const files = buildExplorer({ snapshots: read('tvl-snapshots.json'), holders: read('vault-holders.json'), holderState: read('vault-holders-state.json'),
-    markets: read('vault-markets.json'), history: read('vault-markets-history.json'), fees: read('dao-fees.json'), deployments: read('vault-deployments.json') });
+    markets: read('vault-markets.json'), history: read('vault-markets-history.json'), fees: read('dao-fees.json'), deployments: read('vault-deployments.json'), changes: read('vault-changes.json') });
   // A file is rewritten only when it changed (builtAt alone is no change).
   const write = (dir, name, v) => {
     const body = JSON.stringify(v) + '\n';
@@ -258,4 +293,4 @@ if (require.main === module) {
     activity(write, read);
   } else main();
 }
-module.exports = { buildExplorer, buildActions, buildAdmin, buildActivity, fileOf, dense, shares };
+module.exports = { buildParams, buildExplorer, buildActions, buildAdmin, buildActivity, fileOf, dense, shares };

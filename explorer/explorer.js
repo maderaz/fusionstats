@@ -188,6 +188,7 @@
     figures(null);
     $('perfChart').innerHTML = $('allocChart').innerHTML = '<div class="ui-empty">Loading…</div>';
     holdersPage = 1; actionsPage = 1; admPage = 1; avPage = 1;
+    if (tab === 'params') paramsView();
     if (tab === 'holders') holdersView();
     if (tab === 'activity') activityView();
     if (tab === 'actions') actionsView();
@@ -204,6 +205,7 @@
     const at = file.markets && file.markets.readAt || file.builtAt;
     $('status').innerHTML = at ? 'Updated <b>' + UI.ago(Date.parse(at) / 1000) + '</b>' : '';
     if (tab === 'holders') holdersView();
+    if (tab === 'params') paramsView();
     // A chart drawn while its tab is hidden has no size: drawn when it shows.
     if (tab === 'perf') await Promise.all([drawPerf(), drawAlloc()]);
   }
@@ -211,7 +213,7 @@
   // ---- Tabs: Performance, All Holders, Activity, Curator Action History ----------
   // The tab is kept in the address bar (&tab=holders), so a view can be linked
   // to; switching tabs doesn't add to Back's history.
-  const TABS = ['perf', 'holders', 'activity', 'actions'];
+  const TABS = ['perf', 'params', 'holders', 'activity', 'actions'];
   let tab = 'perf';
   function showTab(t, fromClick) {
     const was = tab;
@@ -221,10 +223,14 @@
       $('tab-' + k).tabIndex = k === tab ? 0 : -1;
       $('pane-' + k).hidden = k !== tab;
     }
+    // On a phone the tabs scroll sideways: the one picked comes into view.
+    const strip = $('tabs'), on = $('tab-' + tab);
+    if (strip.scrollWidth > strip.clientWidth) strip.scrollLeft = on.offsetLeft - strip.offsetLeft - (strip.clientWidth - on.offsetWidth) / 2;
     if (!fromClick) return;
     const u = new URL(location.href);
     if (tab === 'perf') u.searchParams.delete('tab'); else u.searchParams.set('tab', tab);
     history.replaceState(history.state, '', u.pathname + u.search);
+    if (tab === 'params') paramsView();
     if (tab === 'holders') holdersView();
     if (tab === 'activity') activityView();
     if (tab === 'actions') actionsView();
@@ -239,6 +245,66 @@
     showTab(next, true);
     $('tab-' + next).focus();
   });
+
+  // ---- Parameters ---------------------------------------------------------------------------
+  // How the vault is set up, read from the chain (tools/build-explorer.js'
+  // params): its fees and limits, what each market's fuses may touch, who
+  // holds each role, the contracts that run it. The strategy is told on the
+  // IPOR app, which this links to.
+  const EXPLORE = { ethereum: 'https://etherscan.io/address/', base: 'https://basescan.org/address/', arbitrum: 'https://arbiscan.io/address/' };
+  const pct3 = (v) => (v == null ? '—' : v.toFixed(v > 0 && v < 1 ? 3 : 2) + '%');
+  const span = (sec) => {
+    if (sec == null) return '—';
+    if (sec < 60) return sec + ' s';
+    if (sec < 3600) return Math.round(sec / 60) + ' min';
+    if (sec < 86400 * 2) return +(sec / 3600).toFixed(1) + ' h';
+    return +(sec / 86400).toFixed(1) + ' days';
+  };
+  const addrLink = (a) => `<a class="prm-addr" href="/address/?a=${esc(a)}" title="${esc(a)}"><span class="m-hide">${esc(a)}</span><span class="m-show">${esc(shortAddr(a))}</span></a>`;
+  const prmRow = (k, v, cls) => `<div class="prm-row"><span class="k">${k}</span><span class="v${cls ? ' ' + cls : ''}">${v}</span></div>`;
+  function paramsView() {
+    if (!cur) return;
+    const chain = String(cur.chain).toLowerCase();
+    $('prmStrategy').innerHTML = 'Each vault\'s strategy and its prospectus are written up by its curator on the IPOR app. '
+      + `<a href="https://app.ipor.io/fusion/${esc(chain)}/${esc(cur.address.toLowerCase())}" target="_blank" rel="noopener">Read it on the IPOR app ↗</a>`;
+    const empty = (id, text) => { $(id).innerHTML = '<div class="empty-state">' + esc(text) + '</div>'; };
+    if (!file) { ['prmFees', 'prmPerms', 'prmRoles', 'prmContracts'].forEach(id => { $(id).innerHTML = '<div class="ui-empty">Loading…</div>'; }); return; }
+    const p = file.params, fees = file.fees || {};
+    ['prmPermsNote', 'prmRolesNote', 'prmNote'].forEach(id => { $(id).textContent = ''; });
+    if (!p) {
+      $('prmFees').innerHTML = prmRow('Management fee', pct3(fees.mgmt)) + prmRow('Performance fee', pct3(fees.perf));
+      const text = 'Not read yet: a vault\'s set-up is read from the chain every six hours, for every vault above $10K.';
+      empty('prmPerms', text); empty('prmRoles', text); empty('prmContracts', text);
+      return;
+    }
+    const sym = esc(cur.token || '');
+    $('prmFees').innerHTML = prmRow('Management fee', pct3(fees.mgmt)) + prmRow('Performance fee', pct3(fees.perf))
+      + prmRow('Onboarding', pct3(p.depositFee)) + prmRow('Offboarding, scheduled', pct3(p.requestFee)) + prmRow('Offboarding, instant', pct3(p.withdrawFee))
+      + prmRow('Vault size limit', p.cap != null ? amount(p.cap) + ' ' + sym : 'None')
+      + (p.redemptionDelay != null ? prmRow('Redemption delay', span(p.redemptionDelay)) : '')
+      + prmRow('Withdraw window', span(p.withdrawWindow));
+    const base = EXPLORE[chain];
+    const chip = ([a, s]) => (s ? `<a class="prm-chip" href="${base ? base + esc(a) : '#'}" target="_blank" rel="noopener" title="${esc(a)}">${esc(s)}</a>`
+      : /^0x[0-9a-f]{40}$/i.test(a) ? `<a class="prm-chip mono" href="${base ? base + esc(a) : '#'}" target="_blank" rel="noopener" title="${esc(a)}">${esc(shortAddr(a))}</a>`
+      : `<span class="prm-chip mono" title="${esc(a)}">${esc(a.slice(0, 6) + '…' + a.slice(-4))}</span>`);
+    const perms = (p.permissions || []).filter(m => m.fuses || m.subs.length);
+    if (!perms.length) empty('prmPerms', 'No markets: the vault has no fuses yet.');
+    else $('prmPerms').innerHTML = perms.map(m => '<div class="prm-mkt"><div class="prm-mkt-h"><b>' + esc(m.name) + '</b><span>'
+        + (m.fuses ? m.fuses + (m.fuses === 1 ? ' fuse' : ' fuses') : '') + '</span></div>'
+        + (m.subs.length ? '<div class="prm-chips">' + m.subs.map(chip).join('') + (m.more ? `<span class="prm-chip">+${m.more} more</span>` : '') + '</div>' : '')
+        + '</div>').join('');
+    $('prmPermsNote').textContent = 'Each market the vault\'s fuses act in, and the assets, pools or markets granted to it there (its substrates). Tokens held are those it may keep.'
+      + (p.instantFuses ? ' ' + p.instantFuses + (p.instantFuses === 1 ? ' fuse serves' : ' fuses serve') + ' instant withdrawals.' : '');
+    if (!p.roles) empty('prmRoles', 'Being read: who holds each role is read from the vault\'s access manager history, from its deployment on.');
+    else if (!p.roles.length) empty('prmRoles', 'No roles found.');
+    else $('prmRoles').innerHTML = p.roles.map(([name, who]) => prmRow(esc(name), who.map(addrLink).join(''), 'addrs')).join('');
+    if (p.roles && !p.rolesComplete) $('prmRolesNote').textContent = 'Still being read back: the vault\'s earlier role changes may change this.';
+    const NAMES = { access: 'Access manager', withdraw: 'Withdraw manager', oracle: 'Price oracle', rewards: 'Rewards manager', fee: 'Fee manager' };
+    const cs = Object.entries(p.contracts || {});
+    if (!cs.length) empty('prmContracts', 'Not read yet.');
+    else $('prmContracts').innerHTML = cs.map(([k, a]) => prmRow(NAMES[k] || k, addrLink(a), 'addrs')).join('');
+    $('prmNote').textContent = 'Read from the chain' + (p.readAt ? ' ' + UI.ago(Date.parse(p.readAt) / 1000) : '') + '. Fees are a share of the gain (performance), a year\'s share of the assets (management), or a share of what comes in or goes out.';
+  }
 
   // ---- All holders ------------------------------------------------------------------------
   // Every holder, largest first (tools/build-explorer.js, from the holders

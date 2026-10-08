@@ -169,6 +169,28 @@
     .xp-tab .w-mid, .xp-tab .w-short { display: none; }
     .xp-pane > .ui-section:first-child { border-top: none; }
 
+    /* Parameters: label and value a row; a market's fuses and what they may
+       touch as chips; a role's holders one under another. */
+    .prm-text { margin: 0; max-width: 72ch; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+    .prm-text a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+    .prm-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .prm-row:last-child { border-bottom: none; }
+    .prm-row .k { color: var(--text-2); white-space: nowrap; }
+    .prm-row .v { text-align: right; white-space: nowrap; color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+    .prm-row .v.addrs { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-weight: 400; }
+    .prm-addr { font: 13px var(--mono); color: var(--text); text-decoration: none; }
+    .prm-addr:hover { color: var(--accent); }
+    .prm-mkt { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .prm-mkt:last-child { border-bottom: none; }
+    .prm-mkt-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; white-space: nowrap; }
+    .prm-mkt-h b { font-weight: 600; font-size: 14.5px; }
+    .prm-mkt-h span { color: var(--text-3); font-size: 13px; }
+    .prm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .prm-chip { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 7px;
+      background: var(--bg-subtle); color: var(--text-2); font-size: 12.5px; white-space: nowrap; text-decoration: none; }
+    a.prm-chip:hover { color: var(--accent); }
+    .prm-chip.mono { font-family: var(--mono); font-size: 12px; }
+
     /* All holders: a row a holder, largest first. */
     #holders td.n, #holders th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
     #holders td.rk { width: 44px; color: var(--text-3); font-variant-numeric: tabular-nums; }
@@ -247,7 +269,10 @@
     }
     /* Four tabs on a phone: their shortest words. */
     @container (max-width: 520px) {
-      .xp-tabs { gap: 18px; }
+      .xp-tabs { gap: 18px; overflow-x: auto; scrollbar-width: none; }
+      .xp-tabs::-webkit-scrollbar { display: none; }
+      .xp-tab { flex-shrink: 0; }
+      .xp-tab[aria-selected="true"]::after { bottom: 0; }
       .xp-tab { font-size: 14px; }
       .xp-tab .w-mid.h { display: none; }
       .xp-tab .w-short { display: inline; }
@@ -329,6 +354,7 @@
       <!-- A vault's three views. -->
       <div class="xp-tabs" id="tabs" role="tablist" aria-label="This vault">
         <button type="button" class="xp-tab" role="tab" id="tab-perf" data-tab="perf" aria-controls="pane-perf" aria-selected="true">Performance</button>
+        <button type="button" class="xp-tab" role="tab" id="tab-params" data-tab="params" aria-controls="pane-params" aria-selected="false" tabindex="-1">Parameters</button>
         <button type="button" class="xp-tab" role="tab" id="tab-holders" data-tab="holders" aria-controls="pane-holders" aria-selected="false" tabindex="-1"><span class="w-long">All Holders</span><span class="w-mid h">All Holders</span><span class="w-short">Holders</span></button>
         <button type="button" class="xp-tab" role="tab" id="tab-activity" data-tab="activity" aria-controls="pane-activity" aria-selected="false" tabindex="-1">Activity</button>
         <button type="button" class="xp-tab" role="tab" id="tab-actions" data-tab="actions" aria-controls="pane-actions" aria-selected="false" tabindex="-1"><span class="w-long">Curator Action History</span><span class="w-mid h">Curator Actions</span><span class="w-short">Curator</span></button>
@@ -425,6 +451,32 @@
         <summary>Methodology</summary>
         <div>The vault list, its APY and TVL now are IPOR's (<code>ipor-vaults.json</code>). The history is the vault's own: its TVL and share price at a block a day (<code>tvl-snapshots.json</code>), and the APY drawn from the share price over the week before each day, a year's worth. <b>Markets</b> are read on-chain every six hours (<code>collect-vault-markets.js</code>): each market's balance as the vault keeps it (<code>totalAssetsInMarket</code>), and in Aave V3, Morpho and Euler V2 each position's supply, collateral and debt as their balance fuses read them, at the rates those markets quote. A loop's collateral (a staked token such as cbETH) earns its own yield instead: its price against the token borrowed against it, now and about a month back, a year's worth; where there is nothing to measure it by, its APY is left empty, and so is the market's net APY. <b>Total value managed</b> is everything in the markets, borrowed-for included; <b>leverage</b> is that over TVL. <b>Historical allocation</b> is each market's balance at the TVL snapshots' blocks, in dollars at that day's price. <b>Capacity</b> is the vault's supply cap (<code>getTotalSupplyCap</code>, in shares) in its asset. The curator and the category are read from the vault's name.</div>
       </details>
+      </div>
+
+      <div class="xp-pane" id="pane-params" role="tabpanel" aria-labelledby="tab-params" hidden>
+        <section class="ui-section" id="prmStrategySec">
+          <div class="ui-head"><h2>Strategy</h2></div>
+          <p class="prm-text" id="prmStrategy"></p>
+        </section>
+        <section class="ui-section" id="prmFeesSec">
+          <div class="ui-head"><h2>Fees and limits</h2></div>
+          <div class="prm-list" id="prmFees"></div>
+        </section>
+        <section class="ui-section" id="prmPermsSec">
+          <div class="ui-head"><h2>Permissions</h2></div>
+          <div id="prmPerms"></div>
+          <p class="chart-note" id="prmPermsNote"></p>
+        </section>
+        <section class="ui-section" id="prmRolesSec">
+          <div class="ui-head"><h2>Access roles</h2></div>
+          <div class="prm-list" id="prmRoles"></div>
+          <p class="chart-note" id="prmRolesNote"></p>
+        </section>
+        <section class="ui-section" id="prmContractsSec">
+          <div class="ui-head"><h2>Contracts</h2></div>
+          <div class="prm-list" id="prmContracts"></div>
+          <p class="chart-note" id="prmNote"></p>
+        </section>
       </div>
 
       <div class="xp-pane" id="pane-holders" role="tabpanel" aria-labelledby="tab-holders" hidden>

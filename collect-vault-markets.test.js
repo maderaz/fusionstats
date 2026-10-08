@@ -36,6 +36,7 @@ const IN_MARKET = { latest: { 1: 30n * E18, 14: 10n * E18, 11: 5n * E18, 7: 2n *
 // Euler: substrate word = vault address << 96 | isCollateral << 88 | canBorrow << 80 | subAccount << 72.
 const EULER_SUB = '0x' + EV.slice(2) + '01' + '00' + '03' + '0'.repeat(18);
 const SEC = C.SEL;
+const ACCESS = A(0xac), WM = A(0xe1), FEEACC = A(0xfa), FM = A(0xfb);
 const calls = [];
 
 global.fetch = async (url, init) => {
@@ -52,6 +53,10 @@ global.fetch = async (url, init) => {
     if (sel === SEC.toAssets) return ok('0x' + w(BigInt(arg(0)) / 100n));       // a share is 1/100 of an asset unit
     if (sel === SEC.getFuses) return ok(arr(Object.values(F)));
     if (sel === SEC.oracle) return ok('0x' + w(ORACLE));
+    if (sel === SEC.accessManager) return ok('0x' + w(ACCESS));
+    if (sel === SEC.withdrawManagerAlt) return ok('0x' + w(WM));               // the older getter name reverts, this one answers
+    if (sel === SEC.perfData) return ok('0x' + w(FEEACC) + w(1000));
+    if (sel === SEC.instantFuses) return ok(arr([F.aave]));
     if (sel === SEC.inMarket) { const m = Number(BigInt(arg(0))); const v = (IN_MARKET[block] || {})[m]; return ok('0x' + w(v || 0n)); }
     if (sel === SEC.substrates) {
       const m = Number(BigInt(arg(0)));
@@ -62,6 +67,11 @@ global.fetch = async (url, init) => {
       return ok(arr([]));
     }
   }
+  if (to === WM && sel === SEC.withdrawWindow) return ok('0x' + w(86400));
+  if (to === WM && sel === SEC.requestFee) return ok('0x' + w(2n * 10n ** 15n));
+  if (to === WM && sel === SEC.withdrawFee) return ok('0x' + w(10n ** 15n));
+  if (to === FEEACC && sel === SEC.feeManager) return ok('0x' + w(FM));
+  if (to === FM && sel === SEC.depositFee) return ok('0x' + w(2n * 10n ** 15n));
   if (sel === SEC.marketId) {
     const ids = { [F.aave]: 1, [F.morpho]: 14, [F.euler]: 11, [F.swap]: 12, [F.erc4626]: 100001 };
     if (to === F.zero) return ok('0x' + 'f'.repeat(64));                          // ZERO_BALANCE_MARKET
@@ -147,6 +157,16 @@ global.fetch = async (url, init) => {
     assert.deepStrictEqual([m(1).name, m(7).name, m(11).name, m(14).name], ['Aave V3', 'Tokens held', 'Euler V2', 'Morpho']);
     assert.strictEqual(m(1).net, 30);
     assert.strictEqual(m(1).netUsd, 75000);
+  });
+  await test('parameters: managers, entry and exit contributions, the withdraw window, each market\'s fuses and substrates', () => {
+    const p = v.params;
+    assert.deepStrictEqual([p.access, p.withdraw, p.oracle, p.feeManager], [ACCESS, WM, ORACLE, FM]);
+    assert.deepStrictEqual([p.withdrawWindow, p.requestFee, p.withdrawFee, p.depositFee, p.instantFuses], [86400, 0.2, 0.1, 0.2, 1]);
+    const aave = p.permissions.find(x => x.id === 1);
+    assert.deepStrictEqual(aave.fuses, [F.aave]);
+    assert.deepStrictEqual(aave.subs, [{ a: WETH, sym: 'WETH' }, { a: CBETH, sym: 'cbETH' }]);
+    assert.deepStrictEqual(p.permissions.find(x => x.id === 14).subs, [{ raw: '0x' + MID }]);
+    assert.ok(p.permissions.some(x => x.id === 7), 'the tokens it may hold');
   });
   await test('an ERC-4626 market takes its vault\'s own name', () => {
     assert.strictEqual(m(100001).name, 'Gauntlet WETH Prime');
