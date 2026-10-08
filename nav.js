@@ -369,31 +369,29 @@
       .fnav-topbar .fnav-brand { padding: 0; }
       .fnav-topbar .fnav-mark { width: 22px; height: 22px; }
       .fnav-topbar .fnav-word { font-size: 16.5px; }
-      /* The page you're on, at the right: its icon, name and chevron, and a
-         tap opens the pages menu (More's sheet). The pill shows only while
-         it is pressed or the menu is open. */
-      .fnav-here {
-        display: flex; align-items: center; gap: 6px;
-        min-width: 0; height: 34px; margin: 0 -4px 0 auto; padding: 0 10px 0 11px;
-        border: 0; border-radius: 999px;
-        background: transparent;
-        color: var(--accent, #8429FF);
-        font: 600 14px/1 var(--fnav-font);
-        letter-spacing: -0.01em;
-        white-space: nowrap;
-        cursor: pointer;
-        -webkit-tap-highlight-color: transparent;
-        transition: background 0.15s, transform 0.12s;
+      /* The page's name is the bar's, beside the mark (the mark goes home);
+         at the right, how long ago the page's data was updated, a tap
+         refreshing it (the page's own refresh where it has one). The pages
+         are in the tab bar and its More sheet. */
+      .fnav-topbar .fnav-word { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+      .fnav-topbar .fnav-brand { min-width: 0; }
+      .fnav-upd {
+        display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+        height: 32px; margin: 0 -6px 0 auto; padding: 0 6px;
+        border: 0; border-radius: 8px; background: transparent;
+        color: var(--text-3, #9A9AA6); font: 500 13px/1 var(--fnav-font); white-space: nowrap;
+        cursor: pointer; -webkit-tap-highlight-color: transparent;
       }
-      .fnav-here .fnav-ic, .fnav-here .fnav-ic .a { color: inherit; }
-      .fnav-here .fnav-chev { margin-left: 2px; transition: transform 0.2s ease; }
-      .fnav-here[aria-expanded="true"] .fnav-chev { transform: rotate(180deg); }
-      .fnav-here[aria-expanded="true"], .fnav-here:active { background: var(--accent-bg, rgba(132, 41, 255, 0.10)); }
-      .fnav-here:active { transform: scale(0.97); }
-      .fnav-here:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 2px; }
-      .fnav-here .fl-n { display: none; }
-      .fnav-here.short .fl-w { display: none; }
-      .fnav-here.short .fl-n { display: inline; }
+      .fnav-upd[hidden] { display: none; }
+      .fnav-upd svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .fnav-upd span { color: var(--text-2, #5E5E6B); font-variant-numeric: tabular-nums; }
+      .fnav-upd:active { background: var(--bg-hover, rgba(0, 0, 0, 0.05)); }
+      .fnav-upd:focus-visible { outline: 2px solid var(--accent, #8429FF); outline-offset: 1px; }
+      .fnav-upd.spin svg { animation: fnav-spin 0.9s linear infinite; }
+      @keyframes fnav-spin { to { transform: rotate(360deg); } }
+      /* What the bar now says, the page's own line no longer repeats. */
+      .fnav-moved { display: none !important; }
+      .fnav-bare { min-height: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; }
       /* The page's own heading says the same: it steps aside, kept for
          screen readers and search. */
       .fnav-titled {
@@ -633,10 +631,8 @@
     wrap.id = 'fnav-root';
     wrap.innerHTML = `
       <header class="fnav-topbar">
-        <a class="fnav-brand" href="/" aria-label="Fusion Ecosystem home">${LOGO}</a>
-        ${HERE ? `<button type="button" class="fnav-here" id="fnav-here" aria-expanded="false" aria-controls="fnav-sheet" aria-haspopup="dialog"`
-          + ` aria-label="${HERE.label}, the page you're on: open the pages menu">${icon(HERE.icon)}`
-          + `<span>${HERE.short ? `<span class="fl-w">${HERE.label}</span><span class="fl-n">${HERE.short}</span>` : HERE.label}</span>${CHEVRON}</button>` : ''}
+        <a class="fnav-brand" href="/" aria-label="Fusion Ecosystem home">${MARK}<span class="fnav-word">${HERE ? HERE.label : 'Ecosystem'}</span></a>
+        <button type="button" class="fnav-upd" id="fnav-upd" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.25 8a5.25 5.25 0 1 1-1.54-3.71"/><path d="M13.4 2.4v2.9h-2.9"/></svg><span></span></button>
       </header>
       <aside class="fnav-sidebar" id="fnav-aside">
         <a class="fnav-brand" href="/" aria-label="Fusion Ecosystem home">${LOGO}</a>
@@ -750,17 +746,56 @@
     sheet.addEventListener('touchend', endDrag);
     sheet.addEventListener('touchcancel', endDrag);
 
-    if (HERE) {
-      // A long name takes its short form when the bar runs out of room.
-      const bar = wrap.querySelector('.fnav-topbar'), brand = bar.querySelector('.fnav-brand');
-      const fit = () => {
-        if (!HERE.short || !bar.offsetWidth) return;
-        hereBtn.classList.remove('short');
-        if (hereBtn.getBoundingClientRect().left < brand.getBoundingClientRect().right + 12) hereBtn.classList.add('short');
+    // The bar's "updated" at the right: the page's own "Updated … ago" (Key
+    // Metrics' #lastUpdated, Stocks' #updated, the others' #status), kept
+    // current and said short (39m, 2h, 3d); on a phone the page's line hides.
+    (function updated() {
+      const btn = document.getElementById('fnav-upd'), out = btn.querySelector('span');
+      const UNIT = { s: 's', sec: 's', m: 'm', min: 'm', mins: 'm', minute: 'm', minutes: 'm', h: 'h', hr: 'h', hrs: 'h', hour: 'h', hours: 'h', d: 'd', day: 'd', days: 'd' };
+      const short = (t) => {
+        if (/just now/i.test(t)) return 'now';
+        const m = /(\d+)\s*(s|sec|mins?|minutes?|m|hrs?|hours?|h|days?|d)\b/i.exec(t);
+        return m ? m[1] + UNIT[m[2].toLowerCase()] + ' ago' : '';
       };
-      fit();
-      if (window.ResizeObserver) new ResizeObserver(fit).observe(bar);
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+      let src = null, line = null;
+      const read = () => {
+        src = document.getElementById('lastUpdated') || document.getElementById('updated') || document.getElementById('status');
+        const text = src ? src.textContent.replace(/\s+/g, ' ').trim() : '';
+        const s = /^updated\b|ago$/i.test(text) ? short(text) : '';
+        // The line to hide: Key Metrics' whole meta row (its vault count goes
+        // with it), else the element itself.
+        const was = line;
+        line = s && src ? (src.closest('.mast-meta') || src) : null;
+        if (was && was !== line) was.classList.remove('fnav-moved');
+        if (line) line.classList.add('fnav-moved');
+        if (out.textContent !== s) out.textContent = s;   // only on a change: the watcher sees its own writes
+        // A page header with nothing left to show on a phone (its title in
+        // the bar, its "updated" too) gives up its room and its line, so the
+        // page starts right under the bar.
+        const head = document.querySelector('.ui-masthead, header.masthead');
+        if (head) {
+          const shown = [...head.querySelectorAll('*')].some(e => !e.children.length && e.getClientRects().length
+            && !e.closest('.fnav-titled, .fnav-moved') && (e.textContent.trim() || /^(IMG|SVG|INPUT|BUTTON)$/i.test(e.tagName)));
+          head.classList.toggle('fnav-bare', !shown);
+        }
+        btn.hidden = !s;
+        btn.setAttribute('aria-label', s ? 'Updated ' + s + ': refresh' : 'Refresh');
+      };
+      read();
+      // Again once the bar has taken the page's title (below, at load).
+      setTimeout(read, 0);
+      new MutationObserver(read).observe(document.body, { childList: true, subtree: true, characterData: true });
+      btn.addEventListener('click', () => {
+        const own = document.getElementById('refreshBtn');
+        if (own && !own.hidden && !own.disabled) {
+          btn.classList.add('spin');
+          own.click();
+          setTimeout(() => btn.classList.remove('spin'), 1500);
+        } else location.reload();
+      });
+    })();
+
+    if (HERE) {
       // The page's heading, when it names the page: on a phone the bar says it.
       // Watched, as a page may change it (a vault's name on the Explorer).
       const same = (t) => t.replace(/\s+/g, ' ').trim().toLowerCase() === HERE.label.toLowerCase();
