@@ -897,8 +897,8 @@
         showlegend: true,
         legend: { orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', font: { size: 11 }, traceorder: 'normal' },
         xaxis: { type: 'date', showgrid: false, tickfont: { size: 11 }, showspikes: false },
-        yaxis: { tickformat: '$~s', gridcolor: routeColor('grid'), gridwidth: 1, showspikes: false,
-                 zeroline: true, zerolinecolor: routeColor('zero'), zerolinewidth: 1, tickfont: { size: 11 } },
+        yaxis: { tickformat: '$~s', showgrid: false, showspikes: false,
+                 zeroline: false, tickfont: { size: 11 } },
       };
       const fitted = FusionChart.fit(layout, traces);
       if (FusionChart.compact()) fitted.margin.t = 34;   // the key sits above the plot

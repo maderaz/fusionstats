@@ -25,7 +25,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p.file), 'utf8');
 
 console.log('\nPage names');
 test('every page in the side menu is in tools/pages.js, by the same name, and no other', () => {
-  assert.ok(NAV.length >= 15, 'read ' + NAV.length + ' pages from nav.js');
+  assert.ok(NAV.length >= 10, 'read ' + NAV.length + ' pages from nav.js');
   assert.deepStrictEqual(PAGES.map(p => [p.path, p.name]), NAV.map(p => [p.path, p.name]));
 });
 test('each page\'s <h1> is its name', () => {

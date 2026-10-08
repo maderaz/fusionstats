@@ -111,7 +111,7 @@
       plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
       font: { family: 'Geist, -apple-system, sans-serif', color: forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B'), size: 12 },
       xaxis: Object.assign(xaxis, { showgrid: false, ticks: 'outside', ticklen: 6, tickcolor: 'rgba(0,0,0,0)', showline: false }),
-      yaxis: { tickformat: '$,.2~s', rangemode: 'tozero', showgrid: true, gridcolor: forExport ? '#E5E5EA' : cssVar('--line', '#EEE'), griddash: '4px,8px', zeroline: false },
+      yaxis: { tickformat: '$,.2~s', rangemode: 'tozero', showgrid: false, zeroline: false },
       showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
     };
     return { traces, layout };

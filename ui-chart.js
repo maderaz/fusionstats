@@ -158,8 +158,8 @@
       const ax = out[k];
       Object.assign(ax, {
         ticks: '', ticklen: 0, showline: false, zeroline: false, layer: 'below traces', showspikes: false,
-        // Faint dashed rules at the labelled levels, under everything.
-        showgrid: true, gridcolor: cssVar('--line', 'rgba(127, 127, 127, 0.16)'), griddash: '4px,8px', gridwidth: 1,
+        // No rules across the plot: the dot grid behind it is the scale cue.
+        showgrid: false,
         tickfont: Object.assign({}, ax.tickfont, { size: M.font, color: muted }),
         tickformat: trim(ax.tickformat),
       }, phone ? {
@@ -184,8 +184,6 @@
         const r = niceRange(lo, hi);
         Object.assign(ax, { range: [r.a, r.b], autorange: false, tickmode: 'linear', tick0: r.a, dtick: r.step });
         delete ax.nticks;
-        // A series that crosses zero keeps a quiet zero line.
-        if (r.a < 0 && r.b > 0) Object.assign(ax, { zeroline: true, zerolinecolor: cssVar('--line-strong', 'rgba(127, 127, 127, 0.3)'), zerolinewidth: 1 });
       } else if (!ax.nticks && !ax.dtick && !ax.tickvals) ax.nticks = 5;
     }
     return out;

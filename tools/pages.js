@@ -39,20 +39,8 @@ const PAGES = [
     description: 'How much of all Morpho lending on Ethereum is borrowed by Fusion vaults: the share now, over time, and vault by vault.' },
   { path: '/monitor', file: 'monitor/index.html', name: 'Monitor', card: 'monitor',
     description: 'Each Fusion vault\'s share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.' },
-  { path: '/tvl', file: 'tvl/index.html', name: 'TVL', card: 'tvl',
-    description: 'Total value locked across Fusion vaults, by network and in total, rebuilt day by day from on-chain snapshots.' },
-  { path: '/address', file: 'address/index.html', name: 'Address', card: 'address',
-    description: 'Any wallet\'s or vault\'s activity in Fusion vaults: flows, TVL, holders, share price, where deposits come from and how a vault rebalances.' },
   { path: '/spark', file: 'spark/index.html', name: 'Spark', card: 'spark',
     description: 'The IPOR stETH vault\'s looping position on SparkLend\'s wstETH market, read live: supplied, borrowed, health factor, leverage, and its rank among the market\'s suppliers.' },
-  { path: '/rebalance-methodology', file: 'rebalance-methodology/index.html', name: 'Rebalance Docs', card: 'rebalance-docs',
-    description: 'How the per-vault Rebalance Activity is read on-chain, classified, priced and summed, and what would change in a first-party implementation.' },
-  { path: '/logs', file: 'logs/index.html', name: 'Logs', card: 'logs',
-    description: 'Each run of the Fusion Stats collector: what it read, how long it took, and what went wrong.' },
-  { path: '/video', file: 'video/index.html', name: 'Video', card: 'video',
-    description: 'An 18-second storyboard for Fusion: seven keyframes, square, white with purple gradients.' },
-  { path: '/socials', file: 'socials/index.html', name: 'Socials', card: 'socials',
-    description: 'Branded 3D cube images for social posts, sized for each network.' },
 ];
 
 // Whether search engines may list the site. Off for now: every page says

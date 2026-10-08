@@ -34,14 +34,10 @@
       { href: '/dominance',             label: 'Dominance',      icon: 'dominance' },
     ] },
     { label: 'Tools', folds: true, pages: [
+      // TVL, Address, Rebalance Docs, Logs, Video and Socials are out of the
+      // menu; their pages still answer at their addresses.
       { href: '/monitor',               label: 'Monitor',        icon: 'monitor' },
-      { href: '/tvl',                   label: 'TVL',            icon: 'tvl' },
-      { href: '/address',               label: 'Address',        icon: 'address' },
       { href: '/spark',                 label: 'Spark',          icon: 'spark' },
-      { href: '/rebalance-methodology', label: 'Rebalance Docs', icon: 'docs', short: 'Rebalance' },
-      { href: '/logs',                  label: 'Logs',           icon: 'logs' },
-      { href: '/video',                 label: 'Video',          icon: 'video' },
-      { href: '/socials',               label: 'Socials',        icon: 'socials' },
     ] },
   ];
 
@@ -441,12 +437,6 @@
       .fnav-tab:active .fnav-pill { transform: scale(0.94); }
       .fnav-tab:focus-visible { outline: none; }
       .fnav-tab:focus-visible .fnav-pill { box-shadow: 0 0 0 2px var(--accent, #8429FF); }
-      .fnav-tab .fnav-dot {
-        position: absolute; top: 8px; left: calc(50% + 13px);
-        width: 6px; height: 6px; border-radius: 50%;
-        background: var(--accent, #8429FF);
-        box-shadow: 0 0 0 2px var(--surface, #fff);
-      }
 
       /* More: a sheet that rises from behind the tab bar. */
       .fnav-sheet-scrim {
@@ -574,8 +564,11 @@
   // Tab bar and More sheet (phone and tablet).
   const pill = (name) => `<span class="fnav-pill">${icon(name)}</span>`;
   const inMore = MORE.some(g => g.pages.some(p => isActive(p.href)));
-  const tabs = KEY.map(p => `<a class="fnav-tab fnav-key${isActive(p.href) ? ' active' : ''}" href="${p.href}"${here(p)}>`
-      + `${pill(p.icon)}${p.badge ? '<span class="fnav-dot" aria-hidden="true"></span>' : ''}<span>${p.label}</span></a>`).join('')
+  // The tab bar puts Explorer before Stocks (the side menu keeps Stocks first).
+  const TAB_ORDER = ['/', '/explorer', '/stocks'];
+  const keyTabs = KEY.slice().sort((a, b) => TAB_ORDER.indexOf(a.href) - TAB_ORDER.indexOf(b.href));
+  const tabs = keyTabs.map(p => `<a class="fnav-tab fnav-key${isActive(p.href) ? ' active' : ''}" href="${p.href}"${here(p)}>`
+      + `${pill(p.icon)}<span>${p.label}</span></a>`).join('')
     + `<button type="button" class="fnav-tab fnav-more${inMore ? ' active' : ''}" id="fnav-more" aria-expanded="false"`
     + ` aria-controls="fnav-sheet" aria-haspopup="dialog">${pill('more')}<span>More</span></button>`;
   const SUBS = KEY.filter(p => p.sub).map(p => ({ label: p.label, pages: p.sub }));

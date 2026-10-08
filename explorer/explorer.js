@@ -726,7 +726,7 @@
     plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
     font: { family: 'Geist, -apple-system, sans-serif', color: forExport ? '#5E5E6B' : cssVar('--text-2', '#5E5E6B'), size: 12 },
     xaxis: Object.assign({ type: 'date', showgrid: false }, forExport ? { tickformat: range === '30' || range === '90' ? '%b %-d' : "%b '%y", nticks: 6, ticks: 'outside', ticklen: 6, tickcolor: 'rgba(0,0,0,0)' } : {}),
-    yaxis: { showgrid: true, zeroline: false, gridcolor: forExport ? '#E5E5EA' : undefined, griddash: forExport ? '4px,8px' : undefined },
+    yaxis: { showgrid: false, zeroline: false },
     showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false,
   });
   async function ready(gd) {
