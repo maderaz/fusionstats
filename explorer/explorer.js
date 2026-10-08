@@ -784,6 +784,14 @@
     try { await plotlyReady; return true; } catch { gd.innerHTML = '<div class="ui-empty">The chart library (cdn.plot.ly) did not load.</div>'; return false; }
   }
   const empty = (gd, text) => { if (window.Plotly) Plotly.purge(gd); gd.innerHTML = '<div class="empty-state">' + esc(text) + '</div>'; };
+  // Draw into a chart box: Plotly.react where a plot is live in it, a fresh
+  // Plotly.newPlot where it is not. A box empty() has cleared (a vault's page
+  // opened before its file arrived, or one with nothing to draw) has lost
+  // Plotly's own nodes, and react there drew the dates but no line and no
+  // axis: every vault opened after the first.
+  const plot = (gd, data, layout) => (gd.querySelector(':scope > .plot-container')
+    ? Plotly.react(gd, data, layout, CONFIG)
+    : (Plotly.purge(gd), gd.innerHTML = '', Plotly.newPlot(gd, data, layout, CONFIG)));
 
   // Performance: the APY the share price made over each week before a day
   // (a year's worth), the share price, or the TVL.
@@ -833,7 +841,7 @@
     if (!f) return empty(gd, file && file.days ? 'Not enough history in this range yet.' : 'No history yet: the vault\'s first daily readings fill this in.');
     if (!(await ready(gd))) return;
     gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
-    await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(f.traces)), FusionChart.fit(f.layout, f.traces), CONFIG);
+    await plot(gd, FusionChart.quiet(FusionChart.soft(f.traces)), FusionChart.fit(f.layout, f.traces));
     FusionChart.glide(gd, (p) => {
       const y = p[0].y;
       const val = perfView === 'apy' ? pctTxt(y) : perfView === 'sp' ? y.toFixed(6) + ' ' + esc(cur.token) : inAsset() ? amount(y) + ' ' + esc(cur.token) : usd(y);
@@ -895,7 +903,7 @@
     if (!(await ready(gd))) return;
     gd.querySelectorAll(':scope > .empty-state, :scope > .ui-empty').forEach(n => n.remove());
     $('allocKey').innerHTML = f.ids.map((id, k) => `<span><i style="background:${f.pal[k % f.pal.length]}"></i>${esc(f.name(id))}</span>`).join('');
-    await Plotly.react(gd, FusionChart.quiet(f.traces), FusionChart.fit(f.layout, f.traces), CONFIG);
+    await plot(gd, FusionChart.quiet(f.traces), FusionChart.fit(f.layout, f.traces));
     FusionChart.glide(gd, (pts) => {
       const total = pts.reduce((s, p) => s + (p.y || 0), 0);
       return FusionChart.when(pts[0].x) + pts.filter(p => p.y > 0).map(p => FusionChart.row(p.data.fillcolor, p.data.name, usd(p.y))).join('')
