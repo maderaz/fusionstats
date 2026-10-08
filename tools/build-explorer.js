@@ -98,6 +98,16 @@ function buildParams(p, m, st) {
     contracts: Object.fromEntries(Object.entries(contracts).filter(([, a]) => a)),
     permissions: (p.permissions || []).map(x => ({ id: x.id, key: x.key, name: x.name, fuses: (x.fuses || []).length,
       subs: (x.subs || []).map(s => (s.a ? [s.a, s.sym || null] : [s.raw, null])), more: x.more || 0 })) };
+  // The withdraw manager's settings, as its last change set them, where the
+  // chain wasn't asked (or didn't answer).
+  if (st && Array.isArray(st.changes) && contracts.withdraw) {
+    const last = (ev) => { for (let i = st.changes.length - 1; i >= 0; i--) { const c = st.changes[i]; if (c.event === ev && c.contract === contracts.withdraw) return c.args; } return null; };
+    const fee = (a) => (a && a.fee != null ? Math.round(Number(BigInt(a.fee)) / 1e12) / 1e4 : null);
+    const w = last('WithdrawWindowLengthUpdated');
+    if (out.withdrawWindow == null && w) out.withdrawWindow = Number(w.withdrawWindowLength);
+    if (out.requestFee == null) out.requestFee = fee(last('RequestFeeUpdated'));
+    if (out.withdrawFee == null) out.withdrawFee = fee(last('WithdrawFeeUpdated'));
+  }
   if (st && Array.isArray(st.changes) && contracts.access) {
     const held = new Map();
     for (const ch of st.changes) {

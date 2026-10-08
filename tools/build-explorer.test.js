@@ -107,6 +107,13 @@ test('parameters: the readings, and who holds each role now from the history, te
   assert.deepStrictEqual(p.permissions[0].subs, [[A, 'WETH'], ['0x' + 'ab'.repeat(32), null]]);
   assert.deepStrictEqual([p.cap, p.depositFee, p.withdrawWindow], [6022.48, 0.2, 86400]);
   assert.strictEqual(buildParams({ error: 'x' }, {}, null), null);
+  // Not read from the chain: the withdraw manager's last changes say.
+  const st2 = { contracts: { [WM]: { kind: 'withdraw' } }, changes: [
+    { contract: WM, event: 'WithdrawWindowLengthUpdated', args: { withdrawWindowLength: '86400' } },
+    { contract: WM, event: 'RequestFeeUpdated', args: { fee: '2000000000000000' } },
+    { contract: WM, event: 'WithdrawFeeUpdated', args: { fee: '1000000000000000' } }] };
+  const q = buildParams({ permissions: [] }, {}, st2);
+  assert.deepStrictEqual([q.withdrawWindow, q.requestFee, q.withdrawFee, q.contracts.withdraw], [86400, 0.2, 0.1, WM]);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ', some FAILED' : ''}`);
