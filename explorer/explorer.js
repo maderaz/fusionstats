@@ -65,6 +65,19 @@
   const row = (v, i, pick) => `<a class="xp-opt vault-row"${pick ? '' : ` role="option" id="xp-o${i}" data-i="${i}"`} href="${hrefOf(v)}">${mark(v.token)}`
     + `<span class="nm">${esc(v.name)}</span><span class="nt">${chainMark(v.chain)}${v.tvl >= 1 ? usd(v.tvl) : '—'}</span></a>`;
   const hrefOf = (v) => '/explorer/?v=' + v.address.toLowerCase() + '&c=' + encodeURIComponent(v.chain);
+  // The start page's largest vaults: a thin row each, its asset, name, total
+  // value managed (explorer/vaults/index.json; its TVL until read), network
+  // and spot APY, under light headings. Largest by what they manage.
+  let tvmOf = {};
+  const tvm = (v) => { const t = tvmOf[String(v.chain).toLowerCase() + '-' + v.address.toLowerCase()]; return t > 0 ? t : null; };
+  function picksHtml() {
+    const top = vaults.slice(0, 40).sort((a, b) => (tvm(b) || b.tvl) - (tvm(a) || a.tvl)).slice(0, 15);
+    const apy = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? pctTxt(Number(v.apy)) : '—');
+    return '<div class="xp-phead"><span>Vault</span><span class="n" title="Total value managed: what its markets hold, borrowing included">TVM</span>'
+      + '<span class="c"><span class="m-hide">Network</span><span class="m-show">Net</span></span><span class="n"><span class="m-hide">Spot APY</span><span class="m-show">APY</span></span></div>'
+      + top.map(v => `<a class="xp-prow" role="listitem" href="${hrefOf(v)}">${mark(v.token)}<span class="nm">${esc(v.name)}</span>`
+        + `<span class="n">${usd(tvm(v) || v.tvl)}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span><span class="n">${apy(v)}</span></a>`).join('');
+  }
 
   // ---- Search ----------------------------------------------------------------
   const input = $('q'), pop = $('xpPop'), list = $('xpList');
@@ -163,7 +176,7 @@
     $('vault').hidden = true;
     $('search').hidden = false;
     $('back').hidden = true;
-    $('picks').innerHTML = vaults.slice(0, 12).map((v, i) => row(v, i, true)).join('');
+    $('picks').innerHTML = picksHtml();
   }
   function showMissing(a) {
     showHome();
@@ -945,7 +958,7 @@
   FusionChart.onChange(redraw);
   // The picks and the list's rows are links: an ordinary press stays here.
   $('picks').addEventListener('click', (e) => {
-    const a = e.target.closest('a.xp-opt');
+    const a = e.target.closest('a.xp-prow');
     if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
     history.pushState({ fromHome: true }, '', a.getAttribute('href'));
@@ -954,6 +967,8 @@
   });
 
   // ---- Load ----------------------------------------------------------------------------------
+  const index = fetch('/explorer/vaults/index.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+    .then((j) => { tvmOf = (j && j.tvm) || {}; if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); });
   fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
     vaults = ((j && j.vaults) || []).filter(v => v.address && v.name)
       .map(v => Object.assign({}, v, { tvl: Number(v.tvl) || 0 }))
