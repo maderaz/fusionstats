@@ -99,6 +99,13 @@ jobs:
         continue-on-error: true
         run: node tools/build-stocks-data.js
 
+      # What Key Metrics' flow bars draw, all time: each day's deposits and
+      # withdrawals in dollars (tools/build-flows-daily.js), a few KB instead
+      # of every event.
+      - name: Build Key Metrics' daily flows
+        continue-on-error: true
+        run: node tools/build-flows-daily.js
+
       # What the TVL page draws — TVL per network per day — from the vault list
       # just refreshed and the snapshots (tools/build-tvl-daily.js), so it no
       # longer downloads every snapshot of every vault.
@@ -139,6 +146,7 @@ jobs:
           [ -f stocks-data.json ] && git add -f stocks-data.json || true
           [ -f stock-funding.json ] && git add -f stock-funding.json || true
           [ -f tvl-daily.json ] && git add -f tvl-daily.json || true
+          [ -f flows-daily.json ] && git add -f flows-daily.json || true
           [ -f switch-events.json ] && git add -f switch-events.json || true
           [ -f switch-events-tx.json ] && git add -f switch-events-tx.json || true
           [ -f dust-events.json ] && git add -f dust-events.json || true
