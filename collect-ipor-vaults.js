@@ -119,6 +119,9 @@ async function fetchFromGithub() {
         chain,
         name: entry.name || '',
         token: entry.token || '',
+        // The list's "token" is the vault's own share symbol ($TAUSIUSDETH,
+        // TAUUSDCTZS…): it often names the vault's operator when its name doesn't.
+        shareSymbol: entry.token || null,
         address: addr,
         assetAddress: null,
         tvl: 0,
@@ -193,6 +196,7 @@ async function main() {
     const byAddr = new Map(vaults.map(v => [v.address, v]));
     for (const gv of ghVaults) {
       if (!byAddr.has(gv.address)) byAddr.set(gv.address, gv);
+      else if (gv.shareSymbol) byAddr.get(gv.address).shareSymbol = gv.shareSymbol;
     }
     vaults = [...byAddr.values()];
   } catch (e) {

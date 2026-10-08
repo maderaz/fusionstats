@@ -69,6 +69,17 @@ test('while the site is kept out of search, every page in the repo says noindex,
   assert.deepStrictEqual(off, []);
   assert.ok(block(PAGES[0], '').includes('<meta name="robots" content="noindex">'));
 });
+test('every page has the site\'s favicon, once, and nothing of an old icon tag left in its text', () => {
+  const { execSync } = require('child_process');
+  const files = execSync('git ls-files -z -- "*.html"', { cwd: ROOT }).toString().split('\0').filter(Boolean).filter(f => !f.startsWith('tools/'));
+  const off = files.filter(f => {
+    const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    const head = html.slice(0, html.indexOf('</head>'));
+    return (head.match(/href="\/favicon\.svg"/g) || []).length !== 1 || /<link rel="icon"[^>]*data:image/.test(head)
+      || /apple-touch-icon\.png">[^\n]/.test(head);   // a tag's tail left after it, shown on the page as text
+  });
+  assert.deepStrictEqual(off, []);
+});
 test('descriptions fit a search result (at most 170 characters), and cards have distinct names', () => {
   const long = PAGES.filter(p => p.description.length > 170).map(p => p.file + ' ' + p.description.length);
   assert.deepStrictEqual(long, []);

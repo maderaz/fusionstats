@@ -263,18 +263,23 @@ function main() {
   // vaults (the atomist, from the governance history), or IPOR's alpha.
   const Operators = require('../operators.js');
   const govern = (read('vault-changes.json') || {}).vaults || {};
-  const ownerOf = (a) => {
-    const st = govern[a];
-    if (!st) return null;
-    const acc = Object.keys(st.contracts || {}).find(k => st.contracts[k].kind === 'access');
-    let o = null;
-    for (const c of st.changes || []) if (c.contract === acc && c.event === 'RoleGranted' && String(c.args && c.args.roleId) === '100') o = String(c.args.account).toLowerCase();
-    return o;
-  };
-  const list = ((read('ipor-vaults.json') || {}).vaults || []).map(v => ({ address: String(v.address).toLowerCase(), chain: String(v.chain).toLowerCase(), name: v.name, iporAlpha: v.iporAlpha === true, owner: ownerOf(String(v.address).toLowerCase()) }));
+  const mk = (read('vault-markets.json') || {}).vaults || {};
+  const { currentAtomist } = require('./describe-changes.js');
+  // Its atomist: its history's, else the one the markets collector found by
+  // asking its access manager (a vault read without its history: Base).
+  const ownerOf = (a) => (govern[a] && currentAtomist(govern[a])) || ((mk[a] || {}).params || {}).atomist || null;
+  const list = ((read('ipor-vaults.json') || {}).vaults || []).map(v => ({ address: String(v.address).toLowerCase(), chain: String(v.chain).toLowerCase(), name: v.name, shareSymbol: v.shareSymbol || null, iporAlpha: v.iporAlpha === true, owner: ownerOf(String(v.address).toLowerCase()) }));
   const ops = Operators.assign(list), op = {};
   for (const v of list) if (ops[v.address]) op[v.chain + '-' + v.address] = ops[v.address];
-  files['index.json'] = { tvm, op };
+  // Who may deposit: gated where deposit() asks a role other than the public
+  // one (a whitelist), closed where the access manager has shut the vault.
+  const gate = {};
+  for (const v of list) {
+    const p = (mk[v.address] || {}).params || {};
+    if (p.closed) gate[v.chain + '-' + v.address] = 'closed';
+    else if (p.depositRole && p.depositRole !== 'public') gate[v.chain + '-' + v.address] = 'gated';
+  }
+  files['index.json'] = { tvm, op, gate };
   fs.mkdirSync(DIR, { recursive: true });
   let bytes = 0, written = 0;
   for (const [name, v] of Object.entries(files)) { const b = write(DIR, name, v); if (b) { bytes += b; written++; } }

@@ -33,6 +33,20 @@ const roleName = (id) => ROLES[String(id)] || 'Role ' + id;
 // withdraw manager's role (6) not since revoked, or the last one the vault
 // was set to; a replaced manager stays among the contracts read, so the
 // first one found may be the old one.
+// A vault's atomist now, from its history: the last holder of the atomist
+// role (100) on its access manager not since revoked.
+function currentAtomist(st) {
+  const acc = Object.keys((st && st.contracts) || {}).find(k => st.contracts[k].kind === 'access');
+  const held = new Set();
+  for (const c of (st && st.changes) || []) {
+    const a = c.args || {};
+    if (c.contract !== acc || String(a.roleId) !== '100') continue;
+    const who = String(a.account).toLowerCase();
+    if (c.event === 'RoleGranted') held.add(who);
+    else if (c.event === 'RoleRevoked' || c.event === 'RoleRenounced') held.delete(who);
+  }
+  return [...held].pop() || null;
+}
 function currentWithdraw(st) {
   const contracts = (st && st.contracts) || {};
   let cur = null;
@@ -204,4 +218,4 @@ function describeVault(v, opts = {}) {
   }).reverse();
 }
 
-module.exports = { currentWithdraw, describeVault, roleName, fnName, ROLES };
+module.exports = { currentWithdraw, currentAtomist, describeVault, roleName, fnName, ROLES };

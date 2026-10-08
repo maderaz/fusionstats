@@ -68,6 +68,9 @@ global.fetch = async (url, init) => {
       return ok(arr([]));
     }
   }
+  if (to === ACCESS && sel === SEC.functionRole) return ok('0x' + w(800));        // deposit() asks the whitelist role
+  if (to === ACCESS && sel === SEC.targetClosed) return ok('0x' + w(0));
+  if (to === ACCESS && sel === SEC.hasRole) return ok('0x' + w(argAddr(1) === '0xd556a9fa4dd83ade79b89f4a431c57169d00d4a6' && BigInt(arg(0)) === 100n ? 1 : 0) + w(0));
   if (to === WM && sel === SEC.withdrawWindow) return ok('0x' + w(86400));
   if (to === WM && sel === SEC.requestFee) return ok('0x' + w(2n * 10n ** 15n));
   if (to === WM && sel === SEC.withdrawFee) return ok('0x' + w(10n ** 15n));
@@ -165,6 +168,9 @@ global.fetch = async (url, init) => {
     const p = v.params;
     assert.deepStrictEqual([p.access, p.withdraw, p.oracle, p.feeManager], [ACCESS, WM, ORACLE, FM]);
     assert.deepStrictEqual([p.withdrawWindow, p.requestFee, p.withdrawFee, p.depositFee, p.instantFuses], [86400, 0.2, 0.1, 0.2, 1]);
+    // Gated: deposit() asks the whitelist role, not the public one; its
+    // atomist, unknown to its history, found among the operators' own.
+    assert.deepStrictEqual([p.depositRole, p.closed, p.atomist], ['800', false, '0xd556a9fa4dd83ade79b89f4a431c57169d00d4a6']);
     const aave = p.permissions.find(x => x.id === 1);
     assert.deepStrictEqual(aave.fuses, [F.aave]);
     assert.deepStrictEqual(aave.subs, [{ a: WETH, sym: 'WETH' }, { a: CBETH, sym: 'cbETH' }]);
