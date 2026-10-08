@@ -32,6 +32,19 @@ test('a vault named for no one takes its owner\'s other vaults\' operator, else 
   ]);
   assert.deepStrictEqual(m, { a: 'tau', b: 'tau', c: 'ipor', e: 'clearstar', f: 'tau' });
 });
+test('a pinned vault takes its operator, its owner unknown and IPOR\'s alpha running it', () => {
+  const m = O.assign([
+    { address: '0x5900c3b72458f12967dc1bef35b92d271f5cdbc1', name: 'Base cbETH Loooper', owner: null, iporAlpha: true },
+    { address: '0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c', name: 'rETH Liquity LP Carry', owner: null, iporAlpha: true },
+    { address: 'g', name: 'Some Vault', owner: '0x32787cd59244581a358a068d52e460eb00df6543' },
+  ]);
+  assert.deepStrictEqual(m, { '0x5900c3b72458f12967dc1bef35b92d271f5cdbc1': 'clearstar', '0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c': 'sentinel', g: 'sentinel' });
+});
+test('pinnedTo: the operator a vault is pinned to, by its address in any case', () => {
+  assert.strictEqual(O.pinnedTo('0x5900C3B72458F12967DC1BEF35B92D271F5CDBC1').id, 'clearstar');
+  assert.strictEqual(O.pinnedTo('0xb9e806e8f2d94c015ffefa90cd24ecce18f1663c').name, 'Sentinel Codes');
+  assert.strictEqual(O.pinnedTo('0x0'), null);
+});
 test('every operator\'s logo is on disk', () => {
   const fs = require('fs');
   for (const o of O.OPERATORS) if (o.logo) assert.ok(fs.existsSync(__dirname + '/icons/operators/' + o.logo), o.logo);

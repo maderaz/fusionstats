@@ -183,7 +183,7 @@
       plot_bgcolor: 'rgba(0,0,0,0)', paper_bgcolor: 'rgba(0,0,0,0)',
       font: { family: 'Geist, -apple-system, sans-serif', color: cssVar('--text-2', '#5E5E6B'), size: 12 },
       xaxis: { type: 'date', tickformat: hourly ? '%H:%M' : '%b %-d', nticks: 6, showgrid: false, ticks: 'outside', ticklen: 6, tickcolor: 'rgba(0,0,0,0)', showline: false },
-      yaxis: { tickformat: ',d', rangemode: 'tozero', showgrid: true, gridcolor: cssVar('--line', '#EEE'), griddash: '4px,8px', zeroline: false },
+      yaxis: { tickformat: ',d', rangemode: 'tozero', showgrid: false, zeroline: false },
       showlegend: false, hovermode: 'x unified', hoverdistance: -1, spikedistance: -1, dragmode: false, barmode: 'overlay',
     };
     await Plotly.react(gd, FusionChart.quiet(FusionChart.soft(traces)), FusionChart.fit(layout, traces), CONFIG);
