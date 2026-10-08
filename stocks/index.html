@@ -906,7 +906,11 @@
       if (s < 86400) return Math.floor(s / 3600) + 'h ago';
       return Math.floor(s / 86400) + 'd ago';
     }
-    const cutoffFor = (range) => range === 'all' ? 0 : Date.now() / 1000 - parseInt(range, 10) * DAY_SEC;
+    // Every chart here starts no earlier than Aug 23, 2026: the day before the
+    // first deposit, the stock vaults' first zero. Earlier readings are empty
+    // vaults waiting (TVL $0 from late July), not history.
+    const STOCKS_START = Date.UTC(2026, 7, 23) / 1000;
+    const cutoffFor = (range) => Math.max(STOCKS_START, range === 'all' ? 0 : Date.now() / 1000 - parseInt(range, 10) * DAY_SEC);
     const HOUR_SEC = 3600;
     // Hourly points inside a week, daily beyond it. TVL snapshots land ~1.7x a
     // day at scattered hours, so an hourly bucket does not invent resolution —
@@ -939,7 +943,7 @@
         if (key === 'tvl') z.units = 0;
         z.anchor = true;
       }
-      return lead.concat(pts);
+      return lead.filter(p => p.ts >= STOCKS_START).concat(pts);
     }
     const vaultsFor = (sel) => sel === '__all__' ? S.vaults : S.vaults.filter(v => v.address === sel);
 
@@ -1638,7 +1642,7 @@
     function everyDay(pts, range) {
       if (!pts.length) return pts;
       const today = Math.floor(Date.now() / 1000 / DAY_SEC) * DAY_SEC;
-      const first = range === 'all' ? pts[0].ts : Math.floor(cutoffFor(range) / DAY_SEC) * DAY_SEC;
+      const first = Math.floor(cutoffFor(range) / DAY_SEC) * DAY_SEC;
       const by = new Map(pts.map(p => [p.ts, p]));
       const out = [];
       for (let d = Math.min(first, pts[0].ts); d <= today; d += DAY_SEC) out.push(by.get(d) || { ts: d, inflow: 0, exit: 0, net: 0 });
@@ -1736,6 +1740,12 @@
         const base = snaps[0].sharePrice;
         if (!base) return null;
         const pts = snaps.map(x => ({ ts: x.timestamp, idx: (x.sharePrice / base) * 100 }));
+        // A vault that already had a price at the range's start (Aug 23 at the
+        // earliest) draws from there: its price then, carried to that moment.
+        // Before the first deposit that is the base, so the line starts at 100.
+        // The figures below still count from the first deposit.
+        const before = priced.filter(x => x.timestamp <= cutoff).pop();
+        if (before && snaps[0].timestamp > cutoff) pts.unshift({ ts: cutoff, idx: (before.sharePrice / base) * 100 });
         const days = (snaps[snaps.length - 1].timestamp - snaps[0].timestamp) / DAY_SEC;
         const total = snaps[snaps.length - 1].sharePrice / base - 1;
         // Under two weeks, a few days of noise annualises into a headline
@@ -2245,6 +2255,9 @@
       // keyed in its line's colour, and pointing at a row picks out its line.
       const lay = baseLayout('.4~f', true);
       lay.yaxis.rangemode = 'normal';
+      // From the range's start (Aug 23 at the earliest), as the other charts.
+      const lastTs = Math.max(...series.map(r => r.pts[r.pts.length - 1].ts));
+      lay.xaxis = Object.assign({}, lay.xaxis, { range: [new Date(cutoffFor(S.retRange) * 1000), new Date(lastTs * 1000)], autorange: false });
       draw('retPlot', quiet(traces), lay, CONFIG, () => glide('retPlot', (pts) => hvWhen(pts[0].x)
         + pts.slice().sort((a, b) => b.y - a.y).map(p => hvRow(p.data.line.color, p.data.name, p.y.toFixed(2))).join('')));
 
