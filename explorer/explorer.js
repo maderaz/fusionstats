@@ -65,6 +65,19 @@
   const row = (v, i, pick) => `<a class="xp-opt vault-row"${pick ? '' : ` role="option" id="xp-o${i}" data-i="${i}"`} href="${hrefOf(v)}">${mark(v.token)}`
     + `<span class="nm">${esc(v.name)}</span><span class="nt">${chainMark(v.chain)}${v.tvl >= 1 ? usd(v.tvl) : '—'}</span></a>`;
   const hrefOf = (v) => '/explorer/?v=' + v.address.toLowerCase() + '&c=' + encodeURIComponent(v.chain);
+  // The start page's largest vaults: a thin row each, its asset, name, total
+  // value managed (explorer/vaults/index.json; its TVL until read), network
+  // and spot APY, under light headings. Largest by what they manage.
+  let tvmOf = {};
+  const tvm = (v) => { const t = tvmOf[String(v.chain).toLowerCase() + '-' + v.address.toLowerCase()]; return t > 0 ? t : null; };
+  function picksHtml() {
+    const top = vaults.slice(0, 40).sort((a, b) => (tvm(b) || b.tvl) - (tvm(a) || a.tvl)).slice(0, 15);
+    const apy = (v) => (v.apy != null && Number.isFinite(Number(v.apy)) ? pctTxt(Number(v.apy)) : '—');
+    return '<div class="xp-phead"><span>Vault</span><span class="n" title="Total value managed: what its markets hold, borrowing included">TVM</span>'
+      + '<span class="c"><span class="m-hide">Network</span><span class="m-show">Net</span></span><span class="n"><span class="m-hide">Spot APY</span><span class="m-show">APY</span></span></div>'
+      + top.map(v => `<a class="xp-prow" role="listitem" href="${hrefOf(v)}">${mark(v.token)}<span class="nm">${esc(v.name)}</span>`
+        + `<span class="n">${usd(tvm(v) || v.tvl)}</span><span class="c" title="${esc(chainName(v.chain))}">${chainMark(v.chain)}</span><span class="n">${apy(v)}</span></a>`).join('');
+  }
 
   // ---- Search ----------------------------------------------------------------
   const input = $('q'), pop = $('xpPop'), list = $('xpList');
@@ -163,7 +176,7 @@
     $('vault').hidden = true;
     $('search').hidden = false;
     $('back').hidden = true;
-    $('picks').innerHTML = vaults.slice(0, 12).map((v, i) => row(v, i, true)).join('');
+    $('picks').innerHTML = picksHtml();
   }
   function showMissing(a) {
     showHome();
@@ -260,7 +273,9 @@
     if (sec < 86400 * 2) return +(sec / 3600).toFixed(1) + ' h';
     return +(sec / 86400).toFixed(1) + ' days';
   };
-  const addrLink = (a) => `<a class="prm-addr" href="/address/?a=${esc(a)}" title="${esc(a)}"><span class="m-hide">${esc(a)}</span><span class="m-show">${esc(shortAddr(a))}</span></a>`;
+  // An address, on its network's explorer.
+  const addrLink = (a, chain) => `<a class="prm-addr" href="${EXPLORE[chain] ? EXPLORE[chain] + esc(a) : '/address/?a=' + esc(a)}" target="_blank" rel="noopener" title="${esc(a)}">`
+    + `<span class="m-hide">${esc(a)}</span><span class="m-show">${esc(shortAddr(a))}</span></a>`;
   const prmRow = (k, v, cls) => `<div class="prm-row"><span class="k">${k}</span><span class="v${cls ? ' ' + cls : ''}">${v}</span></div>`;
   function paramsView() {
     if (!cur) return;
@@ -284,25 +299,35 @@
       + (p.redemptionDelay != null ? prmRow('Redemption delay', span(p.redemptionDelay)) : '')
       + prmRow('Withdraw window', span(p.withdrawWindow));
     const base = EXPLORE[chain];
-    const chip = ([a, s]) => (s ? `<a class="prm-chip" href="${base ? base + esc(a) : '#'}" target="_blank" rel="noopener" title="${esc(a)}">${esc(s)}</a>`
-      : /^0x[0-9a-f]{40}$/i.test(a) ? `<a class="prm-chip mono" href="${base ? base + esc(a) : '#'}" target="_blank" rel="noopener" title="${esc(a)}">${esc(shortAddr(a))}</a>`
-      : `<span class="prm-chip mono" title="${esc(a)}">${esc(a.slice(0, 6) + '…' + a.slice(-4))}</span>`);
+    // Every substrate links: an address (a word holding one, behind a type tag
+    // at most) to the explorer, a Morpho market to Morpho, a Uniswap V4 pool to
+    // Uniswap; an id with no page of its own shows as it is.
+    const asAddr = (h) => { const w = h.slice(2); return w.length === 64 && /[1-9a-f]/.test(w.slice(24)) && w.slice(0, 24).replace(/0/g, '').length <= 4 ? '0x' + w.slice(24) : null; };
+    const idLink = (m, h) => (/morpho/i.test(m.key || m.name) ? 'https://app.morpho.org/' + chain + '/market/' + h
+      : /uniswap_v4/i.test(m.key || '') ? 'https://app.uniswap.org/explore/pools/' + chain + '/' + h : null);
+    const chip = (m) => ([a, s]) => {
+      const addr = /^0x[0-9a-f]{40}$/i.test(a) ? a : asAddr(a);
+      const href = addr ? (base ? base + addr : null) : idLink(m, a);
+      const text = s ? esc(s) : esc(shortAddr(addr || a));
+      const cls = 'prm-chip' + (s ? '' : ' mono');
+      return href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(addr || a)}">${text}</a>` : `<span class="${cls}" title="${esc(a)}">${text}</span>`;
+    };
     const perms = (p.permissions || []).filter(m => m.fuses || m.subs.length);
     if (!perms.length) empty('prmPerms', 'No markets: the vault has no fuses yet.');
     else $('prmPerms').innerHTML = perms.map(m => '<div class="prm-mkt"><div class="prm-mkt-h"><b>' + esc(m.name) + '</b><span>'
         + (m.fuses ? m.fuses + (m.fuses === 1 ? ' fuse' : ' fuses') : '') + '</span></div>'
-        + (m.subs.length ? '<div class="prm-chips">' + m.subs.map(chip).join('') + (m.more ? `<span class="prm-chip">+${m.more} more</span>` : '') + '</div>' : '')
+        + (m.subs.length ? '<div class="prm-chips">' + m.subs.map(chip(m)).join('') + (m.more ? `<span class="prm-chip">+${m.more} more</span>` : '') + '</div>' : '')
         + '</div>').join('');
     $('prmPermsNote').textContent = 'Each market the vault\'s fuses act in, and the assets, pools or markets granted to it there (its substrates). Tokens held are those it may keep.'
       + (p.instantFuses ? ' ' + p.instantFuses + (p.instantFuses === 1 ? ' fuse serves' : ' fuses serve') + ' instant withdrawals.' : '');
     if (!p.roles) empty('prmRoles', 'Being read: who holds each role is read from the vault\'s access manager history, from its deployment on.');
     else if (!p.roles.length) empty('prmRoles', 'No roles found.');
-    else $('prmRoles').innerHTML = p.roles.map(([name, who]) => prmRow(esc(name), who.map(addrLink).join(''), 'addrs')).join('');
+    else $('prmRoles').innerHTML = p.roles.map(([name, who]) => prmRow(esc(name), who.map(a => addrLink(a, chain)).join(''), 'addrs')).join('');
     if (p.roles && !p.rolesComplete) $('prmRolesNote').textContent = 'Still being read back: the vault\'s earlier role changes may change this.';
     const NAMES = { access: 'Access manager', withdraw: 'Withdraw manager', oracle: 'Price oracle', rewards: 'Rewards manager', fee: 'Fee manager' };
     const cs = Object.entries(p.contracts || {});
     if (!cs.length) empty('prmContracts', 'Not read yet.');
-    else $('prmContracts').innerHTML = cs.map(([k, a]) => prmRow(NAMES[k] || k, addrLink(a), 'addrs')).join('');
+    else $('prmContracts').innerHTML = cs.map(([k, a]) => prmRow(NAMES[k] || k, addrLink(a, chain), 'addrs')).join('');
     $('prmNote').textContent = 'Read from the chain' + (p.readAt ? ' ' + UI.ago(Date.parse(p.readAt) / 1000) : '') + '. Fees are a share of the gain (performance), a year\'s share of the assets (management), or a share of what comes in or goes out.';
   }
 
@@ -933,7 +958,7 @@
   FusionChart.onChange(redraw);
   // The picks and the list's rows are links: an ordinary press stays here.
   $('picks').addEventListener('click', (e) => {
-    const a = e.target.closest('a.xp-opt');
+    const a = e.target.closest('a.xp-prow');
     if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
     e.preventDefault();
     history.pushState({ fromHome: true }, '', a.getAttribute('href'));
@@ -942,6 +967,8 @@
   });
 
   // ---- Load ----------------------------------------------------------------------------------
+  const index = fetch('/explorer/vaults/index.json').then(r => (r.ok ? r.json() : null)).catch(() => null)
+    .then((j) => { tvmOf = (j && j.tvm) || {}; if (vaults.length && !$('home').hidden) $('picks').innerHTML = picksHtml(); });
   fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then((j) => {
     vaults = ((j && j.vaults) || []).filter(v => v.address && v.name)
       .map(v => Object.assign({}, v, { tvl: Number(v.tvl) || 0 }))

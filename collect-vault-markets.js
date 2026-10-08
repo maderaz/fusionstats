@@ -296,8 +296,15 @@ async function readVault(call, vaultAddr, past = null, known = {}) {
     const permIds = [...new Set([...Object.keys(byMarket).map(Number), TOKENS])].sort((a, b) => a - b);
     const permissions = await pool(permIds, 3, async (id) => {
       const ws = array(await tryCall(v, SEL.substrates + pad(BigInt(id))));
+      // An address right-aligned, behind a type tag at most (Liquity's
+      // registries, Midas, the swapper's tokens), or, for Euler, left-aligned
+      // ahead of its flags; anything else (a Morpho market, a Uniswap pool)
+      // is an id, kept as it is.
       const subs = await pool(ws.slice(0, 40), 4, async (w) => {
-        if (/^0{24}/.test(w) && /[1-9a-f]/.test(w)) { const a = '0x' + w.slice(24); return { a, sym: (await tokenMeta(a)).sym || null }; }
+        let a = null;
+        if (id === EULER) a = '0x' + w.slice(0, 40);
+        else if (/[1-9a-f]/.test(w.slice(24)) && w.slice(0, 24).replace(/0/g, '').length <= 4) a = '0x' + w.slice(24);
+        if (a) return { a, sym: (await tokenMeta(a)).sym || null };
         return { raw: '0x' + w };
       });
       const [key, label] = MARKETS[id] || ['MARKET_' + id, 'Market ' + id];

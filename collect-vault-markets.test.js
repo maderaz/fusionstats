@@ -64,6 +64,7 @@ global.fetch = async (url, init) => {
       if (m === 14) return ok(arr([MID]));
       if (m === 11) return ok(arr([EULER_SUB]));
       if (m === 100001) return ok(arr([METAV]));
+      if (m === 12) return ok(arr(['0x01' + '0'.repeat(22) + USDC.slice(2)]));   // a token behind a type tag
       return ok(arr([]));
     }
   }
@@ -169,6 +170,8 @@ global.fetch = async (url, init) => {
     assert.deepStrictEqual(aave.subs, [{ a: WETH, sym: 'WETH' }, { a: CBETH, sym: 'cbETH' }]);
     assert.deepStrictEqual(p.permissions.find(x => x.id === 14).subs, [{ raw: '0x' + MID }]);
     assert.ok(p.permissions.some(x => x.id === 7), 'the tokens it may hold');
+    assert.deepStrictEqual(p.permissions.find(x => x.id === 12).subs, [{ a: USDC, sym: 'USDC' }]);
+    assert.strictEqual(p.permissions.find(x => x.id === 11).subs[0].a, EV);   // Euler's: the vault, ahead of its flags
   });
   await test('an ERC-4626 market takes its vault\'s own name', () => {
     assert.strictEqual(m(100001).name, 'Gauntlet WETH Prime');

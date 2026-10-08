@@ -26,7 +26,8 @@
   <meta name="twitter:description" content="Every Fusion vault, one at a time: its yield, assets, markets, allocation over time and capacity.">
   <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/explorer.png">
   <!-- /page-meta -->
-  <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"><text y=%22.9em%22 font-size=%2290%22>%E2%9A%9B%EF%B8%8F</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -103,10 +104,34 @@
     .xp-opt .nt img { width: 14px; height: 14px; border-radius: 3px; }
     [data-theme="dark"] .xp-opt .nt img.ink { filter: invert(1); }
     .xp-empty { padding: 12px 10px; font-size: 13px; color: var(--text-3); }
-    .xp-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 24px; }
-    .xp-picks .xp-opt { padding-left: 0; padding-right: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
-    .xp-picks .xp-opt:hover .nm { color: var(--accent); }
-    @container (max-width: 900px) { .xp-picks { grid-template-columns: minmax(0, 1fr); } }
+    /* The largest vaults: one column, a thin row each under light headings. */
+    .xp-phead, .xp-prow {
+      display: grid; align-items: center; gap: 0 16px;
+      grid-template-columns: 20px minmax(0, 1fr) minmax(max-content, 96px) minmax(max-content, 64px) minmax(max-content, 72px);
+    }
+    .xp-phead { padding: 0 0 9px; border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .xp-phead > span:first-child { grid-column: 1 / 3; }
+    .xp-prow { min-height: 46px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 14px; font-weight: 500; -webkit-tap-highlight-color: transparent; }
+    .xp-prow:hover .nm { color: var(--accent); }
+    .xp-prow .ic, .xp-prow .mono { width: 20px; height: 20px; border-radius: 50%; }
+    .xp-prow .mono { display: inline-flex; align-items: center; justify-content: center; background: var(--bg-subtle); color: var(--text-2); font: 600 10px var(--sans); }
+    .xp-prow .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .xp-prow .n, .xp-phead .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .xp-prow .c, .xp-phead .c { display: flex; justify-content: center; }
+    .xp-prow .c img { width: 16px; height: 16px; border-radius: 3px; }
+    [data-theme="dark"] .xp-prow .c img.ink { filter: invert(1); }
+    /* A phone: the name has the row's width, its figures on a line under it,
+       each under its heading. */
+    @container (max-width: 520px) {
+      .xp-phead, .xp-prow { gap: 0 12px; grid-template-columns: 20px minmax(0, 1fr) max-content minmax(max-content, 28px) max-content; }
+      .xp-prow { padding: 9px 0; row-gap: 3px; }
+      .xp-prow > :nth-child(1) { grid-row: 1; grid-column: 1; }
+      .xp-prow .nm { grid-row: 1; grid-column: 2 / -1; }
+      .xp-prow > :nth-child(3), .xp-prow > :nth-child(4), .xp-prow > :nth-child(5) { grid-row: 2; font-size: 13px; color: var(--text-2); }
+      .xp-prow > :nth-child(3) { grid-column: 3; }
+      .xp-prow > :nth-child(4) { grid-column: 4; }
+      .xp-prow > :nth-child(5) { grid-column: 5; }
+    }
     @container (max-width: 700px) { .xp-field { height: 48px; } }
 
     /* A vault: what it is, in a row of tags under its name. */
@@ -339,7 +364,7 @@
     <div id="home">
       <section class="ui-section">
         <div class="ui-head"><h2>Largest vaults</h2></div>
-        <div class="xp-picks" id="picks"><div class="ui-empty">Loading…</div></div>
+        <div class="xp-picks" id="picks" role="list"><div class="ui-empty">Loading…</div></div>
       </section>
     </div>
 

@@ -251,6 +251,15 @@ function main() {
     fs.writeFileSync(p, body);
     return body.length;
   };
+  // The start page's list: each vault's total value managed (what its markets
+  // hold, borrowing included), in one small file rather than every vault's.
+  const tvm = {};
+  for (const [name, v] of Object.entries(files)) {
+    const ms = (v.markets && v.markets.markets) || [];
+    if (!ms.length) continue;
+    tvm[name.replace(/\.json$/, '')] = Math.round(ms.reduce((a, m) => a + (m.positions && m.positions.length ? m.supplyUsd || 0 : Math.max(0, m.netUsd || 0)), 0));
+  }
+  files['index.json'] = { tvm };
   fs.mkdirSync(DIR, { recursive: true });
   let bytes = 0, written = 0;
   for (const [name, v] of Object.entries(files)) { const b = write(DIR, name, v); if (b) { bytes += b; written++; } }
