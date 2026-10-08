@@ -259,7 +259,22 @@ function main() {
     if (!ms.length) continue;
     tvm[name.replace(/\.json$/, '')] = Math.round(ms.reduce((a, m) => a + (m.positions && m.positions.length ? m.supplyUsd || 0 : Math.max(0, m.netUsd || 0)), 0));
   }
-  files['index.json'] = { tvm };
+  // And who runs each vault (operators.js): by its name, its owner's other
+  // vaults (the atomist, from the governance history), or IPOR's alpha.
+  const Operators = require('../operators.js');
+  const govern = (read('vault-changes.json') || {}).vaults || {};
+  const ownerOf = (a) => {
+    const st = govern[a];
+    if (!st) return null;
+    const acc = Object.keys(st.contracts || {}).find(k => st.contracts[k].kind === 'access');
+    let o = null;
+    for (const c of st.changes || []) if (c.contract === acc && c.event === 'RoleGranted' && String(c.args && c.args.roleId) === '100') o = String(c.args.account).toLowerCase();
+    return o;
+  };
+  const list = ((read('ipor-vaults.json') || {}).vaults || []).map(v => ({ address: String(v.address).toLowerCase(), chain: String(v.chain).toLowerCase(), name: v.name, iporAlpha: v.iporAlpha === true, owner: ownerOf(String(v.address).toLowerCase()) }));
+  const ops = Operators.assign(list), op = {};
+  for (const v of list) if (ops[v.address]) op[v.chain + '-' + v.address] = ops[v.address];
+  files['index.json'] = { tvm, op };
   fs.mkdirSync(DIR, { recursive: true });
   let bytes = 0, written = 0;
   for (const [name, v] of Object.entries(files)) { const b = write(DIR, name, v); if (b) { bytes += b; written++; } }
