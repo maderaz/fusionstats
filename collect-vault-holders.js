@@ -377,7 +377,7 @@ async function scanVault(vault, args, persistedState, checkpoint) {
   const fromBlock = (prior && Number.isFinite(prior.lastBlock))
     ? prior.lastBlock + 1
     : deployBlock;
-  vault = { ...vault, decimals: Number.isFinite(persistedState?.decimals) ? persistedState.decimals : await readDecimals(rpc, addr) };
+  vault = { ...vault, decimals: Number.isFinite(prior?.decimals) ? prior.decimals : await readDecimals(rpc, addr) };   // --force reads them again
 
   if (fromBlock > head) {
     // Up to date — rebuild Maps from sidecar state and snapshot so the
