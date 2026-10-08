@@ -4,7 +4,7 @@
   <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
   <link rel="preconnect" href="https://cdn.plot.ly">
   <script src="/data-source.js"></script>
-  <script>window.FusionData && FusionData.preload(['tvl-daily.json']);</script>
+  <script>window.FusionData && FusionData.preload(['tvl-daily.json', 'ipor-vaults.json']);</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
@@ -100,7 +100,7 @@
 
     <details class="ui-more">
       <summary>Methodology</summary>
-      <div>Each vault's TVL is read on-chain once a day (<code>tvl-snapshots.json</code>: its total assets at that day's block, at the asset's price that day) and summed by network into <code>tvl-daily.json</code> by <code>tools/build-tvl-daily.js</code>. A vault's last reading carries forward over a day it wasn't read. Today's figure is the same as Key Metrics' and the TVL page's. Vaults with no daily readings yet (on HyperEVM and Katana, some $15K in all) are held at today's TVL across the whole history, so the chart starts where the first deposits lift the total above that floor. <b>By network</b> stacks the three largest networks today and puts the rest together.</div>
+      <div>Each vault's TVL is read on-chain once a day (<code>tvl-snapshots.json</code>: its total assets at that day's block, at the asset's price that day) and summed by network into <code>tvl-daily.json</code> by <code>tools/build-tvl-daily.js</code>. A vault's last reading carries forward over a day it wasn't read. Today's point is every vault's TVL as IPOR's API reports it now, refreshed with each update: the same figure as Key Metrics'. Vaults with no daily readings yet (on HyperEVM and Katana, some $15K in all) are held at today's TVL across the whole history, so the chart starts where the first deposits lift the total above that floor. <b>By network</b> stacks the three largest networks today and puts the rest together.</div>
     </details>
   </div>
 
