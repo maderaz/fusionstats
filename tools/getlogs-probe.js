@@ -21,7 +21,7 @@ const RPCS = {
   ethereum: ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org',
              'https://eth.llamarpc.com', 'https://cloudflare-eth.com'],
   base: ['https://base-rpc.publicnode.com', 'https://base.drpc.org',
-         'https://mainnet.base.org', 'https://base.llamarpc.com'],
+         'https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://mainnet.base.org', 'https://base.llamarpc.com'],
 };
 const DEPOSIT_TOPIC  = '0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7';
 const WITHDRAW_TOPIC = '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';

@@ -79,6 +79,12 @@ const CHAIN_RPCS = {
     'https://eth.drpc.org',
   ],
   base: [
+    // Tenderly's and BlockPI's public gateways first: on Oct 9 every other
+    // free endpoint refused Base's eth_getLogs (mainnet.base.org 429, publicnode
+    // 403, drpc 400, llamarpc 403) and Base stalled; the same two providers'
+    // Ethereum gateways unstuck Ethereum on Oct 3.
+    'https://base.gateway.tenderly.co',
+    'https://base.public.blockpi.network/v1/rpc/public',
     'https://mainnet.base.org',
     'https://base-rpc.publicnode.com',
     'https://base.drpc.org',
@@ -702,7 +708,9 @@ const MIN_SPLIT_BLOCKS = 500;
 // Pauses before a range that small is retried. A burst of rate limiting
 // refuses every endpoint within milliseconds and is gone seconds later; on
 // Oct 5 one such burst stopped Base for a whole run.
-const LEAF_RETRY_PAUSES_MS = [2_000, 6_000];
+// A 429 (rate limit) on a shared runner can outlast 8s: a third, longer
+// pause before the range counts as unservable.
+const LEAF_RETRY_PAUSES_MS = [2_000, 6_000, 15_000];
 
 // Scan [fromBlock, toBlock] for logs from every address group.
 //

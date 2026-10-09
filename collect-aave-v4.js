@@ -36,7 +36,7 @@ const { rpcEndpoints } = require('./rpc-endpoints.js');
 
 const OUT = path.join(__dirname, 'aave-v4.json');
 const IPOR = path.join(__dirname, 'ipor-vaults.json');
-const PUBLIC_RPCS = ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com'];
+const PUBLIC_RPCS = ['https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com'];
 // The spoke every stock vault's AAVE_V4 substrate names (IPOR Fusion vault
 // substrates, market 49), and the asset they borrow.
 const SPOKE = '0x17905db0e4a3514467539956c084180616ae7b8d';
