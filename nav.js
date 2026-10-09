@@ -104,7 +104,7 @@
   // ahead of this script: it stays light, and the switch is not offered there.
   // The ground is the logo's own hue (#8429FF, 266°), dark enough that the
   // mark keeps standing out on it (about 3:1).
-  // Purple, the flagship's colour, is dark mode on a purple ground: the page
+  // Purple, the flagship's colour and the default, is dark mode on a purple ground: the page
   // keeps every dark rule (data-theme="dark") and data-palette="purple"
   // repaints the tokens. Charts are told 'dark', with the palette beside it.
   const THEME_KEY = 'fusionstats_theme';
@@ -130,10 +130,11 @@
       const old = localStorage.getItem('theme') || localStorage.getItem('fusionstats_stocks_theme');
       if (old === 'dark' || old === 'light') return old;
     } catch (e) {}
-    return 'light';
+    // No choice made yet: purple, the site's own colour, is the default.
+    return 'purple';
   }
   // Pages that draw in theme colours (charts) listen for 'fusion:theme'.
-  let chosen = 'light';
+  let chosen = 'purple';
   function applyTheme(t) {
     chosen = lightOnly ? 'light' : t;
     const root = document.documentElement, dark = chosen !== 'light';
