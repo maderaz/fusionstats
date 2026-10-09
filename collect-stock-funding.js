@@ -72,7 +72,7 @@ const LIFI_SWAP = '0x38eee76fd911eabac79da7af16053e809be0e12c8637f156e77e1af309b
 const LIFI_ARRIVED = '0xb8c86983f929c6b770461983d1bbde1870408120f07123e9c12d49f35a0b4c4b';
 
 // As collect-activity.js, whose scans read these back to the vaults' deployments.
-const PUBLIC_RPCS = { base: ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com'] };
+const PUBLIC_RPCS = { base: ['https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com'] };
 
 const lc = (a) => String(a || '').toLowerCase();
 const hex = (n) => '0x' + Number(n).toString(16);

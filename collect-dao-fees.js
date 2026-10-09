@@ -41,7 +41,7 @@ const CHAIN_ID = { ethereum: 1, base: 8453, arbitrum: 42161 };
 const FLOOR = 10000;
 const CHAINS = {
   1: ['ethereum', ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://rpc.mevblocker.io']],
-  8453: ['base', ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com']],
+  8453: ['base', ['https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com']],
   42161: ['arbitrum', ['https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum.drpc.org', 'https://arb1.arbitrum.io/rpc']],
 };
 const SEL = {

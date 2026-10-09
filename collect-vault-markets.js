@@ -58,7 +58,7 @@ const DEADLINE_MS = 15 * 60_000;
 // As collect-activity.js: measured from GitHub Actions, keyed endpoints first.
 const CHAINS = {
   ethereum: [1, ['https://gateway.tenderly.co/public/mainnet', 'https://ethereum.public.blockpi.network/v1/rpc/public', 'https://rpc.mevblocker.io', 'https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org']],
-  base: [8453, ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com']],
+  base: [8453, ['https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://base.llamarpc.com']],
   arbitrum: [42161, ['https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum.drpc.org', 'https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com']],
 };
 const CHAIN_OF_ID = Object.fromEntries(Object.entries(CHAINS).map(([name, [id]]) => [id, name]));

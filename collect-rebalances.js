@@ -39,6 +39,12 @@ const CHAIN_RPCS = {
   base: [
     'https://base-rpc.publicnode.com',
     'https://base.drpc.org',
+    // Tenderly's and BlockPI's public gateways first: on Oct 9 every other
+    // free endpoint refused Base's eth_getLogs (mainnet.base.org 429, publicnode
+    // 403, drpc 400, llamarpc 403) and Base stalled; the same two providers'
+    // Ethereum gateways unstuck Ethereum on Oct 3.
+    'https://base.gateway.tenderly.co',
+    'https://base.public.blockpi.network/v1/rpc/public',
     'https://mainnet.base.org',
     'https://base.llamarpc.com',
   ],

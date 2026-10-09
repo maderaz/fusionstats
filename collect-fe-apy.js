@@ -40,7 +40,7 @@ const RPC_TIMEOUT_MS = 20000;
 // Per-chainId RPC endpoints — mirrors collect-activity.js. Public, no-auth.
 const CHAIN_RPCS = {
   1:     { name: 'ethereum',  rpcs: ['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org', 'https://eth.llamarpc.com', 'https://cloudflare-eth.com'] },
-  8453:  { name: 'base',      rpcs: ['https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://mainnet.base.org', 'https://base.llamarpc.com'] },
+  8453:  { name: 'base',      rpcs: ['https://base.gateway.tenderly.co', 'https://base.public.blockpi.network/v1/rpc/public', 'https://base-rpc.publicnode.com', 'https://base.drpc.org', 'https://mainnet.base.org', 'https://base.llamarpc.com'] },
   42161: { name: 'arbitrum',  rpcs: ['https://arbitrum-one-rpc.publicnode.com', 'https://arbitrum.drpc.org', 'https://arb1.arbitrum.io/rpc', 'https://arbitrum.llamarpc.com'] },
   43114: { name: 'avalanche', rpcs: ['https://avalanche-c-chain-rpc.publicnode.com', 'https://avalanche.drpc.org', 'https://api.avax.network/ext/bc/C/rpc'] },
   130:   { name: 'unichain',  rpcs: ['https://unichain-rpc.publicnode.com', 'https://unichain.drpc.org', 'https://mainnet.unichain.org'] },
