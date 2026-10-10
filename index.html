@@ -908,35 +908,27 @@
       text-underline-offset: 3px;
     }
 
-    /* Phone list: what happened and how much, then where, then who and when. */
+    /* Phone list: one thin line an event. Its arrow (green in, red out; a
+       tap opens the transaction), the vault, the dollars and how long ago.
+       The amount in its token, the wallet and DeBank are the desktop
+       table's. */
     .mobile-events { display: none; }
     .mobile-event {
-      position: relative;
-      display: grid;
-      gap: 3px;
-      padding: 14px 0 14px 50px;
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 10px 0;
       border-bottom: 1px solid var(--line);
     }
     .mobile-event:last-child { border-bottom: none; }
-    .mobile-event .dir { position: absolute; left: 0; top: 16px; width: 36px; height: 36px; }
-    .mobile-event .dir::before { width: 15px; height: 15px; }
-    .mob-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
-    .mobile-event-badges { display: inline-flex; align-items: center; min-width: 0; font-size: 15px; }
-    .mobile-event-amount { font-size: 13.5px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-event .ev-dir { flex: none; align-self: center; display: inline-flex; }
+    .mobile-event .dir { width: 24px; height: 24px; }
+    .mobile-event .dir::before { width: 11px; height: 11px; }
     .mobile-event-product {
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13.5px;
-      color: var(--text-2);
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 14px; font-weight: 500; color: var(--text);
     }
-    .mobile-event-usd { font-size: 15px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .mobile-event-who { display: inline-flex; align-items: center; gap: 8px; }
-    .mobile-event-user { font-size: 12px; color: var(--text-3); }
-    .mobile-event .debank { width: 18px; height: 18px; }
-    .mobile-event-when { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+    .mobile-event-usd { flex: none; font-size: 14px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mobile-event-when { flex: none; min-width: 26px; text-align: right; font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
     @container (max-width: 900px) {
       .badge-deposit, .badge-withdraw { gap: 8px; }
@@ -2065,20 +2057,16 @@
           <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
           <td class="col-profile">${debank}</td>
         </tr>`;
-        mobileRows += `<div class="mobile-event${e.synthetic ? ' row-synthetic' : ''}">
-          <div class="mob-row">
-            <span class="mobile-event-badges">${typeLink} ${synthBadge}</span>
-            <span class="mobile-event-usd">${usdMobile}</span>
-          </div>
-          <div class="mob-row">
-            <a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>
-            <span class="mobile-event-amount">${amount}</span>
-          </div>
-          <div class="mob-row">
-            <span class="mobile-event-who"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link mobile-event-user">${shortAddr(e.owner)}</a>${debank}</span>
-            <span class="mobile-event-when">${time}</span>
-          </div>
-        </div>`;
+        // The phone's line: the arrow alone says which way (its title the
+        // word), linking to the transaction when the hash is in.
+        const dirTitle = badgeText === 'DEPOSIT' ? 'Deposit' : 'Withdrawal';
+        const dirMark = e.tx
+          ? `<a href="${scan}/tx/${e.tx}" target="_blank" rel="noopener" class="ev-dir ${badgeClass}" title="${dirTitle}: open the transaction" aria-label="${dirTitle}"><i class="dir" aria-hidden="true"></i></a>`
+          : `<span class="ev-dir ${badgeClass}" title="${dirTitle}" aria-label="${dirTitle}"><i class="dir" aria-hidden="true"></i></span>`;
+        mobileRows += `<div class="mobile-event event-row${e.synthetic ? ' row-synthetic' : ''}">${dirMark}`
+          + `<a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>`
+          + `<span class="mobile-event-usd">${usdMobile || '—'}</span>`
+          + `<span class="mobile-event-when">${String(time).replace(/ ago$/, '')}</span></div>`;
       });
 
       content.innerHTML = `
