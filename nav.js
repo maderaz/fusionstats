@@ -39,6 +39,10 @@
       { href: '/monitor',               label: 'Monitor',        icon: 'monitor' },
       { href: '/spark',                 label: 'Spark',          icon: 'spark' },
     ] },
+    // Concepts: pages drawn to try an idea, not part of the stats.
+    { label: 'Demo', pages: [
+      { href: '/demo/homepage',         label: 'Homepage',       icon: 'concept' },
+    ] },
   ];
 
   // One icon per page, drawn for it: a 16px grid, 1.5px strokes, round ends.
@@ -68,6 +72,8 @@
     // 0x…
     address: '<ellipse cx="5.25" cy="8.25" rx="2.5" ry="3.75"/><path class="a" d="M9.25 6.75l3.75 5.25M13 6.75L9.25 12"/>',
     // Looped stETH: one position stacked on another.
+    // A page in a browser window, its hero block the accent: a site drafted.
+    concept: '<rect x="1.75" y="2.25" width="12.5" height="11.5" rx="2"/><path d="M1.75 5.25h12.5"/><rect class="a f" x="4" y="7.25" width="8" height="2.5" rx=".75"/><path d="M4 11.75h4.5"/>',
     spark: '<path d="M8.49 6.07L6.5 3 3.75 7.25 6.5 11.5l1.02-1.57"/><path class="a" d="M9.5 4.5l2.75 4.25L9.5 13l-2.75-4.25zM6.75 8.75L9.5 10l2.75-1.25"/>',
     // The method behind rebalances.
     docs: '<path d="M9.25 1.75H5A1.5 1.5 0 0 0 3.5 3.25v9.5A1.5 1.5 0 0 0 5 14.25h6a1.5 1.5 0 0 0 1.5-1.5V5zM9.25 1.75V5h3.25"/><path class="a" d="M5.9 7.5h4.2M8.6 6l1.5 1.5L8.6 9"/><path d="M10.1 11H5.9M7.4 9.5L5.9 11l1.5 1.5"/>',
@@ -549,7 +555,7 @@
   const foldKey = (g) => 'fusionstats_nav_' + g.label.toLowerCase();
   const startsOpen = (g) => {
     if (g.pages.some(p => isActive(p.href))) return true;
-    try { return localStorage.getItem(foldKey(g)) === 'open'; } catch { return false; }
+    try { return sessionStorage.getItem(foldKey(g)) === 'open'; } catch { return false; }
   };
   const links = GROUPS.map((g, i) => {
     const items = g.pages.map(link).join('');
@@ -673,7 +679,7 @@
         const fold = btn.closest('.fnav-fold');
         const isOpen = !fold.classList.toggle('collapsed');
         btn.setAttribute('aria-expanded', String(isOpen));
-        try { localStorage.setItem(fold.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
+        try { sessionStorage.setItem(fold.dataset.key, isOpen ? 'open' : 'closed'); } catch {}
         if (isOpen) setTimeout(() => fold.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 240);
       });
     });
