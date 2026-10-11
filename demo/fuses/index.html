@@ -31,237 +31,235 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/demo/demo.css">
   <style>
-    /* ---- The page's head: a short band on the purple ground ---------------- */
-    .fz-head { padding-top: 72px; }
-    .fz-head .hp-h { max-width: 760px; }
-    .fz-head .hp-lead { max-width: 620px; }
-    .fz-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 48px; border-top: 1px solid var(--g-line); }
-    .fz-stats div { padding: 22px 20px 26px 0; }
-    .fz-stats div + div { padding-left: 24px; border-left: 1px solid var(--g-line); }
-    .fz-stats b { display: block; font-size: clamp(26px, 3.4cqi, 40px); font-weight: 600; letter-spacing: -0.045em; white-space: nowrap; }
-    .fz-stats div > span { display: block; margin-top: 6px; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--g-text-3); white-space: nowrap; }
-
-    /* ---- Library: the list at the left, the fuse at the right -------------- */
-    .fz-lib { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 56px; align-items: start; padding: 56px 0 112px; }
-    .fz-side { position: sticky; top: 136px; max-height: calc(100vh - 152px); display: flex; flex-direction: column; border: 1px solid var(--hair); background: #FFFFFF; }
-    .fz-side-top { padding: 14px; border-bottom: 1px solid var(--hair); }
-    .fz-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--hair); background: var(--p50); }
-    .fz-search svg { flex: none; width: 14px; height: 14px; fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; }
-    .fz-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font: 400 13.5px/1 var(--sans); color: var(--ink); }
-    .fz-seg { display: grid; grid-template-columns: repeat(2, minmax(max-content, 1fr)); margin-top: 10px; border: 1px solid var(--hair); }
-    .fz-seg button { height: 30px; padding: 0 10px; border: 0; background: #FFFFFF; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; cursor: pointer; }
-    .fz-seg button + button { border-left: 1px solid var(--hair); }
-    .fz-seg button[aria-pressed="true"] { background: var(--g); color: #FFFFFF; }
-    .fz-list { flex: 1; overflow-y: auto; padding: 6px 0 12px; scrollbar-width: thin; }
-    .fz-group { padding: 14px 14px 4px; font: 500 10.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
-    .fz-row {
-      display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 0 14px;
-      border: 0; border-left: 2px solid transparent; background: transparent; text-align: left;
-      font: 500 13.5px/1.2 var(--sans); color: var(--ink-2); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+    /* The page's centre speaks the tracking app's language (ui.css): its
+       greys, a 32px title over a line of chips, a row of figures between
+       hairlines, an underlined tab bar, 18px section titles and key-value
+       rows. Only the top menu and the footer keep the site's purple. */
+    .fa {
+      --bg: #FFFFFF; --bg-subtle: #F7F7F8; --bg-hover: #F5F5F7; --line: #EDEDF0; --line-strong: #E2E2E7;
+      --text: #0B0B0F; --text-2: #5E5E6B; --text-3: #9A9AA6; --accent: #8429FF; --accent-bg: rgba(132, 41, 255, 0.08);
+      --pos: #16A34A; --neg: #DC2626;
+      display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 48px; align-items: start;
+      max-width: 1200px; margin: 0 auto; padding: 32px 48px 96px; color: var(--text);
     }
-    .fz-row:hover { background: var(--p50); color: var(--ink); }
-    .fz-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .fz-row .ct { flex: none; margin-left: auto; font: 500 11px/1 var(--mono); color: var(--ink-3); }
-    .fz-row .live { flex: none; margin-left: auto; padding: 3px 6px; border: 1px solid var(--p300); font: 500 9.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--p500); }
-    .fz-row[aria-current="true"] { border-left-color: var(--p500); background: var(--p100); color: var(--ink); font-weight: 600; }
-    .fz-empty { padding: 18px 14px; font-size: 13px; color: var(--ink-3); }
-    .fz-side-foot { padding: 12px 14px; border-top: 1px solid var(--hair); font: 500 10.5px/1.5 var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }
-    .fz-browse { display: none; }
+    .fa code { font: 500 0.9em/1 var(--mono); color: var(--text); background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
 
-    /* ---- One fuse: the shared parts ------------------------------------------ */
-    .fz-main { min-width: 0; }
-    .fz-crumb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: 500 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-    .fz-crumb b { font-weight: 500; color: var(--p500); }
-    .fz-title { display: flex; align-items: center; gap: 16px; margin: 20px 0 0; }
-    .fz-title .hp-h { font-size: clamp(36px, 5.4cqi, 64px); }
-    .fz-logo { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border: 1px solid var(--hair); background: var(--p50); font: 700 17px/1 var(--sans); letter-spacing: -0.03em; color: var(--p500); }
-    .fz-sub { margin: 16px 0 0; max-width: 680px; font-size: 17px; line-height: 1.6; color: var(--ink-2); }
-    .fz-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
-    .fz-tag { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--hair); font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
-    .fz-tag b { font-weight: 500; color: var(--p500); }
-    .fz-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-    .fz-acts .hp-btn { height: 42px; padding: 0 18px; font-size: 14px; }
-    .fz-acts .hp-btn.dark { background: var(--g); color: #FFFFFF; }
-    .fz-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 40px 0 0; padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
-    .fz-toc a { padding: 6px 10px; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: var(--ink-2); white-space: nowrap; }
-    .fz-toc a:hover { color: var(--p500); background: var(--p50); }
-    .fz-sec { padding-top: 72px; scroll-margin-top: 130px; }
-    .fz-sec > .hp-k { margin-bottom: 14px; }
-    .fz-h { margin: 0; font-size: clamp(26px, 3.2cqi, 36px); line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
-    .fz-p { margin: 14px 0 0; max-width: 680px; font-size: 15.5px; line-height: 1.65; color: var(--ink-2); }
-    .fz-p code, .fz-cell code, .fz-note code { font: 500 0.88em/1 var(--mono); color: var(--p600); background: var(--p100); padding: 2px 5px; }
-    .fz-box { margin-top: 28px; }
+    /* ---- The list, drawn like the app's side menu ---------------------------- */
+    .fa-side { position: sticky; top: 136px; max-height: calc(100vh - 152px); display: flex; flex-direction: column; }
+    .fa-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); }
+    .fa-search svg { flex: none; width: 14px; height: 14px; fill: none; stroke: var(--text-3); stroke-width: 1.6; stroke-linecap: round; }
+    .fa-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font: 400 14px/1 var(--sans); color: var(--text); }
+    .fa-seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 1fr); gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-subtle); }
+    .fa-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; font: 500 13px/1 var(--sans); color: var(--text-2); white-space: nowrap; cursor: pointer; }
+    .fa-seg button[aria-pressed="true"], .fa-seg button[aria-selected="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line); }
+    .fa-side .fa-seg { display: grid; margin-top: 10px; }
+    .fa-list { flex: 1; overflow-y: auto; margin-top: 10px; padding-bottom: 8px; scrollbar-width: thin; }
+    .fa-group { padding: 16px 10px 6px; font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .fa-row {
+      display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px;
+      background: transparent; text-align: left; font: 500 14px/1 var(--sans); color: var(--text-2); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .fa-row:hover { background: var(--bg-hover); color: var(--text); }
+    .fa-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fa-row .ct { flex: none; margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-3); }
+    .fa-row .live { flex: none; margin-left: auto; padding: 3px 7px; border-radius: 999px; background: var(--accent-bg); font-size: 11px; font-weight: 500; color: var(--accent); }
+    .fa-row[aria-current="true"] { background: var(--accent-bg); color: var(--accent); }
+    .fa-row[aria-current="true"] .ct { color: var(--accent); }
+    .fa-empty { padding: 16px 10px; font-size: 13px; color: var(--text-3); }
+    .fa-src { padding: 14px 10px 0; font-size: 12px; line-height: 1.5; color: var(--text-3); }
+    .fa-browse { display: none; }
+
+    /* ---- The masthead: title, chips, figures --------------------------------- */
+    .fa-main { min-width: 0; }
+    .fa-crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-3); white-space: nowrap; }
+    .fa-crumb b { font-weight: 500; color: var(--text-2); }
+    .fa-top { margin-top: 28px; }
+    .fa-top h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
+    .fa-lede { margin: 8px 0 0; max-width: 680px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+    .fa-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font: 500 14px/1 var(--sans); color: var(--text); text-decoration: none; white-space: nowrap; cursor: pointer; transition: background 0.15s ease; }
+    .fa-btn:hover { background: var(--bg-hover); }
+    .fa-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    /* The link bar: where the page is, and what to do with it. */
+    .fa-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+    .fa-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .fa-links .fa-btn { height: 34px; padding: 0 12px; font-size: 13.5px; }
+    .fa-btn.done { border-color: var(--pos); color: var(--pos); }
+    .fa-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .fa-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+    .fa-chip img { width: 14px; height: 14px; }
+    .fa-chip.on { border-color: transparent; background: var(--accent-bg); color: var(--accent); }
+    .fa-figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 40px; padding: 4px 0; }
+    .fa-fig { min-width: 0; padding: 0 24px; border-left: 1px solid var(--line); }
+    .fa-fig:first-child { padding-left: 0; border-left: none; }
+    .fa-fig .k { font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .fa-fig .v { margin-top: 6px; font-size: clamp(22px, 3cqi, 32px); line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; white-space: nowrap; }
+    .fa-fig .s { margin-top: 4px; font-size: 12.5px; color: var(--text-3); text-wrap: balance; }
+
+    /* The tab bar, underlined like Explorer's. */
+    .fa-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 48px; }
+    .fa-tabs::-webkit-scrollbar { display: none; }
+    .fa-tabs button { flex: none; height: 38px; padding: 0 16px; border: 1px solid transparent; border-radius: 999px; background: transparent; font: 500 14.5px/1 var(--sans); color: var(--text-3); white-space: nowrap; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+    .fa-tabs button:hover { color: var(--text); background: var(--bg-hover); }
+    .fa-tabs button[aria-selected="true"] { color: var(--accent); background: var(--accent-bg); }
+    .fa-pane[hidden] { display: none; }
+
+    /* ---- Sections ------------------------------------------------------------- */
+    .fa-sec { padding: 56px 0 0; }
+    .fa-pane > .fa-sec:first-child { padding-top: 40px; }
+    .fa-sec h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin: 0 0 18px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; text-transform: capitalize; white-space: nowrap; }
+    .fa-sec h3 span { font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-3); }
+    .fa-p { margin: 0; max-width: 720px; font-size: 14.5px; line-height: 1.65; color: var(--text-2); }
+    .fa-p + .fa-p { margin-top: 10px; }
+    .fa-note { margin: 18px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-3); }
+
+    /* Key-value rows, as Explorer's Fees and Limits. */
+    .fa-kv { margin-top: 6px; }
+    .fa-kv > div { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 13px 16px; border-radius: 10px; font-size: 14.5px; }
+    .fa-kv > div:nth-child(odd) { background: var(--bg-subtle); }
+    .fa-kv > div > span:first-child { flex: none; color: var(--text-2); white-space: nowrap; }
+    .fa-kv > div > span:last-child { min-width: 0; text-align: right; color: var(--text); }
+    .fa-kv.stack > div > span:last-child { max-width: 62%; }
+
+    /* A table, as the app draws them. */
+    .fa-tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+    .fa-tbl th { padding: 0 14px 10px; font-size: 12px; font-weight: 500; color: var(--text-3); text-align: left; white-space: nowrap; text-transform: capitalize; }
+    .fa-tbl td { padding: 14px; vertical-align: top; line-height: 1.5; color: var(--text-2); }
+    .fa-tbl tbody tr:nth-child(odd) td { background: var(--bg-subtle); }
+    .fa-tbl tbody tr td:first-child { border-radius: 10px 0 0 10px; }
+    .fa-tbl tbody tr td:last-child { border-radius: 0 10px 10px 0; }
+    .fa-tbl td:first-child { color: var(--text); }
+    .fa-tbl .mono { font: 500 13px/1.5 var(--mono); }
+    .fa-tbl .muted { color: var(--text-3); }
+    .fa-tbl .nw { white-space: nowrap; }
+    .fa-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--bg-subtle); border: 1px solid var(--line); font-size: 12px; color: var(--text-2); white-space: nowrap; }
+    .fa-tag.a { background: var(--accent-bg); border-color: transparent; color: var(--accent); }
 
     /* Hub & Spoke. */
-    .fz-hs { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) 44px minmax(0, 0.8fr); align-items: center; padding: 32px; border: 1px solid var(--hair); background: var(--p50);
-      background-image: radial-gradient(circle, rgba(132, 41, 255, 0.10) 1px, transparent 1.4px); background-size: 20px 20px; }
-    .fz-col .hp-k { margin-bottom: 12px; text-align: center; }
-    .fz-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-    .fz-col li { padding: 9px 12px; border: 1px solid var(--hair); background: #FFFFFF; font-size: 13.5px; font-weight: 600; text-align: center; white-space: nowrap; }
-    .fz-col li.more { border-style: dashed; background: transparent; color: var(--ink-3); font-weight: 500; }
-    .fz-col.vault li { padding: 18px 12px; background: var(--g); border-color: var(--g); color: #FFFFFF; }
-    .fz-arrow { text-align: center; color: var(--p500); font-size: 18px; }
-    .fz-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -1px; border-left: 1px solid var(--hair); border-top: 1px solid var(--hair); }
-    .fz-two > div { padding: 24px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); background: #FFFFFF; }
-    .fz-two b { display: block; font-size: 15.5px; font-weight: 600; letter-spacing: -0.015em; }
-    .fz-two p { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
-    .fz-note { margin: 16px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-3); }
+    .fa-hs { display: grid; grid-template-columns: minmax(0, 0.8fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr); align-items: center; padding: 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg-subtle);
+      background-image: radial-gradient(circle, rgba(0, 0, 0, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; }
+    .fa-col .k { margin-bottom: 10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); text-align: center; white-space: nowrap; }
+    .fa-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+    .fa-col li { padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); font-size: 13.5px; font-weight: 500; text-align: center; white-space: nowrap; }
+    .fa-col li.more { border-style: dashed; background: transparent; color: var(--text-3); }
+    .fa-col.vault li { padding: 18px 12px; border-color: transparent; background: var(--accent); color: #FFFFFF; font-weight: 600; }
+    .fa-arrow { text-align: center; color: var(--text-3); font-size: 16px; }
+    .fa-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+    .fa-fact { padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; }
+    .fa-fact b { display: block; font-size: 14.5px; font-weight: 600; }
+    .fa-fact p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
 
-    /* Contracts. */
-    .fz-ct a { display: flex; flex-direction: column; gap: 8px; padding: 22px 24px; text-decoration: none; background: #FFFFFF; transition: background 0.2s ease; }
-    .fz-ct a:hover { background: var(--p50); }
-    .fz-ct .n { font: 500 13.5px/1.2 var(--mono); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .fz-ct .d { font-size: 14px; line-height: 1.55; color: var(--ink-2); }
-    .fz-ct .t { font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--p500); }
+    /* The substrate. */
+    .fa-bits { display: grid; grid-template-columns: minmax(38px, 8fr) 160fr minmax(0, 32fr) minmax(44px, 8fr) minmax(0, 48fr); height: 56px; overflow: hidden; border-radius: 10px; border: 1px solid var(--line-strong); }
+    .fa-bits > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 0 10px; overflow: hidden; }
+    .fa-bits > div + div { border-left: 1px solid rgba(0, 0, 0, 0.06); }
+    .fa-bits b { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+    .fa-bits span { font: 500 10.5px/1 var(--mono); white-space: nowrap; opacity: 0.7; }
+    .fa-bits .b0 { background: #FCE7F3; color: #9D174D; padding: 0; align-items: center; }
+    .fa-bits .b1 { background: #2C0C55; color: #FFFFFF; }
+    .fa-bits .b2 { background: var(--accent); color: #FFFFFF; }
+    .fa-bits .b3 { background: #FEF3C7; color: #92400E; padding: 0; align-items: center; }
+    .fa-bits .b4 { background: var(--bg-subtle); color: var(--text-3); }
+    .fa-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 13px; color: var(--text-2); }
+    .fa-key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .fa-key i { width: 10px; height: 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.08); }
+    .fa-enc { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .fa-enc-in { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) auto; gap: 16px; align-items: end; padding: 22px; }
+    .fa-field > label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .fa-field input[type="text"], .fa-field input[type="number"] { width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font: 500 13px/1 var(--mono); color: var(--text); outline: none; }
+    .fa-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+    .fa-flags { display: flex; gap: 8px; }
+    .fa-flag { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; font: 500 13px/1 var(--mono); color: var(--text-2); white-space: nowrap; cursor: pointer; user-select: none; }
+    .fa-flag input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+    .fa-flag:has(input:checked) { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+    .fa-hex { margin: 0; padding: 18px 22px; background: var(--bg-subtle); font: 500 13px/1.7 var(--mono); overflow-wrap: anywhere; color: var(--text-3); }
+    .fa-hex .x0 { color: #BE185D; } .fa-hex .x1 { color: #2C0C55; } .fa-hex .x2 { color: var(--accent); } .fa-hex .x3 { color: #B45309; } .fa-hex .x4 { color: #C4C4CC; }
+    .fa-perm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 22px; }
+    .fa-perm div { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; background: var(--bg-subtle); font-size: 14px; white-space: nowrap; }
+    .fa-perm svg { flex: none; width: 15px; height: 15px; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .fa-perm .y { color: var(--text); } .fa-perm .y svg { stroke: var(--pos); }
+    .fa-perm .n { color: var(--text-3); } .fa-perm .n svg { stroke: var(--neg); }
+    .fa-perm em { margin-left: auto; font-size: 12px; font-style: normal; color: var(--text-3); }
 
-    /* The substrate: its bytes32, drawn to scale, and built live. */
-    .fz-bits { display: grid; grid-template-columns: minmax(38px, 8fr) 160fr minmax(0, 32fr) minmax(44px, 8fr) minmax(0, 48fr); height: 64px; border: 1px solid var(--g); }
-    .fz-bits > div { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; padding: 0 10px; overflow: hidden; }
-    .fz-bits > div + div { border-left: 1px solid rgba(255, 255, 255, 0.18); }
-    .fz-bits b { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
-    .fz-bits span { font: 500 10px/1 var(--mono); letter-spacing: 0.06em; white-space: nowrap; opacity: 0.75; }
-    .fz-bits .b0 { background: #F9A8D4; color: var(--g); padding: 0; align-items: center; }
-    .fz-bits .b1 { background: var(--g); color: #FFFFFF; }
-    .fz-bits .b2 { background: var(--p500); color: #FFFFFF; }
-    .fz-bits .b3 { background: #FDE68A; color: var(--g); padding: 0; align-items: center; }
-    .fz-bits .b4 { background: var(--p50); color: var(--ink-3); }
-    .fz-bits-key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
-    .fz-bits-key span { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .fz-bits-key i { width: 10px; height: 10px; border: 1px solid rgba(0, 0, 0, 0.08); }
+    /* Actions: one fuse at a time. */
+    .fa-act { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 32px; margin-top: 28px; }
+    .fa-act[hidden] { display: none; }
+    .fa-act h4 { margin: 0; font: 500 14px/1.3 var(--mono); color: var(--accent); overflow-wrap: anywhere; }
+    .fa-act ul { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+    .fa-act li { display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
+    .fa-act li svg { flex: none; width: 14px; height: 14px; margin-top: 4px; fill: none; stroke: var(--pos); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .fa-act li b { color: var(--text); font-weight: 600; }
+    .fa-code { min-width: 0; overflow: hidden; border-radius: 12px; background: #16101F; color: #D6CFE3; }
+    .fa-code-bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px 4px; font: 500 12px/1 var(--mono); color: #8E86A0; white-space: nowrap; }
+    .fa-code-bar span { overflow: hidden; text-overflow: ellipsis; }
+    .fa-code pre { margin: 0; padding: 12px 18px 18px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--mono); }
+    .fa-code .c { color: #7F7790; } .fa-code .k { color: #C9B0FF; } .fa-code .t { color: #FDE68A; } .fa-code .s { color: #86EFAC; }
 
-    .fz-enc { margin-top: 28px; border: 1px solid var(--hair); background: #FFFFFF; }
-    .fz-enc-in { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) auto; gap: 16px; align-items: end; padding: 20px; border-bottom: 1px solid var(--hair); }
-    .fz-field > label { display: block; margin-bottom: 8px; font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
-    .fz-field input[type="text"], .fz-field input[type="number"] { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--hair); background: var(--p50); font: 500 13px/1 var(--mono); color: var(--ink); outline: none; }
-    .fz-field input:focus { border-color: var(--p500); }
-    .fz-flags { display: flex; gap: 8px; }
-    .fz-flag { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--hair); font: 500 12.5px/1 var(--mono); color: var(--ink-2); white-space: nowrap; cursor: pointer; user-select: none; }
-    .fz-flag input { width: 14px; height: 14px; margin: 0; accent-color: var(--p500); }
-    .fz-flag:has(input:checked) { border-color: var(--p500); color: var(--p500); background: var(--p50); }
-    .fz-out { padding: 20px; background: var(--g); color: var(--g-text-2); }
-    .fz-out .hp-k { margin-bottom: 12px; color: var(--g-text-3); }
-    .fz-hex { margin: 0; font: 500 13px/1.7 var(--mono); overflow-wrap: anywhere; color: var(--g-text-3); }
-    .fz-hex .x0 { color: #F9A8D4; } .fz-hex .x1 { color: #FFFFFF; } .fz-hex .x2 { color: var(--g-accent); } .fz-hex .x3 { color: #FDE68A; } .fz-hex .x4 { color: var(--g-line-2); }
-    .fz-perm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--hair); }
-    .fz-perm div { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--hair); font-size: 14px; white-space: nowrap; }
-    .fz-perm div:nth-child(odd) { border-right: 1px solid var(--hair); }
-    .fz-perm svg { flex: none; width: 16px; height: 16px; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-    .fz-perm .y { color: var(--ink); } .fz-perm .y svg { stroke: #15A35A; }
-    .fz-perm .n { color: var(--ink-3); } .fz-perm .n svg { stroke: #D9488A; }
-    .fz-perm em { margin-left: auto; font: 500 10.5px/1 var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+    /* The flow. */
+    .fa-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .fa-step { padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; }
+    .fa-step .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-bg); font-size: 12px; font-weight: 600; color: var(--accent); }
+    .fa-step b { display: block; margin-top: 12px; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; }
+    .fa-step p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
+    .fa-step .f { display: block; margin-top: 10px; font: 500 12px/1 var(--mono); color: var(--text-3); white-space: nowrap; }
 
-    /* Tables. */
-    .fz-tbl { border: 1px solid var(--hair); }
-    .fz-tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
-    .fz-tr.three { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
-    .fz-tr + .fz-tr { border-top: 1px solid var(--hair); }
-    .fz-cell { padding: 14px 18px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
-    .fz-cell:first-child { color: var(--ink); font-weight: 500; }
-    .fz-tr.hd .fz-cell { padding-top: 12px; padding-bottom: 12px; background: var(--g); color: #FFFFFF; font: 500 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
-    .fz-tr .fz-cell + .fz-cell { border-left: 1px solid var(--hair); }
+    .fa-points { margin: 0; padding: 0; list-style: none; }
+    .fa-points li { display: flex; gap: 14px; padding: 12px 0; font-size: 14.5px; line-height: 1.6; color: var(--text-2); }
+    .fa-points li:first-child { padding-top: 0; }
+    .fa-points svg { flex: none; width: 17px; height: 17px; margin-top: 3px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .fa-points b { color: var(--text); font-weight: 600; }
 
-    /* Actions: four tabs, one fuse each. */
-    .fz-tabs { display: grid; grid-template-columns: repeat(4, minmax(max-content, 1fr)); border: 1px solid var(--hair); border-bottom: 0; }
-    .fz-tabs button { height: 46px; padding: 0 14px; border: 0; background: #FFFFFF; font: 600 14px/1 var(--sans); color: var(--ink-3); white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent; }
-    .fz-tabs button + button { border-left: 1px solid var(--hair); }
-    .fz-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--p500); background: var(--p50); }
-    .fz-pane { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); border: 1px solid var(--hair); }
-    .fz-pane[hidden] { display: none; }
-    .fz-pane > div:first-child { padding: 24px; }
-    .fz-pane h3 { margin: 0; font: 500 14px/1.3 var(--mono); color: var(--p500); overflow-wrap: anywhere; }
-    .fz-pane ul { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-    .fz-pane li { display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
-    .fz-pane li svg { flex: none; width: 14px; height: 14px; margin-top: 4px; fill: none; stroke: var(--p500); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .fz-pane li code { font: 500 0.9em/1 var(--mono); color: var(--p600); }
-    .fz-code { min-width: 0; background: var(--g); color: var(--g-text-2); }
-    .fz-code-bar { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--g-line); font: 500 11.5px/1 var(--mono); color: var(--g-text-3); white-space: nowrap; }
-    .fz-code-bar span { overflow: hidden; text-overflow: ellipsis; }
-    .fz-code pre { margin: 0; padding: 16px; overflow-x: auto; font: 12px/1.7 var(--mono); scrollbar-width: thin; }
-    .fz-code .c { color: var(--g-text-3); } .fz-code .k { color: var(--g-accent); } .fz-code .t { color: #FDE68A; } .fz-code .s { color: #7BF0AE; }
-
-    /* The typical flow: three steps, then their call. */
-    .fz-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 1px solid var(--hair); border-top: 1px solid var(--hair); }
-    .fz-step { padding: 22px 24px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); background: #FFFFFF; }
-    .fz-step .n { font: 500 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--p500); }
-    .fz-step b { display: block; margin-top: 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
-    .fz-step p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
-    .fz-step code { font: 500 12px/1 var(--mono); color: var(--p600); }
-    .fz-flow-code { margin-top: -1px; }
-
-    .fz-risks { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--hair); }
-    .fz-risks li { display: flex; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--hair); font-size: 15px; line-height: 1.6; color: var(--ink-2); }
-    .fz-risks li svg { flex: none; width: 18px; height: 18px; margin-top: 3px; fill: none; stroke: var(--p500); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-    .fz-risks b { color: var(--ink); font-weight: 600; }
-    .fz-risks.fz-box { margin-top: 36px; }
-    .fz-risks code { font: 500 0.88em/1 var(--mono); color: var(--p600); background: var(--p100); padding: 2px 5px; }
-
-    /* Any other protocol: its registered fuses. */
-    .fz-reg { margin-top: 36px; border: 1px solid var(--hair); }
-    .fz-reg-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 18px; }
-    .fz-reg-row + .fz-reg-row { border-top: 1px solid var(--hair); }
-    .fz-reg-row .id { font: 500 12px/1 var(--mono); color: var(--p500); }
-    .fz-reg-row .nm { min-width: 0; font: 500 13px/1.3 var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .fz-reg-row .ty { font: 500 10.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
-    .fz-reg-head { padding: 12px 18px; background: var(--g); color: #FFFFFF; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
-    .fz-soon { margin-top: 24px; padding: 20px 22px; border: 1px dashed var(--p300); background: var(--p50); font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
-    .fz-soon b { color: var(--ink); }
+    .fa-soon { margin-top: 40px; padding: 16px 18px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--bg-subtle); font-size: 14px; line-height: 1.6; color: var(--text-2); }
+    .fa-soon b { color: var(--text); }
 
     /* ---- Narrower ------------------------------------------------------------- */
     @container (max-width: 1080px) {
-      .fz-lib { grid-template-columns: 240px minmax(0, 1fr); gap: 40px; }
-      .fz-hs { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-      .fz-arrow { transform: rotate(90deg); padding: 6px 0; }
-      .fz-pane { grid-template-columns: minmax(0, 1fr); }
-      .fz-enc-in { grid-template-columns: minmax(0, 1fr) 140px; }
-      .fz-enc-in .fz-field:last-child { grid-column: 1 / -1; }
+      .fa { grid-template-columns: 220px minmax(0, 1fr); gap: 36px; padding-left: 32px; padding-right: 32px; }
+      .fa-hs { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+      .fa-arrow { transform: rotate(90deg); padding: 4px 0; }
+      .fa-act { grid-template-columns: minmax(0, 1fr); }
+      .fa-enc-in { grid-template-columns: minmax(0, 1fr) 140px; }
+      .fa-enc-in .fa-field:last-child { grid-column: 1 / -1; }
     }
     @container (max-width: 900px) {
-      .fz-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .fz-stats div:nth-child(3) { padding-left: 0; border-left: none; }
-      .fz-stats div:nth-child(n+3) { border-top: 1px solid var(--g-line); }
-      .fz-lib { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 32px; }
-      .fz-side { position: static; max-height: none; }
-      .fz-browse { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 48px; padding: 0 14px; border: 0; background: var(--g); color: #FFFFFF; font: 600 14px/1 var(--sans); cursor: pointer; white-space: nowrap; }
-      .fz-browse span { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--g-text-3); }
-      .fz-browse svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
-      .fz-side:not(.open) .fz-side-top, .fz-side:not(.open) .fz-list, .fz-side:not(.open) .fz-side-foot { display: none; }
-      .fz-side.open .fz-browse svg { transform: rotate(180deg); }
-      .fz-side.open .fz-list { max-height: 420px; }
+      .fa { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 24px 72px; }
+      .fa-side { position: static; max-height: none; border: 1px solid var(--line-strong); border-radius: 12px; }
+      .fa-browse { display: flex; align-items: center; gap: 8px; width: 100%; height: 46px; padding: 0 14px; border: 0; background: transparent; font: 600 14px/1 var(--sans); color: var(--text); cursor: pointer; white-space: nowrap; }
+      .fa-browse span { margin-left: auto; font-weight: 500; color: var(--accent); }
+      .fa-browse svg { flex: none; width: 12px; height: 12px; fill: none; stroke: var(--text-3); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
+      .fa-side-in { padding: 0 12px 12px; }
+      .fa-side:not(.open) .fa-side-in { display: none; }
+      .fa-side.open .fa-browse svg { transform: rotate(180deg); }
+      .fa-side.open .fa-list { max-height: 380px; }
+      .fa-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; }
+      .fa-fig { padding: 0 0 0 20px !important; }
+      .fa-fig:nth-child(odd) { padding-left: 0 !important; border-left: none; }
     }
-    @container (max-width: 760px) {
-      .fz-head { padding-top: 56px; }
-      .fz-two, .fz-steps { grid-template-columns: minmax(0, 1fr); }
-      .fz-ct { grid-template-columns: minmax(0, 1fr) !important; }
-      .fz-tabs { grid-template-columns: repeat(2, minmax(max-content, 1fr)); }
-      .fz-tabs button:nth-child(3) { border-left: 0; }
-      .fz-tabs button:nth-child(n+3) { border-top: 1px solid var(--hair); }
-      .fz-tr, .fz-tr.three { grid-template-columns: minmax(0, 1fr); }
-      .fz-tr .fz-cell + .fz-cell { border-left: 0; padding-top: 0; }
-      .fz-tr.hd { display: none; }
-      .fz-tr.three .fz-cell:nth-child(2)::before { content: 'Effect: '; font-weight: 600; color: var(--ink); }
-      .fz-tr.three .fz-cell:nth-child(3)::before { content: 'Rule: '; font-weight: 600; color: var(--p500); }
-      .fz-perm { grid-template-columns: minmax(0, 1fr); }
-      .fz-perm div:nth-child(odd) { border-right: 0; }
-      .fz-bits-label, .fz-bits .b2 span, .fz-bits .b4 span { display: none; }
+    @container (max-width: 640px) {
+      .fa-links .fa-btn span { display: none; }
+      .fa-links .fa-btn { width: 34px; padding: 0; justify-content: center; }
+      .fa-top h2 { font-size: 26px; }
+      .fa-facts, .fa-steps { grid-template-columns: minmax(0, 1fr); }
+      .fa-perm { grid-template-columns: minmax(0, 1fr); }
+      .fa-bits-label, .fa-bits .b2 span, .fa-bits .b4 span { display: none; }
+      .fa-tbl.stackable thead { display: none; }
+      .fa-tbl.stackable tr { display: block; margin-bottom: 8px; padding: 14px; border-radius: 10px; background: var(--bg-subtle); }
+      .fa-tbl.stackable tr:nth-child(even) { background: transparent; }
+      .fa-tbl.stackable td { display: block; padding: 2px 0; background: transparent !important; border-radius: 0 !important; }
+      .fa-tbl.stackable td[data-k]::before { content: attr(data-k) ': '; font-weight: 600; color: var(--text); }
+      .fa-kv.stack > div { display: block; }
+      .fa-kv.stack > div > span:last-child { display: block; max-width: none; margin-top: 4px; text-align: left; color: var(--text-2); }
     }
     @container (max-width: 520px) {
-      .fz-title { gap: 12px; }
-      .fz-logo { width: 46px; height: 46px; font-size: 15px; }
-      .fz-hs { padding: 20px 14px; }
-      .fz-enc-in { grid-template-columns: minmax(0, 1fr); padding: 16px; }
-      .fz-flags { flex-wrap: wrap; }
-      .fz-out, .fz-pane > div:first-child { padding: 16px; }
-      .fz-perm div { padding: 12px 16px; }
-      .fz-bits { height: 56px; }
-      .fz-bits b { display: none; }
-      .fz-bits > div { padding: 0 6px; }
-      .fz-reg-row { grid-template-columns: 40px minmax(0, 1fr); padding: 12px 14px; }
-      .fz-reg-row .ty { display: none; }
-      .fz-cell { padding: 12px 14px; }
-      .fz-step b { font-size: 16.5px; }
-    }
-    @container (max-width: 400px) {
-      .fz-stats span .m-hide { display: none; }
+      .fa { padding: 16px 16px 64px; }
+      .fa-hs { padding: 16px 12px; }
+      .fa-enc-in { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+      .fa-flags { flex-wrap: wrap; }
+      .fa-hex { padding: 14px; }
+      .fa-perm { padding: 14px; }
+      .fa-bits b { display: none; }
+      .fa-bits > div { padding: 0 6px; }
+      .fa-fig .s .m-hide { display: none; }
+      .fa-tabs button { padding: 0 13px; font-size: 14px; }
     }
   </style>
 </head>
@@ -269,155 +267,153 @@
 <main class="hp" id="top" data-note="A concept for Fusion's fuse library. Facts from the ipor-fusion repository." data-note-short="Fuses concept">
   <h1 class="hp-sr">Fuses</h1>
 
-  <!-- Head: the purple ground -->
-  <section class="hp-purple">
-    <div class="hp-wrap fz-head">
-      <span class="hp-k">Fuse library</span>
-      <h2 class="hp-h">Every market,<br><em>one fuse away.</em></h2>
-      <p class="hp-lead">A fuse is a small, stateless contract that lets a Plasma Vault act on one protocol: supply, borrow, swap, claim. Vaults call them by <code style="font:inherit;color:var(--g-accent)">delegatecall</code>; atomists decide which markets each may touch.</p>
-      <div class="fz-stats">
-        <div><b>107</b><span>Registered <span class="m-hide">fuse </span>types</span></div>
-        <div><b id="fzProtocols">—</b><span>Protocols</span></div>
-        <div><b>49</b><span>Aave V4 market ID</span></div>
-        <div><b data-live="vaults">—</b><span>Vaults live</span></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="hp-wrap">
-    <div class="fz-lib">
-
-      <!-- The list -->
-      <aside class="fz-side" id="fzSide" aria-label="Fuses">
-        <button type="button" class="fz-browse" id="fzBrowse" aria-expanded="false">Browse fuses<span id="fzBrowseNow">Aave V4</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg></button>
-        <div class="fz-side-top">
-          <label class="fz-search"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.25"/><path d="M9.25 9.25L12.5 12.5"/></svg><input id="fzQ" type="search" placeholder="Search protocols" aria-label="Search protocols" autocomplete="off"></label>
-          <div class="fz-seg" role="group" aria-label="Group by">
-            <button type="button" data-by="fn" aria-pressed="true">By function</button>
-            <button type="button" data-by="az" aria-pressed="false">By protocol</button>
-          </div>
+  <div class="fa">
+    <!-- The list -->
+    <aside class="fa-side" id="faSide" aria-label="Fuses">
+      <button type="button" class="fa-browse" id="faBrowse" aria-expanded="false">Browse fuses<span id="faBrowseNow">Aave V4</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg></button>
+      <div class="fa-side-in">
+        <label class="fa-search"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.25"/><path d="M9.25 9.25L12.5 12.5"/></svg><input id="faQ" type="search" placeholder="Search protocols" aria-label="Search protocols" autocomplete="off"></label>
+        <div class="fa-seg" role="group" aria-label="Group by">
+          <button type="button" data-by="fn" aria-pressed="true">By function</button>
+          <button type="button" data-by="az" aria-pressed="false">By protocol</button>
         </div>
-        <div class="fz-list" id="fzList"></div>
-        <div class="fz-side-foot">Types from FuseTypes.sol, plus integrations not yet registered there.</div>
-      </aside>
+        <div class="fa-list" id="faList"></div>
+        <p class="fa-src"><span id="faCount">—</span> protocols. Types from FuseTypes.sol (107), plus integrations not yet registered there.</p>
+      </div>
+    </aside>
 
-      <!-- One fuse -->
-      <div class="fz-main" id="fzMain">
+    <!-- One protocol -->
+    <div class="fa-main" id="faMain">
+      <article id="faAave">
+        <div class="fa-bar"><div class="fa-crumb"><span>Fuses</span><span>/</span><b>Lending</b></div><div class="fa-links"><button type="button" class="fa-btn" data-md aria-label="Copy as .md"><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5"/><path d="M9.5 4.5v-1A1.5 1.5 0 0 0 8 2H3.5A1.5 1.5 0 0 0 2 3.5V8a1.5 1.5 0 0 0 1.5 1.5h1"/></svg><span>Copy as .md</span></button><button type="button" class="fa-btn" data-link aria-label="Copy link"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.75.75"/><path d="M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.75-.75"/></svg><span>Copy link</span></button><a class="fa-btn" href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/README.md" target="_blank" rel="noopener" aria-label="README"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 1.75h4.75l2.25 2.25v8.25h-7z"/><path d="M5.5 7h3.5M5.5 9.5h3.5"/></svg><span>README</span></a><a class="fa-btn" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses/aave_v4" target="_blank" rel="noopener" aria-label="Open on GitHub"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 9.5l5-5M5.5 4.5h4v4"/></svg><span>Open on GitHub</span></a></div></div>
+        <div class="fa-top">
+          <h2>Aave V4</h2>
+          <p class="fa-lede">Supply, withdraw, borrow, repay and collateral on any granted Aave V4 Spoke reserve, and the vault's NAV read back from every one of them.</p>
+        </div>
+        <div class="fa-chips">
+          <span class="fa-chip"><img src="/icons/chains/ethereum.svg" alt="">Ethereum</span>
+          <span class="fa-chip">Lending</span>
+          <span class="fa-chip">Market 49</span>
+          <span class="fa-chip">Stateless</span>
+          <span class="fa-chip on">Live</span>
+        </div>
+        <div class="fa-figs">
+          <div class="fa-fig"><div class="k">Fuses</div><div class="v">4</div><div class="s">plus one library</div></div>
+          <div class="fa-fig"><div class="k">Market ID</div><div class="v">49</div><div class="s">one market, every Spoke</div></div>
+          <div class="fa-fig"><div class="k">Hubs</div><div class="v">4</div><div class="s">where the liquidity lives</div></div>
+          <div class="fa-fig"><div class="k">Aave V4 Live</div><div class="v">Mar 30</div><div class="s">2026, on Ethereum</div></div>
+        </div>
+        <div class="fa-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" aria-controls="faP0">Overview</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="faP1">Permissions</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="faP2">Actions</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="faP3">Flow</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="faP4">Risks</button>
+        </div>
 
-        <article id="fzAave">
-          <div class="fz-crumb"><span>Fuses</span><span>/</span><span>Lending</span><span>/</span><b>Aave V4</b></div>
-          <div class="fz-title"><span class="fz-logo" aria-hidden="true">V4</span><h2 class="hp-h">Aave V4</h2></div>
-          <p class="fz-sub">The fuse family for Aave V4's Hub &amp; Spoke lending: supply, withdraw, borrow, repay and collateral on any granted Spoke reserve, with the vault's NAV read back from every one of them.</p>
-          <div class="fz-tags">
-            <span class="fz-tag">Market ID <b>49</b></span>
-            <span class="fz-tag">Ethereum</span>
-            <span class="fz-tag">Aave V4 live <b>30 Mar 2026</b></span>
-            <span class="fz-tag">4 fuses <b>+ 1 lib</b></span>
-            <span class="fz-tag">Stateless</span>
-          </div>
-          <div class="fz-acts">
-            <a class="hp-btn dark" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses/aave_v4" target="_blank" rel="noopener">View on GitHub<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11l6-6M6.5 5H11v4.5"/></svg></a>
-            <a class="hp-btn line" href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/README.md" target="_blank" rel="noopener">Read the README</a>
-          </div>
-          <nav class="fz-toc" aria-label="On this page">
-            <a href="#fz-hub">Hub &amp; Spoke</a><a href="#fz-contracts">Contracts</a><a href="#fz-substrate">Permissions</a><a href="#fz-actions">Actions</a><a href="#fz-flow">Flow</a><a href="#fz-risks">Risks</a>
-          </nav>
-
-          <!-- Hub & Spoke -->
-          <section class="fz-sec" id="fz-hub">
-            <span class="hp-k">How Aave V4 is built</span>
-            <h3 class="fz-h">Liquidity in Hubs. Risk in Spokes.</h3>
-            <p class="fz-p">Liquidity lives in Hubs; users act on Spokes, each with its own risk parameters, oracle and reserve list. A Spoke reserve is an append-only <code>reserveId</code> pointing to one asset of one Hub, so the same underlying can be listed more than once on a single Spoke.</p>
-            <div class="fz-box">
-              <div class="fz-hs">
-                <div class="fz-col vault"><span class="hp-k">Fusion</span><ul><li>Plasma Vault</li></ul></div>
-                <div class="fz-arrow" aria-hidden="true">→</div>
-                <div class="fz-col"><span class="hp-k">Spokes</span><ul><li>Main</li><li>Bluechip</li><li>Ethena Correlated</li><li>Forex</li><li>Gold</li><li class="more">and more</li></ul></div>
-                <div class="fz-arrow" aria-hidden="true">→</div>
-                <div class="fz-col"><span class="hp-k">Hubs</span><ul><li>Core</li><li>Prime</li><li>Plus</li><li>Global Dollar</li></ul></div>
-              </div>
-              <div class="fz-two">
-                <div><b>Supplying does not enable collateral</b><p>Only reserves flagged with <code>setUsingAsCollateral</code> count towards the health factor; without it every borrow reverts with <code>HealthFactorBelowThreshold</code>. Hence a fuse of its own for collateral.</p></div>
-                <div><b>There is no E-Mode</b><p>Aave V4 has no E-Mode: risk is segmented by choosing the Spoke. One market, ID 49, covers every Spoke.</p></div>
-              </div>
-              <p class="fz-note">For example, the Bluechip Spoke lists USDC twice: as reserve 4 (Prime hub) and reserve 7 (Core hub), with different rates and caps.</p>
+        <!-- Overview -->
+        <div class="fa-pane" id="faP0" role="tabpanel">
+          <section class="fa-sec">
+            <h3>Hub and spoke</h3>
+            <p class="fa-p">Liquidity lives in Hubs; users act on Spokes, each with its own risk parameters, oracle and reserve list. A Spoke reserve is an append-only <code>reserveId</code> pointing to one asset of one Hub, so the same underlying can be listed more than once on a single Spoke.</p>
+            <div class="fa-hs" style="margin-top:18px">
+              <div class="fa-col vault"><div class="k">Fusion</div><ul><li>Plasma Vault</li></ul></div>
+              <div class="fa-arrow" aria-hidden="true">→</div>
+              <div class="fa-col"><div class="k">Spokes</div><ul><li>Main</li><li>Bluechip</li><li>Ethena Correlated</li><li>Forex</li><li>Gold</li><li class="more">and more</li></ul></div>
+              <div class="fa-arrow" aria-hidden="true">→</div>
+              <div class="fa-col"><div class="k">Hubs</div><ul><li>Core</li><li>Prime</li><li>Plus</li><li>Global Dollar</li></ul></div>
             </div>
-          </section>
-
-          <!-- Contracts -->
-          <section class="fz-sec" id="fz-contracts">
-            <span class="hp-k">Contracts</span>
-            <h3 class="fz-h">Four fuses and a library.</h3>
-            <p class="fz-p">All stateless (<code>VERSION</code> and <code>MARKET_ID</code> immutables only), run by <code>delegatecall</code> from <code>PlasmaVault.execute</code>, each with <code>enterTransient</code> and <code>exitTransient</code> variants for batched flows.</p>
-            <div class="hp-grid c2 fz-ct fz-box">
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4SupplyFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4SupplyFuse</span><span class="d">Supply and withdraw on a reserve, plus the instant withdraw path for user redemptions.</span></a>
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4BorrowFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4BorrowFuse</span><span class="d">Borrow and repay on a reserve.</span></a>
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4CollateralFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4CollateralFuse</span><span class="d">Enable or disable a reserve as the vault's collateral.</span></a>
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4BalanceFuse.sol" target="_blank" rel="noopener"><span class="t">Balance</span><span class="n">AaveV4BalanceFuse</span><span class="d">NAV: the sum of (supplied − total debt) × price over the granted reserves, in USD (WAD).</span></a>
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4SubstrateLib.sol" target="_blank" rel="noopener"><span class="t">Library</span><span class="n">AaveV4SubstrateLib</span><span class="d">Encodes and decodes reserve substrates and checks permissions.</span></a>
-              <a href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses/aave_v4" target="_blank" rel="noopener"><span class="t">Interface</span><span class="n">ext/IAaveV4Spoke</span><span class="d">A subset of Aave's real ISpoke, its struct layouts identical.</span></a>
+            <div class="fa-facts">
+              <div class="fa-fact"><b>Supplying does not enable collateral</b><p>Only reserves flagged with <code>setUsingAsCollateral</code> count towards the health factor; without it every borrow reverts with <code>HealthFactorBelowThreshold</code>. Hence a fuse of its own for collateral.</p></div>
+              <div class="fa-fact"><b>There is no E-Mode</b><p>Risk is segmented by choosing the Spoke, so one market, ID 49, covers every Spoke.</p></div>
             </div>
+            <p class="fa-note">The Bluechip Spoke, for one, lists USDC twice: as reserve 4 on the Prime hub and reserve 7 on the Core hub, with different rates and caps.</p>
           </section>
+          <section class="fa-sec">
+            <h3>Contracts<span>4 fuses, 1 library, 1 interface</span></h3>
+            <table class="fa-tbl stackable">
+              <thead><tr><th>Contract</th><th>Kind</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">AaveV4SupplyFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Supply and withdraw on a reserve, plus the instant withdraw path for user redemptions</td></tr>
+                <tr><td class="mono">AaveV4BorrowFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Borrow and repay on a reserve</td></tr>
+                <tr><td class="mono">AaveV4CollateralFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Enable or disable a reserve as the vault's collateral</td></tr>
+                <tr><td class="mono">AaveV4BalanceFuse</td><td class="nw"><span class="fa-tag">Balance</span></td><td>NAV: the sum of (supplied − total debt) × price over granted reserves, in USD (WAD)</td></tr>
+                <tr><td class="mono">AaveV4SubstrateLib</td><td class="nw"><span class="fa-tag">Library</span></td><td>Encodes and decodes reserve substrates and checks permissions</td></tr>
+                <tr><td class="mono">ext/IAaveV4Spoke</td><td class="nw"><span class="fa-tag">Interface</span></td><td>A subset of Aave's real ISpoke, its struct layouts identical</td></tr>
+              </tbody>
+            </table>
+            <p class="fa-note">All stateless (<code>VERSION</code> and <code>MARKET_ID</code> immutables only), run by <code>delegatecall</code> from <code>PlasmaVault.execute</code>, each with <code>enterTransient</code> and <code>exitTransient</code> variants for batched flows.</p>
+          </section>
+        </div>
 
-          <!-- Substrate -->
-          <section class="fz-sec" id="fz-substrate">
-            <span class="hp-k">Permissions</span>
-            <h3 class="fz-h">One word says what the vault may do.</h3>
-            <p class="fz-p">Each grant is a <code>bytes32</code> substrate: a Spoke, a reserve and two flags. Any grant allows supply, withdraw, repay and disabling collateral; <code>isCollateral</code> adds enabling collateral; <code>canBorrow</code> adds borrowing.</p>
-            <div class="fz-box">
-              <div class="fz-bits" aria-hidden="true">
+        <!-- Permissions -->
+        <div class="fa-pane" id="faP1" role="tabpanel" hidden>
+          <section class="fa-sec">
+            <h3>The substrate<span>one bytes32 per grant</span></h3>
+            <p class="fa-p">A grant names a Spoke, a reserve and two flags. Any grant allows supply, withdraw, repay and disabling collateral; <code>isCollateral</code> adds enabling collateral; <code>canBorrow</code> adds borrowing.</p>
+            <div style="margin-top:18px">
+              <div class="fa-bits" aria-hidden="true">
                 <div class="b0"><span>Type</span></div>
-                <div class="b1"><b class="fz-bits-label">Spoke address</b><span>Bits 247..88</span></div>
-                <div class="b2"><b class="fz-bits-label">Reserve ID</b><span>87..56</span></div>
+                <div class="b1"><b class="fa-bits-label">Spoke address</b><span>Bits 247..88</span></div>
+                <div class="b2"><b class="fa-bits-label">Reserve ID</b><span>87..56</span></div>
                 <div class="b3"><span>Flags</span></div>
-                <div class="b4"><b class="fz-bits-label">Reserved</b><span>47..0</span></div>
+                <div class="b4"><b class="fa-bits-label">Reserved</b><span>47..0</span></div>
               </div>
-              <div class="fz-bits-key">
-                <span><i style="background:#F9A8D4"></i>Type flag, 8 bits (1 = Reserve)</span>
+              <div class="fa-key">
+                <span><i style="background:#FCE7F3"></i>Type, 8 bits (1 = Reserve)</span>
                 <span><i style="background:#2C0C55"></i>Spoke, 160 bits</span>
                 <span><i style="background:#8429FF"></i>Reserve ID, 32 bits</span>
-                <span><i style="background:#FDE68A"></i>Flags, 8 bits</span>
-                <span><i style="background:#FAF7FF"></i>Reserved, 48 bits of zero</span>
+                <span><i style="background:#FEF3C7"></i>Flags, 8 bits</span>
+                <span><i style="background:#F7F7F8"></i>Reserved, 48 bits of zero</span>
               </div>
-
-              <div class="fz-enc">
-                <div class="fz-enc-in">
-                  <div class="fz-field"><label for="fzSpoke">Spoke address</label><input id="fzSpoke" type="text" spellcheck="false" placeholder="0x… paste a Spoke" autocomplete="off"></div>
-                  <div class="fz-field"><label for="fzRid">Reserve ID</label><input id="fzRid" type="number" min="0" max="4294967295" value="0"></div>
-                  <div class="fz-field"><label>Flags</label><div class="fz-flags">
-                    <label class="fz-flag"><input type="checkbox" id="fzCol" checked>isCollateral</label>
-                    <label class="fz-flag"><input type="checkbox" id="fzBor">canBorrow</label>
-                  </div></div>
-                </div>
-                <div class="fz-out"><span class="hp-k">The substrate</span><p class="fz-hex" id="fzHex"></p></div>
-                <div class="fz-perm" id="fzPerm"></div>
-              </div>
-              <p class="fz-note"><code>getReserveGrant</code> probes the four flag variants of a (spoke, reserveId) pair and returns their union, so the result does not depend on the order of granted substrates. Atomists are expected to grant one variant per reserve.</p>
             </div>
           </section>
-
-          <!-- Actions -->
-          <section class="fz-sec" id="fz-actions">
-            <span class="hp-k">Actions</span>
-            <h3 class="fz-h">What each fuse checks before it acts.</h3>
-            <div class="fz-box">
-              <div class="fz-tabs" role="tablist">
-                <button type="button" role="tab" aria-selected="true" aria-controls="fzT0">Supply</button>
-                <button type="button" role="tab" aria-selected="false" aria-controls="fzT1">Borrow</button>
-                <button type="button" role="tab" aria-selected="false" aria-controls="fzT2">Collateral</button>
-                <button type="button" role="tab" aria-selected="false" aria-controls="fzT3">Balance</button>
+          <section class="fa-sec">
+            <h3>Build a substrate</h3>
+            <div class="fa-enc">
+              <div class="fa-enc-in">
+                <div class="fa-field"><label for="faSpoke">Spoke address</label><input id="faSpoke" type="text" spellcheck="false" placeholder="0x… paste a Spoke" autocomplete="off"></div>
+                <div class="fa-field"><label for="faRid">Reserve ID</label><input id="faRid" type="number" min="0" max="4294967295" value="0"></div>
+                <div class="fa-field"><label>Flags</label><div class="fa-flags">
+                  <label class="fa-flag"><input type="checkbox" id="faCol" checked>isCollateral</label>
+                  <label class="fa-flag"><input type="checkbox" id="faBor">canBorrow</label>
+                </div></div>
               </div>
-              <div class="fz-pane" id="fzT0" role="tabpanel">
-                <div>
-                  <h3>AaveV4SupplyFuse</h3>
-                  <ul>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> checks the grant, cross-checks the reserve's underlying, caps the amount at the vault's balance, supplies, then enforces <code>minShares</code>.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> withdraws with any grant.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>instantWithdraw</b> serves user redemptions: only for reserves never granted as collateral and not collateral on-chain, catching a failing Spoke so one reserve cannot block every withdrawal.</span></li>
-                  </ul>
-                </div>
-                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4SupplyFuse.sol · enter</span><span>L140</span></div>
-<pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+              <p class="fa-hex" id="faHex"></p>
+              <div class="fa-perm" id="faPerm"></div>
+            </div>
+            <p class="fa-note"><code>getReserveGrant</code> probes the four flag variants of a (spoke, reserveId) pair and returns their union, so the order of granted substrates never matters. Atomists are expected to grant one variant per reserve.</p>
+          </section>
+          <section class="fa-sec">
+            <h3>Validation</h3>
+            <div class="fa-kv stack">
+              <div><span>Supply, withdraw</span><span>Any grant for (spoke, reserveId)</span></div>
+              <div><span>Instant withdraw</span><span>A grant, no granted variant with isCollateral, and not collateral on the Spoke now</span></div>
+              <div><span>Borrow</span><span>A grant with canBorrow</span></div>
+              <div><span>Repay</span><span>Any grant, even after canBorrow is revoked</span></div>
+              <div><span>Enable collateral</span><span>A grant with isCollateral</span></div>
+              <div><span>Disable collateral</span><span>Any grant; the Spoke enforces the health factor</span></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Actions -->
+        <div class="fa-pane" id="faP2" role="tabpanel" hidden>
+          <section class="fa-sec">
+            <h3>What each fuse checks</h3>
+            <div class="fa-seg" role="tablist" id="faActSeg">
+              <button type="button" role="tab" aria-selected="true" data-act="0">Supply</button>
+              <button type="button" role="tab" aria-selected="false" data-act="1">Borrow</button>
+              <button type="button" role="tab" aria-selected="false" data-act="2">Collateral</button>
+              <button type="button" role="tab" aria-selected="false" data-act="3">Balance</button>
+            </div>
+            <div class="fa-act" data-act="0">
+              <div><h4>AaveV4SupplyFuse</h4><ul>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> checks the grant, cross-checks the reserve's underlying, caps the amount at the vault's balance, supplies, then enforces <code>minShares</code>.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> withdraws with any grant.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>instantWithdraw</b> serves user redemptions: only for reserves never granted as collateral and not collateral on-chain, catching a failing Spoke so one reserve cannot block every withdrawal.</span></li>
+              </ul></div>
+              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4SupplyFuse.sol · enter</span><span>L140</span></div><pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
     <span class="k">revert</span> <span class="t">AaveV4SupplyFuseUnsupportedSubstrate</span>(<span class="s">"enter"</span>, data_.spoke, data_.reserveId);
 }
 <span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
@@ -429,18 +425,14 @@ ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, finalAmount)
 <span class="k">if</span> (shares &lt; data_.minShares) {
     <span class="k">revert</span> <span class="t">AaveV4SupplyFuseInsufficientShares</span>(shares, data_.minShares);
 }</pre></div>
-              </div>
-              <div class="fz-pane" id="fzT1" role="tabpanel" hidden>
-                <div>
-                  <h3>AaveV4BorrowFuse</h3>
-                  <ul>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> borrows only with <code>canBorrow</code>; the Spoke reverts <code>HealthFactorBelowThreshold</code> if no collateral is enabled.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> repays with any grant, so debt can always be repaid even after <code>canBorrow</code> is revoked.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>The repay is capped at the vault's balance; the Spoke caps it at the total debt.</span></li>
-                  </ul>
-                </div>
-                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4BorrowFuse.sol · exit</span><span>L188</span></div>
-<pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+            </div>
+            <div class="fa-act" data-act="1" hidden>
+              <div><h4>AaveV4BorrowFuse</h4><ul>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> borrows only with <code>canBorrow</code>; the Spoke reverts <code>HealthFactorBelowThreshold</code> if no collateral is enabled.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> repays with any grant, so debt can always be repaid even after <code>canBorrow</code> is revoked.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>The repay is capped at the vault's balance; the Spoke caps it at the total debt.</span></li>
+              </ul></div>
+              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BorrowFuse.sol · exit</span><span>L188</span></div><pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
     <span class="k">revert</span> <span class="t">AaveV4BorrowFuseUnsupportedSubstrate</span>(<span class="s">"exit"</span>, data_.spoke, data_.reserveId);
 }
 <span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
@@ -452,34 +444,26 @@ ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, repayAmount)
 (<span class="k">uint256</span> sharesRepaid, <span class="k">uint256</span> repaid) = IAaveV4Spoke(data_.spoke).<span class="t">repay</span>(
     data_.reserveId, repayAmount, <span class="k">address</span>(<span class="k">this</span>)
 );</pre></div>
-              </div>
-              <div class="fz-pane" id="fzT2" role="tabpanel" hidden>
-                <div>
-                  <h3>AaveV4CollateralFuse</h3>
-                  <ul>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> enables a reserve as collateral, only with a grant carrying <code>isCollateral</code>.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> disables it with any grant; the Spoke enforces the health factor.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Needed because supplying alone never enables collateral on Aave V4.</span></li>
-                  </ul>
-                </div>
-                <div class="fz-code"><div class="fz-code-bar"><span>README.md · validation</span><span>L69</span></div>
-<pre><span class="c">| Action                              | Requires                 |</span>
+            </div>
+            <div class="fa-act" data-act="2" hidden>
+              <div><h4>AaveV4CollateralFuse</h4><ul>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> enables a reserve as collateral, only with a grant carrying <code>isCollateral</code>.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> disables it with any grant; the Spoke enforces the health factor.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Needed because supplying alone never enables collateral on Aave V4.</span></li>
+              </ul></div>
+              <div class="fa-code"><div class="fa-code-bar"><span>README.md · validation</span><span>L69</span></div><pre><span class="c">| Action                              | Requires                 |</span>
 <span class="c">|-------------------------------------|--------------------------|</span>
 | <span class="t">AaveV4CollateralFuse.enter</span> (enable) | grant with <span class="k">isCollateral</span> |
 | <span class="t">AaveV4CollateralFuse.exit</span> (disable) | any grant <span class="c">(the Spoke</span>
 |                                     | <span class="c">enforces the health factor)</span> |</pre></div>
-              </div>
-              <div class="fz-pane" id="fzT3" role="tabpanel" hidden>
-                <div>
-                  <h3>AaveV4BalanceFuse</h3>
-                  <ul>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Walks the granted reserve substrates, counting each (spoke, reserveId) pair once.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Sums (supplied − total debt) × price per reserve through <code>PriceOracleMiddleware</code>, normalised to WAD.</span></li>
-                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Debt is always read, whatever <code>canBorrow</code> says, so revoking a borrow permission can never hide debt. Reverts if debt exceeds supply.</span></li>
-                  </ul>
-                </div>
-                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4BalanceFuse.sol · balanceOf</span><span>L61</span></div>
-<pre><span class="k">bytes32</span>[] <span class="k">memory</span> substrates = PlasmaVaultConfigLib.<span class="t">getMarketSubstrates</span>(MARKET_ID);
+            </div>
+            <div class="fa-act" data-act="3" hidden>
+              <div><h4>AaveV4BalanceFuse</h4><ul>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Walks the granted reserve substrates, counting each (spoke, reserveId) pair once.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Sums (supplied − total debt) × price per reserve through <code>PriceOracleMiddleware</code>, in WAD.</span></li>
+                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Debt is always read, whatever <code>canBorrow</code> says, so revoking a borrow permission never hides debt. Reverts if debt exceeds supply.</span></li>
+              </ul></div>
+              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BalanceFuse.sol · balanceOf</span><span>L61</span></div><pre><span class="k">bytes32</span>[] <span class="k">memory</span> substrates = PlasmaVaultConfigLib.<span class="t">getMarketSubstrates</span>(MARKET_ID);
 <span class="k">for</span> (<span class="k">uint256</span> i; i &lt; len; ++i) {
     <span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">isReserveSubstrate</span>(substrates[i])) <span class="k">continue</span>;
     substrate = AaveV4SubstrateLib.<span class="t">decode</span>(substrates[i]);
@@ -489,34 +473,20 @@ ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, repayAmount)
         plasmaVault, priceOracleMiddleware
     );
 }</pre></div>
-              </div>
-            </div>
-            <div class="fz-box">
-              <div class="fz-tbl">
-                <div class="fz-tr hd"><div class="fz-cell">Action</div><div class="fz-cell">Requires</div></div>
-                <div class="fz-tr"><div class="fz-cell">Supply · Withdraw</div><div class="fz-cell">Any grant for (spoke, reserveId)</div></div>
-                <div class="fz-tr"><div class="fz-cell">Instant withdraw</div><div class="fz-cell">A grant, no granted variant with <code>isCollateral</code>, and not collateral on the Spoke now</div></div>
-                <div class="fz-tr"><div class="fz-cell">Borrow</div><div class="fz-cell">A grant with <code>canBorrow</code></div></div>
-                <div class="fz-tr"><div class="fz-cell">Repay</div><div class="fz-cell">Any grant, even after <code>canBorrow</code> is revoked</div></div>
-                <div class="fz-tr"><div class="fz-cell">Enable collateral</div><div class="fz-cell">A grant with <code>isCollateral</code></div></div>
-                <div class="fz-tr"><div class="fz-cell">Disable collateral</div><div class="fz-cell">Any grant; the Spoke enforces the health factor</div></div>
-              </div>
             </div>
           </section>
+        </div>
 
-          <!-- Flow -->
-          <section class="fz-sec" id="fz-flow">
-            <span class="hp-k">A typical flow</span>
-            <h3 class="fz-h">Supply, collateralise, borrow. One call.</h3>
-            <p class="fz-p">Three fuse actions in one <code>PlasmaVault.execute</code>: the README's own example on the Bluechip Spoke.</p>
-            <div class="fz-box">
-              <div class="fz-steps">
-                <div class="fz-step"><span class="n">01 · Supply fuse</span><b>Supply 10 WETH</b><p>Into reserve <code>0</code> of the Bluechip Spoke.</p></div>
-                <div class="fz-step"><span class="n">02 · Collateral fuse</span><b>Enable collateral</b><p>On the same reserve <code>0</code>, so it counts towards the health factor.</p></div>
-                <div class="fz-step"><span class="n">03 · Borrow fuse</span><b>Borrow 10,000 USDC</b><p>From reserve <code>4</code>, Bluechip's USDC on the Prime hub.</p></div>
-              </div>
-              <div class="fz-code fz-flow-code"><div class="fz-code-bar"><span>README.md · example</span><span>L159</span></div>
-<pre>FuseAction[] <span class="k">memory</span> actions = <span class="k">new</span> FuseAction[](<span class="s">3</span>);
+        <!-- Flow -->
+        <div class="fa-pane" id="faP3" role="tabpanel" hidden>
+          <section class="fa-sec">
+            <h3>A typical flow<span>one PlasmaVault.execute</span></h3>
+            <div class="fa-steps">
+              <div class="fa-step"><span class="n">1</span><b>Supply 10 WETH</b><p>Into reserve 0 of the Bluechip Spoke.</p><span class="f">AaveV4SupplyFuse</span></div>
+              <div class="fa-step"><span class="n">2</span><b>Enable collateral</b><p>On the same reserve 0, so it counts towards the health factor.</p><span class="f">AaveV4CollateralFuse</span></div>
+              <div class="fa-step"><span class="n">3</span><b>Borrow 10,000 USDC</b><p>From reserve 4, Bluechip's USDC on the Prime hub.</p><span class="f">AaveV4BorrowFuse</span></div>
+            </div>
+            <div class="fa-code"><div class="fa-code-bar"><span>README.md · example</span><span>L159</span></div><pre>FuseAction[] <span class="k">memory</span> actions = <span class="k">new</span> FuseAction[](<span class="s">3</span>);
 actions[<span class="s">0</span>] = <span class="t">FuseAction</span>(supplyFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
     AaveV4SupplyFuseEnterData({spoke: BLUECHIP_SPOKE, asset: WETH, reserveId: <span class="s">0</span>, amount: <span class="s">10e18</span>, minShares: <span class="s">0</span>})));
 actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateralFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,uint256))"</span>,
@@ -524,37 +494,40 @@ actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateral
 actions[<span class="s">2</span>] = <span class="t">FuseAction</span>(borrowFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
     AaveV4BorrowFuseEnterData({spoke: BLUECHIP_SPOKE, asset: USDC, reserveId: <span class="s">4</span>, amount: <span class="s">10_000e6</span>, minShares: <span class="s">0</span>})));
 PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
-            </div>
           </section>
+        </div>
 
-          <!-- Risks -->
-          <section class="fz-sec" id="fz-risks">
-            <span class="hp-k">For atomists</span>
-            <h3 class="fz-h">Grants and open positions.</h3>
-            <p class="fz-p">The fuses deliberately do not tie a grant change to existing positions. <code>grantMarketSubstrates</code> replaces the whole set, so the atomist keeps these rules.</p>
-            <div class="fz-box">
-              <div class="fz-tbl">
-                <div class="fz-tr three hd"><div class="fz-cell">Situation</div><div class="fz-cell">Effect</div><div class="fz-cell">Rule</div></div>
-                <div class="fz-tr three"><div class="fz-cell">A reserve with debt loses its grant</div><div class="fz-cell">Debt drops out of the balance: NAV overstated, share price inflated</div><div class="fz-cell">Never revoke a reserve the vault borrows; repay first</div></div>
-                <div class="fz-tr three"><div class="fz-cell">A reserve with supply loses its grant</div><div class="fz-cell">Supply drops out of NAV and cannot be withdrawn until re-granted</div><div class="fz-cell">Withdraw first, or re-grant to recover</div></div>
-                <div class="fz-tr three"><div class="fz-cell">Collateral re-granted without <code>isCollateral</code></div><div class="fz-cell">Stays enabled on the Spoke; enabling again is refused, disabling works</div><div class="fz-cell">Disable collateral before downgrading the grant</div></div>
-                <div class="fz-tr three"><div class="fz-cell">Debt re-granted without <code>canBorrow</code></div><div class="fz-cell">New borrows refused, repay works, debt still counted</div><div class="fz-cell">The intended way to wind a position down</div></div>
-                <div class="fz-tr three"><div class="fz-cell">Reserve granted before Aave lists it</div><div class="fz-cell">Ignored by the balance fuse; supply and borrow revert <code>ReserveNotListed</code></div><div class="fz-cell">Harmless: active once listed</div></div>
-              </div>
-              <p class="fz-note">Only the last row is tolerated in code; the others are documented risks, not enforced invariants.</p>
-            </div>
-            <ul class="fz-risks fz-box">
+        <!-- Risks -->
+        <div class="fa-pane" id="faP4" role="tabpanel" hidden>
+          <section class="fa-sec">
+            <h3>Grants and open positions</h3>
+            <p class="fa-p">The fuses deliberately do not tie a grant change to existing positions, and <code>grantMarketSubstrates</code> always replaces the whole set. The atomist keeps these rules.</p>
+            <table class="fa-tbl stackable" style="margin-top:12px">
+              <thead><tr><th>Situation</th><th>Effect</th><th>Rule</th></tr></thead>
+              <tbody>
+                <tr><td>A reserve with debt loses its grant</td><td data-k="Effect">Debt drops out of the balance: NAV overstated, share price inflated</td><td data-k="Rule">Never revoke a reserve the vault borrows; repay first</td></tr>
+                <tr><td>A reserve with supply loses its grant</td><td data-k="Effect">Supply drops out of NAV and cannot be withdrawn until re-granted</td><td data-k="Rule">Withdraw first, or re-grant to recover</td></tr>
+                <tr><td>Collateral re-granted without isCollateral</td><td data-k="Effect">Stays enabled on the Spoke; enabling again is refused, disabling works</td><td data-k="Rule">Disable collateral before downgrading the grant</td></tr>
+                <tr><td>Debt re-granted without canBorrow</td><td data-k="Effect">New borrows refused, repay works, debt still counted</td><td data-k="Rule">The intended way to wind a position down</td></tr>
+                <tr><td>Reserve granted before Aave lists it</td><td data-k="Effect">Ignored by the balance fuse; supply and borrow revert ReserveNotListed</td><td data-k="Rule">Harmless: active once listed</td></tr>
+              </tbody>
+            </table>
+            <p class="fa-note">Only the last row is tolerated in code; the others are documented risks, not enforced invariants.</p>
+          </section>
+          <section class="fa-sec">
+            <h3>Security</h3>
+            <ul class="fa-points">
               <li><svg viewBox="0 0 18 18"><path d="M9 2.5l5.5 2.5v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7V5z"/></svg><span><b>No position manager, ever.</b> The vault acts for itself on the Spoke (<code>onBehalfOf == msg.sender</code>).</span></li>
               <li><svg viewBox="0 0 18 18"><path d="M3 9.5l3.5 3.5L15 4.5"/></svg><span><b>Instant withdraw is double-guarded.</b> Limited to non-collateral reserves by grant flag and by live on-chain status, so user withdrawals can never degrade a leveraged position.</span></li>
               <li><svg viewBox="0 0 18 18"><path d="M4 9h10M9 4v10"/></svg><span><b>Exact approvals.</b> Only granted Spokes are called; supply and repay pull exactly the approved amount (<code>SafeERC20.forceApprove</code>).</span></li>
-              <li><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 6v3.5M9 12h.01"/></svg><span><b>Aave's own limits stand.</b> Reserve paused and frozen flags and Hub caps are enforced by Aave; the fuses do not pre-check them.</span></li>
+              <li><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 6v3.5M9 12h.01"/></svg><span><b>Aave's own limits stand.</b> Paused and frozen flags and Hub caps are enforced by Aave; the fuses do not pre-check them.</span></li>
             </ul>
           </section>
-        </article>
+        </div>
+      </article>
 
-        <!-- Any other protocol -->
-        <article id="fzOther" hidden></article>
-      </div>
+      <!-- Any other protocol -->
+      <article id="faOther" hidden></article>
     </div>
   </div>
 </main>
@@ -562,7 +535,7 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
 <script>
 // The fuse library. Every protocol with fuses in ipor-fusion, its registered
 // fuse types (FuseTypes.sol: id and name), grouped by what they do. Aave V4 is
-// the one drawn in full; the others show their registered types.
+// drawn in full; the others show their registered types.
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -595,77 +568,134 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
     { key: 'reader', name: 'Universal Reader', fn: 'Vault & Generic', fuses: [T(70, 'UNIVERSAL_READER_BALANCE_FUSE')] },
   ];
   const FN = ['Lending', 'DEX & Liquidity', 'Yield & Farming', 'Swaps', 'Vault & Generic'];
-  $('fzProtocols').textContent = String(P.length);
+  $('faCount').textContent = String(P.length);
+  const kind = (n) => (/BALANCE|Balance/.test(n) ? 'Balance' : /CLAIM|Claim/.test(n) ? 'Claim' : 'Action');
 
   // The list.
   let by = 'fn', q = '', cur = 'aave-v4';
-  const row = (p) => `<button type="button" class="fz-row" data-key="${p.key}"${p.key === cur ? ' aria-current="true"' : ''}>`
+  const row = (p) => `<button type="button" class="fa-row" data-key="${p.key}"${p.key === cur ? ' aria-current="true"' : ''}>`
     + `<span class="nm">${p.name}</span>${p.live ? '<span class="live">Live</span>' : p.fuses.length ? `<span class="ct">${p.fuses.length}</span>` : ''}</button>`;
   function draw() {
     const hit = P.filter(p => !q || p.name.toLowerCase().includes(q) || p.fn.toLowerCase().includes(q));
     let html = '';
-    if (by === 'fn') FN.forEach(f => { const g = hit.filter(p => p.fn === f); if (g.length) html += `<div class="fz-group">${f}</div>` + g.map(row).join(''); });
+    if (by === 'fn') FN.forEach(f => { const g = hit.filter(p => p.fn === f); if (g.length) html += `<div class="fa-group">${f}</div>` + g.map(row).join(''); });
     else html = hit.slice().sort((a, b) => a.name.localeCompare(b.name)).map(row).join('');
-    $('fzList').innerHTML = html || '<div class="fz-empty">No protocol matches.</div>';
+    $('faList').innerHTML = html || '<div class="fa-empty">No protocol matches.</div>';
   }
-  document.querySelectorAll('.fz-seg button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.fa-side .fa-seg button').forEach(b => b.addEventListener('click', () => {
     by = b.dataset.by;
-    document.querySelectorAll('.fz-seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    document.querySelectorAll('.fa-side .fa-seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     draw();
   }));
-  $('fzQ').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); draw(); });
-  $('fzList').addEventListener('click', (e) => { const b = e.target.closest('.fz-row'); if (b) show(b.dataset.key, true); });
-  $('fzBrowse').addEventListener('click', () => { const on = $('fzSide').classList.toggle('open'); $('fzBrowse').setAttribute('aria-expanded', String(on)); });
+  $('faQ').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); draw(); });
+  $('faList').addEventListener('click', (e) => { const b = e.target.closest('.fa-row'); if (b) show(b.dataset.key, true); });
+  $('faBrowse').addEventListener('click', () => { const on = $('faSide').classList.toggle('open'); $('faBrowse').setAttribute('aria-expanded', String(on)); });
 
-  // One protocol at the right: Aave V4 in full, any other its registered types.
+  // The link bar over a protocol: copy it as Markdown, copy its link, open it on GitHub.
+  const BAR = (crumb) => `<div class="fa-bar"><div class="fa-crumb">${crumb}</div><div class="fa-links"><button type="button" class="fa-btn" data-md aria-label="Copy as .md"><svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4.5" y="4.5" width="7" height="7" rx="1.5"/><path d="M9.5 4.5v-1A1.5 1.5 0 0 0 8 2H3.5A1.5 1.5 0 0 0 2 3.5V8a1.5 1.5 0 0 0 1.5 1.5h1"/></svg><span>Copy as .md</span></button><button type="button" class="fa-btn" data-link aria-label="Copy link"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.75.75"/><path d="M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.75-.75"/></svg><span>Copy link</span></button><a class="fa-btn" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses" target="_blank" rel="noopener" aria-label="Open on GitHub"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M4.5 9.5l5-5M5.5 4.5h4v4"/></svg><span>Open on GitHub</span></a></div></div>`;
+
+  // One protocol: Aave V4 in full, any other its registered types.
   function show(key, user) {
     const p = P.find(x => x.key === key) || P[0];
     cur = p.key; draw();
-    $('fzBrowseNow').textContent = p.name;
-    $('fzSide').classList.remove('open'); $('fzBrowse').setAttribute('aria-expanded', 'false');
-    $('fzAave').hidden = !p.live; $('fzOther').hidden = !!p.live;
+    $('faBrowseNow').textContent = p.name;
+    $('faSide').classList.remove('open'); $('faBrowse').setAttribute('aria-expanded', 'false');
+    $('faAave').hidden = !p.live; $('faOther').hidden = !!p.live;
     if (!p.live) {
-      const types = p.fuses.length;
-      $('fzOther').innerHTML = `<div class="fz-crumb"><span>Fuses</span><span>/</span><span>${p.fn}</span><span>/</span><b>${p.name}</b></div>`
-        + `<div class="fz-title"><span class="fz-logo" aria-hidden="true">${p.name.replace(/[^A-Z0-9]/g, '').slice(0, 2) || p.name.slice(0, 2)}</span><h2 class="hp-h">${p.name}</h2></div>`
-        + `<div class="fz-tags"><span class="fz-tag">${p.fn}</span>${types ? `<span class="fz-tag"><b>${types}</b> fuse${types === 1 ? '' : 's'}</span>` : ''}${p.note ? `<span class="fz-tag">${p.note}</span>` : ''}</div>`
-        + (types ? `<div class="fz-reg"><div class="fz-reg-head">Registered fuses</div>`
-          + p.fuses.map(f => `<div class="fz-reg-row"><span class="id">${f.id == null ? '·' : '#' + f.id}</span><span class="nm">${f.name}</span><span class="ty">${/BALANCE|Balance/.test(f.name) ? 'Balance' : /CLAIM|Claim/.test(f.name) ? 'Claim' : 'Action'}</span></div>`).join('') + '</div>' : '')
-        + `<div class="fz-soon"><b>A full page for ${p.name} is on the way.</b> ${types ? 'Its fuses are listed above with their FuseTypes.sol ids (a dot where a fuse is not registered there yet).' : 'Its fuses live in the repository but are not yet in FuseTypes.sol.'} The Aave V4 page shows what each one will hold.</div>`
-        + `<div class="fz-acts"><button type="button" class="hp-btn dark" data-go="aave-v4">See Aave V4</button><a class="hp-btn line" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses" target="_blank" rel="noopener">All fuses on GitHub</a></div>`;
-      $('fzOther').querySelector('[data-go]').addEventListener('click', () => show('aave-v4', true));
+      const n = p.fuses.length, bal = p.fuses.filter(f => kind(f.name) === 'Balance').length, reg = p.fuses.filter(f => f.id != null).length;
+      $('faOther').innerHTML = BAR(`<span>Fuses</span><span>/</span><b>${p.fn}</b>`)
+        + `<div class="fa-top"><h2>${p.name}</h2><p class="fa-lede">${n ? `The ${p.name} fuses a Plasma Vault can be given, as FuseTypes.sol registers them.` : `${p.name}'s fuses live in the repository but are not yet in FuseTypes.sol.`}</p></div>`
+        + `<div class="fa-chips"><span class="fa-chip">${p.fn}</span>${p.note ? `<span class="fa-chip">${p.note}</span>` : ''}<span class="fa-chip">Full page soon</span></div>`
+        + `<div class="fa-figs"><div class="fa-fig"><div class="k">Fuses</div><div class="v">${n || '—'}</div><div class="s">in this family</div></div>`
+        + `<div class="fa-fig"><div class="k">Registered</div><div class="v">${n ? reg : '—'}</div><div class="s">with a FuseTypes id</div></div>`
+        + `<div class="fa-fig"><div class="k">Balance Fuses</div><div class="v">${n ? bal : '—'}</div><div class="s">read the NAV</div></div>`
+        + `<div class="fa-fig"><div class="k">Action Fuses</div><div class="v">${n ? n - bal : '—'}</div><div class="s">move the assets</div></div></div>`
+        + (n ? `<section class="fa-sec" style="border-top:none"><h3>Registered fuses<span>${n}</span></h3><table class="fa-tbl"><thead><tr><th>ID</th><th>Name</th><th>Kind</th></tr></thead><tbody>`
+          + p.fuses.map(f => `<tr class="fa-fuse-row"><td class="muted nw">${f.id == null ? '·' : '#' + f.id}</td><td class="mono" style="overflow-wrap:anywhere">${f.name}</td><td class="nw"><span class="fa-tag${kind(f.name) === 'Balance' ? '' : ' a'}">${kind(f.name)}</span></td></tr>`).join('')
+          + `</tbody></table></section>` : '')
+        + `<div class="fa-soon"><b>A full page for ${p.name} is on the way,</b> as Aave V4 has: its markets, permissions, checks, a typical flow and the atomist's rules. ${n ? 'A dot stands for a fuse not registered in FuseTypes.sol yet.' : ''} <a href="#aave-v4" data-go="aave-v4" style="color:var(--accent)">See Aave V4</a>.</div>`;
+      $('faOther').querySelector('[data-go]').addEventListener('click', (e) => { e.preventDefault(); show('aave-v4', true); });
     }
     if (user) {
       history.replaceState(null, '', '#' + p.key);
-      const top = $('fzMain').getBoundingClientRect().top + scrollY - 140;
+      const top = $('faMain').getBoundingClientRect().top + scrollY - 140;
       if (scrollY > top) scrollTo({ top, behavior: 'smooth' });
     }
   }
 
-  // The substrate, built live from the inputs, and what it lets the vault do.
+  // The substrate, built live, and what it lets the vault do.
   const hx = (n, w) => n.toString(16).padStart(w, '0');
   const tick = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg>', cross = '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
   function encode() {
-    const raw = $('fzSpoke').value.trim().replace(/^0x/i, '').toLowerCase();
+    const raw = $('faSpoke').value.trim().replace(/^0x/i, '').toLowerCase();
     const spoke = /^[0-9a-f]{40}$/.test(raw) ? raw : '0'.repeat(40);
-    $('fzSpoke').style.borderColor = raw && spoke !== raw ? '#D9488A' : '';
-    const rid = Math.max(0, Math.min(4294967295, Math.floor(Number($('fzRid').value) || 0)));
-    const col = $('fzCol').checked, bor = $('fzBor').checked;
-    const flags = (col ? 1 : 0) | (bor ? 2 : 0);
-    $('fzHex').innerHTML = '0x<span class="x0">01</span><span class="x1">' + spoke + '</span><span class="x2">' + hx(rid, 8)
-      + '</span><span class="x3">' + hx(flags, 2) + '</span><span class="x4">' + '0'.repeat(12) + '</span>';
+    $('faSpoke').style.borderColor = raw && spoke !== raw ? 'var(--neg)' : '';
+    const rid = Math.max(0, Math.min(4294967295, Math.floor(Number($('faRid').value) || 0)));
+    const col = $('faCol').checked, bor = $('faBor').checked;
+    $('faHex').innerHTML = '0x<span class="x0">01</span><span class="x1">' + spoke + '</span><span class="x2">' + hx(rid, 8)
+      + '</span><span class="x3">' + hx((col ? 1 : 0) | (bor ? 2 : 0), 2) + '</span><span class="x4">' + '0'.repeat(12) + '</span>';
     const rows = [['Supply', true], ['Withdraw', true], ['Repay', true], ['Disable collateral', true],
       ['Enable collateral', col], ['Borrow', bor], ['Instant withdraw', !col, 'if not collateral now']];
-    $('fzPerm').innerHTML = rows.map(([k, ok, why]) => `<div class="${ok ? 'y' : 'n'}">${ok ? tick : cross}${k}${ok && why ? `<em>${why}</em>` : ''}</div>`).join('');
+    $('faPerm').innerHTML = rows.map(([k, ok, why]) => `<div class="${ok ? 'y' : 'n'}">${ok ? tick : cross}${k}${ok && why ? `<em>${why}</em>` : ''}</div>`).join('');
   }
-  ['fzSpoke', 'fzRid', 'fzCol', 'fzBor'].forEach(id => $(id).addEventListener('input', encode));
+  ['faSpoke', 'faRid', 'faCol', 'faBor'].forEach(id => $(id).addEventListener('input', encode));
   encode();
 
-  // The action tabs.
-  const tabs = [...document.querySelectorAll('.fz-tabs button')];
+  // The tab bar, and the Actions tab's own switch.
+  const tabs = [...document.querySelectorAll('.fa-tabs button')];
   tabs.forEach(t => t.addEventListener('click', () => tabs.forEach(x => {
     const on = x === t; x.setAttribute('aria-selected', String(on)); $(x.getAttribute('aria-controls')).hidden = !on;
   })));
+  const acts = [...document.querySelectorAll('#faActSeg button')];
+  acts.forEach(a => a.addEventListener('click', () => {
+    acts.forEach(x => x.setAttribute('aria-selected', String(x === a)));
+    document.querySelectorAll('.fa-act').forEach(p => { p.hidden = p.dataset.act !== a.dataset.act; });
+  }));
+
+  // Copy as .md: the protocol shown, every tab of it, as Markdown.
+  const txt = (el) => el.textContent.replace(/\s+/g, ' ').trim();
+  const cell = (t) => t.replace(/\|/g, '\\|');
+  const mdTable = (head, rows) => '| ' + head.map(cell).join(' | ') + ' |\n|' + head.map(() => ' --- |').join('') + '\n'
+    + rows.map(r => '| ' + r.map(cell).join(' | ') + ' |').join('\n');
+  function toMd(art) {
+    const out = [];
+    const SEL = 'h2, h3, h4, .fa-lede, .fa-chips, .fa-figs, .fa-p, .fa-note, .fa-hs, .fa-fact, table, .fa-kv, .fa-key, .fa-hex, .fa-perm, .fa-act ul, .fa-steps, pre, .fa-points, .fa-soon';
+    art.querySelectorAll(SEL).forEach(el => {
+      if (el.parentElement.closest('.fa-figs, .fa-hs, .fa-fact, .fa-kv, .fa-steps, .fa-points, .fa-soon, table')) return;
+      const t = el.tagName;
+      if (t === 'H2') out.push('# ' + txt(el));
+      else if (t === 'H3') { const n = el.querySelector('span'); out.push('## ' + (n ? txt(el).slice(0, -txt(n).length).trim() + ' (' + txt(n) + ')' : txt(el))); }
+      else if (t === 'H4') out.push('### ' + txt(el));
+      else if (el.matches('.fa-chips')) out.push([...el.children].map(txt).join(' · '));
+      else if (el.matches('.fa-figs')) out.push(mdTable(['Figure', 'Value', 'Note'], [...el.children].map(f => [txt(f.querySelector('.k')), txt(f.querySelector('.v')), txt(f.querySelector('.s'))])));
+      else if (el.matches('.fa-hs')) out.push([...el.querySelectorAll('.fa-col')].map(c => '- ' + txt(c.querySelector('.k')) + ': ' + [...c.querySelectorAll('li')].map(txt).join(', ')).join('\n'));
+      else if (el.matches('.fa-fact')) out.push('**' + txt(el.querySelector('b')) + '.** ' + txt(el.querySelector('p')));
+      else if (t === 'TABLE') out.push(mdTable([...el.querySelectorAll('th')].map(txt), [...el.querySelectorAll('tbody tr')].map(r => [...r.children].map(txt))));
+      else if (el.matches('.fa-kv')) out.push(mdTable(['Action', 'Requires'], [...el.children].map(r => [...r.children].map(txt))));
+      else if (el.matches('.fa-key')) out.push([...el.children].map(c => '- ' + txt(c)).join('\n'));
+      else if (el.matches('.fa-hex')) out.push('Substrate as built: `' + txt(el) + '`');
+      else if (el.matches('.fa-perm')) out.push([...el.children].map(c => '- ' + (c.classList.contains('y') ? '[x] ' : '[ ] ') + txt(c)).join('\n'));
+      else if (el.matches('.fa-act ul, .fa-points')) out.push([...el.children].map(li => '- ' + txt(li)).join('\n'));
+      else if (el.matches('.fa-steps')) out.push([...el.children].map((st, i) => (i + 1) + '. **' + txt(st.querySelector('b')) + '**: ' + txt(st.querySelector('p')) + ' (' + txt(st.querySelector('.f')) + ')').join('\n'));
+      else if (t === 'PRE') { const bar = el.parentElement.querySelector('.fa-code-bar span'); out.push((bar ? '`' + txt(bar) + '`\n' : '') + '```solidity\n' + el.textContent.replace(/\s+$/, '') + '\n```'); }
+      else out.push(txt(el));
+    });
+    return out.join('\n\n') + '\n\nSource: ' + location.href + '\n';
+  }
+  function flash(b, word) {
+    const s = b.querySelector('span'), was = s.textContent;
+    s.textContent = word; b.classList.add('done');
+    setTimeout(() => { s.textContent = was; b.classList.remove('done'); }, 1600);
+  }
+  const copy = (text) => (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).catch(() => {
+    const a = document.createElement('textarea'); a.value = text; document.body.appendChild(a); a.select();
+    try { document.execCommand('copy'); } finally { a.remove(); }
+  });
+  $('faMain').addEventListener('click', (e) => {
+    const md = e.target.closest('[data-md]'), ln = e.target.closest('[data-link]');
+    if (md) copy(toMd(md.closest('article'))).then(() => flash(md, 'Copied'));
+    if (ln) copy(location.href).then(() => flash(ln, 'Copied'));
+  });
 
   draw();
   show((location.hash || '').slice(1) || 'aave-v4', false);
