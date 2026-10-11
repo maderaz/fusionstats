@@ -87,10 +87,11 @@
     a.txlink:hover { border-color: currentColor; background: var(--bg-subtle); }
     span.txlink { opacity: 0.4; }
     .srow .meta { display: none; }
-    .srow .meta .gap-plus { display: none; }
+    .srow .meta .gap-plus, .srow .meta .gu-s { display: none; }
+    /* The narrowest phones: "+10m" for "10 min after". */
     @container (max-width: 345px) {
-      .srow .meta .gap-plus { display: inline; }
-      .srow .meta .gap-after { display: none; }
+      .srow .meta .gap-plus, .srow .meta .gu-s { display: inline; }
+      .srow .meta .gap-after, .srow .meta .gu-l { display: none; }
     }
     .empty { padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--text-3); }
     .empty b { color: var(--text); font-weight: 600; }
@@ -213,6 +214,12 @@
       if (sec < 60) return sec + 's'; if (sec < 3600) return Math.round(sec / 60) + ' min'; if (sec < 86400) return Math.round(sec / 3600) + ' hr';
       if (sec < 2592000) return Math.round(sec / 86400) + ' d'; if (sec < 31536000) return Math.round(sec / 2592000) + ' mo'; return (sec / 31536000).toFixed(1) + ' yr';
     }
+    // The same time, its unit said both ways: in full, and short (m, h, d).
+    function fGapMeta(sec) {
+      const [n, u] = fGap(sec).replace(/(\d)s$/, '$1 s').split(' ');
+      const short = { s: 's', min: 'm', hr: 'h', d: 'd', mo: 'mo', yr: 'y' }[u] || u;
+      return n + '<span class="gu-l"> ' + u + '</span><span class="gu-s">' + short + '</span>';
+    }
     function fWhen(ts) {
       const d = new Date(ts * 1000), a = Date.now() / 1000 - ts;
       const rel = a < 3600 ? Math.round(a / 60) + 'm ago' : a < 86400 ? Math.round(a / 3600) + 'h ago' : a < 2592000 ? Math.round(a / 86400) + 'd ago' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -323,7 +330,7 @@
           <span class="from" title="${esc(from)}${s.src.chain ? ' · ' + esc(s.src.chain) : ''}">${s.src.chain ? UI.chain(s.src.chain) : ''}<span class="fname">${esc(from)}</span></span>
           <span class="gap">${fGap(s.gap)}</span>
           <span class="r match"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span class="tok">${fUsd(s.src.usdValue)} out</span></span>
-          <span class="meta"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span>·</span>${wallet}<span>·</span><span class="gap-t"><span class="gap-plus">+</span>${fGap(s.gap)}<span class="gap-after"> after</span></span></span>
+          <span class="meta"><span class="ratio ${s.ratio >= 0.85 ? 'hi' : 'mid'}">${pct}%</span><span>·</span>${wallet}<span>·</span><span class="gap-t"><span class="gap-plus">+</span>${fGapMeta(s.gap)}<span class="gap-after"> after</span></span></span>
           <span class="r txs">${txLink('in', exIn, s.dep.tx, s.dep.chain)}${txLink('out', exOut, s.src.tx, s.src.chain)}</span>
         </div>`;
       }).join('');
