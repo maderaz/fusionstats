@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <meta name="robots" content="noindex">
+  <title>Talk to Us • Fusion Ecosystem</title>
+  <meta name="description" content="A concept for Fusion's contact page: a lean form on the purple ground for launching a vault, allocating or integrating.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/demo/contact">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Ecosystem">
+  <meta property="og:title" content="Talk to Us • Fusion Ecosystem">
+  <meta property="og:description" content="A concept for Fusion's contact page: a lean form on the purple ground for launching a vault, allocating or integrating.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/demo/contact">
+  <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-contact.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Talk to Us: A concept for Fusion's contact page: a lean form on the purple ground for launching a vault, allocating or integrating.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Talk to Us • Fusion Ecosystem">
+  <meta name="twitter:description" content="A concept for Fusion's contact page: a lean form on the purple ground for launching a vault, allocating or integrating.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-contact.png">
+  <!-- /page-meta -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+  <style>
+    /* Talk to us: the hero's purple ground, words at the left, the form at the
+       right. Lean fields: a hairline box, the label above, a soft ring on focus. */
+    .ct { position: relative; }
+    .ct-in { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 72px; align-items: start; padding-top: 96px; padding-bottom: 112px; }
+    .ct-words .hp-h { font-size: clamp(38px, 5.6cqi, 68px); }
+    .ct-words .hp-lead { max-width: 460px; }
+    .ct-help { margin: 40px 0 0; padding: 0; list-style: none; display: grid; gap: 18px; }
+    .ct-help li { display: flex; gap: 14px; }
+    .ct-help .ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--g-line-2); border-radius: 10px; color: var(--g-accent); }
+    .ct-help .ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .ct-help b { display: block; font-size: 15px; font-weight: 600; }
+    .ct-help span { display: block; margin-top: 3px; font-size: 14px; line-height: 1.5; color: var(--g-text-3); }
+    .ct-alt { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--g-line); font-size: 14px; color: var(--g-text-3); }
+    .ct-alt a { display: inline-flex; align-items: center; gap: 6px; color: var(--g-text-2); text-decoration: none; white-space: nowrap; }
+    .ct-alt a:hover { color: #FFFFFF; }
+    .ct-alt svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* The form. */
+    .ct-card { position: relative; padding: 36px; border: 1px solid var(--g-line); border-radius: 20px; background: rgba(20, 4, 43, 0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+    .ct-card h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; text-transform: none; }
+    .ct-card > p { margin: 6px 0 0; font-size: 14px; color: var(--g-text-3); }
+    .ct-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; margin-top: 28px; }
+    .ct-f { min-width: 0; }
+    .ct-f.full { grid-column: 1 / -1; }
+    .ct-f > label, .ct-f > .lbl { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 500; color: var(--g-text-2); white-space: nowrap; }
+    .ct-f .opt { font-size: 12px; font-weight: 400; color: var(--g-text-3); }
+    .ct-in-f, .ct-ta {
+      width: 100%; height: 46px; padding: 0 14px; border: 1px solid var(--g-line-2); border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04); color: #FFFFFF; font: 400 15px/1 var(--sans); outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .ct-ta { height: 128px; padding: 12px 14px; line-height: 1.55; resize: vertical; }
+    .ct-in-f::placeholder, .ct-ta::placeholder { color: rgba(226, 205, 254, 0.42); }
+    .ct-in-f:hover, .ct-ta:hover { border-color: #7A4CB8; }
+    .ct-in-f:focus, .ct-ta:focus { border-color: var(--g-accent); background: rgba(255, 255, 255, 0.07); box-shadow: 0 0 0 3px rgba(215, 184, 255, 0.16); }
+    .ct-f.bad .ct-in-f { border-color: #FF8A8A; box-shadow: 0 0 0 3px rgba(255, 138, 138, 0.14); }
+    .ct-err { display: none; margin-top: 6px; font-size: 12.5px; color: #FF8A8A; }
+    .ct-f.bad .ct-err { display: block; }
+
+    /* Choices: pills, one picked (or several, for what you are after). */
+    .ct-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ct-pill { position: relative; }
+    .ct-pill input { position: absolute; opacity: 0; pointer-events: none; }
+    .ct-pill span {
+      display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid var(--g-line-2); border-radius: 999px;
+      font-size: 13.5px; color: var(--g-text-2); white-space: nowrap; cursor: pointer; user-select: none; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .ct-pill span:hover { border-color: #7A4CB8; color: #FFFFFF; }
+    .ct-pill input:checked + span { border-color: transparent; background: #FFFFFF; color: var(--g); font-weight: 500; }
+    .ct-pill input:focus-visible + span { box-shadow: 0 0 0 3px rgba(215, 184, 255, 0.3); }
+
+    .ct-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--g-text-3); cursor: pointer; }
+    .ct-consent input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: #FFFFFF; }
+    .ct-send { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .ct-send .hp-btn { height: 48px; }
+    .ct-send small { font-size: 12.5px; color: var(--g-text-3); }
+
+    .ct-done { display: none; text-align: center; padding: 40px 8px; }
+    .ct-card.sent .ct-done { display: block; }
+    .ct-card.sent .ct-form, .ct-card.sent > h3, .ct-card.sent > p { display: none; }
+    .ct-done .ok { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: rgba(94, 232, 154, 0.14); color: var(--pos); }
+    .ct-done .ok svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .ct-done h3 { margin: 20px 0 0; font-size: 24px; }
+    .ct-done p { margin: 10px auto 0; max-width: 380px; font-size: 14.5px; line-height: 1.6; color: var(--g-text-2); }
+    .ct-done button { margin-top: 24px; }
+
+    @container (max-width: 980px) {
+      .ct-in { grid-template-columns: minmax(0, 1fr); gap: 48px; padding-top: 64px; padding-bottom: 80px; }
+    }
+    @container (max-width: 560px) {
+      .ct-card { padding: 22px 18px; border-radius: 16px; }
+      .ct-form { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+      .ct-send { flex-direction: column; align-items: stretch; }
+      .ct-send .hp-btn { width: 100%; }
+      .ct-in { padding-top: 48px; }
+    }
+  </style>
+</head>
+<body>
+<main class="hp" id="top" data-no-cta data-note="A concept for Fusion's contact page. Nothing you enter is sent." data-note-short="Contact concept">
+  <h1 class="hp-sr">Talk to Us</h1>
+
+  <section class="hp-purple ct">
+    <div class="hp-wrap ct-in">
+      <div class="ct-words">
+        <span class="hp-k">Talk to us</span>
+        <h2 class="hp-h">Let's build<br><em>your vault.</em></h2>
+        <p class="hp-lead">Tell us what you are working on. The people who build Fusion will get back to you, not a bot.</p>
+        <ul class="ct-help">
+          <li><span class="ic"><svg viewBox="0 0 18 18"><rect x="2.5" y="3" width="13" height="12" rx="2"/><circle cx="8" cy="9" r="2.5"/><path d="M12.5 7.5v3"/></svg></span><div><b>Launch a vault</b><span>Pick fuses, set the rules, go live on any network Fusion runs on.</span></div></li>
+          <li><span class="ic"><svg viewBox="0 0 18 18"><path d="M2.5 15.5h13M3.5 7.5L9 3l5.5 4.5M5 8v6M9 8v6M13 8v6"/></svg></span><div><b>Allocate capital</b><span>Curated, onchain strategies with every position in view.</span></div></li>
+          <li><span class="ic"><svg viewBox="0 0 18 18"><path d="M6 5.5L2.5 9 6 12.5M12 5.5L15.5 9 12 12.5M10.5 3.5l-3 11"/></svg></span><div><b>Integrate Fusion</b><span>Embed vaults in a wallet, an exchange or an app.</span></div></li>
+        </ul>
+        <div class="ct-alt">
+          <span>Or read first:</span>
+          <a href="https://docs.ipor.io/" target="_blank" rel="noopener">Docs<svg viewBox="0 0 14 14"><path d="M4.5 9.5l5-5M5.5 4.5h4v4"/></svg></a>
+          <a href="https://github.com/IPOR-Labs" target="_blank" rel="noopener">GitHub<svg viewBox="0 0 14 14"><path d="M4.5 9.5l5-5M5.5 4.5h4v4"/></svg></a>
+          <a href="/demo/fuses">Fuse library<svg viewBox="0 0 14 14"><path d="M4.5 9.5l5-5M5.5 4.5h4v4"/></svg></a>
+        </div>
+      </div>
+
+      <div class="ct-card" id="ctCard">
+        <h3>Send us a note</h3>
+        <p>Two minutes, and we will take it from there.</p>
+        <form class="ct-form" id="ctForm" novalidate>
+          <div class="ct-f"><label for="ctName">Name</label><input class="ct-in-f" id="ctName" name="name" autocomplete="name" placeholder="Ada Lovelace" required><span class="ct-err">Tell us your name.</span></div>
+          <div class="ct-f"><label for="ctEmail">Work email</label><input class="ct-in-f" id="ctEmail" name="email" type="email" autocomplete="email" placeholder="ada@company.com" required><span class="ct-err">An email we can answer.</span></div>
+          <div class="ct-f"><label for="ctCo">Company <span class="opt">Optional</span></label><input class="ct-in-f" id="ctCo" name="company" autocomplete="organization" placeholder="Company or protocol"></div>
+          <div class="ct-f"><label for="ctTg">Telegram <span class="opt">Optional</span></label><input class="ct-in-f" id="ctTg" name="telegram" placeholder="@handle"></div>
+          <div class="ct-f full"><span class="lbl">You are</span>
+            <div class="ct-pills" role="radiogroup" aria-label="You are">
+              <label class="ct-pill"><input type="radio" name="role" value="Asset manager" checked><span>Asset manager</span></label>
+              <label class="ct-pill"><input type="radio" name="role" value="Curator"><span>Curator</span></label>
+              <label class="ct-pill"><input type="radio" name="role" value="Institution"><span>Institution</span></label>
+              <label class="ct-pill"><input type="radio" name="role" value="Protocol"><span>Protocol</span></label>
+              <label class="ct-pill"><input type="radio" name="role" value="Developer"><span>Developer</span></label>
+            </div>
+          </div>
+          <div class="ct-f full"><span class="lbl">Interested in <span class="opt">Pick any</span></span>
+            <div class="ct-pills">
+              <label class="ct-pill"><input type="checkbox" name="topic" value="Launching a vault" checked><span>Launching a vault</span></label>
+              <label class="ct-pill"><input type="checkbox" name="topic" value="Allocating"><span>Allocating</span></label>
+              <label class="ct-pill"><input type="checkbox" name="topic" value="Integration"><span>Integration</span></label>
+              <label class="ct-pill"><input type="checkbox" name="topic" value="Partnership"><span>Partnership</span></label>
+            </div>
+          </div>
+          <div class="ct-f full"><span class="lbl">Capital in mind <span class="opt">Optional</span></span>
+            <div class="ct-pills" role="radiogroup" aria-label="Capital in mind">
+              <label class="ct-pill"><input type="radio" name="size" value="Under $1M"><span>Under $1M</span></label>
+              <label class="ct-pill"><input type="radio" name="size" value="$1M to $10M"><span>$1M to $10M</span></label>
+              <label class="ct-pill"><input type="radio" name="size" value="$10M to $100M"><span>$10M to $100M</span></label>
+              <label class="ct-pill"><input type="radio" name="size" value="Over $100M"><span>Over $100M</span></label>
+            </div>
+          </div>
+          <div class="ct-f full"><label for="ctMsg">What are you building? <span class="opt">Optional</span></label><textarea class="ct-ta" id="ctMsg" name="message" placeholder="A few lines on your strategy, timeline or questions."></textarea></div>
+          <label class="ct-f full ct-consent"><input type="checkbox" id="ctOk" checked>You may contact me about Fusion at the email above. You can ask us to forget it at any time.</label>
+          <div class="ct-f full ct-send">
+            <small>We only use this to reply to you.</small>
+            <button type="submit" class="hp-btn solid">Send message<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg></button>
+          </div>
+        </form>
+        <div class="ct-done" role="status">
+          <span class="ok"><svg viewBox="0 0 26 26"><path d="M6.5 13.5l4.5 4.5 8.5-10"/></svg></span>
+          <h3 id="ctThanks">Thanks.</h3>
+          <p>This page is a concept, so nothing was sent. On the live site, your note would reach the Fusion team here.</p>
+          <button type="button" class="hp-btn ghost" id="ctAgain">Write another</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="/demo/demo.js"></script>
+<script>
+// The form checks the two fields it needs, then thanks you. A concept: it
+// sends nothing anywhere.
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const ok = { ctName: (v) => v.trim().length > 1, ctEmail: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) };
+  const check = (id) => { const f = $(id), good = ok[id](f.value); f.parentElement.classList.toggle('bad', !good); return good; };
+  Object.keys(ok).forEach(id => {
+    $(id).addEventListener('blur', () => { if ($(id).value) check(id); });
+    $(id).addEventListener('input', () => { if ($(id).parentElement.classList.contains('bad')) check(id); });
+  });
+  $('ctForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const bad = Object.keys(ok).filter(id => !check(id));
+    if (bad.length) { $(bad[0]).focus(); return; }
+    $('ctThanks').textContent = 'Thanks, ' + $('ctName').value.trim().split(/\s+/)[0] + '.';
+    $('ctCard').classList.add('sent');
+    $('ctCard').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+  $('ctAgain').addEventListener('click', () => { $('ctForm').reset(); $('ctCard').classList.remove('sent'); $('ctName').focus(); });
+})();
+</script>
+</body>
+</html>
