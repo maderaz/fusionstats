@@ -41,6 +41,8 @@ const PAGES = [
     description: 'Each Fusion vault\'s share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.' },
   { path: '/spark', file: 'spark/index.html', name: 'Spark', card: 'spark',
     description: 'The IPOR stETH vault\'s looping position on SparkLend\'s wstETH market, read live: supplied, borrowed, health factor, leverage, and its rank among the market\'s suppliers.' },
+  { path: '/demo/homepage', file: 'demo/homepage/index.html', name: 'Homepage', card: 'demo-homepage',
+    description: 'A concept for a new Fusion homepage, in purple and white, drawn with the live figures: TVL, vaults and networks.' },
 ];
 
 // Whether search engines may list the site. Off for now: every page says
