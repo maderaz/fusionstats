@@ -45,6 +45,8 @@ const PAGES = [
     description: 'A concept for a new Fusion homepage, in purple and white, drawn with the live figures: TVL, vaults and networks.' },
   { path: '/demo/fuses', file: 'demo/fuses/index.html', name: 'Fuses', card: 'demo-fuses',
     description: 'A concept for Fusion\'s fuse library: every protocol\'s fuses by function or name, with Aave V4 drawn in full, from substrates to risks.' },
+  { path: '/demo/contact', file: 'demo/contact/index.html', name: 'Talk to Us', card: 'demo-contact',
+    description: 'A concept for Fusion\'s contact page: a lean form on the purple ground for launching a vault, allocating or integrating.' },
 ];
 
 // Whether search engines may list the site. Off for now: every page says

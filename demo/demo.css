@@ -67,7 +67,7 @@ body { margin: 0; background: #FFFFFF; }
 .hp-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .hp-btn:hover { transform: translateY(-1px); }
 .hp-btn.solid { background: #FFFFFF; color: var(--g); }
-.hp-btn.ghost { border-color: var(--g-line-2); color: var(--g-text); }
+.hp-btn.ghost { border-color: var(--g-line-2); background: transparent; color: var(--g-text); cursor: pointer; }
 .hp-btn.ghost:hover { background: var(--g-2); }
 .hp-btn.line { border-color: var(--hair); color: var(--ink); background: #FFFFFF; }
 .hp-btn.line:hover { border-color: var(--p300); }
@@ -260,6 +260,9 @@ body { margin: 0; background: #FFFFFF; }
 .hp-foot li a { text-decoration: none; }
 .hp-foot li a:hover { color: #FFFFFF; }
 .hp-foot .soon { margin-left: 8px; padding: 3px 7px; border: 1px solid var(--g-line-2); font: 500 10px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--g-text-3); }
+/* A page that is itself the call (Talk to Us) leaves the footer's out. */
+main[data-no-cta] .hp-cta { display: none; }
+
 /* The fine print: one small paragraph, as a bank's site closes. */
 .hp-legal { margin: 0; padding: 20px 0; border-top: 1px solid var(--g-line); font-size: 11px; line-height: 1.6; color: var(--g-text-3); opacity: 0.85; }
 .hp-foot-end { display: flex; justify-content: space-between; gap: 16px; padding: 22px 0; border-top: 1px solid var(--g-line); font: 500 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--g-text-3); }

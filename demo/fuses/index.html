@@ -39,13 +39,14 @@
       --bg: #FFFFFF; --bg-subtle: #F7F7F8; --bg-hover: #F5F5F7; --line: #EDEDF0; --line-strong: #E2E2E7;
       --text: #0B0B0F; --text-2: #5E5E6B; --text-3: #9A9AA6; --accent: #8429FF; --accent-bg: rgba(132, 41, 255, 0.08);
       --pos: #16A34A; --neg: #DC2626;
-      display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: 48px; align-items: start;
-      max-width: 1200px; margin: 0 auto; padding: 32px 48px 96px; color: var(--text);
+      display: grid; grid-template-columns: 232px minmax(0, 1fr) 200px; gap: 48px; align-items: start;
+      max-width: 1360px; margin: 0 auto; padding: 32px 48px 96px; color: var(--text);
     }
     .fa code { font: 500 0.9em/1 var(--mono); color: var(--text); background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
 
     /* ---- The list, drawn like the app's side menu ---------------------------- */
-    .fa-side { position: sticky; top: 136px; max-height: calc(100vh - 152px); display: flex; flex-direction: column; }
+    .fa-side { position: sticky; top: 136px; height: calc(100vh - 152px); display: flex; flex-direction: column; }
+    .fa-side-in { display: flex; flex-direction: column; min-height: 0; flex: 1; }
     .fa-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); }
     .fa-search svg { flex: none; width: 14px; height: 14px; fill: none; stroke: var(--text-3); stroke-width: 1.6; stroke-linecap: round; }
     .fa-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font: 400 14px/1 var(--sans); color: var(--text); }
@@ -53,7 +54,7 @@
     .fa-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; font: 500 13px/1 var(--sans); color: var(--text-2); white-space: nowrap; cursor: pointer; }
     .fa-seg button[aria-pressed="true"], .fa-seg button[aria-selected="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line); }
     .fa-side .fa-seg { display: grid; margin-top: 10px; }
-    .fa-list { flex: 1; overflow-y: auto; margin-top: 10px; padding-bottom: 8px; scrollbar-width: thin; }
+    .fa-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: 10px; padding-bottom: 8px; scrollbar-width: thin; }
     .fa-group { padding: 16px 10px 6px; font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
     .fa-row {
       display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px;
@@ -74,7 +75,6 @@
     .fa-crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-3); white-space: nowrap; }
     .fa-crumb b { font-weight: 500; color: var(--text-2); }
     .fa-top { margin-top: 28px; }
-    .fa-top h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
     .fa-lede { margin: 8px 0 0; max-width: 680px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
     .fa-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font: 500 14px/1 var(--sans); color: var(--text); text-decoration: none; white-space: nowrap; cursor: pointer; transition: background 0.15s ease; }
     .fa-btn:hover { background: var(--bg-hover); }
@@ -84,28 +84,11 @@
     .fa-links { display: flex; flex-wrap: wrap; gap: 8px; }
     .fa-links .fa-btn { height: 34px; padding: 0 12px; font-size: 13.5px; }
     .fa-btn.done { border-color: var(--pos); color: var(--pos); }
-    .fa-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-    .fa-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 13px; color: var(--text-2); white-space: nowrap; }
-    .fa-chip img { width: 14px; height: 14px; }
-    .fa-chip.on { border-color: transparent; background: var(--accent-bg); color: var(--accent); }
-    .fa-figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 40px; padding: 4px 0; }
-    .fa-fig { min-width: 0; padding: 0 24px; border-left: 1px solid var(--line); }
-    .fa-fig:first-child { padding-left: 0; border-left: none; }
-    .fa-fig .k { font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
-    .fa-fig .v { margin-top: 6px; font-size: clamp(22px, 3cqi, 32px); line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; white-space: nowrap; }
-    .fa-fig .s { margin-top: 4px; font-size: 12.5px; color: var(--text-3); text-wrap: balance; }
 
     /* The tab bar, underlined like Explorer's. */
-    .fa-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 48px; }
-    .fa-tabs::-webkit-scrollbar { display: none; }
-    .fa-tabs button { flex: none; height: 38px; padding: 0 16px; border: 1px solid transparent; border-radius: 999px; background: transparent; font: 500 14.5px/1 var(--sans); color: var(--text-3); white-space: nowrap; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
-    .fa-tabs button:hover { color: var(--text); background: var(--bg-hover); }
-    .fa-tabs button[aria-selected="true"] { color: var(--accent); background: var(--accent-bg); }
-    .fa-pane[hidden] { display: none; }
 
     /* ---- Sections ------------------------------------------------------------- */
     .fa-sec { padding: 56px 0 0; }
-    .fa-pane > .fa-sec:first-child { padding-top: 40px; }
     .fa-sec h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin: 0 0 18px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; text-transform: capitalize; white-space: nowrap; }
     .fa-sec h3 span { font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text-3); }
     .fa-p { margin: 0; max-width: 720px; font-size: 14.5px; line-height: 1.65; color: var(--text-2); }
@@ -122,12 +105,6 @@
 
     /* A table, as the app draws them. */
     .fa-tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
-    .fa-tbl th { padding: 0 14px 10px; font-size: 12px; font-weight: 500; color: var(--text-3); text-align: left; white-space: nowrap; text-transform: capitalize; }
-    .fa-tbl td { padding: 14px; vertical-align: top; line-height: 1.5; color: var(--text-2); }
-    .fa-tbl tbody tr:nth-child(odd) td { background: var(--bg-subtle); }
-    .fa-tbl tbody tr td:first-child { border-radius: 10px 0 0 10px; }
-    .fa-tbl tbody tr td:last-child { border-radius: 0 10px 10px 0; }
-    .fa-tbl td:first-child { color: var(--text); }
     .fa-tbl .mono { font: 500 13px/1.5 var(--mono); }
     .fa-tbl .muted { color: var(--text-3); }
     .fa-tbl .nw { white-space: nowrap; }
@@ -135,33 +112,9 @@
     .fa-tag.a { background: var(--accent-bg); border-color: transparent; color: var(--accent); }
 
     /* Hub & Spoke. */
-    .fa-hs { display: grid; grid-template-columns: minmax(0, 0.8fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr); align-items: center; padding: 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg-subtle);
       background-image: radial-gradient(circle, rgba(0, 0, 0, 0.07) 1px, transparent 1.4px); background-size: 18px 18px; }
-    .fa-col .k { margin-bottom: 10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); text-align: center; white-space: nowrap; }
-    .fa-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-    .fa-col li { padding: 9px 12px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--bg); font-size: 13.5px; font-weight: 500; text-align: center; white-space: nowrap; }
-    .fa-col li.more { border-style: dashed; background: transparent; color: var(--text-3); }
-    .fa-col.vault li { padding: 18px 12px; border-color: transparent; background: var(--accent); color: #FFFFFF; font-weight: 600; }
-    .fa-arrow { text-align: center; color: var(--text-3); font-size: 16px; }
-    .fa-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-    .fa-fact { padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; }
-    .fa-fact b { display: block; font-size: 14.5px; font-weight: 600; }
-    .fa-fact p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--text-2); }
 
     /* The substrate. */
-    .fa-bits { display: grid; grid-template-columns: minmax(38px, 8fr) 160fr minmax(0, 32fr) minmax(44px, 8fr) minmax(0, 48fr); height: 56px; overflow: hidden; border-radius: 10px; border: 1px solid var(--line-strong); }
-    .fa-bits > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; padding: 0 10px; overflow: hidden; }
-    .fa-bits > div + div { border-left: 1px solid rgba(0, 0, 0, 0.06); }
-    .fa-bits b { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
-    .fa-bits span { font: 500 10.5px/1 var(--mono); white-space: nowrap; opacity: 0.7; }
-    .fa-bits .b0 { background: #FCE7F3; color: #9D174D; padding: 0; align-items: center; }
-    .fa-bits .b1 { background: #2C0C55; color: #FFFFFF; }
-    .fa-bits .b2 { background: var(--accent); color: #FFFFFF; }
-    .fa-bits .b3 { background: #FEF3C7; color: #92400E; padding: 0; align-items: center; }
-    .fa-bits .b4 { background: var(--bg-subtle); color: var(--text-3); }
-    .fa-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 13px; color: var(--text-2); }
-    .fa-key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-    .fa-key i { width: 10px; height: 10px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.08); }
     .fa-enc { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
     .fa-enc-in { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) auto; gap: 16px; align-items: end; padding: 22px; }
     .fa-field > label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
@@ -173,56 +126,67 @@
     .fa-flag:has(input:checked) { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
     .fa-hex { margin: 0; padding: 18px 22px; background: var(--bg-subtle); font: 500 13px/1.7 var(--mono); overflow-wrap: anywhere; color: var(--text-3); }
     .fa-hex .x0 { color: #BE185D; } .fa-hex .x1 { color: #2C0C55; } .fa-hex .x2 { color: var(--accent); } .fa-hex .x3 { color: #B45309; } .fa-hex .x4 { color: #C4C4CC; }
-    .fa-perm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 22px; }
-    .fa-perm div { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; background: var(--bg-subtle); font-size: 14px; white-space: nowrap; }
-    .fa-perm svg { flex: none; width: 15px; height: 15px; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-    .fa-perm .y { color: var(--text); } .fa-perm .y svg { stroke: var(--pos); }
-    .fa-perm .n { color: var(--text-3); } .fa-perm .n svg { stroke: var(--neg); }
-    .fa-perm em { margin-left: auto; font-size: 12px; font-style: normal; color: var(--text-3); }
 
     /* Actions: one fuse at a time. */
-    .fa-act { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 32px; margin-top: 28px; }
-    .fa-act[hidden] { display: none; }
-    .fa-act h4 { margin: 0; font: 500 14px/1.3 var(--mono); color: var(--accent); overflow-wrap: anywhere; }
-    .fa-act ul { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-    .fa-act li { display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--text-2); }
-    .fa-act li svg { flex: none; width: 14px; height: 14px; margin-top: 4px; fill: none; stroke: var(--pos); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-    .fa-act li b { color: var(--text); font-weight: 600; }
-    .fa-code { min-width: 0; overflow: hidden; border-radius: 12px; background: #16101F; color: #D6CFE3; }
-    .fa-code-bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px 4px; font: 500 12px/1 var(--mono); color: #8E86A0; white-space: nowrap; }
-    .fa-code-bar span { overflow: hidden; text-overflow: ellipsis; }
-    .fa-code pre { margin: 0; padding: 12px 18px 18px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--mono); }
-    .fa-code .c { color: #7F7790; } .fa-code .k { color: #C9B0FF; } .fa-code .t { color: #FDE68A; } .fa-code .s { color: #86EFAC; }
 
     /* The flow. */
-    .fa-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
-    .fa-step { padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; }
-    .fa-step .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-bg); font-size: 12px; font-weight: 600; color: var(--accent); }
-    .fa-step b { display: block; margin-top: 12px; font-size: 16px; font-weight: 600; letter-spacing: -0.015em; white-space: nowrap; }
-    .fa-step p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
-    .fa-step .f { display: block; margin-top: 10px; font: 500 12px/1 var(--mono); color: var(--text-3); white-space: nowrap; }
 
-    .fa-points { margin: 0; padding: 0; list-style: none; }
-    .fa-points li { display: flex; gap: 14px; padding: 12px 0; font-size: 14.5px; line-height: 1.6; color: var(--text-2); }
-    .fa-points li:first-child { padding-top: 0; }
-    .fa-points svg { flex: none; width: 17px; height: 17px; margin-top: 3px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-    .fa-points b { color: var(--text); font-weight: 600; }
 
     .fa-soon { margin-top: 40px; padding: 16px 18px; border: 1px dashed var(--line-strong); border-radius: 14px; background: var(--bg-subtle); font-size: 14px; line-height: 1.6; color: var(--text-2); }
     .fa-soon b { color: var(--text); }
 
+
+    /* ---- Plain reading: headings, words, tables, code ------------------------ */
+    .fa-top h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
+    .fa-main { max-width: 780px; }
+    .fa-main section h3 { scroll-margin-top: 140px; }
+    .fa-p b { color: var(--text); font-weight: 600; }
+    .fa-sec .fa-p + .fa-kv, .fa-sec .fa-p + .fa-tbl, .fa-sec .fa-kv + .fa-p, .fa-sec .fa-p + .fa-list-plain, .fa-sec .fa-list-plain + .fa-code, .fa-sec .fa-p + .fa-enc { margin-top: 18px; }
+    .fa-sec .fa-kv + .fa-p { margin-top: 18px; }
+    .fa-tbl { margin-top: 4px; }
+    .fa-tbl th { padding: 0 14px 10px; font-size: 12px; font-weight: 500; color: var(--text-3); text-align: left; white-space: nowrap; text-transform: capitalize; }
+    .fa-tbl td { padding: 13px 14px; vertical-align: top; line-height: 1.55; color: var(--text-2); }
+    .fa-tbl tbody tr:nth-child(odd) td { background: var(--bg-subtle); }
+    .fa-tbl tbody tr td:first-child { border-radius: 8px 0 0 8px; }
+    .fa-tbl tbody tr td:last-child { border-radius: 0 8px 8px 0; }
+    .fa-list-plain { margin: 0; padding: 0 0 0 20px; display: grid; gap: 10px; font-size: 14.5px; line-height: 1.65; color: var(--text-2); }
+    .fa-list-plain b { color: var(--text); font-weight: 600; }
+    .fa-list-plain.num { padding-left: 22px; }
+    .fa-code { min-width: 0; margin-top: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-subtle); }
+    .fa-code-bar { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px 0; font: 500 12px/1 var(--mono); color: var(--text-3); white-space: nowrap; }
+    .fa-code-bar span { overflow: hidden; text-overflow: ellipsis; }
+    .fa-code pre { margin: 0; padding: 12px 16px 16px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.7 var(--mono); color: var(--text); }
+    .fa-code .c { color: var(--text-3); } .fa-code .kw { color: var(--accent); } .fa-code .t { color: #9A3412; } .fa-code .s { color: #15803D; }
+    .fa-perm { margin: 0; padding: 18px 22px 22px; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; font-size: 14px; }
+    .fa-perm li { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .fa-perm li.y { color: var(--text); } .fa-perm li.n { color: var(--text-3); }
+    .fa-perm b { width: 14px; font-weight: 600; text-align: center; }
+    .fa-perm li.y b { color: var(--pos); } .fa-perm li.n b { color: var(--neg); }
+    .fa-perm em { font-size: 12.5px; font-style: normal; color: var(--text-3); }
+
+    /* ---- On this page: the sections, the one in view marked ------------------- */
+    .fa-toc { position: sticky; top: 136px; max-height: calc(100vh - 152px); overflow-y: auto; scrollbar-width: none; }
+    .fa-toc-k { margin: 0 0 10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+    .fa-toc ol { margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); }
+    .fa-toc a { display: block; margin-left: -1px; padding: 6px 0 6px 14px; border-left: 2px solid transparent; font-size: 13.5px; line-height: 1.35; color: var(--text-3); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s ease; }
+    .fa-toc a:hover { color: var(--text); }
+    .fa-toc a.on { border-left-color: var(--accent); color: var(--text); font-weight: 500; }
+    .fa-toc-top { display: inline-block; margin-top: 14px; font-size: 13px; color: var(--text-3); text-decoration: none; white-space: nowrap; }
+    .fa-toc-top:hover { color: var(--accent); }
+
     /* ---- Narrower ------------------------------------------------------------- */
+    @container (max-width: 1240px) {
+      .fa { grid-template-columns: 232px minmax(0, 1fr); }
+      .fa-toc { display: none; }
+    }
     @container (max-width: 1080px) {
       .fa { grid-template-columns: 220px minmax(0, 1fr); gap: 36px; padding-left: 32px; padding-right: 32px; }
-      .fa-hs { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-      .fa-arrow { transform: rotate(90deg); padding: 4px 0; }
-      .fa-act { grid-template-columns: minmax(0, 1fr); }
       .fa-enc-in { grid-template-columns: minmax(0, 1fr) 140px; }
       .fa-enc-in .fa-field:last-child { grid-column: 1 / -1; }
     }
     @container (max-width: 900px) {
       .fa { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 24px 72px; }
-      .fa-side { position: static; max-height: none; border: 1px solid var(--line-strong); border-radius: 12px; }
+      .fa-side { position: static; height: auto; border: 1px solid var(--line-strong); border-radius: 12px; }
       .fa-browse { display: flex; align-items: center; gap: 8px; width: 100%; height: 46px; padding: 0 14px; border: 0; background: transparent; font: 600 14px/1 var(--sans); color: var(--text); cursor: pointer; white-space: nowrap; }
       .fa-browse span { margin-left: auto; font-weight: 500; color: var(--accent); }
       .fa-browse svg { flex: none; width: 12px; height: 12px; fill: none; stroke: var(--text-3); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
@@ -230,36 +194,27 @@
       .fa-side:not(.open) .fa-side-in { display: none; }
       .fa-side.open .fa-browse svg { transform: rotate(180deg); }
       .fa-side.open .fa-list { max-height: 380px; }
-      .fa-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 24px; }
-      .fa-fig { padding: 0 0 0 20px !important; }
-      .fa-fig:nth-child(odd) { padding-left: 0 !important; border-left: none; }
     }
     @container (max-width: 640px) {
-      .fa-links .fa-btn span { display: none; }
-      .fa-links .fa-btn { width: 34px; padding: 0; justify-content: center; }
-      .fa-top h2 { font-size: 26px; }
-      .fa-facts, .fa-steps { grid-template-columns: minmax(0, 1fr); }
-      .fa-perm { grid-template-columns: minmax(0, 1fr); }
-      .fa-bits-label, .fa-bits .b2 span, .fa-bits .b4 span { display: none; }
       .fa-tbl.stackable thead { display: none; }
-      .fa-tbl.stackable tr { display: block; margin-bottom: 8px; padding: 14px; border-radius: 10px; background: var(--bg-subtle); }
+      .fa-tbl.stackable tr { display: block; margin-bottom: 6px; padding: 12px 14px; border-radius: 8px; background: var(--bg-subtle); }
       .fa-tbl.stackable tr:nth-child(even) { background: transparent; }
       .fa-tbl.stackable td { display: block; padding: 2px 0; background: transparent !important; border-radius: 0 !important; }
       .fa-tbl.stackable td[data-k]::before { content: attr(data-k) ': '; font-weight: 600; color: var(--text); }
-      .fa-kv.stack > div { display: block; }
-      .fa-kv.stack > div > span:last-child { display: block; max-width: none; margin-top: 4px; text-align: left; color: var(--text-2); }
+      .fa-perm { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+      .fa-links .fa-btn span { display: none; }
+      .fa-links .fa-btn { width: 34px; padding: 0; justify-content: center; }
+      .fa-kv > div { display: block; }
+      .fa-kv > div > span:last-child { display: block; max-width: none; margin-top: 4px; text-align: left; color: var(--text-2); }
     }
     @container (max-width: 520px) {
+      .fa-code-bar span + span { display: none; }
+      .fa-code-bar { font-size: 11px; padding: 12px 12px 0; }
+      .fa-code pre { padding: 10px 12px 14px; }
       .fa { padding: 16px 16px 64px; }
-      .fa-hs { padding: 16px 12px; }
       .fa-enc-in { grid-template-columns: minmax(0, 1fr); padding: 14px; }
       .fa-flags { flex-wrap: wrap; }
       .fa-hex { padding: 14px; }
-      .fa-perm { padding: 14px; }
-      .fa-bits b { display: none; }
-      .fa-bits > div { padding: 0 6px; }
-      .fa-fig .s .m-hide { display: none; }
-      .fa-tabs button { padding: 0 13px; font-size: 14px; }
     }
   </style>
 </head>
@@ -290,203 +245,177 @@
           <h2>Aave V4</h2>
           <p class="fa-lede">Supply, withdraw, borrow, repay and collateral on any granted Aave V4 Spoke reserve, and the vault's NAV read back from every one of them.</p>
         </div>
-        <div class="fa-chips">
-          <span class="fa-chip"><img src="/icons/chains/ethereum.svg" alt="">Ethereum</span>
-          <span class="fa-chip">Lending</span>
-          <span class="fa-chip">Market 49</span>
-          <span class="fa-chip">Stateless</span>
-          <span class="fa-chip on">Live</span>
-        </div>
-        <div class="fa-figs">
-          <div class="fa-fig"><div class="k">Fuses</div><div class="v">4</div><div class="s">plus one library</div></div>
-          <div class="fa-fig"><div class="k">Market ID</div><div class="v">49</div><div class="s">one market, every Spoke</div></div>
-          <div class="fa-fig"><div class="k">Hubs</div><div class="v">4</div><div class="s">where the liquidity lives</div></div>
-          <div class="fa-fig"><div class="k">Aave V4 Live</div><div class="v">Mar 30</div><div class="s">2026, on Ethereum</div></div>
-        </div>
-        <div class="fa-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected="true" aria-controls="faP0">Overview</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="faP1">Permissions</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="faP2">Actions</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="faP3">Flow</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="faP4">Risks</button>
-        </div>
 
-        <!-- Overview -->
-        <div class="fa-pane" id="faP0" role="tabpanel">
-          <section class="fa-sec">
-            <h3>Hub and spoke</h3>
-            <p class="fa-p">Liquidity lives in Hubs; users act on Spokes, each with its own risk parameters, oracle and reserve list. A Spoke reserve is an append-only <code>reserveId</code> pointing to one asset of one Hub, so the same underlying can be listed more than once on a single Spoke.</p>
-            <div class="fa-hs" style="margin-top:18px">
-              <div class="fa-col vault"><div class="k">Fusion</div><ul><li>Plasma Vault</li></ul></div>
-              <div class="fa-arrow" aria-hidden="true">→</div>
-              <div class="fa-col"><div class="k">Spokes</div><ul><li>Main</li><li>Bluechip</li><li>Ethena Correlated</li><li>Forex</li><li>Gold</li><li class="more">and more</li></ul></div>
-              <div class="fa-arrow" aria-hidden="true">→</div>
-              <div class="fa-col"><div class="k">Hubs</div><ul><li>Core</li><li>Prime</li><li>Plus</li><li>Global Dollar</li></ul></div>
-            </div>
-            <div class="fa-facts">
-              <div class="fa-fact"><b>Supplying does not enable collateral</b><p>Only reserves flagged with <code>setUsingAsCollateral</code> count towards the health factor; without it every borrow reverts with <code>HealthFactorBelowThreshold</code>. Hence a fuse of its own for collateral.</p></div>
-              <div class="fa-fact"><b>There is no E-Mode</b><p>Risk is segmented by choosing the Spoke, so one market, ID 49, covers every Spoke.</p></div>
-            </div>
-            <p class="fa-note">The Bluechip Spoke, for one, lists USDC twice: as reserve 4 on the Prime hub and reserve 7 on the Core hub, with different rates and caps.</p>
-          </section>
-          <section class="fa-sec">
-            <h3>Contracts<span>4 fuses, 1 library, 1 interface</span></h3>
-            <table class="fa-tbl stackable">
-              <thead><tr><th>Contract</th><th>Kind</th><th>What it does</th></tr></thead>
-              <tbody>
-                <tr><td class="mono">AaveV4SupplyFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Supply and withdraw on a reserve, plus the instant withdraw path for user redemptions</td></tr>
-                <tr><td class="mono">AaveV4BorrowFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Borrow and repay on a reserve</td></tr>
-                <tr><td class="mono">AaveV4CollateralFuse</td><td class="nw"><span class="fa-tag a">Action</span></td><td>Enable or disable a reserve as the vault's collateral</td></tr>
-                <tr><td class="mono">AaveV4BalanceFuse</td><td class="nw"><span class="fa-tag">Balance</span></td><td>NAV: the sum of (supplied − total debt) × price over granted reserves, in USD (WAD)</td></tr>
-                <tr><td class="mono">AaveV4SubstrateLib</td><td class="nw"><span class="fa-tag">Library</span></td><td>Encodes and decodes reserve substrates and checks permissions</td></tr>
-                <tr><td class="mono">ext/IAaveV4Spoke</td><td class="nw"><span class="fa-tag">Interface</span></td><td>A subset of Aave's real ISpoke, its struct layouts identical</td></tr>
-              </tbody>
-            </table>
-            <p class="fa-note">All stateless (<code>VERSION</code> and <code>MARKET_ID</code> immutables only), run by <code>delegatecall</code> from <code>PlasmaVault.execute</code>, each with <code>enterTransient</code> and <code>exitTransient</code> variants for batched flows.</p>
-          </section>
-        </div>
+        <section class="fa-sec">
+          <h3>At a glance</h3>
+          <div class="fa-kv" data-h="Fact|Value">
+            <div><span>Network</span><span>Ethereum</span></div>
+            <div><span>Category</span><span>Lending</span></div>
+            <div><span>Market ID</span><span>49 (IporFusionMarkets.AAVE_V4), one market for every Spoke</span></div>
+            <div><span>Contracts</span><span>4 fuses, 1 library, 1 interface</span></div>
+            <div><span>State</span><span>Stateless: VERSION and MARKET_ID immutables only</span></div>
+            <div><span>Aave V4 live</span><span>30 March 2026, on Ethereum</span></div>
+            <div><span>Source</span><span>contracts/fuses/aave_v4</span></div>
+          </div>
+        </section>
 
-        <!-- Permissions -->
-        <div class="fa-pane" id="faP1" role="tabpanel" hidden>
-          <section class="fa-sec">
-            <h3>The substrate<span>one bytes32 per grant</span></h3>
-            <p class="fa-p">A grant names a Spoke, a reserve and two flags. Any grant allows supply, withdraw, repay and disabling collateral; <code>isCollateral</code> adds enabling collateral; <code>canBorrow</code> adds borrowing.</p>
-            <div style="margin-top:18px">
-              <div class="fa-bits" aria-hidden="true">
-                <div class="b0"><span>Type</span></div>
-                <div class="b1"><b class="fa-bits-label">Spoke address</b><span>Bits 247..88</span></div>
-                <div class="b2"><b class="fa-bits-label">Reserve ID</b><span>87..56</span></div>
-                <div class="b3"><span>Flags</span></div>
-                <div class="b4"><b class="fa-bits-label">Reserved</b><span>47..0</span></div>
-              </div>
-              <div class="fa-key">
-                <span><i style="background:#FCE7F3"></i>Type, 8 bits (1 = Reserve)</span>
-                <span><i style="background:#2C0C55"></i>Spoke, 160 bits</span>
-                <span><i style="background:#8429FF"></i>Reserve ID, 32 bits</span>
-                <span><i style="background:#FEF3C7"></i>Flags, 8 bits</span>
-                <span><i style="background:#F7F7F8"></i>Reserved, 48 bits of zero</span>
-              </div>
-            </div>
-          </section>
-          <section class="fa-sec">
-            <h3>Build a substrate</h3>
-            <div class="fa-enc">
-              <div class="fa-enc-in">
-                <div class="fa-field"><label for="faSpoke">Spoke address</label><input id="faSpoke" type="text" spellcheck="false" placeholder="0x… paste a Spoke" autocomplete="off"></div>
-                <div class="fa-field"><label for="faRid">Reserve ID</label><input id="faRid" type="number" min="0" max="4294967295" value="0"></div>
-                <div class="fa-field"><label>Flags</label><div class="fa-flags">
-                  <label class="fa-flag"><input type="checkbox" id="faCol" checked>isCollateral</label>
-                  <label class="fa-flag"><input type="checkbox" id="faBor">canBorrow</label>
-                </div></div>
-              </div>
-              <p class="fa-hex" id="faHex"></p>
-              <div class="fa-perm" id="faPerm"></div>
-            </div>
-            <p class="fa-note"><code>getReserveGrant</code> probes the four flag variants of a (spoke, reserveId) pair and returns their union, so the order of granted substrates never matters. Atomists are expected to grant one variant per reserve.</p>
-          </section>
-          <section class="fa-sec">
-            <h3>Validation</h3>
-            <div class="fa-kv stack">
-              <div><span>Supply, withdraw</span><span>Any grant for (spoke, reserveId)</span></div>
-              <div><span>Instant withdraw</span><span>A grant, no granted variant with isCollateral, and not collateral on the Spoke now</span></div>
-              <div><span>Borrow</span><span>A grant with canBorrow</span></div>
-              <div><span>Repay</span><span>Any grant, even after canBorrow is revoked</span></div>
-              <div><span>Enable collateral</span><span>A grant with isCollateral</span></div>
-              <div><span>Disable collateral</span><span>Any grant; the Spoke enforces the health factor</span></div>
-            </div>
-          </section>
-        </div>
+        <section class="fa-sec">
+          <h3>Hub and spoke</h3>
+          <p class="fa-p">Liquidity lives in Hubs; users act on Spokes, each with its own risk parameters, oracle and reserve list. A Spoke reserve is an append-only <code>reserveId</code> pointing to one asset of one Hub, so the same underlying can be listed more than once on a single Spoke.</p>
+          <div class="fa-kv" data-h="Layer|Members">
+            <div><span>Hubs</span><span>Core, Prime, Plus, Global Dollar</span></div>
+            <div><span>Spokes</span><span>Main, Bluechip, Ethena Correlated, Forex, Gold, and more</span></div>
+            <div><span>Fusion</span><span>The Plasma Vault acts on Spokes through the fuses</span></div>
+          </div>
+          <p class="fa-p"><b>Supplying does not enable collateral.</b> Only reserves flagged with <code>setUsingAsCollateral</code> count towards the health factor; without it every borrow reverts with <code>HealthFactorBelowThreshold</code>. Hence a fuse of its own for collateral.</p>
+          <p class="fa-p"><b>There is no E-Mode.</b> Risk is segmented by choosing the Spoke, so one market, ID 49, covers every Spoke.</p>
+          <p class="fa-note">The Bluechip Spoke, for one, lists USDC twice: as reserve 4 on the Prime hub and reserve 7 on the Core hub, with different rates and caps.</p>
+        </section>
 
-        <!-- Actions -->
-        <div class="fa-pane" id="faP2" role="tabpanel" hidden>
-          <section class="fa-sec">
-            <h3>What each fuse checks</h3>
-            <div class="fa-seg" role="tablist" id="faActSeg">
-              <button type="button" role="tab" aria-selected="true" data-act="0">Supply</button>
-              <button type="button" role="tab" aria-selected="false" data-act="1">Borrow</button>
-              <button type="button" role="tab" aria-selected="false" data-act="2">Collateral</button>
-              <button type="button" role="tab" aria-selected="false" data-act="3">Balance</button>
+        <section class="fa-sec">
+          <h3>Contracts</h3>
+          <table class="fa-tbl stackable">
+            <thead><tr><th>Contract</th><th>Kind</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">AaveV4SupplyFuse</td><td data-k="Kind">Action</td><td data-k="Does">Supply and withdraw on a reserve, plus the instant withdraw path for user redemptions</td></tr>
+              <tr><td class="mono">AaveV4BorrowFuse</td><td data-k="Kind">Action</td><td data-k="Does">Borrow and repay on a reserve</td></tr>
+              <tr><td class="mono">AaveV4CollateralFuse</td><td data-k="Kind">Action</td><td data-k="Does">Enable or disable a reserve as the vault's collateral</td></tr>
+              <tr><td class="mono">AaveV4BalanceFuse</td><td data-k="Kind">Balance</td><td data-k="Does">NAV: the sum of (supplied − total debt) × price over granted reserves, in USD (WAD)</td></tr>
+              <tr><td class="mono">AaveV4SubstrateLib</td><td data-k="Kind">Library</td><td data-k="Does">Encodes and decodes reserve substrates and checks permissions</td></tr>
+              <tr><td class="mono">ext/IAaveV4Spoke</td><td data-k="Kind">Interface</td><td data-k="Does">A subset of Aave's real ISpoke, its struct layouts identical</td></tr>
+            </tbody>
+          </table>
+          <p class="fa-note">All run by <code>delegatecall</code> from <code>PlasmaVault.execute</code>, each with <code>enterTransient</code> and <code>exitTransient</code> variants for batched flows.</p>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Permissions</h3>
+          <p class="fa-p">Each grant is one <code>bytes32</code> substrate: a Spoke, a reserve and two flags. Any grant allows supply, withdraw, repay and disabling collateral; <code>isCollateral</code> adds enabling collateral; <code>canBorrow</code> adds borrowing.</p>
+          <table class="fa-tbl stackable">
+            <thead><tr><th>Bits</th><th>Field</th><th>Contents</th></tr></thead>
+            <tbody>
+              <tr><td class="mono nw">255..248</td><td data-k="Field">Type flag</td><td data-k="Contents">8 bits; 1 = Reserve</td></tr>
+              <tr><td class="mono nw">247..88</td><td data-k="Field">Spoke</td><td data-k="Contents">160 bits; the Spoke's address</td></tr>
+              <tr><td class="mono nw">87..56</td><td data-k="Field">Reserve ID</td><td data-k="Contents">32 bits</td></tr>
+              <tr><td class="mono nw">55..48</td><td data-k="Field">Flags</td><td data-k="Contents">bit 0 isCollateral, bit 1 canBorrow</td></tr>
+              <tr><td class="mono nw">47..0</td><td data-k="Field">Reserved</td><td data-k="Contents">Must be zero</td></tr>
+            </tbody>
+          </table>
+          <p class="fa-note"><code>getReserveGrant</code> probes the four flag variants of a (spoke, reserveId) pair and returns their union, so the order of granted substrates never matters. Atomists are expected to grant one variant per reserve.</p>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Build a substrate</h3>
+          <p class="fa-p">Enter a Spoke, a reserve and the flags to see the word to grant and what it allows.</p>
+          <div class="fa-enc">
+            <div class="fa-enc-in">
+              <div class="fa-field"><label for="faSpoke">Spoke address</label><input id="faSpoke" type="text" spellcheck="false" placeholder="0x… paste a Spoke" autocomplete="off"></div>
+              <div class="fa-field"><label for="faRid">Reserve ID</label><input id="faRid" type="number" min="0" max="4294967295" value="0"></div>
+              <div class="fa-field"><label>Flags</label><div class="fa-flags">
+                <label class="fa-flag"><input type="checkbox" id="faCol" checked>isCollateral</label>
+                <label class="fa-flag"><input type="checkbox" id="faBor">canBorrow</label>
+              </div></div>
             </div>
-            <div class="fa-act" data-act="0">
-              <div><h4>AaveV4SupplyFuse</h4><ul>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> checks the grant, cross-checks the reserve's underlying, caps the amount at the vault's balance, supplies, then enforces <code>minShares</code>.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> withdraws with any grant.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>instantWithdraw</b> serves user redemptions: only for reserves never granted as collateral and not collateral on-chain, catching a failing Spoke so one reserve cannot block every withdrawal.</span></li>
-              </ul></div>
-              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4SupplyFuse.sol · enter</span><span>L140</span></div><pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
-    <span class="k">revert</span> <span class="t">AaveV4SupplyFuseUnsupportedSubstrate</span>(<span class="s">"enter"</span>, data_.spoke, data_.reserveId);
+            <p class="fa-hex" id="faHex"></p>
+            <ul class="fa-perm" id="faPerm"></ul>
+          </div>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Validation</h3>
+          <div class="fa-kv stack" data-h="Action|Requires">
+            <div><span>Supply, withdraw</span><span>Any grant for (spoke, reserveId)</span></div>
+            <div><span>Instant withdraw</span><span>A grant, no granted variant with isCollateral, and not collateral on the Spoke now</span></div>
+            <div><span>Borrow</span><span>A grant with canBorrow</span></div>
+            <div><span>Repay</span><span>Any grant, even after canBorrow is revoked</span></div>
+            <div><span>Enable collateral</span><span>A grant with isCollateral</span></div>
+            <div><span>Disable collateral</span><span>Any grant; the Spoke enforces the health factor</span></div>
+          </div>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Supply fuse</h3>
+          <p class="fa-p"><code>AaveV4SupplyFuse</code></p>
+          <ul class="fa-list-plain">
+            <li><b>enter</b> checks the grant, cross-checks the reserve&#39;s underlying, caps the amount at the vault&#39;s balance, supplies, then enforces <code>minShares</code>.</li>
+            <li><b>exit</b> withdraws with any grant.</li>
+            <li><b>instantWithdraw</b> serves user redemptions: only for reserves never granted as collateral and not collateral on-chain, catching a failing Spoke so one reserve cannot block every withdrawal.</li>
+          </ul>
+          <div class="fa-code"><div class="fa-code-bar"><span>AaveV4SupplyFuse.sol · enter</span><span>L140</span></div><pre><span class="kw">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+    <span class="kw">revert</span> <span class="t">AaveV4SupplyFuseUnsupportedSubstrate</span>(<span class="s">"enter"</span>, data_.spoke, data_.reserveId);
 }
 <span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
-<span class="k">uint256</span> finalAmount = IporMath.<span class="t">min</span>(ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="k">address</span>(<span class="k">this</span>)), data_.amount);
+<span class="kw">uint256</span> finalAmount = IporMath.<span class="t">min</span>(ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="kw">address</span>(<span class="kw">this</span>)), data_.amount);
 ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, finalAmount);
 
-(<span class="k">uint256</span> shares, ) = IAaveV4Spoke(data_.spoke).<span class="t">supply</span>(data_.reserveId, finalAmount, <span class="k">address</span>(<span class="k">this</span>));
-<span class="k">if</span> (shares &lt; data_.minShares) {
-    <span class="k">revert</span> <span class="t">AaveV4SupplyFuseInsufficientShares</span>(shares, data_.minShares);
+(<span class="kw">uint256</span> shares, ) = IAaveV4Spoke(data_.spoke).<span class="t">supply</span>(data_.reserveId, finalAmount, <span class="kw">address</span>(<span class="kw">this</span>));
+<span class="kw">if</span> (shares &lt; data_.minShares) {
+    <span class="kw">revert</span> <span class="t">AaveV4SupplyFuseInsufficientShares</span>(shares, data_.minShares);
 }</pre></div>
-            </div>
-            <div class="fa-act" data-act="1" hidden>
-              <div><h4>AaveV4BorrowFuse</h4><ul>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> borrows only with <code>canBorrow</code>; the Spoke reverts <code>HealthFactorBelowThreshold</code> if no collateral is enabled.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> repays with any grant, so debt can always be repaid even after <code>canBorrow</code> is revoked.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>The repay is capped at the vault's balance; the Spoke caps it at the total debt.</span></li>
-              </ul></div>
-              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BorrowFuse.sol · exit</span><span>L188</span></div><pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
-    <span class="k">revert</span> <span class="t">AaveV4BorrowFuseUnsupportedSubstrate</span>(<span class="s">"exit"</span>, data_.spoke, data_.reserveId);
+        </section>
+
+        <section class="fa-sec">
+          <h3>Borrow fuse</h3>
+          <p class="fa-p"><code>AaveV4BorrowFuse</code></p>
+          <ul class="fa-list-plain">
+            <li><b>enter</b> borrows only with <code>canBorrow</code>; the Spoke reverts <code>HealthFactorBelowThreshold</code> if no collateral is enabled.</li>
+            <li><b>exit</b> repays with any grant, so debt can always be repaid even after <code>canBorrow</code> is revoked.</li>
+            <li>The repay is capped at the vault&#39;s balance; the Spoke caps it at the total debt.</li>
+          </ul>
+          <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BorrowFuse.sol · exit</span><span>L188</span></div><pre><span class="kw">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+    <span class="kw">revert</span> <span class="t">AaveV4BorrowFuseUnsupportedSubstrate</span>(<span class="s">"exit"</span>, data_.spoke, data_.reserveId);
 }
 <span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
 
-<span class="k">uint256</span> balance = ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="k">address</span>(<span class="k">this</span>));
-<span class="k">uint256</span> repayAmount = IporMath.<span class="t">min</span>(balance, data_.amount);
+<span class="kw">uint256</span> balance = ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="kw">address</span>(<span class="kw">this</span>));
+<span class="kw">uint256</span> repayAmount = IporMath.<span class="t">min</span>(balance, data_.amount);
 ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, repayAmount);
 
-(<span class="k">uint256</span> sharesRepaid, <span class="k">uint256</span> repaid) = IAaveV4Spoke(data_.spoke).<span class="t">repay</span>(
-    data_.reserveId, repayAmount, <span class="k">address</span>(<span class="k">this</span>)
+(<span class="kw">uint256</span> sharesRepaid, <span class="kw">uint256</span> repaid) = IAaveV4Spoke(data_.spoke).<span class="t">repay</span>(
+    data_.reserveId, repayAmount, <span class="kw">address</span>(<span class="kw">this</span>)
 );</pre></div>
-            </div>
-            <div class="fa-act" data-act="2" hidden>
-              <div><h4>AaveV4CollateralFuse</h4><ul>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> enables a reserve as collateral, only with a grant carrying <code>isCollateral</code>.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> disables it with any grant; the Spoke enforces the health factor.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Needed because supplying alone never enables collateral on Aave V4.</span></li>
-              </ul></div>
-              <div class="fa-code"><div class="fa-code-bar"><span>README.md · validation</span><span>L69</span></div><pre><span class="c">| Action                              | Requires                 |</span>
-<span class="c">|-------------------------------------|--------------------------|</span>
-| <span class="t">AaveV4CollateralFuse.enter</span> (enable) | grant with <span class="k">isCollateral</span> |
-| <span class="t">AaveV4CollateralFuse.exit</span> (disable) | any grant <span class="c">(the Spoke</span>
-|                                     | <span class="c">enforces the health factor)</span> |</pre></div>
-            </div>
-            <div class="fa-act" data-act="3" hidden>
-              <div><h4>AaveV4BalanceFuse</h4><ul>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Walks the granted reserve substrates, counting each (spoke, reserveId) pair once.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Sums (supplied − total debt) × price per reserve through <code>PriceOracleMiddleware</code>, in WAD.</span></li>
-                <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Debt is always read, whatever <code>canBorrow</code> says, so revoking a borrow permission never hides debt. Reverts if debt exceeds supply.</span></li>
-              </ul></div>
-              <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BalanceFuse.sol · balanceOf</span><span>L61</span></div><pre><span class="k">bytes32</span>[] <span class="k">memory</span> substrates = PlasmaVaultConfigLib.<span class="t">getMarketSubstrates</span>(MARKET_ID);
-<span class="k">for</span> (<span class="k">uint256</span> i; i &lt; len; ++i) {
-    <span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">isReserveSubstrate</span>(substrates[i])) <span class="k">continue</span>;
+        </section>
+
+        <section class="fa-sec">
+          <h3>Collateral fuse</h3>
+          <p class="fa-p"><code>AaveV4CollateralFuse</code></p>
+          <ul class="fa-list-plain">
+            <li><b>enter</b> enables a reserve as collateral, only with a grant carrying <code>isCollateral</code>.</li>
+            <li><b>exit</b> disables it with any grant; the Spoke enforces the health factor.</li>
+            <li>Needed because supplying alone never enables collateral on Aave V4.</li>
+          </ul>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Balance fuse</h3>
+          <p class="fa-p"><code>AaveV4BalanceFuse</code></p>
+          <ul class="fa-list-plain">
+            <li>Walks the granted reserve substrates, counting each (spoke, reserveId) pair once.</li>
+            <li>Sums (supplied − total debt) × price per reserve through <code>PriceOracleMiddleware</code>, in WAD.</li>
+            <li>Debt is always read, whatever <code>canBorrow</code> says, so revoking a borrow permission never hides debt. Reverts if debt exceeds supply.</li>
+          </ul>
+          <div class="fa-code"><div class="fa-code-bar"><span>AaveV4BalanceFuse.sol · balanceOf</span><span>L61</span></div><pre><span class="kw">bytes32</span>[] <span class="kw">memory</span> substrates = PlasmaVaultConfigLib.<span class="t">getMarketSubstrates</span>(MARKET_ID);
+<span class="kw">for</span> (<span class="kw">uint256</span> i; i &lt; len; ++i) {
+    <span class="kw">if</span> (!AaveV4SubstrateLib.<span class="t">isReserveSubstrate</span>(substrates[i])) <span class="kw">continue</span>;
     substrate = AaveV4SubstrateLib.<span class="t">decode</span>(substrates[i]);
-    <span class="k">if</span> (<span class="t">_isDuplicate</span>(substrates, i, substrate.spoke, substrate.reserveId)) <span class="k">continue</span>;
+    <span class="kw">if</span> (<span class="t">_isDuplicate</span>(substrates, i, substrate.spoke, substrate.reserveId)) <span class="kw">continue</span>;
     balanceTemp += <span class="t">_calculateReserveBalance</span>(
         IAaveV4Spoke(substrate.spoke), substrate.reserveId,
         plasmaVault, priceOracleMiddleware
     );
 }</pre></div>
-            </div>
-          </section>
-        </div>
+        </section>
 
-        <!-- Flow -->
-        <div class="fa-pane" id="faP3" role="tabpanel" hidden>
-          <section class="fa-sec">
-            <h3>A typical flow<span>one PlasmaVault.execute</span></h3>
-            <div class="fa-steps">
-              <div class="fa-step"><span class="n">1</span><b>Supply 10 WETH</b><p>Into reserve 0 of the Bluechip Spoke.</p><span class="f">AaveV4SupplyFuse</span></div>
-              <div class="fa-step"><span class="n">2</span><b>Enable collateral</b><p>On the same reserve 0, so it counts towards the health factor.</p><span class="f">AaveV4CollateralFuse</span></div>
-              <div class="fa-step"><span class="n">3</span><b>Borrow 10,000 USDC</b><p>From reserve 4, Bluechip's USDC on the Prime hub.</p><span class="f">AaveV4BorrowFuse</span></div>
-            </div>
-            <div class="fa-code"><div class="fa-code-bar"><span>README.md · example</span><span>L159</span></div><pre>FuseAction[] <span class="k">memory</span> actions = <span class="k">new</span> FuseAction[](<span class="s">3</span>);
+        <section class="fa-sec">
+          <h3>A typical flow</h3>
+          <p class="fa-p">Three fuse actions in one <code>PlasmaVault.execute</code>, the README&#39;s own example on the Bluechip Spoke:</p>
+          <ol class="fa-list-plain num">
+            <li><b>Supply 10 WETH</b> into reserve 0 of the Bluechip Spoke (<code>AaveV4SupplyFuse</code>).</li>
+            <li><b>Enable collateral</b> on the same reserve 0, so it counts towards the health factor (<code>AaveV4CollateralFuse</code>).</li>
+            <li><b>Borrow 10,000 USDC</b> from reserve 4, Bluechip&#39;s USDC on the Prime hub (<code>AaveV4BorrowFuse</code>).</li>
+          </ol>
+          <div class="fa-code"><div class="fa-code-bar"><span>README.md · example</span><span>L159</span></div><pre>FuseAction[] <span class="kw">memory</span> actions = <span class="kw">new</span> FuseAction[](<span class="s">3</span>);
 actions[<span class="s">0</span>] = <span class="t">FuseAction</span>(supplyFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
     AaveV4SupplyFuseEnterData({spoke: BLUECHIP_SPOKE, asset: WETH, reserveId: <span class="s">0</span>, amount: <span class="s">10e18</span>, minShares: <span class="s">0</span>})));
 actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateralFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,uint256))"</span>,
@@ -494,41 +423,41 @@ actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateral
 actions[<span class="s">2</span>] = <span class="t">FuseAction</span>(borrowFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
     AaveV4BorrowFuseEnterData({spoke: BLUECHIP_SPOKE, asset: USDC, reserveId: <span class="s">4</span>, amount: <span class="s">10_000e6</span>, minShares: <span class="s">0</span>})));
 PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
-          </section>
-        </div>
+        </section>
 
-        <!-- Risks -->
-        <div class="fa-pane" id="faP4" role="tabpanel" hidden>
-          <section class="fa-sec">
-            <h3>Grants and open positions</h3>
-            <p class="fa-p">The fuses deliberately do not tie a grant change to existing positions, and <code>grantMarketSubstrates</code> always replaces the whole set. The atomist keeps these rules.</p>
-            <table class="fa-tbl stackable" style="margin-top:12px">
-              <thead><tr><th>Situation</th><th>Effect</th><th>Rule</th></tr></thead>
-              <tbody>
-                <tr><td>A reserve with debt loses its grant</td><td data-k="Effect">Debt drops out of the balance: NAV overstated, share price inflated</td><td data-k="Rule">Never revoke a reserve the vault borrows; repay first</td></tr>
-                <tr><td>A reserve with supply loses its grant</td><td data-k="Effect">Supply drops out of NAV and cannot be withdrawn until re-granted</td><td data-k="Rule">Withdraw first, or re-grant to recover</td></tr>
-                <tr><td>Collateral re-granted without isCollateral</td><td data-k="Effect">Stays enabled on the Spoke; enabling again is refused, disabling works</td><td data-k="Rule">Disable collateral before downgrading the grant</td></tr>
-                <tr><td>Debt re-granted without canBorrow</td><td data-k="Effect">New borrows refused, repay works, debt still counted</td><td data-k="Rule">The intended way to wind a position down</td></tr>
-                <tr><td>Reserve granted before Aave lists it</td><td data-k="Effect">Ignored by the balance fuse; supply and borrow revert ReserveNotListed</td><td data-k="Rule">Harmless: active once listed</td></tr>
-              </tbody>
-            </table>
-            <p class="fa-note">Only the last row is tolerated in code; the others are documented risks, not enforced invariants.</p>
-          </section>
-          <section class="fa-sec">
-            <h3>Security</h3>
-            <ul class="fa-points">
-              <li><svg viewBox="0 0 18 18"><path d="M9 2.5l5.5 2.5v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7V5z"/></svg><span><b>No position manager, ever.</b> The vault acts for itself on the Spoke (<code>onBehalfOf == msg.sender</code>).</span></li>
-              <li><svg viewBox="0 0 18 18"><path d="M3 9.5l3.5 3.5L15 4.5"/></svg><span><b>Instant withdraw is double-guarded.</b> Limited to non-collateral reserves by grant flag and by live on-chain status, so user withdrawals can never degrade a leveraged position.</span></li>
-              <li><svg viewBox="0 0 18 18"><path d="M4 9h10M9 4v10"/></svg><span><b>Exact approvals.</b> Only granted Spokes are called; supply and repay pull exactly the approved amount (<code>SafeERC20.forceApprove</code>).</span></li>
-              <li><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 6v3.5M9 12h.01"/></svg><span><b>Aave's own limits stand.</b> Paused and frozen flags and Hub caps are enforced by Aave; the fuses do not pre-check them.</span></li>
-            </ul>
-          </section>
-        </div>
+        <section class="fa-sec">
+          <h3>Grants and open positions</h3>
+          <p class="fa-p">The fuses deliberately do not tie a grant change to existing positions, and <code>grantMarketSubstrates</code> always replaces the whole set. The atomist keeps these rules.</p>
+          <table class="fa-tbl stackable">
+            <thead><tr><th>Situation</th><th>Effect</th><th>Rule</th></tr></thead>
+            <tbody>
+              <tr><td>A reserve with debt loses its grant</td><td data-k="Effect">Debt drops out of the balance: NAV overstated, share price inflated</td><td data-k="Rule">Never revoke a reserve the vault borrows; repay first</td></tr>
+              <tr><td>A reserve with supply loses its grant</td><td data-k="Effect">Supply drops out of NAV and cannot be withdrawn until re-granted</td><td data-k="Rule">Withdraw first, or re-grant to recover</td></tr>
+              <tr><td>Collateral re-granted without isCollateral</td><td data-k="Effect">Stays enabled on the Spoke; enabling again is refused, disabling works</td><td data-k="Rule">Disable collateral before downgrading the grant</td></tr>
+              <tr><td>Debt re-granted without canBorrow</td><td data-k="Effect">New borrows refused, repay works, debt still counted</td><td data-k="Rule">The intended way to wind a position down</td></tr>
+              <tr><td>Reserve granted before Aave lists it</td><td data-k="Effect">Ignored by the balance fuse; supply and borrow revert ReserveNotListed</td><td data-k="Rule">Harmless: active once listed</td></tr>
+            </tbody>
+          </table>
+          <p class="fa-note">Only the last row is tolerated in code; the others are documented risks, not enforced invariants.</p>
+        </section>
+
+        <section class="fa-sec">
+          <h3>Security</h3>
+          <ul class="fa-list-plain">
+            <li><b>No position manager, ever.</b> The vault acts for itself on the Spoke (<code>onBehalfOf == msg.sender</code>).</li>
+            <li><b>Instant withdraw is double-guarded.</b> Limited to non-collateral reserves by grant flag and by live on-chain status, so user withdrawals can never degrade a leveraged position.</li>
+            <li><b>Exact approvals.</b> Only granted Spokes are called; supply and repay pull exactly the approved amount (<code>SafeERC20.forceApprove</code>).</li>
+            <li><b>Aave&#39;s own limits stand.</b> Paused and frozen flags and Hub caps are enforced by Aave; the fuses do not pre-check them.</li>
+          </ul>
+        </section>
       </article>
 
       <!-- Any other protocol -->
       <article id="faOther" hidden></article>
     </div>
+
+    <!-- On this page -->
+    <nav class="fa-toc" id="faToc" aria-label="On this page"></nav>
   </div>
 </main>
 <script src="/demo/demo.js"></script>
@@ -605,17 +534,20 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
       const n = p.fuses.length, bal = p.fuses.filter(f => kind(f.name) === 'Balance').length, reg = p.fuses.filter(f => f.id != null).length;
       $('faOther').innerHTML = BAR(`<span>Fuses</span><span>/</span><b>${p.fn}</b>`)
         + `<div class="fa-top"><h2>${p.name}</h2><p class="fa-lede">${n ? `The ${p.name} fuses a Plasma Vault can be given, as FuseTypes.sol registers them.` : `${p.name}'s fuses live in the repository but are not yet in FuseTypes.sol.`}</p></div>`
-        + `<div class="fa-chips"><span class="fa-chip">${p.fn}</span>${p.note ? `<span class="fa-chip">${p.note}</span>` : ''}<span class="fa-chip">Full page soon</span></div>`
-        + `<div class="fa-figs"><div class="fa-fig"><div class="k">Fuses</div><div class="v">${n || '—'}</div><div class="s">in this family</div></div>`
-        + `<div class="fa-fig"><div class="k">Registered</div><div class="v">${n ? reg : '—'}</div><div class="s">with a FuseTypes id</div></div>`
-        + `<div class="fa-fig"><div class="k">Balance Fuses</div><div class="v">${n ? bal : '—'}</div><div class="s">read the NAV</div></div>`
-        + `<div class="fa-fig"><div class="k">Action Fuses</div><div class="v">${n ? n - bal : '—'}</div><div class="s">move the assets</div></div></div>`
-        + (n ? `<section class="fa-sec" style="border-top:none"><h3>Registered fuses<span>${n}</span></h3><table class="fa-tbl"><thead><tr><th>ID</th><th>Name</th><th>Kind</th></tr></thead><tbody>`
-          + p.fuses.map(f => `<tr class="fa-fuse-row"><td class="muted nw">${f.id == null ? '·' : '#' + f.id}</td><td class="mono" style="overflow-wrap:anywhere">${f.name}</td><td class="nw"><span class="fa-tag${kind(f.name) === 'Balance' ? '' : ' a'}">${kind(f.name)}</span></td></tr>`).join('')
+        + `<section class="fa-sec"><h3>At a glance</h3><div class="fa-kv" data-h="Fact|Value">`
+        + `<div><span>Category</span><span>${p.fn}</span></div>${p.note ? `<div><span>Market</span><span>${p.note}</span></div>` : ''}`
+        + `<div><span>Fuses</span><span>${n || 'Not in FuseTypes.sol yet'}</span></div>`
+        + (n ? `<div><span>Registered</span><span>${reg} with a FuseTypes.sol id</span></div><div><span>Balance fuses</span><span>${bal}</span></div><div><span>Action fuses</span><span>${n - bal}</span></div>` : '')
+        + `</div></section>`
+        + (n ? `<section class="fa-sec"><h3>Registered fuses</h3><table class="fa-tbl"><thead><tr><th>ID</th><th>Name</th><th>Kind</th></tr></thead><tbody>`
+          + p.fuses.map(f => `<tr class="fa-fuse-row"><td class="muted nw">${f.id == null ? '·' : '#' + f.id}</td><td class="mono" style="overflow-wrap:anywhere">${f.name}</td><td class="nw">${kind(f.name)}</td></tr>`).join('')
           + `</tbody></table></section>` : '')
         + `<div class="fa-soon"><b>A full page for ${p.name} is on the way,</b> as Aave V4 has: its markets, permissions, checks, a typical flow and the atomist's rules. ${n ? 'A dot stands for a fuse not registered in FuseTypes.sol yet.' : ''} <a href="#aave-v4" data-go="aave-v4" style="color:var(--accent)">See Aave V4</a>.</div>`;
       $('faOther').querySelector('[data-go]').addEventListener('click', (e) => { e.preventDefault(); show('aave-v4', true); });
     }
+    toc();
+    const on = $('faList').querySelector('[aria-current]');
+    if (on) { const l = $('faList'); if (on.offsetTop < l.scrollTop || on.offsetTop > l.scrollTop + l.clientHeight - 40) l.scrollTop = on.offsetTop - 60; }
     if (user) {
       history.replaceState(null, '', '#' + p.key);
       const top = $('faMain').getBoundingClientRect().top + scrollY - 140;
@@ -625,7 +557,6 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
 
   // The substrate, built live, and what it lets the vault do.
   const hx = (n, w) => n.toString(16).padStart(w, '0');
-  const tick = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg>', cross = '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
   function encode() {
     const raw = $('faSpoke').value.trim().replace(/^0x/i, '').toLowerCase();
     const spoke = /^[0-9a-f]{40}$/.test(raw) ? raw : '0'.repeat(40);
@@ -636,21 +567,37 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
       + '</span><span class="x3">' + hx((col ? 1 : 0) | (bor ? 2 : 0), 2) + '</span><span class="x4">' + '0'.repeat(12) + '</span>';
     const rows = [['Supply', true], ['Withdraw', true], ['Repay', true], ['Disable collateral', true],
       ['Enable collateral', col], ['Borrow', bor], ['Instant withdraw', !col, 'if not collateral now']];
-    $('faPerm').innerHTML = rows.map(([k, ok, why]) => `<div class="${ok ? 'y' : 'n'}">${ok ? tick : cross}${k}${ok && why ? `<em>${why}</em>` : ''}</div>`).join('');
+    $('faPerm').innerHTML = rows.map(([k, ok, why]) => `<li class="${ok ? 'y' : 'n'}"><b>${ok ? '✓' : '✕'}</b>${k}${ok && why ? ` <em>${why}</em>` : ''}</li>`).join('');
   }
   ['faSpoke', 'faRid', 'faCol', 'faBor'].forEach(id => $(id).addEventListener('input', encode));
   encode();
 
-  // The tab bar, and the Actions tab's own switch.
-  const tabs = [...document.querySelectorAll('.fa-tabs button')];
-  tabs.forEach(t => t.addEventListener('click', () => tabs.forEach(x => {
-    const on = x === t; x.setAttribute('aria-selected', String(on)); $(x.getAttribute('aria-controls')).hidden = !on;
-  })));
-  const acts = [...document.querySelectorAll('#faActSeg button')];
-  acts.forEach(a => a.addEventListener('click', () => {
-    acts.forEach(x => x.setAttribute('aria-selected', String(x === a)));
-    document.querySelectorAll('.fa-act').forEach(p => { p.hidden = p.dataset.act !== a.dataset.act; });
-  }));
+  // On this page: a link per section of the protocol shown, the one in view
+  // marked as the page scrolls.
+  let spy = null;
+  function toc() {
+    const art = !$('faAave').hidden ? $('faAave') : $('faOther');
+    const heads = [...art.querySelectorAll('section h3')];
+    heads.forEach((h, i) => { h.id = 'fa-' + cur + '-' + h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, ''); });
+    $('faToc').innerHTML = '<p class="fa-toc-k">On this page</p><ol>' + heads.map(h => `<li><a href="#${h.id}" data-to="${h.id}">${h.textContent.trim()}</a></li>`).join('') + '</ol>'
+      + '<a class="fa-toc-top" href="#top" data-to="top">Back to top ↑</a>';
+    if (spy) spy.disconnect();
+    const links = [...$('faToc').querySelectorAll('ol a')];
+    const mark = () => {
+      let at = heads[0];
+      heads.forEach(h => { if (h.getBoundingClientRect().top < 200) at = h; });
+      links.forEach(a => a.classList.toggle('on', at && a.dataset.to === at.id));
+    };
+    spy = { disconnect: () => removeEventListener('scroll', mark) };
+    addEventListener('scroll', mark, { passive: true });
+    mark();
+  }
+  $('faToc').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-to]'); if (!a) return;
+    e.preventDefault();
+    const el = a.dataset.to === 'top' ? document.body : $(a.dataset.to);
+    scrollTo({ top: a.dataset.to === 'top' ? 0 : el.getBoundingClientRect().top + scrollY - 136, behavior: 'smooth' });
+  });
 
   // Copy as .md: the protocol shown, every tab of it, as Markdown.
   const txt = (el) => el.textContent.replace(/\s+/g, ' ').trim();
@@ -659,9 +606,9 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
     + rows.map(r => '| ' + r.map(cell).join(' | ') + ' |').join('\n');
   function toMd(art) {
     const out = [];
-    const SEL = 'h2, h3, h4, .fa-lede, .fa-chips, .fa-figs, .fa-p, .fa-note, .fa-hs, .fa-fact, table, .fa-kv, .fa-key, .fa-hex, .fa-perm, .fa-act ul, .fa-steps, pre, .fa-points, .fa-soon';
+    const SEL = 'h2, h3, .fa-lede, .fa-p, .fa-note, table, .fa-kv, .fa-hex, .fa-perm, .fa-list-plain, pre, .fa-soon';
     art.querySelectorAll(SEL).forEach(el => {
-      if (el.parentElement.closest('.fa-figs, .fa-hs, .fa-fact, .fa-kv, .fa-steps, .fa-points, .fa-soon, table')) return;
+      if (el.parentElement.closest('.fa-kv, .fa-soon, table, .fa-list-plain')) return;
       const t = el.tagName;
       if (t === 'H2') out.push('# ' + txt(el));
       else if (t === 'H3') { const n = el.querySelector('span'); out.push('## ' + (n ? txt(el).slice(0, -txt(n).length).trim() + ' (' + txt(n) + ')' : txt(el))); }
@@ -671,11 +618,11 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
       else if (el.matches('.fa-hs')) out.push([...el.querySelectorAll('.fa-col')].map(c => '- ' + txt(c.querySelector('.k')) + ': ' + [...c.querySelectorAll('li')].map(txt).join(', ')).join('\n'));
       else if (el.matches('.fa-fact')) out.push('**' + txt(el.querySelector('b')) + '.** ' + txt(el.querySelector('p')));
       else if (t === 'TABLE') out.push(mdTable([...el.querySelectorAll('th')].map(txt), [...el.querySelectorAll('tbody tr')].map(r => [...r.children].map(txt))));
-      else if (el.matches('.fa-kv')) out.push(mdTable(['Action', 'Requires'], [...el.children].map(r => [...r.children].map(txt))));
+      else if (el.matches('.fa-kv')) out.push(mdTable((el.dataset.h || 'Item|Value').split('|'), [...el.children].map(r => [...r.children].map(txt))));
       else if (el.matches('.fa-key')) out.push([...el.children].map(c => '- ' + txt(c)).join('\n'));
       else if (el.matches('.fa-hex')) out.push('Substrate as built: `' + txt(el) + '`');
-      else if (el.matches('.fa-perm')) out.push([...el.children].map(c => '- ' + (c.classList.contains('y') ? '[x] ' : '[ ] ') + txt(c)).join('\n'));
-      else if (el.matches('.fa-act ul, .fa-points')) out.push([...el.children].map(li => '- ' + txt(li)).join('\n'));
+      else if (el.matches('.fa-perm')) out.push([...el.children].map(c => '- ' + (c.classList.contains('y') ? '[x] ' : '[ ] ') + txt(c).replace(/^[✓✕]\s*/, '')).join('\n'));
+      else if (el.matches('.fa-list-plain')) out.push([...el.children].map((li, i) => (el.tagName === 'OL' ? (i + 1) + '. ' : '- ') + txt(li)).join('\n'));
       else if (el.matches('.fa-steps')) out.push([...el.children].map((st, i) => (i + 1) + '. **' + txt(st.querySelector('b')) + '**: ' + txt(st.querySelector('p')) + ' (' + txt(st.querySelector('.f')) + ')').join('\n'));
       else if (t === 'PRE') { const bar = el.parentElement.querySelector('.fa-code-bar span'); out.push((bar ? '`' + txt(bar) + '`\n' : '') + '```solidity\n' + el.textContent.replace(/\s+$/, '') + '\n```'); }
       else out.push(txt(el));
