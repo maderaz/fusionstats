@@ -51,14 +51,7 @@
         <div><h4>Developers</h4><ul><li><a href="https://docs.ipor.io/" target="_blank" rel="noopener">Docs</a></li><li><a href="https://github.com/IPOR-Labs" target="_blank" rel="noopener">GitHub</a></li><li><a href="https://github.com/IPOR-Labs/ipor-fusion.py" target="_blank" rel="noopener">Python SDK</a></li></ul></div>
         <div><h4>Governance</h4><ul><li><a href="https://snapshot.org/" target="_blank" rel="noopener">Snapshot</a></li><li>Token<span class="soon">Soon</span></li></ul></div>
       </div>
-      <div class="hp-legal">
-        <p><b>Not advice.</b> Everything on this site is for information only. It is not financial, investment, legal or tax advice, and not an offer or solicitation to buy or sell any asset, security or financial product.</p>
-        <p><b>You can lose what you deposit.</b> Onchain vaults carry real risk: smart contract bugs, oracle failures, liquidations, depegs, and market and liquidity risk. Audits lower these risks; they do not remove them.</p>
-        <p><b>No guaranteed returns.</b> APYs and figures shown are variable, may be estimates, and past performance does not predict future results.</p>
-        <p><b>Non-custodial software.</b> Fusion is open-source, non-custodial software. Vaults are configured and run by independent curators on third-party protocols that Fusion's contributors do not control.</p>
-        <p><b>Data as found.</b> Figures come from public blockchain data and third-party sources, and may be delayed, incomplete or wrong. Check them before you act.</p>
-        <p><b>Your jurisdiction.</b> Access may be restricted where you live; you are responsible for following the laws that apply to you. Names and marks of other protocols belong to their owners and imply no endorsement.</p>
-      </div>
+      <p class="hp-legal">Information only: not financial, investment, legal or tax advice, and not an offer or solicitation to buy or sell any asset, security or financial product. Onchain vaults carry risk, including smart contract bugs, oracle failures, liquidations, depegs and market and liquidity risk, and you can lose all you deposit; audits lower these risks but do not remove them. APYs and figures are variable, may be estimates or delayed, and past performance does not predict future results. Fusion is open-source, non-custodial software; vaults are run by independent curators on third-party protocols its contributors do not control. Access may be restricted in your jurisdiction, and you are responsible for the laws that apply to you. Other names and marks belong to their owners and imply no endorsement.</p>
       <div class="hp-foot-end"><span>© 2026 Fusion</span><span>A concept on Fusion Stats</span></div>
     </div>
   </footer>
