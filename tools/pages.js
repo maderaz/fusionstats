@@ -43,6 +43,8 @@ const PAGES = [
     description: 'The IPOR stETH vault\'s looping position on SparkLend\'s wstETH market, read live: supplied, borrowed, health factor, leverage, and its rank among the market\'s suppliers.' },
   { path: '/demo/homepage', file: 'demo/homepage/index.html', name: 'Homepage', card: 'demo-homepage',
     description: 'A concept for a new Fusion homepage, in purple and white, drawn with the live figures: TVL, vaults and networks.' },
+  { path: '/demo/fuses', file: 'demo/fuses/index.html', name: 'Fuses', card: 'demo-fuses',
+    description: 'A concept for Fusion\'s fuse library: every protocol\'s fuses by function or name, with Aave V4 drawn in full, from substrates to risks.' },
 ];
 
 // Whether search engines may list the site. Off for now: every page says
