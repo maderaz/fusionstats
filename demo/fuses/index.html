@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <meta name="robots" content="noindex">
+  <title>Fuses • Fusion Ecosystem</title>
+  <meta name="description" content="A concept for Fusion's fuse library: every protocol's fuses by function or name, with Aave V4 drawn in full, from substrates to risks.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/demo/fuses">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Ecosystem">
+  <meta property="og:title" content="Fuses • Fusion Ecosystem">
+  <meta property="og:description" content="A concept for Fusion's fuse library: every protocol's fuses by function or name, with Aave V4 drawn in full, from substrates to risks.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/demo/fuses">
+  <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-fuses.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Fuses: A concept for Fusion's fuse library: every protocol's fuses by function or name, with Aave V4 drawn in full, from substrates to risks.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Fuses • Fusion Ecosystem">
+  <meta name="twitter:description" content="A concept for Fusion's fuse library: every protocol's fuses by function or name, with Aave V4 drawn in full, from substrates to risks.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-fuses.png">
+  <!-- /page-meta -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+  <style>
+    /* ---- The page's head: a short band on the purple ground ---------------- */
+    .fz-head { padding-top: 72px; }
+    .fz-head .hp-h { max-width: 760px; }
+    .fz-head .hp-lead { max-width: 620px; }
+    .fz-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 48px; border-top: 1px solid var(--g-line); }
+    .fz-stats div { padding: 22px 20px 26px 0; }
+    .fz-stats div + div { padding-left: 24px; border-left: 1px solid var(--g-line); }
+    .fz-stats b { display: block; font-size: clamp(26px, 3.4cqi, 40px); font-weight: 600; letter-spacing: -0.045em; white-space: nowrap; }
+    .fz-stats div > span { display: block; margin-top: 6px; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--g-text-3); white-space: nowrap; }
+
+    /* ---- Library: the list at the left, the fuse at the right -------------- */
+    .fz-lib { display: grid; grid-template-columns: 272px minmax(0, 1fr); gap: 56px; align-items: start; padding: 56px 0 112px; }
+    .fz-side { position: sticky; top: 136px; max-height: calc(100vh - 152px); display: flex; flex-direction: column; border: 1px solid var(--hair); background: #FFFFFF; }
+    .fz-side-top { padding: 14px; border-bottom: 1px solid var(--hair); }
+    .fz-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--hair); background: var(--p50); }
+    .fz-search svg { flex: none; width: 14px; height: 14px; fill: none; stroke: var(--ink-3); stroke-width: 1.6; stroke-linecap: round; }
+    .fz-search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; font: 400 13.5px/1 var(--sans); color: var(--ink); }
+    .fz-seg { display: grid; grid-template-columns: repeat(2, minmax(max-content, 1fr)); margin-top: 10px; border: 1px solid var(--hair); }
+    .fz-seg button { height: 30px; padding: 0 10px; border: 0; background: #FFFFFF; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; cursor: pointer; }
+    .fz-seg button + button { border-left: 1px solid var(--hair); }
+    .fz-seg button[aria-pressed="true"] { background: var(--g); color: #FFFFFF; }
+    .fz-list { flex: 1; overflow-y: auto; padding: 6px 0 12px; scrollbar-width: thin; }
+    .fz-group { padding: 14px 14px 4px; font: 500 10.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+    .fz-row {
+      display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; padding: 0 14px;
+      border: 0; border-left: 2px solid transparent; background: transparent; text-align: left;
+      font: 500 13.5px/1.2 var(--sans); color: var(--ink-2); cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .fz-row:hover { background: var(--p50); color: var(--ink); }
+    .fz-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fz-row .ct { flex: none; margin-left: auto; font: 500 11px/1 var(--mono); color: var(--ink-3); }
+    .fz-row .live { flex: none; margin-left: auto; padding: 3px 6px; border: 1px solid var(--p300); font: 500 9.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--p500); }
+    .fz-row[aria-current="true"] { border-left-color: var(--p500); background: var(--p100); color: var(--ink); font-weight: 600; }
+    .fz-empty { padding: 18px 14px; font-size: 13px; color: var(--ink-3); }
+    .fz-side-foot { padding: 12px 14px; border-top: 1px solid var(--hair); font: 500 10.5px/1.5 var(--mono); letter-spacing: 0.04em; color: var(--ink-3); }
+    .fz-browse { display: none; }
+
+    /* ---- One fuse: the shared parts ------------------------------------------ */
+    .fz-main { min-width: 0; }
+    .fz-crumb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font: 500 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+    .fz-crumb b { font-weight: 500; color: var(--p500); }
+    .fz-title { display: flex; align-items: center; gap: 16px; margin: 20px 0 0; }
+    .fz-title .hp-h { font-size: clamp(36px, 5.4cqi, 64px); }
+    .fz-logo { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border: 1px solid var(--hair); background: var(--p50); font: 700 17px/1 var(--sans); letter-spacing: -0.03em; color: var(--p500); }
+    .fz-sub { margin: 16px 0 0; max-width: 680px; font-size: 17px; line-height: 1.6; color: var(--ink-2); }
+    .fz-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .fz-tag { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--hair); font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+    .fz-tag b { font-weight: 500; color: var(--p500); }
+    .fz-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+    .fz-acts .hp-btn { height: 42px; padding: 0 18px; font-size: 14px; }
+    .fz-acts .hp-btn.dark { background: var(--g); color: #FFFFFF; }
+    .fz-toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 40px 0 0; padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+    .fz-toc a { padding: 6px 10px; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: var(--ink-2); white-space: nowrap; }
+    .fz-toc a:hover { color: var(--p500); background: var(--p50); }
+    .fz-sec { padding-top: 72px; scroll-margin-top: 130px; }
+    .fz-sec > .hp-k { margin-bottom: 14px; }
+    .fz-h { margin: 0; font-size: clamp(26px, 3.2cqi, 36px); line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
+    .fz-p { margin: 14px 0 0; max-width: 680px; font-size: 15.5px; line-height: 1.65; color: var(--ink-2); }
+    .fz-p code, .fz-cell code, .fz-note code { font: 500 0.88em/1 var(--mono); color: var(--p600); background: var(--p100); padding: 2px 5px; }
+    .fz-box { margin-top: 28px; }
+
+    /* Hub & Spoke. */
+    .fz-hs { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr) 44px minmax(0, 0.8fr); align-items: center; padding: 32px; border: 1px solid var(--hair); background: var(--p50);
+      background-image: radial-gradient(circle, rgba(132, 41, 255, 0.10) 1px, transparent 1.4px); background-size: 20px 20px; }
+    .fz-col .hp-k { margin-bottom: 12px; text-align: center; }
+    .fz-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+    .fz-col li { padding: 9px 12px; border: 1px solid var(--hair); background: #FFFFFF; font-size: 13.5px; font-weight: 600; text-align: center; white-space: nowrap; }
+    .fz-col li.more { border-style: dashed; background: transparent; color: var(--ink-3); font-weight: 500; }
+    .fz-col.vault li { padding: 18px 12px; background: var(--g); border-color: var(--g); color: #FFFFFF; }
+    .fz-arrow { text-align: center; color: var(--p500); font-size: 18px; }
+    .fz-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -1px; border-left: 1px solid var(--hair); border-top: 1px solid var(--hair); }
+    .fz-two > div { padding: 24px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); background: #FFFFFF; }
+    .fz-two b { display: block; font-size: 15.5px; font-weight: 600; letter-spacing: -0.015em; }
+    .fz-two p { margin: 8px 0 0; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+    .fz-note { margin: 16px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-3); }
+
+    /* Contracts. */
+    .fz-ct a { display: flex; flex-direction: column; gap: 8px; padding: 22px 24px; text-decoration: none; background: #FFFFFF; transition: background 0.2s ease; }
+    .fz-ct a:hover { background: var(--p50); }
+    .fz-ct .n { font: 500 13.5px/1.2 var(--mono); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fz-ct .d { font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+    .fz-ct .t { font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--p500); }
+
+    /* The substrate: its bytes32, drawn to scale, and built live. */
+    .fz-bits { display: grid; grid-template-columns: minmax(38px, 8fr) 160fr minmax(0, 32fr) minmax(44px, 8fr) minmax(0, 48fr); height: 64px; border: 1px solid var(--g); }
+    .fz-bits > div { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 0; padding: 0 10px; overflow: hidden; }
+    .fz-bits > div + div { border-left: 1px solid rgba(255, 255, 255, 0.18); }
+    .fz-bits b { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+    .fz-bits span { font: 500 10px/1 var(--mono); letter-spacing: 0.06em; white-space: nowrap; opacity: 0.75; }
+    .fz-bits .b0 { background: #F9A8D4; color: var(--g); padding: 0; align-items: center; }
+    .fz-bits .b1 { background: var(--g); color: #FFFFFF; }
+    .fz-bits .b2 { background: var(--p500); color: #FFFFFF; }
+    .fz-bits .b3 { background: #FDE68A; color: var(--g); padding: 0; align-items: center; }
+    .fz-bits .b4 { background: var(--p50); color: var(--ink-3); }
+    .fz-bits-key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+    .fz-bits-key span { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .fz-bits-key i { width: 10px; height: 10px; border: 1px solid rgba(0, 0, 0, 0.08); }
+
+    .fz-enc { margin-top: 28px; border: 1px solid var(--hair); background: #FFFFFF; }
+    .fz-enc-in { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) auto; gap: 16px; align-items: end; padding: 20px; border-bottom: 1px solid var(--hair); }
+    .fz-field > label { display: block; margin-bottom: 8px; font: 500 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+    .fz-field input[type="text"], .fz-field input[type="number"] { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--hair); background: var(--p50); font: 500 13px/1 var(--mono); color: var(--ink); outline: none; }
+    .fz-field input:focus { border-color: var(--p500); }
+    .fz-flags { display: flex; gap: 8px; }
+    .fz-flag { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--hair); font: 500 12.5px/1 var(--mono); color: var(--ink-2); white-space: nowrap; cursor: pointer; user-select: none; }
+    .fz-flag input { width: 14px; height: 14px; margin: 0; accent-color: var(--p500); }
+    .fz-flag:has(input:checked) { border-color: var(--p500); color: var(--p500); background: var(--p50); }
+    .fz-out { padding: 20px; background: var(--g); color: var(--g-text-2); }
+    .fz-out .hp-k { margin-bottom: 12px; color: var(--g-text-3); }
+    .fz-hex { margin: 0; font: 500 13px/1.7 var(--mono); overflow-wrap: anywhere; color: var(--g-text-3); }
+    .fz-hex .x0 { color: #F9A8D4; } .fz-hex .x1 { color: #FFFFFF; } .fz-hex .x2 { color: var(--g-accent); } .fz-hex .x3 { color: #FDE68A; } .fz-hex .x4 { color: var(--g-line-2); }
+    .fz-perm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--hair); }
+    .fz-perm div { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--hair); font-size: 14px; white-space: nowrap; }
+    .fz-perm div:nth-child(odd) { border-right: 1px solid var(--hair); }
+    .fz-perm svg { flex: none; width: 16px; height: 16px; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .fz-perm .y { color: var(--ink); } .fz-perm .y svg { stroke: #15A35A; }
+    .fz-perm .n { color: var(--ink-3); } .fz-perm .n svg { stroke: #D9488A; }
+    .fz-perm em { margin-left: auto; font: 500 10.5px/1 var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+
+    /* Tables. */
+    .fz-tbl { border: 1px solid var(--hair); }
+    .fz-tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+    .fz-tr.three { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+    .fz-tr + .fz-tr { border-top: 1px solid var(--hair); }
+    .fz-cell { padding: 14px 18px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+    .fz-cell:first-child { color: var(--ink); font-weight: 500; }
+    .fz-tr.hd .fz-cell { padding-top: 12px; padding-bottom: 12px; background: var(--g); color: #FFFFFF; font: 500 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+    .fz-tr .fz-cell + .fz-cell { border-left: 1px solid var(--hair); }
+
+    /* Actions: four tabs, one fuse each. */
+    .fz-tabs { display: grid; grid-template-columns: repeat(4, minmax(max-content, 1fr)); border: 1px solid var(--hair); border-bottom: 0; }
+    .fz-tabs button { height: 46px; padding: 0 14px; border: 0; background: #FFFFFF; font: 600 14px/1 var(--sans); color: var(--ink-3); white-space: nowrap; cursor: pointer; border-bottom: 2px solid transparent; }
+    .fz-tabs button + button { border-left: 1px solid var(--hair); }
+    .fz-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--p500); background: var(--p50); }
+    .fz-pane { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); border: 1px solid var(--hair); }
+    .fz-pane[hidden] { display: none; }
+    .fz-pane > div:first-child { padding: 24px; }
+    .fz-pane h3 { margin: 0; font: 500 14px/1.3 var(--mono); color: var(--p500); overflow-wrap: anywhere; }
+    .fz-pane ul { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+    .fz-pane li { display: flex; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+    .fz-pane li svg { flex: none; width: 14px; height: 14px; margin-top: 4px; fill: none; stroke: var(--p500); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .fz-pane li code { font: 500 0.9em/1 var(--mono); color: var(--p600); }
+    .fz-code { min-width: 0; background: var(--g); color: var(--g-text-2); }
+    .fz-code-bar { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--g-line); font: 500 11.5px/1 var(--mono); color: var(--g-text-3); white-space: nowrap; }
+    .fz-code-bar span { overflow: hidden; text-overflow: ellipsis; }
+    .fz-code pre { margin: 0; padding: 16px; overflow-x: auto; font: 12px/1.7 var(--mono); scrollbar-width: thin; }
+    .fz-code .c { color: var(--g-text-3); } .fz-code .k { color: var(--g-accent); } .fz-code .t { color: #FDE68A; } .fz-code .s { color: #7BF0AE; }
+
+    /* The typical flow: three steps, then their call. */
+    .fz-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 1px solid var(--hair); border-top: 1px solid var(--hair); }
+    .fz-step { padding: 22px 24px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); background: #FFFFFF; }
+    .fz-step .n { font: 500 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--p500); }
+    .fz-step b { display: block; margin-top: 14px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+    .fz-step p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+    .fz-step code { font: 500 12px/1 var(--mono); color: var(--p600); }
+    .fz-flow-code { margin-top: -1px; }
+
+    .fz-risks { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--hair); }
+    .fz-risks li { display: flex; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--hair); font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+    .fz-risks li svg { flex: none; width: 18px; height: 18px; margin-top: 3px; fill: none; stroke: var(--p500); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .fz-risks b { color: var(--ink); font-weight: 600; }
+    .fz-risks.fz-box { margin-top: 36px; }
+    .fz-risks code { font: 500 0.88em/1 var(--mono); color: var(--p600); background: var(--p100); padding: 2px 5px; }
+
+    /* Any other protocol: its registered fuses. */
+    .fz-reg { margin-top: 36px; border: 1px solid var(--hair); }
+    .fz-reg-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 18px; }
+    .fz-reg-row + .fz-reg-row { border-top: 1px solid var(--hair); }
+    .fz-reg-row .id { font: 500 12px/1 var(--mono); color: var(--p500); }
+    .fz-reg-row .nm { min-width: 0; font: 500 13px/1.3 var(--mono); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fz-reg-row .ty { font: 500 10.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+    .fz-reg-head { padding: 12px 18px; background: var(--g); color: #FFFFFF; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+    .fz-soon { margin-top: 24px; padding: 20px 22px; border: 1px dashed var(--p300); background: var(--p50); font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+    .fz-soon b { color: var(--ink); }
+
+    /* ---- Narrower ------------------------------------------------------------- */
+    @container (max-width: 1080px) {
+      .fz-lib { grid-template-columns: 240px minmax(0, 1fr); gap: 40px; }
+      .fz-hs { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+      .fz-arrow { transform: rotate(90deg); padding: 6px 0; }
+      .fz-pane { grid-template-columns: minmax(0, 1fr); }
+      .fz-enc-in { grid-template-columns: minmax(0, 1fr) 140px; }
+      .fz-enc-in .fz-field:last-child { grid-column: 1 / -1; }
+    }
+    @container (max-width: 900px) {
+      .fz-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .fz-stats div:nth-child(3) { padding-left: 0; border-left: none; }
+      .fz-stats div:nth-child(n+3) { border-top: 1px solid var(--g-line); }
+      .fz-lib { grid-template-columns: minmax(0, 1fr); gap: 32px; padding-top: 32px; }
+      .fz-side { position: static; max-height: none; }
+      .fz-browse { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 48px; padding: 0 14px; border: 0; background: var(--g); color: #FFFFFF; font: 600 14px/1 var(--sans); cursor: pointer; white-space: nowrap; }
+      .fz-browse span { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--g-text-3); }
+      .fz-browse svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
+      .fz-side:not(.open) .fz-side-top, .fz-side:not(.open) .fz-list, .fz-side:not(.open) .fz-side-foot { display: none; }
+      .fz-side.open .fz-browse svg { transform: rotate(180deg); }
+      .fz-side.open .fz-list { max-height: 420px; }
+    }
+    @container (max-width: 760px) {
+      .fz-head { padding-top: 56px; }
+      .fz-two, .fz-steps { grid-template-columns: minmax(0, 1fr); }
+      .fz-ct { grid-template-columns: minmax(0, 1fr) !important; }
+      .fz-tabs { grid-template-columns: repeat(2, minmax(max-content, 1fr)); }
+      .fz-tabs button:nth-child(3) { border-left: 0; }
+      .fz-tabs button:nth-child(n+3) { border-top: 1px solid var(--hair); }
+      .fz-tr, .fz-tr.three { grid-template-columns: minmax(0, 1fr); }
+      .fz-tr .fz-cell + .fz-cell { border-left: 0; padding-top: 0; }
+      .fz-tr.hd { display: none; }
+      .fz-tr.three .fz-cell:nth-child(2)::before { content: 'Effect: '; font-weight: 600; color: var(--ink); }
+      .fz-tr.three .fz-cell:nth-child(3)::before { content: 'Rule: '; font-weight: 600; color: var(--p500); }
+      .fz-perm { grid-template-columns: minmax(0, 1fr); }
+      .fz-perm div:nth-child(odd) { border-right: 0; }
+      .fz-bits-label, .fz-bits .b2 span, .fz-bits .b4 span { display: none; }
+    }
+    @container (max-width: 520px) {
+      .fz-title { gap: 12px; }
+      .fz-logo { width: 46px; height: 46px; font-size: 15px; }
+      .fz-hs { padding: 20px 14px; }
+      .fz-enc-in { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+      .fz-flags { flex-wrap: wrap; }
+      .fz-out, .fz-pane > div:first-child { padding: 16px; }
+      .fz-perm div { padding: 12px 16px; }
+      .fz-bits { height: 56px; }
+      .fz-bits b { display: none; }
+      .fz-bits > div { padding: 0 6px; }
+      .fz-reg-row { grid-template-columns: 40px minmax(0, 1fr); padding: 12px 14px; }
+      .fz-reg-row .ty { display: none; }
+      .fz-cell { padding: 12px 14px; }
+      .fz-step b { font-size: 16.5px; }
+    }
+    @container (max-width: 400px) {
+      .fz-stats span .m-hide { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="hp" id="top" data-note="A concept for Fusion's fuse library. Facts from the ipor-fusion repository." data-note-short="Fuses concept">
+  <h1 class="hp-sr">Fuses</h1>
+
+  <!-- Head: the purple ground -->
+  <section class="hp-purple">
+    <div class="hp-wrap fz-head">
+      <span class="hp-k">Fuse library</span>
+      <h2 class="hp-h">Every market,<br><em>one fuse away.</em></h2>
+      <p class="hp-lead">A fuse is a small, stateless contract that lets a Plasma Vault act on one protocol: supply, borrow, swap, claim. Vaults call them by <code style="font:inherit;color:var(--g-accent)">delegatecall</code>; atomists decide which markets each may touch.</p>
+      <div class="fz-stats">
+        <div><b>107</b><span>Registered <span class="m-hide">fuse </span>types</span></div>
+        <div><b id="fzProtocols">—</b><span>Protocols</span></div>
+        <div><b>49</b><span>Aave V4 market ID</span></div>
+        <div><b data-live="vaults">—</b><span>Vaults live</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="hp-wrap">
+    <div class="fz-lib">
+
+      <!-- The list -->
+      <aside class="fz-side" id="fzSide" aria-label="Fuses">
+        <button type="button" class="fz-browse" id="fzBrowse" aria-expanded="false">Browse fuses<span id="fzBrowseNow">Aave V4</span><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg></button>
+        <div class="fz-side-top">
+          <label class="fz-search"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.25"/><path d="M9.25 9.25L12.5 12.5"/></svg><input id="fzQ" type="search" placeholder="Search protocols" aria-label="Search protocols" autocomplete="off"></label>
+          <div class="fz-seg" role="group" aria-label="Group by">
+            <button type="button" data-by="fn" aria-pressed="true">By function</button>
+            <button type="button" data-by="az" aria-pressed="false">By protocol</button>
+          </div>
+        </div>
+        <div class="fz-list" id="fzList"></div>
+        <div class="fz-side-foot">Types from FuseTypes.sol, plus integrations not yet registered there.</div>
+      </aside>
+
+      <!-- One fuse -->
+      <div class="fz-main" id="fzMain">
+
+        <article id="fzAave">
+          <div class="fz-crumb"><span>Fuses</span><span>/</span><span>Lending</span><span>/</span><b>Aave V4</b></div>
+          <div class="fz-title"><span class="fz-logo" aria-hidden="true">V4</span><h2 class="hp-h">Aave V4</h2></div>
+          <p class="fz-sub">The fuse family for Aave V4's Hub &amp; Spoke lending: supply, withdraw, borrow, repay and collateral on any granted Spoke reserve, with the vault's NAV read back from every one of them.</p>
+          <div class="fz-tags">
+            <span class="fz-tag">Market ID <b>49</b></span>
+            <span class="fz-tag">Ethereum</span>
+            <span class="fz-tag">Aave V4 live <b>30 Mar 2026</b></span>
+            <span class="fz-tag">4 fuses <b>+ 1 lib</b></span>
+            <span class="fz-tag">Stateless</span>
+          </div>
+          <div class="fz-acts">
+            <a class="hp-btn dark" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses/aave_v4" target="_blank" rel="noopener">View on GitHub<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11l6-6M6.5 5H11v4.5"/></svg></a>
+            <a class="hp-btn line" href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/README.md" target="_blank" rel="noopener">Read the README</a>
+          </div>
+          <nav class="fz-toc" aria-label="On this page">
+            <a href="#fz-hub">Hub &amp; Spoke</a><a href="#fz-contracts">Contracts</a><a href="#fz-substrate">Permissions</a><a href="#fz-actions">Actions</a><a href="#fz-flow">Flow</a><a href="#fz-risks">Risks</a>
+          </nav>
+
+          <!-- Hub & Spoke -->
+          <section class="fz-sec" id="fz-hub">
+            <span class="hp-k">How Aave V4 is built</span>
+            <h3 class="fz-h">Liquidity in Hubs. Risk in Spokes.</h3>
+            <p class="fz-p">Liquidity lives in Hubs; users act on Spokes, each with its own risk parameters, oracle and reserve list. A Spoke reserve is an append-only <code>reserveId</code> pointing to one asset of one Hub, so the same underlying can be listed more than once on a single Spoke.</p>
+            <div class="fz-box">
+              <div class="fz-hs">
+                <div class="fz-col vault"><span class="hp-k">Fusion</span><ul><li>Plasma Vault</li></ul></div>
+                <div class="fz-arrow" aria-hidden="true">→</div>
+                <div class="fz-col"><span class="hp-k">Spokes</span><ul><li>Main</li><li>Bluechip</li><li>Ethena Correlated</li><li>Forex</li><li>Gold</li><li class="more">and more</li></ul></div>
+                <div class="fz-arrow" aria-hidden="true">→</div>
+                <div class="fz-col"><span class="hp-k">Hubs</span><ul><li>Core</li><li>Prime</li><li>Plus</li><li>Global Dollar</li></ul></div>
+              </div>
+              <div class="fz-two">
+                <div><b>Supplying does not enable collateral</b><p>Only reserves flagged with <code>setUsingAsCollateral</code> count towards the health factor; without it every borrow reverts with <code>HealthFactorBelowThreshold</code>. Hence a fuse of its own for collateral.</p></div>
+                <div><b>There is no E-Mode</b><p>Aave V4 has no E-Mode: risk is segmented by choosing the Spoke. One market, ID 49, covers every Spoke.</p></div>
+              </div>
+              <p class="fz-note">For example, the Bluechip Spoke lists USDC twice: as reserve 4 (Prime hub) and reserve 7 (Core hub), with different rates and caps.</p>
+            </div>
+          </section>
+
+          <!-- Contracts -->
+          <section class="fz-sec" id="fz-contracts">
+            <span class="hp-k">Contracts</span>
+            <h3 class="fz-h">Four fuses and a library.</h3>
+            <p class="fz-p">All stateless (<code>VERSION</code> and <code>MARKET_ID</code> immutables only), run by <code>delegatecall</code> from <code>PlasmaVault.execute</code>, each with <code>enterTransient</code> and <code>exitTransient</code> variants for batched flows.</p>
+            <div class="hp-grid c2 fz-ct fz-box">
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4SupplyFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4SupplyFuse</span><span class="d">Supply and withdraw on a reserve, plus the instant withdraw path for user redemptions.</span></a>
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4BorrowFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4BorrowFuse</span><span class="d">Borrow and repay on a reserve.</span></a>
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4CollateralFuse.sol" target="_blank" rel="noopener"><span class="t">Action</span><span class="n">AaveV4CollateralFuse</span><span class="d">Enable or disable a reserve as the vault's collateral.</span></a>
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4BalanceFuse.sol" target="_blank" rel="noopener"><span class="t">Balance</span><span class="n">AaveV4BalanceFuse</span><span class="d">NAV: the sum of (supplied − total debt) × price over the granted reserves, in USD (WAD).</span></a>
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/blob/main/contracts/fuses/aave_v4/AaveV4SubstrateLib.sol" target="_blank" rel="noopener"><span class="t">Library</span><span class="n">AaveV4SubstrateLib</span><span class="d">Encodes and decodes reserve substrates and checks permissions.</span></a>
+              <a href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses/aave_v4" target="_blank" rel="noopener"><span class="t">Interface</span><span class="n">ext/IAaveV4Spoke</span><span class="d">A subset of Aave's real ISpoke, its struct layouts identical.</span></a>
+            </div>
+          </section>
+
+          <!-- Substrate -->
+          <section class="fz-sec" id="fz-substrate">
+            <span class="hp-k">Permissions</span>
+            <h3 class="fz-h">One word says what the vault may do.</h3>
+            <p class="fz-p">Each grant is a <code>bytes32</code> substrate: a Spoke, a reserve and two flags. Any grant allows supply, withdraw, repay and disabling collateral; <code>isCollateral</code> adds enabling collateral; <code>canBorrow</code> adds borrowing.</p>
+            <div class="fz-box">
+              <div class="fz-bits" aria-hidden="true">
+                <div class="b0"><span>Type</span></div>
+                <div class="b1"><b class="fz-bits-label">Spoke address</b><span>Bits 247..88</span></div>
+                <div class="b2"><b class="fz-bits-label">Reserve ID</b><span>87..56</span></div>
+                <div class="b3"><span>Flags</span></div>
+                <div class="b4"><b class="fz-bits-label">Reserved</b><span>47..0</span></div>
+              </div>
+              <div class="fz-bits-key">
+                <span><i style="background:#F9A8D4"></i>Type flag, 8 bits (1 = Reserve)</span>
+                <span><i style="background:#2C0C55"></i>Spoke, 160 bits</span>
+                <span><i style="background:#8429FF"></i>Reserve ID, 32 bits</span>
+                <span><i style="background:#FDE68A"></i>Flags, 8 bits</span>
+                <span><i style="background:#FAF7FF"></i>Reserved, 48 bits of zero</span>
+              </div>
+
+              <div class="fz-enc">
+                <div class="fz-enc-in">
+                  <div class="fz-field"><label for="fzSpoke">Spoke address</label><input id="fzSpoke" type="text" spellcheck="false" placeholder="0x… paste a Spoke" autocomplete="off"></div>
+                  <div class="fz-field"><label for="fzRid">Reserve ID</label><input id="fzRid" type="number" min="0" max="4294967295" value="0"></div>
+                  <div class="fz-field"><label>Flags</label><div class="fz-flags">
+                    <label class="fz-flag"><input type="checkbox" id="fzCol" checked>isCollateral</label>
+                    <label class="fz-flag"><input type="checkbox" id="fzBor">canBorrow</label>
+                  </div></div>
+                </div>
+                <div class="fz-out"><span class="hp-k">The substrate</span><p class="fz-hex" id="fzHex"></p></div>
+                <div class="fz-perm" id="fzPerm"></div>
+              </div>
+              <p class="fz-note"><code>getReserveGrant</code> probes the four flag variants of a (spoke, reserveId) pair and returns their union, so the result does not depend on the order of granted substrates. Atomists are expected to grant one variant per reserve.</p>
+            </div>
+          </section>
+
+          <!-- Actions -->
+          <section class="fz-sec" id="fz-actions">
+            <span class="hp-k">Actions</span>
+            <h3 class="fz-h">What each fuse checks before it acts.</h3>
+            <div class="fz-box">
+              <div class="fz-tabs" role="tablist">
+                <button type="button" role="tab" aria-selected="true" aria-controls="fzT0">Supply</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="fzT1">Borrow</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="fzT2">Collateral</button>
+                <button type="button" role="tab" aria-selected="false" aria-controls="fzT3">Balance</button>
+              </div>
+              <div class="fz-pane" id="fzT0" role="tabpanel">
+                <div>
+                  <h3>AaveV4SupplyFuse</h3>
+                  <ul>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> checks the grant, cross-checks the reserve's underlying, caps the amount at the vault's balance, supplies, then enforces <code>minShares</code>.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> withdraws with any grant.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>instantWithdraw</b> serves user redemptions: only for reserves never granted as collateral and not collateral on-chain, catching a failing Spoke so one reserve cannot block every withdrawal.</span></li>
+                  </ul>
+                </div>
+                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4SupplyFuse.sol · enter</span><span>L140</span></div>
+<pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+    <span class="k">revert</span> <span class="t">AaveV4SupplyFuseUnsupportedSubstrate</span>(<span class="s">"enter"</span>, data_.spoke, data_.reserveId);
+}
+<span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
+
+<span class="k">uint256</span> finalAmount = IporMath.<span class="t">min</span>(ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="k">address</span>(<span class="k">this</span>)), data_.amount);
+ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, finalAmount);
+
+(<span class="k">uint256</span> shares, ) = IAaveV4Spoke(data_.spoke).<span class="t">supply</span>(data_.reserveId, finalAmount, <span class="k">address</span>(<span class="k">this</span>));
+<span class="k">if</span> (shares &lt; data_.minShares) {
+    <span class="k">revert</span> <span class="t">AaveV4SupplyFuseInsufficientShares</span>(shares, data_.minShares);
+}</pre></div>
+              </div>
+              <div class="fz-pane" id="fzT1" role="tabpanel" hidden>
+                <div>
+                  <h3>AaveV4BorrowFuse</h3>
+                  <ul>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> borrows only with <code>canBorrow</code>; the Spoke reverts <code>HealthFactorBelowThreshold</code> if no collateral is enabled.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> repays with any grant, so debt can always be repaid even after <code>canBorrow</code> is revoked.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>The repay is capped at the vault's balance; the Spoke caps it at the total debt.</span></li>
+                  </ul>
+                </div>
+                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4BorrowFuse.sol · exit</span><span>L188</span></div>
+<pre><span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">canSupply</span>(MARKET_ID, data_.spoke, data_.reserveId)) {
+    <span class="k">revert</span> <span class="t">AaveV4BorrowFuseUnsupportedSubstrate</span>(<span class="s">"exit"</span>, data_.spoke, data_.reserveId);
+}
+<span class="t">_validateReserveAsset</span>(IAaveV4Spoke(data_.spoke), data_.reserveId, data_.asset);
+
+<span class="k">uint256</span> balance = ERC20(data_.asset).<span class="t">balanceOf</span>(<span class="k">address</span>(<span class="k">this</span>));
+<span class="k">uint256</span> repayAmount = IporMath.<span class="t">min</span>(balance, data_.amount);
+ERC20(data_.asset).<span class="t">forceApprove</span>(data_.spoke, repayAmount);
+
+(<span class="k">uint256</span> sharesRepaid, <span class="k">uint256</span> repaid) = IAaveV4Spoke(data_.spoke).<span class="t">repay</span>(
+    data_.reserveId, repayAmount, <span class="k">address</span>(<span class="k">this</span>)
+);</pre></div>
+              </div>
+              <div class="fz-pane" id="fzT2" role="tabpanel" hidden>
+                <div>
+                  <h3>AaveV4CollateralFuse</h3>
+                  <ul>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>enter</b> enables a reserve as collateral, only with a grant carrying <code>isCollateral</code>.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span><b>exit</b> disables it with any grant; the Spoke enforces the health factor.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Needed because supplying alone never enables collateral on Aave V4.</span></li>
+                  </ul>
+                </div>
+                <div class="fz-code"><div class="fz-code-bar"><span>README.md · validation</span><span>L69</span></div>
+<pre><span class="c">| Action                              | Requires                 |</span>
+<span class="c">|-------------------------------------|--------------------------|</span>
+| <span class="t">AaveV4CollateralFuse.enter</span> (enable) | grant with <span class="k">isCollateral</span> |
+| <span class="t">AaveV4CollateralFuse.exit</span> (disable) | any grant <span class="c">(the Spoke</span>
+|                                     | <span class="c">enforces the health factor)</span> |</pre></div>
+              </div>
+              <div class="fz-pane" id="fzT3" role="tabpanel" hidden>
+                <div>
+                  <h3>AaveV4BalanceFuse</h3>
+                  <ul>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Walks the granted reserve substrates, counting each (spoke, reserveId) pair once.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Sums (supplied − total debt) × price per reserve through <code>PriceOracleMiddleware</code>, normalised to WAD.</span></li>
+                    <li><svg viewBox="0 0 14 14"><path d="M2.5 7.5l3 3 6-7"/></svg><span>Debt is always read, whatever <code>canBorrow</code> says, so revoking a borrow permission can never hide debt. Reverts if debt exceeds supply.</span></li>
+                  </ul>
+                </div>
+                <div class="fz-code"><div class="fz-code-bar"><span>AaveV4BalanceFuse.sol · balanceOf</span><span>L61</span></div>
+<pre><span class="k">bytes32</span>[] <span class="k">memory</span> substrates = PlasmaVaultConfigLib.<span class="t">getMarketSubstrates</span>(MARKET_ID);
+<span class="k">for</span> (<span class="k">uint256</span> i; i &lt; len; ++i) {
+    <span class="k">if</span> (!AaveV4SubstrateLib.<span class="t">isReserveSubstrate</span>(substrates[i])) <span class="k">continue</span>;
+    substrate = AaveV4SubstrateLib.<span class="t">decode</span>(substrates[i]);
+    <span class="k">if</span> (<span class="t">_isDuplicate</span>(substrates, i, substrate.spoke, substrate.reserveId)) <span class="k">continue</span>;
+    balanceTemp += <span class="t">_calculateReserveBalance</span>(
+        IAaveV4Spoke(substrate.spoke), substrate.reserveId,
+        plasmaVault, priceOracleMiddleware
+    );
+}</pre></div>
+              </div>
+            </div>
+            <div class="fz-box">
+              <div class="fz-tbl">
+                <div class="fz-tr hd"><div class="fz-cell">Action</div><div class="fz-cell">Requires</div></div>
+                <div class="fz-tr"><div class="fz-cell">Supply · Withdraw</div><div class="fz-cell">Any grant for (spoke, reserveId)</div></div>
+                <div class="fz-tr"><div class="fz-cell">Instant withdraw</div><div class="fz-cell">A grant, no granted variant with <code>isCollateral</code>, and not collateral on the Spoke now</div></div>
+                <div class="fz-tr"><div class="fz-cell">Borrow</div><div class="fz-cell">A grant with <code>canBorrow</code></div></div>
+                <div class="fz-tr"><div class="fz-cell">Repay</div><div class="fz-cell">Any grant, even after <code>canBorrow</code> is revoked</div></div>
+                <div class="fz-tr"><div class="fz-cell">Enable collateral</div><div class="fz-cell">A grant with <code>isCollateral</code></div></div>
+                <div class="fz-tr"><div class="fz-cell">Disable collateral</div><div class="fz-cell">Any grant; the Spoke enforces the health factor</div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Flow -->
+          <section class="fz-sec" id="fz-flow">
+            <span class="hp-k">A typical flow</span>
+            <h3 class="fz-h">Supply, collateralise, borrow. One call.</h3>
+            <p class="fz-p">Three fuse actions in one <code>PlasmaVault.execute</code>: the README's own example on the Bluechip Spoke.</p>
+            <div class="fz-box">
+              <div class="fz-steps">
+                <div class="fz-step"><span class="n">01 · Supply fuse</span><b>Supply 10 WETH</b><p>Into reserve <code>0</code> of the Bluechip Spoke.</p></div>
+                <div class="fz-step"><span class="n">02 · Collateral fuse</span><b>Enable collateral</b><p>On the same reserve <code>0</code>, so it counts towards the health factor.</p></div>
+                <div class="fz-step"><span class="n">03 · Borrow fuse</span><b>Borrow 10,000 USDC</b><p>From reserve <code>4</code>, Bluechip's USDC on the Prime hub.</p></div>
+              </div>
+              <div class="fz-code fz-flow-code"><div class="fz-code-bar"><span>README.md · example</span><span>L159</span></div>
+<pre>FuseAction[] <span class="k">memory</span> actions = <span class="k">new</span> FuseAction[](<span class="s">3</span>);
+actions[<span class="s">0</span>] = <span class="t">FuseAction</span>(supplyFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
+    AaveV4SupplyFuseEnterData({spoke: BLUECHIP_SPOKE, asset: WETH, reserveId: <span class="s">0</span>, amount: <span class="s">10e18</span>, minShares: <span class="s">0</span>})));
+actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateralFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,uint256))"</span>,
+    AaveV4CollateralFuseEnterData({spoke: BLUECHIP_SPOKE, reserveId: <span class="s">0</span>})));
+actions[<span class="s">2</span>] = <span class="t">FuseAction</span>(borrowFuse, abi.<span class="t">encodeWithSignature</span>(<span class="s">"enter((address,address,uint256,uint256,uint256))"</span>,
+    AaveV4BorrowFuseEnterData({spoke: BLUECHIP_SPOKE, asset: USDC, reserveId: <span class="s">4</span>, amount: <span class="s">10_000e6</span>, minShares: <span class="s">0</span>})));
+PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
+            </div>
+          </section>
+
+          <!-- Risks -->
+          <section class="fz-sec" id="fz-risks">
+            <span class="hp-k">For atomists</span>
+            <h3 class="fz-h">Grants and open positions.</h3>
+            <p class="fz-p">The fuses deliberately do not tie a grant change to existing positions. <code>grantMarketSubstrates</code> replaces the whole set, so the atomist keeps these rules.</p>
+            <div class="fz-box">
+              <div class="fz-tbl">
+                <div class="fz-tr three hd"><div class="fz-cell">Situation</div><div class="fz-cell">Effect</div><div class="fz-cell">Rule</div></div>
+                <div class="fz-tr three"><div class="fz-cell">A reserve with debt loses its grant</div><div class="fz-cell">Debt drops out of the balance: NAV overstated, share price inflated</div><div class="fz-cell">Never revoke a reserve the vault borrows; repay first</div></div>
+                <div class="fz-tr three"><div class="fz-cell">A reserve with supply loses its grant</div><div class="fz-cell">Supply drops out of NAV and cannot be withdrawn until re-granted</div><div class="fz-cell">Withdraw first, or re-grant to recover</div></div>
+                <div class="fz-tr three"><div class="fz-cell">Collateral re-granted without <code>isCollateral</code></div><div class="fz-cell">Stays enabled on the Spoke; enabling again is refused, disabling works</div><div class="fz-cell">Disable collateral before downgrading the grant</div></div>
+                <div class="fz-tr three"><div class="fz-cell">Debt re-granted without <code>canBorrow</code></div><div class="fz-cell">New borrows refused, repay works, debt still counted</div><div class="fz-cell">The intended way to wind a position down</div></div>
+                <div class="fz-tr three"><div class="fz-cell">Reserve granted before Aave lists it</div><div class="fz-cell">Ignored by the balance fuse; supply and borrow revert <code>ReserveNotListed</code></div><div class="fz-cell">Harmless: active once listed</div></div>
+              </div>
+              <p class="fz-note">Only the last row is tolerated in code; the others are documented risks, not enforced invariants.</p>
+            </div>
+            <ul class="fz-risks fz-box">
+              <li><svg viewBox="0 0 18 18"><path d="M9 2.5l5.5 2.5v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7V5z"/></svg><span><b>No position manager, ever.</b> The vault acts for itself on the Spoke (<code>onBehalfOf == msg.sender</code>).</span></li>
+              <li><svg viewBox="0 0 18 18"><path d="M3 9.5l3.5 3.5L15 4.5"/></svg><span><b>Instant withdraw is double-guarded.</b> Limited to non-collateral reserves by grant flag and by live on-chain status, so user withdrawals can never degrade a leveraged position.</span></li>
+              <li><svg viewBox="0 0 18 18"><path d="M4 9h10M9 4v10"/></svg><span><b>Exact approvals.</b> Only granted Spokes are called; supply and repay pull exactly the approved amount (<code>SafeERC20.forceApprove</code>).</span></li>
+              <li><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="6"/><path d="M9 6v3.5M9 12h.01"/></svg><span><b>Aave's own limits stand.</b> Reserve paused and frozen flags and Hub caps are enforced by Aave; the fuses do not pre-check them.</span></li>
+            </ul>
+          </section>
+        </article>
+
+        <!-- Any other protocol -->
+        <article id="fzOther" hidden></article>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="/demo/demo.js"></script>
+<script>
+// The fuse library. Every protocol with fuses in ipor-fusion, its registered
+// fuse types (FuseTypes.sol: id and name), grouped by what they do. Aave V4 is
+// the one drawn in full; the others show their registered types.
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const T = (id, name) => ({ id, name });
+  const P = [
+    { key: 'aave-v4', name: 'Aave V4', fn: 'Lending', live: true, note: 'Market 49',
+      fuses: [T(null, 'AaveV4SupplyFuse'), T(null, 'AaveV4BorrowFuse'), T(null, 'AaveV4CollateralFuse'), T(null, 'AaveV4BalanceFuse')] },
+    { key: 'aave', name: 'Aave V2 / V3', fn: 'Lending', fuses: [T(1, 'AAVE_V2_BALANCE_FUSE'), T(2, 'AAVE_V2_SUPPLY_FUSE'), T(3, 'AAVE_V3_BALANCE_FUSE'), T(4, 'AAVE_V3_SUPPLY_FUSE'), T(5, 'AAVE_V3_BORROW_FUSE'), T(65, 'AAVE_V3_WITH_PRICE_ORACLE_BALANCE_FUSE')] },
+    { key: 'compound', name: 'Compound V2 / V3', fn: 'Lending', fuses: [T(9, 'COMPOUND_V2_BALANCE_FUSE'), T(10, 'COMPOUND_V2_SUPPLY_FUSE'), T(11, 'COMPOUND_V3_BALANCE_FUSE'), T(12, 'COMPOUND_V3_SUPPLY_FUSE'), T(13, 'COMPOUND_V3_CLAIM_FUSE'), T(74, 'COMPOUND_V3_USDC_BALANCE_FUSE'), T(75, 'COMPOUND_V3_WETH_BALANCE_FUSE'), T(90, 'COMPOUND_V3_USDC_SUPPLY_FUSE'), T(91, 'COMPOUND_V3_WETH_SUPPLY_FUSE'), T(106, 'COMPOUND_V3_USDC_BORROW_FUSE'), T(107, 'COMPOUND_V3_USDC_WITH_PRICE_ORACLE_BALANCE_FUSE')] },
+    { key: 'euler', name: 'Euler V2', fn: 'Lending', fuses: [T(23, 'EULER_V2_BALANCE_FUSE'), T(24, 'EULER_V2_SUPPLY_FUSE'), T(25, 'EULER_V2_BORROW_FUSE'), T(26, 'EULER_V2_COLLATERAL_FUSE'), T(27, 'EULER_V2_CONTROLLER_FUSE'), T(null, 'RewardEulerTokenClaimFuse')] },
+    { key: 'moonwell', name: 'Moonwell', fn: 'Lending', fuses: [T(36, 'MOONWELL_BALANCE_FUSE'), T(37, 'MOONWELL_SUPPLY_FUSE'), T(38, 'MOONWELL_BORROW_FUSE'), T(39, 'MOONWELL_ENABLE_MARKET_FUSE'), T(40, 'MOONWELL_CLAIM_FUSE')] },
+    { key: 'morpho', name: 'Morpho', fn: 'Lending', fuses: [T(41, 'MORPHO_BALANCE_FUSE'), T(42, 'MORPHO_BORROW_FUSE'), T(43, 'MORPHO_COLLATERAL_FUSE'), T(44, 'MORPHO_FLASH_LOAN_FUSE'), T(45, 'MORPHO_SUPPLY_FUSE'), T(46, 'MORPHO_SUPPLY_WITH_CALLBACK_DATA_FUSE'), T(47, 'MORPHO_CLAIM_FUSE'), T(71, 'META_MORPHO_MARKET_0001_SUPPLY_FUSE'), T(72, 'META_MORPHO_MARKET_0001_BALANCE_FUSE')] },
+    { key: 'spark', name: 'Spark', fn: 'Lending', fuses: [T(7, 'SPARK_BALANCE_FUSE'), T(8, 'SPARK_SUPPLY_FUSE')] },
+    { key: 'aerodrome', name: 'Aerodrome', fn: 'DEX & Liquidity', fuses: [] },
+    { key: 'balancer', name: 'Balancer', fn: 'DEX & Liquidity', fuses: [] },
+    { key: 'curve', name: 'Curve', fn: 'DEX & Liquidity', fuses: [T(14, 'CURVE_CHILD_LIQUIDITY_GAUGE_BALANCE_FUSE'), T(15, 'CURVE_CHILD_LIQUIDITY_GAUGE_SUPPLY_FUSE'), T(16, 'CURVE_CHILD_LIQUIDITY_GAUGE_ERC4626_BALANCE_FUSE'), T(17, 'CURVE_STABLESWAP_NG_SINGLE_SIDE_BALANCE_FUSE'), T(18, 'CURVE_STABLESWAP_NG_SINGLE_SIDE_SUPPLY_FUSE'), T(19, 'CURVE_GAUGE_TOKEN_CLAIM_FUSE')] },
+    { key: 'ramses', name: 'Ramses V2', fn: 'DEX & Liquidity', fuses: [T(52, 'RAMSES_V2_BALANCE_FUSE'), T(53, 'RAMSES_V2_COLLECT_FUSE'), T(54, 'RAMSES_V2_MODIFY_POSITION_FUSE'), T(55, 'RAMSES_V2_NEW_POSITION_FUSE'), T(56, 'RAMSES_CLAIM_FUSE')] },
+    { key: 'uniswap', name: 'Uniswap V2 / V3', fn: 'DEX & Liquidity', fuses: [T(57, 'UNISWAP_V2_SWAP_FUSE'), T(58, 'UNISWAP_V3_BALANCE_FUSE'), T(59, 'UNISWAP_V3_COLLECT_FUSE'), T(60, 'UNISWAP_V3_MODIFY_POSITION_FUSE'), T(61, 'UNISWAP_V3_NEW_POSITION_FUSE'), T(62, 'UNISWAP_V3_SWAP_FUSE'), T(73, 'UNISWAP_V3_SWAP_POSITIONS_BALANCE_FUSE')] },
+    { key: 'uniswap-v4', name: 'Uniswap V4', fn: 'DEX & Liquidity', note: 'Market 53', fuses: [T(null, 'UniswapV4NewPositionFuse'), T(null, 'UniswapV4ModifyPositionFuse'), T(null, 'UniswapV4CollectFuse'), T(null, 'UniswapV4Balance')] },
+    { key: 'velodrome', name: 'Velodrome', fn: 'DEX & Liquidity', fuses: [] },
+    { key: 'fluid', name: 'Fluid Instadapp', fn: 'Yield & Farming', fuses: [T(28, 'FLUID_INSTADAPP_STAKING_BALANCE_FUSE'), T(29, 'FLUID_INSTADAPP_STAKING_SUPPLY_FUSE'), T(30, 'FLUID_INSTADAPP_CLAIM_FUSE'), T(31, 'FLUID_PROOF_CLAIM_FUSE'), T(66, 'FLUID_INSTADAPP_POOL_SUPPLY_FUSE'), T(67, 'FLUID_INSTADAPP_POOL_BALANCE_FUSE')] },
+    { key: 'gearbox', name: 'Gearbox V3', fn: 'Yield & Farming', fuses: [T(32, 'GEARBOX_V3_FARM_BALANCE_FUSE'), T(33, 'GEARBOX_V3_FARM_SUPPLY_FUSE'), T(34, 'GEARBOX_V3_FARM_D_TOKEN_CLAIM_FUSE')] },
+    { key: 'harvest', name: 'Harvest', fn: 'Yield & Farming', fuses: [T(35, 'HARVEST_DO_HARD_WORK_FUSE')] },
+    { key: 'pendle', name: 'Pendle', fn: 'Yield & Farming', fuses: [T(48, 'PENDLE_REDEEM_PT_AFTER_MATURITY_FUSE'), T(49, 'PENDLE_SWAP_PT_FUSE'), T(69, 'PENDLE_BALANCE_FUSE')] },
+    { key: 'swapper', name: 'Universal Token Swapper', fn: 'Swaps', fuses: [T(63, 'UNIVERSAL_TOKEN_SWAPPER_FUSE'), T(64, 'UNIVERSAL_TOKEN_SWAPPER_ETH_FUSE'), T(null, 'UNIVERSAL_TOKEN_SWAPPER_WITH_VERIFICATION_FUSE')] },
+    { key: 'erc4626', name: 'ERC20 / ERC4626', fn: 'Vault & Generic', fuses: [T(20, 'ERC20_BALANCE_FUSE'), T(21, 'ERC4626_BALANCE_FUSE'), T(22, 'ERC4626_SUPPLY_FUSE')]
+        .concat(Array.from({ length: 14 }, (_, i) => T(76 + i, 'ERC4626_MARKET_' + (i + 1) + '_BALANCE_FUSE')))
+        .concat(Array.from({ length: 14 }, (_, i) => T(92 + i, 'ERC4626_MARKET_' + (i + 1) + '_SUPPLY_FUSE'))) },
+    { key: 'plasma', name: 'Plasma Vault', fn: 'Vault & Generic', fuses: [T(6, 'BURN_REQUEST_FEE_FUSE'), T(50, 'PLASMA_VAULT_REQUEST_SHARES_FUSE'), T(51, 'PLASMA_VAULT_REDEEM_FROM_REQUEST_FUSE')] },
+    { key: 'reader', name: 'Universal Reader', fn: 'Vault & Generic', fuses: [T(70, 'UNIVERSAL_READER_BALANCE_FUSE')] },
+  ];
+  const FN = ['Lending', 'DEX & Liquidity', 'Yield & Farming', 'Swaps', 'Vault & Generic'];
+  $('fzProtocols').textContent = String(P.length);
+
+  // The list.
+  let by = 'fn', q = '', cur = 'aave-v4';
+  const row = (p) => `<button type="button" class="fz-row" data-key="${p.key}"${p.key === cur ? ' aria-current="true"' : ''}>`
+    + `<span class="nm">${p.name}</span>${p.live ? '<span class="live">Live</span>' : p.fuses.length ? `<span class="ct">${p.fuses.length}</span>` : ''}</button>`;
+  function draw() {
+    const hit = P.filter(p => !q || p.name.toLowerCase().includes(q) || p.fn.toLowerCase().includes(q));
+    let html = '';
+    if (by === 'fn') FN.forEach(f => { const g = hit.filter(p => p.fn === f); if (g.length) html += `<div class="fz-group">${f}</div>` + g.map(row).join(''); });
+    else html = hit.slice().sort((a, b) => a.name.localeCompare(b.name)).map(row).join('');
+    $('fzList').innerHTML = html || '<div class="fz-empty">No protocol matches.</div>';
+  }
+  document.querySelectorAll('.fz-seg button').forEach(b => b.addEventListener('click', () => {
+    by = b.dataset.by;
+    document.querySelectorAll('.fz-seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  }));
+  $('fzQ').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); draw(); });
+  $('fzList').addEventListener('click', (e) => { const b = e.target.closest('.fz-row'); if (b) show(b.dataset.key, true); });
+  $('fzBrowse').addEventListener('click', () => { const on = $('fzSide').classList.toggle('open'); $('fzBrowse').setAttribute('aria-expanded', String(on)); });
+
+  // One protocol at the right: Aave V4 in full, any other its registered types.
+  function show(key, user) {
+    const p = P.find(x => x.key === key) || P[0];
+    cur = p.key; draw();
+    $('fzBrowseNow').textContent = p.name;
+    $('fzSide').classList.remove('open'); $('fzBrowse').setAttribute('aria-expanded', 'false');
+    $('fzAave').hidden = !p.live; $('fzOther').hidden = !!p.live;
+    if (!p.live) {
+      const types = p.fuses.length;
+      $('fzOther').innerHTML = `<div class="fz-crumb"><span>Fuses</span><span>/</span><span>${p.fn}</span><span>/</span><b>${p.name}</b></div>`
+        + `<div class="fz-title"><span class="fz-logo" aria-hidden="true">${p.name.replace(/[^A-Z0-9]/g, '').slice(0, 2) || p.name.slice(0, 2)}</span><h2 class="hp-h">${p.name}</h2></div>`
+        + `<div class="fz-tags"><span class="fz-tag">${p.fn}</span>${types ? `<span class="fz-tag"><b>${types}</b> fuse${types === 1 ? '' : 's'}</span>` : ''}${p.note ? `<span class="fz-tag">${p.note}</span>` : ''}</div>`
+        + (types ? `<div class="fz-reg"><div class="fz-reg-head">Registered fuses</div>`
+          + p.fuses.map(f => `<div class="fz-reg-row"><span class="id">${f.id == null ? '·' : '#' + f.id}</span><span class="nm">${f.name}</span><span class="ty">${/BALANCE|Balance/.test(f.name) ? 'Balance' : /CLAIM|Claim/.test(f.name) ? 'Claim' : 'Action'}</span></div>`).join('') + '</div>' : '')
+        + `<div class="fz-soon"><b>A full page for ${p.name} is on the way.</b> ${types ? 'Its fuses are listed above with their FuseTypes.sol ids (a dot where a fuse is not registered there yet).' : 'Its fuses live in the repository but are not yet in FuseTypes.sol.'} The Aave V4 page shows what each one will hold.</div>`
+        + `<div class="fz-acts"><button type="button" class="hp-btn dark" data-go="aave-v4">See Aave V4</button><a class="hp-btn line" href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses" target="_blank" rel="noopener">All fuses on GitHub</a></div>`;
+      $('fzOther').querySelector('[data-go]').addEventListener('click', () => show('aave-v4', true));
+    }
+    if (user) {
+      history.replaceState(null, '', '#' + p.key);
+      const top = $('fzMain').getBoundingClientRect().top + scrollY - 140;
+      if (scrollY > top) scrollTo({ top, behavior: 'smooth' });
+    }
+  }
+
+  // The substrate, built live from the inputs, and what it lets the vault do.
+  const hx = (n, w) => n.toString(16).padStart(w, '0');
+  const tick = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5"/></svg>', cross = '<svg viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
+  function encode() {
+    const raw = $('fzSpoke').value.trim().replace(/^0x/i, '').toLowerCase();
+    const spoke = /^[0-9a-f]{40}$/.test(raw) ? raw : '0'.repeat(40);
+    $('fzSpoke').style.borderColor = raw && spoke !== raw ? '#D9488A' : '';
+    const rid = Math.max(0, Math.min(4294967295, Math.floor(Number($('fzRid').value) || 0)));
+    const col = $('fzCol').checked, bor = $('fzBor').checked;
+    const flags = (col ? 1 : 0) | (bor ? 2 : 0);
+    $('fzHex').innerHTML = '0x<span class="x0">01</span><span class="x1">' + spoke + '</span><span class="x2">' + hx(rid, 8)
+      + '</span><span class="x3">' + hx(flags, 2) + '</span><span class="x4">' + '0'.repeat(12) + '</span>';
+    const rows = [['Supply', true], ['Withdraw', true], ['Repay', true], ['Disable collateral', true],
+      ['Enable collateral', col], ['Borrow', bor], ['Instant withdraw', !col, 'if not collateral now']];
+    $('fzPerm').innerHTML = rows.map(([k, ok, why]) => `<div class="${ok ? 'y' : 'n'}">${ok ? tick : cross}${k}${ok && why ? `<em>${why}</em>` : ''}</div>`).join('');
+  }
+  ['fzSpoke', 'fzRid', 'fzCol', 'fzBor'].forEach(id => $(id).addEventListener('input', encode));
+  encode();
+
+  // The action tabs.
+  const tabs = [...document.querySelectorAll('.fz-tabs button')];
+  tabs.forEach(t => t.addEventListener('click', () => tabs.forEach(x => {
+    const on = x === t; x.setAttribute('aria-selected', String(on)); $(x.getAttribute('aria-controls')).hidden = !on;
+  })));
+
+  draw();
+  show((location.hash || '').slice(1) || 'aave-v4', false);
+})();
+</script>
+</body>
+</html>
