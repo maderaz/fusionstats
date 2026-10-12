@@ -45,7 +45,7 @@
     .fa code { font: 500 0.9em/1 var(--mono); color: var(--text); background: var(--bg-subtle); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
 
     /* ---- The list, drawn like the app's side menu ---------------------------- */
-    .fa-side { position: sticky; top: 136px; height: calc(100vh - 152px); display: flex; flex-direction: column; }
+    .fa-side { position: sticky; top: calc(var(--bar-h) + 84px); height: calc(100vh - var(--bar-h) - 100px); display: flex; flex-direction: column; }
     .fa-side-in { display: flex; flex-direction: column; min-height: 0; flex: 1; }
     .fa-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); }
     .fa-search svg { flex: none; width: 14px; height: 14px; fill: none; stroke: var(--text-3); stroke-width: 1.6; stroke-linecap: round; }
@@ -139,7 +139,7 @@
     /* ---- Plain reading: headings, words, tables, code ------------------------ */
     .fa-top h2 { margin: 0; font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.035em; }
     .fa-main { max-width: 780px; }
-    .fa-main section h3 { scroll-margin-top: 140px; }
+    .fa-main section h3 { scroll-margin-top: calc(var(--bar-h) + 88px); }
     .fa-p b { color: var(--text); font-weight: 600; }
     .fa-sec .fa-p + .fa-kv, .fa-sec .fa-p + .fa-tbl, .fa-sec .fa-kv + .fa-p, .fa-sec .fa-p + .fa-list-plain, .fa-sec .fa-list-plain + .fa-code, .fa-sec .fa-p + .fa-enc { margin-top: 18px; }
     .fa-sec .fa-kv + .fa-p { margin-top: 18px; }
@@ -165,7 +165,7 @@
     .fa-perm em { font-size: 12.5px; font-style: normal; color: var(--text-3); }
 
     /* ---- On this page: the sections, the one in view marked ------------------- */
-    .fa-toc { position: sticky; top: 136px; max-height: calc(100vh - 152px); overflow-y: auto; scrollbar-width: none; }
+    .fa-toc { position: sticky; top: calc(var(--bar-h) + 84px); max-height: calc(100vh - var(--bar-h) - 100px); overflow-y: auto; scrollbar-width: none; }
     .fa-toc-k { margin: 0 0 10px; font-size: 12.5px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
     .fa-toc ol { margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); }
     .fa-toc a { display: block; margin-left: -1px; padding: 6px 0 6px 14px; border-left: 2px solid transparent; font-size: 13.5px; line-height: 1.35; color: var(--text-3); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.15s ease; }
@@ -221,6 +221,14 @@
 <body>
 <main class="hp" id="top" data-note="A concept for Fusion's fuse library. Facts from the ipor-fusion repository." data-note-short="Fuses concept">
   <h1 class="hp-sr">Fuses</h1>
+
+  <section class="hp-purple">
+    <div class="hp-wrap hp-band" style="max-width:1360px">
+      <span class="hp-k">Fuse library</span>
+      <h2 class="hp-h">Every market,<br><em>one fuse away.</em></h2>
+      <p class="hp-lead">Fuses are small, stateless contracts that let a Plasma Vault act on one protocol: supply, borrow, swap, claim. Browse them by function or by protocol.</p>
+    </div>
+  </section>
 
   <div class="fa">
     <!-- The list -->
@@ -550,7 +558,7 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
     if (on) { const l = $('faList'); if (on.offsetTop < l.scrollTop || on.offsetTop > l.scrollTop + l.clientHeight - 40) l.scrollTop = on.offsetTop - 60; }
     if (user) {
       history.replaceState(null, '', '#' + p.key);
-      const top = $('faMain').getBoundingClientRect().top + scrollY - 140;
+      const top = $('faMain').getBoundingClientRect().top + scrollY - document.getElementById('hpNav').getBoundingClientRect().bottom - 20;
       if (scrollY > top) scrollTo({ top, behavior: 'smooth' });
     }
   }
@@ -585,7 +593,8 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
     const links = [...$('faToc').querySelectorAll('ol a')];
     const mark = () => {
       let at = heads[0];
-      heads.forEach(h => { if (h.getBoundingClientRect().top < 200) at = h; });
+      const line = document.getElementById('hpNav').getBoundingClientRect().bottom + 70;
+      heads.forEach(h => { if (h.getBoundingClientRect().top < line) at = h; });
       links.forEach(a => a.classList.toggle('on', at && a.dataset.to === at.id));
     };
     spy = { disconnect: () => removeEventListener('scroll', mark) };
@@ -596,7 +605,7 @@ PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
     const a = e.target.closest('[data-to]'); if (!a) return;
     e.preventDefault();
     const el = a.dataset.to === 'top' ? document.body : $(a.dataset.to);
-    scrollTo({ top: a.dataset.to === 'top' ? 0 : el.getBoundingClientRect().top + scrollY - 136, behavior: 'smooth' });
+    scrollTo({ top: a.dataset.to === 'top' ? 0 : el.getBoundingClientRect().top + scrollY - document.getElementById('hpNav').getBoundingClientRect().bottom - 16, behavior: 'smooth' });
   });
 
   // Copy as .md: the protocol shown, every tab of it, as Markdown.
