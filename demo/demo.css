@@ -307,6 +307,8 @@ main[data-no-cta] .hp-cta { display: none; }
 .hp-ml-ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--hair); border-radius: 8px; background: #FFFFFF; color: var(--p500); transition: border-color 0.15s ease; }
 .hp-ml:hover .hp-ml-ic { border-color: var(--p300); }
 .hp-ml-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.hp-ml-tag { display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 5px; background: var(--p100); font: 600 10px/1.3 var(--mono); font-style: normal; letter-spacing: 0.06em; color: var(--p500); vertical-align: 1px; }
+.hp-sheet .hp-ml-tag { background: var(--g-3); color: var(--g-accent); }
 .hp-ml b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .hp-ml div > span { display: block; margin-top: 3px; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); }
 /* The Products panel's third column: Fusion today, live. */
@@ -490,3 +492,8 @@ main[data-no-cta] .hp-cta { display: none; }
   .pk-two > div, .pk-proof aside { padding: 24px; }
   .pk-live b { font-size: 24px; }
 }
+.pk-badge { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 22px; padding: 6px 12px 6px 9px; border: 1px solid var(--g-line-2); border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 13px; font-weight: 500; color: #FFFFFF; white-space: nowrap; }
+.pk-badge svg { width: 14px; height: 14px; fill: none; stroke: #5EE89A; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pk-badge + .hp-k { display: block; }
+.hp-btn.violet { background: var(--p500); color: #FFFFFF; }
+.hp-btn.violet:hover { background: var(--p600); }
