@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Vault Factory • Fusion Ecosystem</title>
+  <meta name="description" content="A concept for Fusion&#x27;s Vault Factory page: deploy a vault permissionlessly, in one transaction.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+</head>
+<body>
+<!-- A mock page of the demo site, reached from its top menu: the shared
+     chrome and look come from demo.css and demo.js. -->
+<main class="hp" id="top" data-note="A concept for Fusion&#x27;s Vault Factory page." data-note-short="Factory concept">
+  <h1 class="hp-sr">Vault Factory</h1>
+  <section class="hp-purple pk-hero">
+    <div class="hp-wrap">
+      <div>
+        <span class="hp-k">Vault Factory</span>
+        <h2 class="hp-h">Deploy a vault.<br><em>No permission needed.</em></h2>
+        <p class="hp-lead">The Fusion Factory creates a Plasma Vault and the managers around it in one transaction. Anyone can deploy one; you set the rules it runs by.</p>
+        <div class="hp-btns"><a class="hp-btn solid" href="https://app.ipor.io/fusion" target="_blank" rel="noopener">Launch App<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg></a><a class="hp-btn ghost" href="https://github.com/IPOR-Labs/ipor-fusion" target="_blank" rel="noopener">Read the code</a></div>
+        <div class="pk-live"><div><b data-live="vaults">—</b><span>Vaults live</span></div><div><b data-live="tvl">—</b><span>Value locked</span></div><div><b data-live="chains">—</b><span>Networks</span></div></div>
+      </div>
+      <div class="hp-code"><div class="hp-code-bar"><span>FusionFactory.sol</span><a href="https://github.com/IPOR-Labs/ipor-fusion" target="_blank" rel="noopener">GitHub ↗</a></div><pre><span class="c">// FusionFactory.sol</span>
+<span class="c">/// @notice Creates and manages Fusion Managers</span>
+<span class="kw">contract</span> <span class="t">FusionFactory</span> <span class="kw">is</span> UUPSUpgradeable {
+  <span class="kw">event</span> <span class="t">PlasmaVaultBaseUpdated</span>(<span class="kw">address</span> base);
+  <span class="kw">event</span> <span class="t">WithdrawWindowUpdated</span>(<span class="kw">uint256</span> secs);
+  <span class="kw">event</span> <span class="t">DaoFeePackagesUpdated</span>(FeePackage[] p);
+}</pre></div>
+    </div>
+  </section>
+  <section class="hp-sec"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">From idea to vault<br><em>in four steps.</em></h2><p class="hp-lead">Every choice is made once, at deploy, and read by anyone afterwards.</p></div>
+    <div class="pk-steps"><div><span class="n">01</span><b>Pick the asset</b><p>One underlying asset per vault, on any network Fusion runs on.</p></div><div><span class="n">02</span><b>Grant markets</b><p>Choose the fuses and the markets in them the vault may ever touch.</p></div><div><span class="n">03</span><b>Set the rules</b><p>Roles, fees, withdrawal window and limits, in plain parameters.</p></div><div><span class="n">04</span><b>Deploy</b><p>One transaction: the vault and its managers, live and ERC-4626.</p></div></div>
+  </div></section>
+  <section class="hp-sec hp-soft"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">What you<br><em>configure.</em></h2><p class="hp-lead">The factory asks for these. Nothing else is needed to go live.</p></div>
+    <dl class="pk-kv"><div><dt>Underlying asset</dt><dd>One ERC-20 per vault, deposited and withdrawn through the ERC-4626 standard.</dd></div><div><dt>Fuses and markets</dt><dd>Which protocols the vault may use, and which markets in each (its substrates).</dd></div><div><dt>Roles</dt><dd>Owner, Atomist, Alpha and Guardian, each with only the powers its role needs.</dd></div><div><dt>Fees</dt><dd>Management and performance fees, alongside the DAO fee package.</dd></div><div><dt>Withdrawals</dt><dd>The withdraw window, and the instant path users redeem through.</dd></div><div><dt>Limits</dt><dd>A cap on the vault's size and limits per market.</dd></div></dl>
+  </div></section>
+  <section class="hp-sec"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">Built to be<br><em>trusted.</em></h2><p class="hp-lead">What holds for every vault the factory deploys.</p></div>
+    <div class="hp-grid c3"><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><rect x="4" y="5" width="18" height="16" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M18 11v4M7 21v2M19 21v2"/></svg></span><h3>Permissionless</h3><p>No allowlist and no sign-up: anyone with a wallet can deploy a vault.</p></div><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><path d="M13 3.5l8 3.5v6c0 5-3.5 8.6-8 9.8-4.5-1.2-8-4.8-8-9.8V7z"/><path d="M9.5 13l2.5 2.5 4.5-5"/></svg></span><h3>Bounded by design</h3><p>A vault only ever acts on the markets it was granted, whoever runs it.</p></div><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><path d="M2.5 13s4-7 10.5-7 10.5 7 10.5 7-4 7-10.5 7S2.5 13 2.5 13z"/><circle cx="13" cy="13" r="3"/></svg></span><h3>Readable from block one</h3><p>Its assets, fuses, roles and fees are onchain the moment it exists.</p></div></div>
+  </div></section>
+</main>
+<script src="/demo/demo.js"></script>
+</body>
+</html>
