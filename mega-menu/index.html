@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Mega menu kit • Fusion</title>
+  <meta name="description" content="A top navigation bar whose items open panels of icon links, folding into a sheet on phones: one self-contained HTML file and a build guide for agents.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    /* A plain page, readable without JavaScript: what the kit is, its files,
+       and the build guide (the same text as MEGA-MENU.md). */
+    :root { --bg: #FFFFFF; --ink: #160A2B; --ink-2: #4A3F5E; --ink-3: #7A6F8C; --line: #E8E1F3; --soft: #FAF7FF; --accent: #8429FF; --g: #2C0C55; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink-2); font: 16px/1.65 Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; }
+    header { background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.4px) 0 0 / 20px 20px, var(--g); color: #FFFFFF; }
+    .w { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+    header .w { padding-top: 56px; padding-bottom: 48px; }
+    .k { font: 500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #B794E6; }
+    h1 { margin: 14px 0 0; font-size: 44px; line-height: 1.05; letter-spacing: -0.04em; color: #FFFFFF; }
+    header p { margin: 16px 0 0; max-width: 600px; color: #E2CDFE; }
+    main .w { padding-top: 40px; padding-bottom: 80px; }
+    h2 { margin: 44px 0 12px; font-size: 22px; letter-spacing: -0.02em; color: var(--ink); }
+    h3 { margin: 26px 0 8px; font-size: 17px; color: var(--ink); }
+    a { color: var(--accent); }
+    code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+    pre { margin: 12px 0; padding: 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); }
+    pre code { padding: 0; background: none; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 15px; }
+    td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td:first-child { white-space: nowrap; color: var(--ink); font-weight: 600; }
+    .files a { font-weight: 600; }
+    ul { padding-left: 22px; }
+    .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .btns a { display: inline-flex; align-items: center; height: 42px; padding: 0 18px; border-radius: 10px; font-weight: 600; text-decoration: none; }
+    .btns a.solid { background: #FFFFFF; color: var(--g); }
+    .btns a.ghost { border: 1px solid #5D3097; color: #FFFFFF; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="w">
+    <span class="k">Kit for agents</span>
+    <h1>Mega menu</h1>
+    <p>A top navigation bar whose items open white panels of icon links, with an optional feature card, folding into a sheet on phones. One self-contained HTML file, no build step, no dependencies, and a build guide for agents.</p>
+    <div class="btns"><a class="solid" href="/mega-menu/mega-menu.html">Open the live demo</a><a class="ghost" href="/mega-menu/MEGA-MENU.md">Build guide (.md)</a></div>
+  </div>
+</header>
+<main>
+  <div class="w">
+    <h2>Files</h2>
+    <table class="files">
+      <tr><td><a href="/mega-menu/mega-menu.html">mega-menu.html</a></td><td>The reference implementation and live demo: CSS variables, a <code>MENU</code> config, and the rendering and behaviour. Read its source.</td></tr>
+      <tr><td><a href="/mega-menu/MEGA-MENU.md">MEGA-MENU.md</a></td><td>The build guide for an agent (the same text as below).</td></tr>
+    </table>
+
+    <h2>For an agent, from the command line</h2>
+    <p>Point the agent at this page, or fetch the two files directly:</p>
+<pre><code>curl -sO https://fusionecosystem.xyz/mega-menu/mega-menu.html
+curl -sO https://fusionecosystem.xyz/mega-menu/MEGA-MENU.md</code></pre>
+    <p>A prompt that works:</p>
+<pre><code>Read https://fusionecosystem.xyz/mega-menu/MEGA-MENU.md and
+https://fusionecosystem.xyz/mega-menu/mega-menu.html, then add this mega menu
+to my site: keep its markup and behaviour, map its --mm-* variables to my
+design tokens, and fill MENU with my own menus.</code></pre>
+    <p>If the agent's network blocks this site, the same files are on GitHub raw:</p>
+<pre><code>https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/mega-menu/mega-menu.html
+https://raw.githubusercontent.com/maderaz/fusionstats/claude/morpho-vault-demand-tracker-Zp6AV/mega-menu/MEGA-MENU.md</code></pre>
+
+    <h2>Build guide</h2>
+    <h3>What to do</h3>
+    <ol>
+      <li>Read <code>mega-menu.html</code> top to bottom. It has three parts: the <b>CSS variables</b> (<code>--mm-*</code>) at the top of the style, where all rebranding happens; the <b><code>MENU</code> config</b> at the top of the script, the only part that holds content; and the <b>rendering and behaviour</b> below it, which should not need edits to add options.</li>
+      <li>Port it into the target project as-is first (same markup, class names and behaviour), then map the <code>--mm-*</code> variables to the project's design tokens. Do not rewrite the interaction logic.</li>
+      <li>Replace the <code>MENU</code> content with the project's real menus.</li>
+    </ol>
+
+    <h3>The config</h3>
+<pre><code>const MENU = {
+  brand: { name: 'Fusion', href: '/' },
+  menus: [
+    {
+      label: 'Products',      // the top-bar item
+      columns: 2,             // 1, 2 or 3 columns of links in the bubble
+      right: false,           // true for items near the right edge: opens leftwards
+      feature: {              // optional dark card in its own column at the right
+        kicker: 'Fusion today', value: '$81.0M', text: 'One or two lines.',
+        cta: 'Open stats', href: '/stats',
+      },
+      links: [                // either links...
+        { title: 'Vault Factory', desc: 'One line, short', href: '/factory',
+          tag: 'NEW',         // optional small pill after the title
+          icon: 'M2.5 15.5h13M4 15.5V8...' },  // SVG path data, 18 x 18 grid, stroked
+      ],
+      // ...or groups, each with a small heading:
+      // groups: [{ name: 'Build', links: [...] }, { name: 'Trust', links: [...] }],
+    },
+  ],
+  ctas: [
+    { label: 'Talk to Us', href: '/contact', style: 'ghost' },  // hidden on phones, repeated in the sheet
+    { label: 'Launch App', href: '/app', style: 'solid' },      // stays in the bar on phones
+  ],
+};</code></pre>
+    <p>Icons are outlines (stroke 1.5, round caps) on an 18 × 18 grid: any 18 × 18 line icon's path data works. External links (<code>http…</code>) open in a new tab.</p>
+
+    <h3>Behaviour, which must be kept</h3>
+    <ul>
+      <li><b>Desktop:</b> a panel opens on hover. Its 14px top padding is an invisible bridge between the bar and the panel, so the pointer can move down into it without it closing.</li>
+      <li><b>Click or Enter</b> on an item toggles its panel; one is open at a time.</li>
+      <li><b>Escape</b>, or a click outside the bar, closes everything; leaving an item with the pointer closes it.</li>
+      <li><b>Keyboard:</b> <code>:focus-within</code> keeps a panel open while Tab moves through its links; buttons carry <code>aria-expanded</code> and <code>aria-controls</code>.</li>
+      <li><b>Phones (below 980px):</b> the items fold into a sheet under the bar, each menu a <code>&lt;details&gt;</code> fold. Change the breakpoint in both <code>--mm-collapse</code> and the <code>@media (max-width: 980px)</code> rule.</li>
+      <li><b>Reduced motion:</b> transitions switch off under <code>prefers-reduced-motion</code>.</li>
+    </ul>
+
+    <h3>Design rules</h3>
+    <ul>
+      <li>Titles and labels stay on one line; descriptions may wrap to two (keep them near 40 characters).</li>
+      <li>Gaps: 12px icon to text, 6px between links, 10px panel padding, 8px label to chevron.</li>
+      <li>The feature card is optional and 230px wide: one figure or one highlight, not a list.</li>
+      <li>More than about 8 links: use <code>groups</code> and 2 or 3 <code>columns</code>.</li>
+    </ul>
+
+    <h3>Checklist</h3>
+    <ul>
+      <li>Each panel opens on hover, click and Enter, and closes on Escape and an outside click.</li>
+      <li>Moving the pointer from an item down into its panel does not close it.</li>
+      <li>Items near the right edge use <code>right: true</code>, so their panel stays on screen.</li>
+      <li>Below the breakpoint the sheet opens, folds work, and nothing scrolls sideways.</li>
+      <li>No label wraps at 320, 768, 1024 or 1440px; all links point at real pages.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
