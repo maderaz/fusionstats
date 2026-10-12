@@ -40,7 +40,8 @@
       { href: '/spark',                 label: 'Spark',          icon: 'spark' },
     ] },
     // Concepts: pages drawn to try an idea, not part of the stats.
-    { label: 'Demo', pages: [
+    // end: drawn at the foot of the side menu, just above the theme switch.
+    { label: 'Demo', end: true, pages: [
       { href: '/demo/homepage',         label: 'Homepage',       icon: 'concept' },
       { href: '/demo/fuses',            label: 'Fuses',          icon: 'fuses' },
       { href: '/demo/contact',          label: 'Talk to Us',     icon: 'contact' },
@@ -216,7 +217,9 @@
     [data-theme="dark"] .fnav-brand, [data-theme="dark"] .fnav-word { color: #fff; }
     /* Links in groups: the key pages first, then Insights and Tools under a
        quiet heading each. */
-    .fnav-links { display: flex; flex-direction: column; gap: 20px; padding: 0 10px 16px; }
+    .fnav-links { flex: 1 0 auto; display: flex; flex-direction: column; gap: 20px; padding: 0 10px 16px; }
+    /* A group marked end (Demo) sits at the foot, over the theme switch. */
+    .fnav-links .fnav-end { margin-top: auto; }
     .fnav-group { display: flex; flex-direction: column; gap: 1px; }
     .fnav-group-label {
       padding: 0 10px 6px;
@@ -567,7 +570,7 @@
     const items = g.pages.map(link).join('');
     if (!g.label) return `<div class="fnav-group">${items}</div>`;
     if (!g.folds) {
-      return `<div class="fnav-group" role="group" aria-labelledby="fnav-g${i}">`
+      return `<div class="fnav-group${g.end ? ' fnav-end' : ''}" role="group" aria-labelledby="fnav-g${i}">`
         + `<div class="fnav-group-label" id="fnav-g${i}">${g.label}</div>${items}</div>`;
     }
     const open = startsOpen(g);
