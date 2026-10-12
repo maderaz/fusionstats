@@ -211,8 +211,9 @@ function cardHtml(p, shot, day) {
 }
 
 // A story's card (pages marked story: the newsroom's articles): no window and
-// no screenshot, just the story's own cover, full bleed, as the newsroom
-// draws it (demo/news/stories.js); the mark at the top right and the
+// no screenshot. The story in the newsroom's own look (demo/news/stories.js):
+// the mark at the top left, the topic at the top right, the headline in white
+// then lavender at the left, the story's motif at the right, and the
 // newsroom's address at the foot.
 function storyHtml(p) {
   return `<!doctype html><html><head><meta charset="utf-8">
@@ -222,20 +223,36 @@ function storyHtml(p) {
   html, body { width: 1200px; height: 630px; }
   body { position: relative; overflow: hidden; color: #FFFFFF; font-family: Geist, -apple-system, 'Segoe UI', sans-serif;
     background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.4px) 0 0 / 20px 20px, #2C0C55; }
-  #c, #c svg { position: absolute; inset: 0; width: 1200px; height: 630px; display: block; }
-  .brand { position: absolute; right: 64px; top: 56px; display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
+  .brand { position: absolute; left: 64px; top: 56px; display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
   .brand svg { width: 40px; height: 40px; }
-  .url { position: absolute; right: 64px; bottom: 44px; display: flex; align-items: center; gap: 8px; font: 500 19px/1 'Geist Mono', monospace; color: #B794E6; }
+  .topic { position: absolute; right: 64px; top: 62px; padding: 9px 16px; border: 1px solid #5D3097; border-radius: 999px;
+    font: 500 17px/1 'Geist Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #D7B8FF; }
+  h1 { position: absolute; left: 64px; top: 50%; transform: translateY(-50%); width: 720px; font-size: 76px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em; }
+  h1 span { display: block; white-space: nowrap; }
+  h1 span + span { color: #D7B8FF; }
+  #m { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); width: 330px; height: 330px; }
+  #m svg { width: 100%; height: 100%; display: block; }
+  .url { position: absolute; left: 64px; bottom: 52px; display: flex; align-items: center; gap: 8px; font: 500 19px/1 'Geist Mono', monospace; color: #B794E6; }
   .url b { font-weight: 500; color: #FFFFFF; }
   .url svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 </style></head><body>
-  <div id="c"></div>
   <div class="brand">${MARK}<span>Fusion</span></div>
+  <span class="topic" id="k"></span>
+  <h1 id="t"></h1>
+  <div id="m"></div>
   <div class="url"><span>fusion.app<b>/news</b></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg></div>
   <script src="${ORIGIN}/demo/news/stories.js"></script>
   <script>
-    const s = window.FusionNews.S.find(x => x.href === ${JSON.stringify(p.path)});
-    document.getElementById('c').innerHTML = s ? window.FusionNews.cover(s, true) : '';
+    const N = window.FusionNews, s = N.S.find(x => x.href === ${JSON.stringify(p.path)});
+    if (s) {
+      document.getElementById('k').textContent = s.cat;
+      document.getElementById('t').innerHTML = '<span>' + N.esc(s.big) + '</span><span>' + N.esc(s.sub) + '.</span>';
+      // The motif as the cover draws it, framed on its own.
+      document.getElementById('m').innerHTML = '<svg viewBox="740 90 460 460" fill="none">' + N.MOTIF[s.motif](N.rnd(s.t)) + '</svg>';
+      // The headline keeps each line whole, stepping down a size until it fits.
+      const t = document.getElementById('t'); let z = 76;
+      while (Math.max(...[...t.children].map(c => c.scrollWidth)) > t.clientWidth && z > 44) { z -= 2; t.style.fontSize = z + 'px'; }
+    }
   </script>
 </body></html>`;
 }
