@@ -60,15 +60,17 @@
   // The cover is the hero, small: on the flat purple ground and dotted grid
   // its frame draws (.nw-cover), the mark, the mono label, and a headline in two tones (white, then
   // lavender, ending in a full stop). The motif sits small at the top right.
-  function cover(s) {
+  // bare: without the mark at the top left (a share card puts its own at the
+  // right), the motif set a little lower to make room for it.
+  function cover(s, bare) {
     const r = rnd(s.t);
     const longest = Math.max(s.big.length, s.sub.length + 1);
     const size = Math.min(76, Math.floor(1040 / (longest * 0.54)));
     const ls = (-0.045 * size).toFixed(1);
     const H = 'font-family="Geist, sans-serif" font-weight="600"';
     return `<svg viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(s.big)}, ${esc(s.sub)}">`
-      + `<g transform="translate(1150 64) scale(0.6) translate(-1180 -110)">${MOTIF[s.motif](r)}</g>`
-      + `<g transform="translate(70 64)"><path transform="scale(0.52)" fill="#8429FF" d="${MARK}"/><text x="52" y="28" fill="#FFFFFF" ${H} font-size="27" letter-spacing="-0.8">Fusion</text></g>`
+      + `<g transform="translate(1150 ${bare ? 140 : 64}) scale(0.6) translate(-1180 -110)">${MOTIF[s.motif](r)}</g>`
+      + (bare ? '' : `<g transform="translate(70 64)"><path transform="scale(0.52)" fill="#8429FF" d="${MARK}"/><text x="52" y="28" fill="#FFFFFF" ${H} font-size="27" letter-spacing="-0.8">Fusion</text></g>`)
       + `<text x="72" y="${560 - size * 2.05 - 34}" fill="#B794E6" font-family="Geist Mono, monospace" font-size="26" font-weight="500" letter-spacing="3">${esc(s.cat.toUpperCase())}</text>`
       + `<text x="68" y="${(560 - size * 1.02).toFixed(0)}" fill="#FFFFFF" ${H} font-size="${size}" letter-spacing="${ls}">${esc(s.big)}</text>`
       + `<text x="68" y="560" fill="#D7B8FF" ${H} font-size="${size}" letter-spacing="${ls}">${esc(s.sub)}.</text>`
