@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { SITE_NAME, INDEXED, PAGES, title, url, cardUrl } = require('./pages.js');
+const { INDEXED, PAGES, EXTRA, title, siteName, url, cardUrl } = require('./pages.js');
 
 const ROOT = path.join(__dirname, '..');
 const BEGIN = '<!-- page-meta: written by tools/page-meta.js from tools/pages.js -->';
@@ -32,7 +32,7 @@ function block(p, indent) {
     `<meta name="description" content="${attr(p.description)}">`,
     `<link rel="canonical" href="${attr(url(p))}">`,
     `<meta property="og:type" content="website">`,
-    `<meta property="og:site_name" content="${attr(SITE_NAME)}">`,
+    `<meta property="og:site_name" content="${attr(siteName(p))}">`,
     `<meta property="og:title" content="${attr(title(p))}">`,
     `<meta property="og:description" content="${attr(p.description)}">`,
     `<meta property="og:url" content="${attr(url(p))}">`,
@@ -83,7 +83,7 @@ function heading(html) {
 
 function run({ check = false } = {}) {
   const stale = [];
-  for (const p of PAGES) {
+  for (const p of PAGES.concat(EXTRA)) {
     const file = path.join(ROOT, p.file);
     const html = fs.readFileSync(file, 'utf8');
     const next = rewrite(html, p);
