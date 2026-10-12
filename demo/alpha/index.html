@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Alpha • Fusion Ecosystem</title>
+  <meta name="description" content="A concept for Fusion&#x27;s Alpha page: strategy decided off-chain, carried out onchain through fuses, within the vault&#x27;s bounds.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+</head>
+<body>
+<!-- A mock page of the demo site, reached from its top menu: the shared
+     chrome and look come from demo.css and demo.js. -->
+<main class="hp" id="top" data-note="A concept for Fusion&#x27;s Alpha page." data-note-short="Alpha concept">
+  <h1 class="hp-sr">Alpha</h1>
+  <section class="hp-purple pk-hero">
+    <div class="hp-wrap">
+      <div>
+        <span class="hp-k">Alpha</span>
+        <h2 class="hp-h">Strategy off-chain.<br><em>Bounds onchain.</em></h2>
+        <p class="hp-lead">An Alpha runs a vault's strategy. It decides off-chain, then acts onchain through fuses, and only ever inside the markets the vault has granted.</p>
+        <div class="hp-btns"><a class="hp-btn solid" href="https://github.com/IPOR-Labs/ipor-fusion.py" target="_blank" rel="noopener">Python SDK<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg></a><a class="hp-btn ghost" href="/demo/contact">Talk to Us</a></div>
+        
+      </div>
+      <div class="hp-code"><div class="hp-code-bar"><span>PlasmaVault.execute</span><a href="https://github.com/IPOR-Labs/ipor-fusion" target="_blank" rel="noopener">GitHub ↗</a></div><pre><span class="c">// One strategy step, as an Alpha sends it</span>
+FuseAction[] <span class="kw">memory</span> actions = <span class="kw">new</span> FuseAction[](<span class="s">3</span>);
+actions[<span class="s">0</span>] = <span class="t">FuseAction</span>(supplyFuse, supplyWETH);
+actions[<span class="s">1</span>] = <span class="t">FuseAction</span>(collateralFuse, enableWETH);
+actions[<span class="s">2</span>] = <span class="t">FuseAction</span>(borrowFuse, borrowUSDC);
+PlasmaVault(vault).<span class="t">execute</span>(actions);</pre></div>
+    </div>
+  </section>
+  <section class="hp-sec"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">What an Alpha<br><em>can and cannot do.</em></h2><p class="hp-lead">The role is narrow on purpose: wide enough to run a strategy, never wide enough to take the vault.</p></div>
+    <div class="pk-two">
+      <div class="yes"><h3>Can</h3><ul><li><b>✓</b>Send fuse actions, batched in one PlasmaVault.execute</li><li><b>✓</b>Supply, borrow, swap, loop and claim on granted markets</li><li><b>✓</b>Rebalance as often as the strategy needs</li><li><b>✓</b>Act atomically: every step lands, or none does</li></ul></div>
+      <div class="no"><h3>Cannot</h3><ul><li><b>✕</b>Touch a market the vault has not granted</li><li><b>✕</b>Send the vault's assets to itself</li><li><b>✕</b>Change fees, roles or grants</li><li><b>✕</b>Get past the Guardian's emergency controls</li></ul></div>
+    </div>
+  </div></section>
+  <section class="hp-sec hp-soft"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">From signal<br><em>to block.</em></h2><p class="hp-lead">How one step of a strategy reaches the chain.</p></div>
+    <div class="pk-steps"><div><span class="n">01</span><b>Read</b><p>Rates, prices and the vault's positions, from the chain and anywhere else.</p></div><div><span class="n">02</span><b>Decide</b><p>Strategy logic off-chain, in any language; the Python SDK helps.</p></div><div><span class="n">03</span><b>Act</b><p>The step becomes fuse actions, sent in one execute call.</p></div><div><span class="n">04</span><b>Check</b><p>Fuses check each grant; balance fuses read the new NAV.</p></div></div>
+  </div></section>
+  <section class="hp-sec"><div class="hp-wrap">
+    <div class="hp-head-row"><h2 class="hp-h">Strategies Alphas<br><em>run today.</em></h2><p class="hp-lead">A few of the shapes Fusion vaults take.</p></div>
+    <div class="hp-grid c3"><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><path d="M4 9h17l-4-4M22 17H5l4 4"/></svg></span><h3>Rebalancing</h3><p>Move supply to wherever the rate is best, across the granted markets.</p></div><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><path d="M7 9a6 6 0 0 1 11 1M19 17a6 6 0 0 1-11-1"/><path d="M18 5v5h-5M8 21v-5h5"/></svg></span><h3>Looping</h3><p>Supply, borrow and supply again to multiply a yield, within set limits.</p></div><div class="hp-block"><span class="hp-block-ic"><svg viewBox="0 0 26 26"><ellipse cx="13" cy="8" rx="8" ry="3.5"/><path d="M5 8v10c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5V8M5 13c0 1.9 3.6 3.5 8 3.5s8-1.6 8-3.5"/></svg></span><h3>Carry</h3><p>Hold an asset that pays and fund it with one that costs less.</p></div></div>
+  </div></section>
+</main>
+<script src="/demo/demo.js"></script>
+</body>
+</html>
