@@ -497,3 +497,24 @@ main[data-no-cta] .hp-cta { display: none; }
 .pk-badge + .hp-k { display: block; }
 .hp-btn.violet { background: var(--p500); color: #FFFFFF; }
 .hp-btn.violet:hover { background: var(--p600); }
+.pk-partner { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; padding: 18px 20px; border: 1px solid var(--hair); background: #FFFFFF; }
+.pk-partner img { flex: none; width: 44px; height: 44px; border-radius: 50%; }
+.pk-partner div { min-width: 0; }
+.pk-partner b { display: block; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+.pk-partner span { display: block; margin-top: 3px; font-size: 13.5px; color: var(--ink-3); }
+.pk-partner em { margin-left: auto; padding: 5px 10px; border-radius: 999px; background: var(--p100); font: 500 11px/1 var(--mono); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; color: var(--p500); white-space: nowrap; }
+@container (max-width: 640px) {
+  .pk-partner { flex-wrap: wrap; }
+  .pk-partner em { margin-left: 58px; }
+}
+/* The Solutions heroes' vault: flat isometric planes in the theme's purples,
+   its fuses and tag floating gently. */
+.pk-vault { justify-self: center; width: 100%; max-width: 500px; }
+.pk-vault svg { display: block; width: 100%; height: auto; }
+.pk-fl { animation: pk-float 6s ease-in-out infinite; }
+.pk-fl1 { animation-delay: -2s; }
+.pk-fl2 { animation-delay: -4s; }
+@keyframes pk-float { 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .pk-fl { animation: none; } }
+@container (max-width: 980px) { .pk-vault { max-width: 380px; } }
+@container (max-width: 640px) { .pk-vault { max-width: 300px; } }
