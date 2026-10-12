@@ -95,7 +95,7 @@
   </style>
 </head>
 <body>
-<main class="hp" id="top" data-note="A concept for Fusion's newsroom. Covers are drawn on the page." data-note-short="News concept">
+<main class="hp" id="top" data-note="A concept for Fusion's newsroom. Covers are drawn on the page, in the hero's style." data-note-short="News concept">
   <h1 class="hp-sr">News</h1>
 
   <section class="hp-purple">
@@ -163,7 +163,7 @@
       const a = 0.45 * Math.PI * 2, x = 1000 + 150 * Math.sin(a), y = 315 - 150 * Math.cos(a);
       return `<g ${L}><circle cx="1000" cy="315" r="150" stroke-width="3" opacity="0.35"/><path d="M1000 315V165A150 150 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}Z" fill="rgba(215,184,255,0.22)" stroke-width="3"/><circle cx="1000" cy="315" r="96" stroke-width="2" opacity="0.25"/></g>`;
     },
-    coins: () => [0, 1, 2, 3].map(i => `<g ${L} stroke-width="3" transform="translate(${880 + i * 34} ${360 - i * 52})" opacity="${0.45 + i * 0.18}"><ellipse cx="80" cy="30" rx="80" ry="30" fill="rgba(44,12,85,0.9)"/><path d="M0 30v26c0 17 36 30 80 30s80-13 80-30V30"/></g>`).join('')
+    coins: () => [0, 1, 2, 3].map(i => `<g ${L} stroke-width="3" transform="translate(${880 + i * 34} ${360 - i * 52})" opacity="${0.45 + i * 0.18}"><ellipse cx="80" cy="30" rx="80" ry="30" fill="#2C0C55"/><path d="M0 30v26c0 17 36 30 80 30s80-13 80-30V30"/></g>`).join('')
       + `<g ${L} stroke-width="4" transform="translate(1100 140)"><path d="M0 -18v36M-18 0h36"/></g>`,
     chart: (r) => {
       const pts = Array.from({ length: 14 }, (_, i) => [760 + i * 30, 470 - (i / 13) ** 1.6 * 280 - r() * 26]);
@@ -175,19 +175,23 @@
     orbit: () => `<g ${L} stroke-width="3"><ellipse cx="1000" cy="315" rx="190" ry="72" opacity="0.6"/><ellipse cx="1000" cy="315" rx="190" ry="72" transform="rotate(60 1000 315)" opacity="0.4"/><ellipse cx="1000" cy="315" rx="190" ry="72" transform="rotate(-60 1000 315)" opacity="0.4"/><circle cx="1000" cy="315" r="34" fill="rgba(215,184,255,0.3)"/></g>`,
   };
 
+  // The cover is the hero, small: the flat purple ground with its dotted
+  // grid, the mark, the mono label, and a headline in two tones (white, then
+  // lavender, ending in a full stop). The motif sits small at the top right.
   function cover(s) {
-    const r = rnd(s.t), gx = 200 + r() * 800, gy = 80 + r() * 300, id = 'g' + Math.floor(r() * 1e9);
-    const big = s.big.length > 14 ? 76 : 104;
+    const r = rnd(s.t), id = 'p' + Math.floor(r() * 1e9);
+    const longest = Math.max(s.big.length, s.sub.length + 1);
+    const size = Math.min(76, Math.floor(1040 / (longest * 0.54)));
+    const ls = (-0.045 * size).toFixed(1);
+    const H = 'font-family="Geist, sans-serif" font-weight="600"';
     return `<svg viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(s.big)}, ${esc(s.sub)}">`
-      + `<defs><radialGradient id="${id}" cx="${gx / 1200}" cy="${gy / 630}" r="0.75"><stop offset="0" stop-color="#6A1FD6" stop-opacity="0.55"/><stop offset="1" stop-color="#2C0C55" stop-opacity="0"/></radialGradient>`
-      + `<pattern id="${id}d" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#FFFFFF" fill-opacity="0.09"/></pattern></defs>`
-      + `<rect width="1200" height="630" fill="#2C0C55"/><rect width="1200" height="630" fill="url(#${id})"/><rect width="1200" height="630" fill="url(#${id}d)"/>`
-      + `<rect x="24" y="24" width="1152" height="582" rx="18" fill="none" stroke="#4C247F" stroke-width="2"/>`
-      + MOTIF[s.motif](r)
-      + `<g transform="translate(72 70)"><path transform="scale(0.55)" fill="#A66BFF" d="${MARK}"/><text x="54" y="30" fill="#FFFFFF" font-family="Geist, sans-serif" font-size="28" font-weight="600" letter-spacing="-0.6">Fusion</text></g>`
-      + `<text x="72" y="190" fill="#B794E6" font-family="Geist Mono, monospace" font-size="22" letter-spacing="4">${esc(s.cat.toUpperCase())}</text>`
-      + `<text x="70" y="${big > 90 ? 470 : 460}" fill="#FFFFFF" font-family="Geist, sans-serif" font-size="${big}" font-weight="600" letter-spacing="${big > 90 ? -4 : -2.5}">${esc(s.big)}</text>`
-      + `<text x="72" y="530" fill="#D7B8FF" font-family="Geist, sans-serif" font-size="34" font-weight="500" letter-spacing="-0.6">${esc(s.sub)}</text>`
+      + `<defs><pattern id="${id}" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#FFFFFF" fill-opacity="0.09"/></pattern></defs>`
+      + `<rect width="1200" height="630" fill="#2C0C55"/><rect width="1200" height="630" fill="url(#${id})"/>`
+      + `<g transform="translate(1150 64) scale(0.6) translate(-1180 -110)">${MOTIF[s.motif](r)}</g>`
+      + `<g transform="translate(70 64)"><path transform="scale(0.52)" fill="#8429FF" d="${MARK}"/><text x="52" y="28" fill="#FFFFFF" ${H} font-size="27" letter-spacing="-0.8">Fusion</text></g>`
+      + `<text x="72" y="${560 - size * 2.05 - 34}" fill="#B794E6" font-family="Geist Mono, monospace" font-size="26" font-weight="500" letter-spacing="3">${esc(s.cat.toUpperCase())}</text>`
+      + `<text x="68" y="${(560 - size * 1.02).toFixed(0)}" fill="#FFFFFF" ${H} font-size="${size}" letter-spacing="${ls}">${esc(s.big)}</text>`
+      + `<text x="68" y="560" fill="#D7B8FF" ${H} font-size="${size}" letter-spacing="${ls}">${esc(s.sub)}.</text>`
       + `</svg>`;
   }
 
