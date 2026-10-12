@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- page-meta: written by tools/page-meta.js from tools/pages.js -->
+  <meta name="robots" content="noindex">
+  <title>News • Fusion Ecosystem</title>
+  <meta name="description" content="A concept for Fusion's newsroom: partnerships, integrations and milestones, each with a cover drawn in the site's purple.">
+  <link rel="canonical" href="https://fusionecosystem.xyz/demo/news">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fusion Ecosystem">
+  <meta property="og:title" content="News • Fusion Ecosystem">
+  <meta property="og:description" content="A concept for Fusion's newsroom: partnerships, integrations and milestones, each with a cover drawn in the site's purple.">
+  <meta property="og:url" content="https://fusionecosystem.xyz/demo/news">
+  <meta property="og:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-news.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="News: A concept for Fusion's newsroom: partnerships, integrations and milestones, each with a cover drawn in the site's purple.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="News • Fusion Ecosystem">
+  <meta name="twitter:description" content="A concept for Fusion's newsroom: partnerships, integrations and milestones, each with a cover drawn in the site's purple.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/maderaz/fusionstats/og-cards/demo-news.png">
+  <!-- /page-meta -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+  <style>
+    /* News: a short band on the purple ground, the latest story large, then
+       the rest in a grid. Every cover is drawn here, from the story's own
+       words and a motif that fits it, on the hero's purple. */
+    .nw-head { padding-top: 72px; padding-bottom: 64px; }
+    .nw-head .hp-h { font-size: clamp(34px, 5cqi, 60px); }
+    .nw-head .hp-lead { max-width: 640px; }
+    .nw-body { padding-top: 48px; padding-bottom: 112px; }
+
+    .nw-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
+    .nw-filters button {
+      display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 1px solid var(--hair); border-radius: 999px;
+      background: #FFFFFF; font: 500 13.5px/1 var(--sans); color: var(--ink-2); white-space: nowrap; cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    .nw-filters button:hover { border-color: var(--p300); color: var(--ink); }
+    .nw-filters button[aria-pressed="true"] { border-color: var(--g); background: var(--g); color: #FFFFFF; }
+    .nw-filters b { font: 500 11.5px/1 var(--mono); color: var(--ink-3); }
+    .nw-filters button[aria-pressed="true"] b { color: var(--g-text-3); }
+
+    .nw-cover { display: block; width: 100%; aspect-ratio: 1200 / 630; border-radius: 14px; overflow: hidden; background: var(--g); }
+    .nw-cover svg { display: block; width: 100%; height: 100%; }
+    .nw-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+    .nw-meta b { font-weight: 600; color: var(--p500); }
+    .nw-meta i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.6; }
+    .nw-card h3, .nw-feat h3 { margin: 14px 0 0; font-weight: 600; letter-spacing: -0.02em; text-transform: none; color: var(--ink); }
+    .nw-card p, .nw-feat p { margin: 10px 0 0; color: var(--ink-2); line-height: 1.6; }
+    .nw-card a, .nw-feat a { text-decoration: none; }
+    .nw-card a:hover h3, .nw-feat a:hover h3 { color: var(--p500); }
+    .nw-card a:hover .nw-cover svg, .nw-feat a:hover .nw-cover svg { transform: scale(1.02); }
+    .nw-cover svg { transition: transform 0.4s ease; }
+
+    .nw-feat a { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+    .nw-feat h3 { font-size: clamp(24px, 3cqi, 34px); line-height: 1.15; }
+    .nw-feat p { font-size: 16px; }
+    .nw-feat .nw-tag { display: inline-block; margin-bottom: 14px; font: 500 11.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--p500); }
+    .nw-more { display: inline-flex; align-items: center; gap: 6px; margin-top: 20px; font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+    .nw-more svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s ease; }
+    .nw-feat a:hover .nw-more svg { transform: translateX(3px); }
+
+    .nw-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px 28px; margin-top: 64px; }
+    .nw-card h3 { font-size: 18.5px; line-height: 1.3; }
+    .nw-card p { font-size: 14.5px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .nw-card .nw-meta { margin-top: 18px; }
+    /* A story left alone on the grid's last row takes the row, laid out
+       like the latest. */
+    .nw-card.wide { grid-column: 1 / -1; }
+    .nw-card.wide a { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 32px; align-items: center; }
+    .nw-card.wide .nw-cover { grid-row: span 4; }
+    .nw-card.wide .nw-meta { margin-top: 0; align-self: end; }
+    .nw-card.wide p { -webkit-line-clamp: 4; align-self: start; }
+    .nw-empty { padding: 40px 0; font-size: 15px; color: var(--ink-3); }
+
+    @container (max-width: 980px) {
+      .nw-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .nw-feat a { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    }
+    @container (max-width: 640px) {
+      .nw-head { padding-top: 48px; padding-bottom: 44px; }
+      .nw-body { padding-top: 32px; }
+      .nw-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; margin-top: 48px; }
+      .nw-card.wide a { display: block; }
+      .nw-card.wide .nw-meta { margin-top: 18px; }
+      .nw-cover { border-radius: 12px; }
+    }
+  </style>
+</head>
+<body>
+<main class="hp" id="top" data-note="A concept for Fusion's newsroom. Covers are drawn on the page." data-note-short="News concept">
+  <h1 class="hp-sr">News</h1>
+
+  <section class="hp-purple">
+    <div class="hp-wrap nw-head">
+      <span class="hp-k">Newsroom</span>
+      <h2 class="hp-h">News from the<br><em>Fusion ecosystem.</em></h2>
+      <p class="hp-lead">Partnerships, integrations and milestones from the institutions, curators and custodians building institutional-grade onchain yield on Fusion.</p>
+    </div>
+  </section>
+
+  <section class="hp-wrap nw-body">
+    <div class="nw-filters" id="nwFilters" role="group" aria-label="Category"></div>
+    <article class="nw-feat" id="nwFeat"></article>
+    <div class="nw-grid" id="nwGrid"></div>
+  </section>
+</main>
+<script src="/demo/demo.js"></script>
+<script>
+// The stories, newest first, and a cover drawn for each: the purple ground,
+// a glow, the dotted grid, a motif for the kind of story, its key words, and
+// the Fusion mark.
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const S = [
+    { d: '2026-08-20', cat: 'Ecosystem', min: 5, motif: 'shield', big: 'Fusion × Blockaid', sub: 'Onchain threat monitoring',
+      t: 'Fusion x Blockaid: Bringing Onchain Threat Monitoring to Fusion Vaults',
+      x: 'Fusion has begun integrating Blockaid across its vault stack. Monitoring and post-transaction analysis are live for a selection of ecosystem vaults, with proactive detection in development.' },
+    { d: '2026-07-15', cat: 'Ecosystem', min: 5, motif: 'share', big: '~45%', sub: 'of cbETH on Base',
+      t: 'Fusion Vaults Now Account for ~45% of cbETH on Base',
+      x: "As of 15 July 2026, vaults built on Fusion hold around 30,500 cbETH on Base, roughly 45% of the network's cbETH and 19.3% of Coinbase's reported circulating supply." },
+    { d: '2026-06-29', cat: 'Incentives', min: 3, motif: 'coins', big: 'Base Rewards', sub: 'via Anchorage Digital',
+      t: 'Base Rewards Now Live for Select Fusion Strategies via Anchorage Digital',
+      x: "From 29 June, wallets that reach select Fusion strategies on Base through the Porto by Anchorage Digital portal may earn Base-supported rewards in cbETH via Merkl, on top of each strategy's onchain results." },
+    { d: '2026-06-24', cat: 'Strategies', min: 6, motif: 'chart', big: '2.75% → 15%', sub: 'cbETH on Aave',
+      t: "Turning cbETH's 2.75% Native Yield to 15% on Aave with Fusion Automation",
+      x: "There is far more yield inside Aave's markets than most participants ever reach. Fusion's automation turns that depth into performance, like TAU Labs' cbETH Dynamic Looping vault, which stacks cbETH's native yield into roughly 15% on Base." },
+    { d: '2026-06-18', cat: 'Ecosystem', min: 4, motif: 'cover', big: 'Covered Vaults', sub: 'by OpenCover',
+      t: 'Covered Vaults Come to Fusion: Embedded Onchain Protection by OpenCover',
+      x: 'Onchain cover is now available for select Fusion vaults, provided by OpenCover and underwritten by Nexus Mutual, starting with a Covered Vault for the Liquity ETH Carry strategy.' },
+    { d: '2026-06-09', cat: 'Ecosystem', min: 4, motif: 'pair', big: 'BitGo × Tesseract', sub: 'Dedicated Client Vaults',
+      t: "BitGo Opens Institutional Access to Tesseract's Dedicated Client Vaults Powered by Fusion",
+      x: "Eligible institutions can now allocate to Tesseract's Dedicated Client Vaults, powered by Fusion, directly from BitGo qualified custody, with assets staying inside the custodial perimeter." },
+    { d: '2026-04-30', cat: 'Regulation', min: 10, motif: 'doc', big: 'MiCA in 2026', sub: 'for vault curators',
+      t: 'How Vault Curators Can Navigate MiCA in 2026',
+      x: "At Vault Summit during EthCC Cannes 2026, Stéphane Daniel of d&a partners laid out the MiCA legal considerations for vault curators, from CASP reclassification risk to three structuring strategies. A guest article, with a note on how Fusion's architecture relates." },
+    { d: '2026-03-31', cat: 'Ecosystem', min: 5, motif: 'orbit', big: 'Tesseract × Fusion', sub: 'Institutional onchain yield',
+      t: 'Tesseract Selects IPOR Fusion as Onchain Vault Infrastructure for Institutional Clients',
+      x: 'Tesseract Investment Oy, a Helsinki-based MiCA-authorised CASP, has selected Fusion as its onchain vault infrastructure for institutional onchain yield, with 21Shares among the launch partners.' },
+  ].sort((a, b) => b.d.localeCompare(a.d));
+
+  const MARK = 'M72.9745 36.4854C72.9745 28.9218 65.2566 22.5 53.6982 19.2763C50.4708 7.71785 44.0491 0 36.4854 0C28.9218 0 22.5 7.71785 19.2763 19.2763C7.71785 22.5037 0 28.9254 0 36.4854C0 44.0454 7.71785 50.4708 19.2763 53.6982C22.5037 65.2566 28.9254 72.9745 36.4854 72.9745C44.0454 72.9745 50.4708 65.2566 53.6982 53.6982C65.2566 50.4708 72.9745 44.0491 72.9745 36.4854ZM26.8656 13.6513C29.5533 8.24658 33.0597 5.14769 36.4744 5.14769C39.889 5.14769 43.4065 8.24658 46.0832 13.6513C46.7734 15.0575 47.3756 16.5042 47.8859 17.9875C40.3223 16.7318 32.6008 16.7318 25.0371 17.9875C25.5475 16.5042 26.1643 15.0759 26.8546 13.6696L26.8656 13.6513ZM50.7792 36.5038C50.7829 39.8156 50.5112 43.1054 50.0008 46.3769L26.5939 22.9553C29.8654 22.4449 33.1736 22.1916 36.4854 22.1989C40.84 22.1842 45.1836 22.6285 49.4464 23.5281C50.346 27.7909 50.7902 32.0978 50.7756 36.4524M22.1953 36.4634C22.1916 33.1515 22.4486 29.8691 22.9553 26.5939L46.3769 50.0192C43.1054 50.5296 39.7973 50.7829 36.4854 50.7756C32.1308 50.7902 27.7872 50.3423 23.5244 49.4464C22.6248 45.1836 22.1806 40.84 22.1953 36.4854V36.4634ZM13.6549 46.0942C8.25025 43.4065 5.15136 39.9001 5.15136 36.4854C5.15136 33.0708 8.25392 29.5533 13.6549 26.8766C15.0612 26.1864 16.5078 25.5842 17.9912 25.0739C16.7355 32.6375 16.7355 40.359 17.9912 47.9227C16.5078 47.4123 15.0832 46.7991 13.677 46.1052L13.6549 46.0942ZM46.1162 59.3342C43.4285 64.7389 39.9221 67.8378 36.5074 67.8378C33.0928 67.8378 29.5753 64.7353 26.8987 59.3342C26.2084 57.928 25.6062 56.4813 25.0959 54.998C28.8704 55.6295 32.6889 55.9453 36.5185 55.9379C40.3443 55.9453 44.1665 55.6295 47.941 54.998C47.4307 56.4813 46.8212 57.9096 46.1309 59.3159L46.1199 59.3342H46.1162ZM59.3379 46.1089C57.9316 46.7991 56.4924 47.416 55.009 47.9227C55.6442 44.1482 55.9563 40.3297 55.9489 36.5001C55.9563 32.6742 55.6405 28.852 55.009 25.0775C56.4924 25.5842 57.939 26.1864 59.3452 26.8803C64.7499 29.568 67.8488 33.0744 67.8488 36.4891C67.8488 39.9037 64.7499 43.4212 59.3452 46.0978H59.3379V46.1089Z';
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const when = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+  // A small seeded random, so a story's cover is the same on every visit.
+  const rnd = (seed) => { let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; };
+
+  // The motifs, drawn at the cover's right, in lines of the theme's lavender.
+  const L = 'fill="none" stroke="#D7B8FF" stroke-linecap="round" stroke-linejoin="round"';
+  const MOTIF = {
+    shield: () => `<g transform="translate(860 150)" ${L} stroke-width="3"><path d="M120 0l120 52v104c0 92-52 158-120 186C52 314 0 248 0 156V52z" fill="rgba(215,184,255,0.06)"/><path d="M120 44l84 36v74c0 64-36 110-84 130-48-20-84-66-84-130V80z" opacity="0.5"/><path d="M80 168l30 30 56-64" stroke-width="5"/></g>`,
+    cover: () => `<g transform="translate(830 130)" ${L} stroke-width="3"><path d="M150 0l130 56v110c0 100-56 172-130 202C76 338 20 266 20 166V56z" fill="rgba(215,184,255,0.06)"/><circle cx="150" cy="180" r="62" opacity="0.6"/><path d="M150 132v96M102 180h96" stroke-width="5"/></g>`,
+    share: (r) => {
+      const a = 0.45 * Math.PI * 2, x = 1000 + 150 * Math.sin(a), y = 315 - 150 * Math.cos(a);
+      return `<g ${L}><circle cx="1000" cy="315" r="150" stroke-width="3" opacity="0.35"/><path d="M1000 315V165A150 150 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}Z" fill="rgba(215,184,255,0.22)" stroke-width="3"/><circle cx="1000" cy="315" r="96" stroke-width="2" opacity="0.25"/></g>`;
+    },
+    coins: () => [0, 1, 2, 3].map(i => `<g ${L} stroke-width="3" transform="translate(${880 + i * 34} ${360 - i * 52})" opacity="${0.45 + i * 0.18}"><ellipse cx="80" cy="30" rx="80" ry="30" fill="rgba(44,12,85,0.9)"/><path d="M0 30v26c0 17 36 30 80 30s80-13 80-30V30"/></g>`).join('')
+      + `<g ${L} stroke-width="4" transform="translate(1100 140)"><path d="M0 -18v36M-18 0h36"/></g>`,
+    chart: (r) => {
+      const pts = Array.from({ length: 14 }, (_, i) => [760 + i * 30, 470 - (i / 13) ** 1.6 * 280 - r() * 26]);
+      const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(0) + ' ' + p[1].toFixed(0)).join('');
+      return `<g ${L}><path d="${d}L1150 520L760 520Z" fill="rgba(215,184,255,0.12)" stroke="none"/><path d="${d}" stroke-width="4"/><circle cx="${pts[13][0]}" cy="${pts[13][1].toFixed(0)}" r="9" fill="#D7B8FF"/><path d="M760 520H1150" stroke-width="2" opacity="0.3"/></g>`;
+    },
+    pair: () => `<g ${L} stroke-width="3"><rect x="790" y="210" width="170" height="170" rx="36" fill="rgba(215,184,255,0.08)"/><rect x="1000" y="250" width="170" height="170" rx="36" fill="rgba(215,184,255,0.16)"/><path d="M960 295h40" stroke-dasharray="6 8"/><path d="M845 270h60M845 300h40M1055 310h60M1055 340h40" stroke-width="4" opacity="0.7"/></g>`,
+    doc: () => `<g ${L} stroke-width="3"><path d="M860 120h190l70 70v300H860z" fill="rgba(215,184,255,0.07)"/><path d="M1050 120v70h70"/>${[0, 1, 2, 3, 4, 5].map(i => `<path d="M900 ${236 + i * 38}h${i % 3 === 2 ? 110 : 180}" stroke-width="4" opacity="${0.75 - i * 0.08}"/>`).join('')}<circle cx="1110" cy="460" r="46" fill="#2C0C55"/><path d="M1090 460l14 14 28-30" stroke-width="5"/></g>`,
+    orbit: () => `<g ${L} stroke-width="3"><ellipse cx="1000" cy="315" rx="190" ry="72" opacity="0.6"/><ellipse cx="1000" cy="315" rx="190" ry="72" transform="rotate(60 1000 315)" opacity="0.4"/><ellipse cx="1000" cy="315" rx="190" ry="72" transform="rotate(-60 1000 315)" opacity="0.4"/><circle cx="1000" cy="315" r="34" fill="rgba(215,184,255,0.3)"/></g>`,
+  };
+
+  function cover(s) {
+    const r = rnd(s.t), gx = 200 + r() * 800, gy = 80 + r() * 300, id = 'g' + Math.floor(r() * 1e9);
+    const big = s.big.length > 14 ? 76 : 104;
+    return `<svg viewBox="0 0 1200 630" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(s.big)}, ${esc(s.sub)}">`
+      + `<defs><radialGradient id="${id}" cx="${gx / 1200}" cy="${gy / 630}" r="0.75"><stop offset="0" stop-color="#6A1FD6" stop-opacity="0.55"/><stop offset="1" stop-color="#2C0C55" stop-opacity="0"/></radialGradient>`
+      + `<pattern id="${id}d" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.5" fill="#FFFFFF" fill-opacity="0.09"/></pattern></defs>`
+      + `<rect width="1200" height="630" fill="#2C0C55"/><rect width="1200" height="630" fill="url(#${id})"/><rect width="1200" height="630" fill="url(#${id}d)"/>`
+      + `<rect x="24" y="24" width="1152" height="582" rx="18" fill="none" stroke="#4C247F" stroke-width="2"/>`
+      + MOTIF[s.motif](r)
+      + `<g transform="translate(72 70)"><path transform="scale(0.55)" fill="#A66BFF" d="${MARK}"/><text x="54" y="30" fill="#FFFFFF" font-family="Geist, sans-serif" font-size="28" font-weight="600" letter-spacing="-0.6">Fusion</text></g>`
+      + `<text x="72" y="190" fill="#B794E6" font-family="Geist Mono, monospace" font-size="22" letter-spacing="4">${esc(s.cat.toUpperCase())}</text>`
+      + `<text x="70" y="${big > 90 ? 470 : 460}" fill="#FFFFFF" font-family="Geist, sans-serif" font-size="${big}" font-weight="600" letter-spacing="${big > 90 ? -4 : -2.5}">${esc(s.big)}</text>`
+      + `<text x="72" y="530" fill="#D7B8FF" font-family="Geist, sans-serif" font-size="34" font-weight="500" letter-spacing="-0.6">${esc(s.sub)}</text>`
+      + `</svg>`;
+  }
+
+  const meta = (s) => `<span class="nw-meta"><b>${s.cat}</b><i></i>${when(s.d)}<i></i>${s.min} min read</span>`;
+  const arrow = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7h9M7.5 3l4 4-4 4"/></svg>';
+  const link = 'https://www.ipor.io/news';
+
+  // Filters: All, then each category with its count.
+  const cats = ['All'].concat([...new Set(S.map(s => s.cat))]);
+  let pick = 'All';
+  $('nwFilters').innerHTML = cats.map(c => `<button type="button" data-c="${c}" aria-pressed="${c === pick}">${c}<b>${c === 'All' ? S.length : S.filter(s => s.cat === c).length}</b></button>`).join('');
+  $('nwFilters').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    pick = b.dataset.c;
+    [...$('nwFilters').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  });
+
+  function draw() {
+    const list = S.filter(s => pick === 'All' || s.cat === pick);
+    const [f, ...rest] = list;
+    $('nwFeat').innerHTML = f ? `<a href="${link}" target="_blank" rel="noopener"><span class="nw-cover">${cover(f)}</span>`
+      + `<div><span class="nw-tag">Latest</span>${meta(f)}<h3>${esc(f.t)}</h3><p>${esc(f.x)}</p><span class="nw-more">Read the story${arrow}</span></div></a>` : '';
+    // The grid's columns now (3, 2 or 1), so a lone last story can take its row.
+    const cols = getComputedStyle($('nwGrid')).gridTemplateColumns.split(' ').length;
+    $('nwGrid').innerHTML = rest.map((s, i) => `<article class="nw-card${cols > 1 && rest.length % cols === 1 && i === rest.length - 1 ? ' wide' : ''}"><a href="${link}" target="_blank" rel="noopener"><span class="nw-cover">${cover(s)}</span>`
+      + `${meta(s).replace('nw-meta', 'nw-meta')}<h3>${esc(s.t)}</h3><p>${esc(s.x)}</p></a></article>`).join('')
+      || (f ? '' : '<p class="nw-empty">No stories here yet.</p>');
+    $('nwGrid').style.marginTop = rest.length ? '' : '0';
+  }
+  draw();
+  let w = innerWidth;
+  addEventListener('resize', () => { if (innerWidth !== w) { w = innerWidth; draw(); } });
+})();
+</script>
+</body>
+</html>
