@@ -60,10 +60,10 @@
   (h1 || main.firstChild) && (h1 ? h1.insertAdjacentHTML('afterend', TOP) : main.insertAdjacentHTML('afterbegin', TOP));
   main.insertAdjacentHTML('beforeend', FOOT);
   // The bar's address: the page's own path on the live site (the demo's
-  // /demo prefix dropped; the homepage is /), with its hash, kept current as
+  // /demo prefix dropped; the homepage is the bare domain), with its hash, kept current as
   // pages change the hash or replace their history entry.
   const addr = () => {
-    const path = location.pathname.replace(/^\/demo/, '').replace(/^\/homepage\/?$/, '/').replace(/(.)\/$/, '$1') || '/';
+    const path = location.pathname.replace(/^\/demo/, '').replace(/^\/homepage\/?$/, '').replace(/\/$/, '');
     document.getElementById('hpUrlPath').textContent = path + location.hash;
   };
   ['pushState', 'replaceState'].forEach(k => { const f = history[k]; history[k] = function () { const r = f.apply(this, arguments); addr(); return r; }; });
