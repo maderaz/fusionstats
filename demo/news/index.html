@@ -32,9 +32,6 @@
     /* News: a short band on the purple ground, the latest story large, then
        the rest in a grid. Every cover is drawn here, from the story's own
        words and a motif that fits it, on the hero's purple. */
-    .nw-head { padding-top: 72px; padding-bottom: 64px; }
-    .nw-head .hp-h { font-size: clamp(34px, 5cqi, 60px); }
-    .nw-head .hp-lead { max-width: 640px; }
     .nw-body { padding-top: 48px; padding-bottom: 112px; }
 
     .nw-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 36px; }
@@ -88,7 +85,6 @@
       .nw-feat a { grid-template-columns: minmax(0, 1fr); gap: 22px; }
     }
     @container (max-width: 640px) {
-      .nw-head { padding-top: 48px; padding-bottom: 44px; }
       .nw-body { padding-top: 32px; }
       .nw-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; margin-top: 48px; }
       .nw-card.wide a { display: block; }
@@ -102,7 +98,7 @@
   <h1 class="hp-sr">News</h1>
 
   <section class="hp-purple">
-    <div class="hp-wrap nw-head">
+    <div class="hp-wrap hp-band">
       <span class="hp-k">Newsroom</span>
       <h2 class="hp-h">News from the<br><em>Fusion ecosystem.</em></h2>
       <p class="hp-lead">Partnerships, integrations and milestones from the institutions, curators and custodians building institutional-grade onchain yield on Fusion.</p>

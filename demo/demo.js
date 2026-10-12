@@ -10,9 +10,9 @@
   if (!main) return;
   const TOP = `
   <div class="hp-bar">
-    <span class="hp-bar-tag">Demo</span>
-    <span class="hp-bar-note"><span class="hp-w">A concept for Fusion's new homepage. Live figures come from Fusion Stats.</span><span class="hp-n">Homepage concept</span><span class="hp-x">Concept</span></span>
-    <a class="hp-bar-back" href="/"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 8h-9M7.5 4l-4 4 4 4"/></svg><span class="hp-w">Back to Dashboard</span><span class="hp-n">Dashboard</span></a>
+    <span class="hp-lights" aria-hidden="true"><i></i><i></i><i></i></span>
+    <div class="hp-url" aria-label="Page address"><svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.5" y="5.25" width="7" height="5" rx="1.2"/><path d="M4 5.25V4a2 2 0 0 1 4 0v1.25"/></svg><span class="hp-url-t"><span class="hp-url-host">fusion.app</span><span class="hp-url-path" id="hpUrlPath">/</span></span></div>
+    <span class="hp-bar-end"><span class="hp-bar-tag">Demo</span><a class="hp-bar-back" href="/" aria-label="Back to the dashboard"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.5 8h-9M7.5 4l-4 4 4 4"/></svg><span class="hp-w">Dashboard</span></a></span>
   </div>
 
   <!-- Top menu -->
@@ -59,10 +59,16 @@
   const h1 = main.querySelector('h1');
   (h1 || main.firstChild) && (h1 ? h1.insertAdjacentHTML('afterend', TOP) : main.insertAdjacentHTML('afterbegin', TOP));
   main.insertAdjacentHTML('beforeend', FOOT);
-  // A page may say what it is in the demo bar: data-note (full) and
-  // data-note-short (phones).
-  if (main.dataset.note) main.querySelector('.hp-bar-note .hp-w').textContent = main.dataset.note;
-  if (main.dataset.noteShort) main.querySelector('.hp-bar-note .hp-n').textContent = main.dataset.noteShort;
+  // The bar's address: the page's own path on the live site (the demo's
+  // /demo prefix dropped; the homepage is /), with its hash, kept current as
+  // pages change the hash or replace their history entry.
+  const addr = () => {
+    const path = location.pathname.replace(/^\/demo/, '').replace(/^\/homepage\/?$/, '/').replace(/(.)\/$/, '$1') || '/';
+    document.getElementById('hpUrlPath').textContent = path + location.hash;
+  };
+  ['pushState', 'replaceState'].forEach(k => { const f = history[k]; history[k] = function () { const r = f.apply(this, arguments); addr(); return r; }; });
+  addEventListener('hashchange', addr); addEventListener('popstate', addr);
+  addr();
 
   const $ = (id) => document.getElementById(id);
   const nav = $('hpNav');
