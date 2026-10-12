@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-// og-cards.mjs — a share card for every page in the side menu: the image a
-// link to the page shows on X, Slack, LinkedIn and the rest (og:image).
+// og-cards.mjs — a share card for every page in the side menu, and for the
+// demo pages outside it (tools/pages.js PAGES and EXTRA): the image a link to
+// the page shows on X, Slack, LinkedIn and the rest (og:image).
 //
-// Each card is 1200 × 630: on the left the site's mark, a live badge with
-// the day, the page's name and its line (tools/pages.js), and its address;
-// on the right the page itself on a laptop's screen, with the latest data,
-// in a browser window that runs off the card's foot. Only the figures and
-// the charts: the page's own title, its tips (ⓘ), notes, methodology and
-// export buttons are left out.
+// Each card is 1200 × 630, in the demo hero's look: the flat purple ground
+// and its dots; at the left the mark, a live-data badge (or, for a demo page,
+// a label), the title in white then lavender, the page's line and its
+// address; at the right the page itself in its purple theme, in a browser
+// window that runs off the card's foot. Only the figures and the charts: the
+// page's own title, tips (ⓘ), notes, methodology and export buttons are left
+// out, as is a demo page's own browser bar.
 //
 // No card shows an error. A page that shows one (a source that didn't
 // answer), or is still loading, keeps its card from the day before (--prev);
@@ -27,7 +29,7 @@ import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { PAGES, SITE } = require('./pages.js');
+const { PAGES, EXTRA, SITE } = require('./pages.js');
 const arg = (name, d) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : d; };
 const OUT = path.resolve(arg('out', path.join(ROOT, 'og-out')));
 const PREV = arg('prev', '') ? path.resolve(arg('prev', '')) : null;
@@ -81,6 +83,7 @@ const SHOT_W = 1100, SHOT_H = 900;
 const LEAN = `
   #fnav-root, .ui-masthead, header.masthead, .ui-tip, .info-tip, .ui-tip-bubble, details.ui-more, .ui-more,
   .chart-note, .ui-export, .xport, .ui-head .ui-btn, .xp-back, .methodology { display: none !important; }
+  .hp-bar { display: none !important; } .hp { --bar-h: 0px !important; }
   html, body { padding: 0 !important; }
   .ui-section:first-of-type, .ui-figures:first-child { border-top: none !important; }`;
 // Whether the page shows an error or is still loading, read as a visitor would.
@@ -103,7 +106,7 @@ function pageState() {
 }
 async function screenshot(p) {
   const ctx = await browser.newContext({ viewport: { width: SHOT_W, height: 1000 }, deviceScaleFactor: 2 });
-  await ctx.addInitScript(() => { try { localStorage.setItem('fusionstats_theme', 'light'); } catch {} });
+  await ctx.addInitScript(() => { try { localStorage.setItem('fusionstats_theme', 'purple'); } catch {} });
   await ctx.route('**/*', (r) => {
     const u = new URL(r.request().url());
     if (u.hostname === 'cdn.plot.ly' && PLOTLY) return r.fulfill({ path: PLOTLY, contentType: 'application/javascript' });
@@ -134,59 +137,74 @@ async function screenshot(p) {
 }
 
 // ---- The card ----------------------------------------------------------------
+// The hero's look: the flat purple ground and its dots, the mark, a line above
+// the title (live data on Fusion Stats' pages, a label on the demo site's), the
+// title in white then lavender, the line under it, and the page's address; at
+// the right the page itself in a browser window running off the card's foot.
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const host = SITE.replace(/^https?:\/\//, '');
+// Where the card says the page lives: Fusion Stats' own address, or for a
+// demo page the Fusion site it shows (fusion.app, as its browser bar does).
+const where = (p) => (p.demo
+  ? ['fusion.app', p.path.replace(/^\/demo/, '').replace(/^\/homepage$/, '')]
+  : [host, p.path === '/' ? '' : p.path]);
 function cardHtml(p, shot, day) {
-  const where = host + (p.path === '/' ? '' : p.path);
+  const [h, path_] = where(p);
+  const [l1, l2] = (p.head || p.name).split('|');
+  const line = p.demo
+    ? `<span class="k">${esc(p.kicker || 'Fusion')}</span>`
+    : `<span class="badge"><i></i>Live data · ${esc(day)}</span>`;
   return `<!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&display=swap">
 <style>
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 1200px; height: 630px; }
-  body { position: relative; overflow: hidden; background: #FFFFFF; color: #0B0B0F; font-family: Geist, -apple-system, 'Segoe UI', sans-serif; }
-  .glow { position: absolute; right: -260px; top: -300px; width: 980px; height: 980px; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(132, 41, 255, 0.14), rgba(132, 41, 255, 0)); }
-  .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(25, 23, 23, 0.15) 1.1px, transparent 1.3px); background-size: 18px 18px;
-    -webkit-mask-image: linear-gradient(90deg, transparent 6%, #000 55%); mask-image: linear-gradient(90deg, transparent 6%, #000 55%); }
-  .left { position: absolute; left: 64px; top: 58px; bottom: 56px; width: 444px; display: flex; flex-direction: column; }
+  body { position: relative; overflow: hidden; color: #FFFFFF; font-family: Geist, -apple-system, 'Segoe UI', sans-serif;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.4px) 0 0 / 20px 20px, #2C0C55; }
+  .left { position: absolute; left: 64px; top: 58px; bottom: 56px; width: 452px; display: flex; flex-direction: column; }
   .brand { display: flex; align-items: center; gap: 11px; font-size: 23px; font-weight: 600; letter-spacing: -0.03em; }
   .brand svg { width: 31px; height: 31px; }
-  .badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 9px; margin-top: auto; height: 36px; padding: 0 15px 0 13px;
-    border-radius: 999px; background: rgba(22, 163, 74, 0.10); color: #15803D; font-size: 16.5px; font-weight: 500; white-space: nowrap; }
-  .badge i { width: 9px; height: 9px; border-radius: 50%; background: #16A34A; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2); }
-  h1 { margin-top: 20px; font-size: 64px; line-height: 1.04; font-weight: 600; letter-spacing: -0.04em; white-space: nowrap; }
-  p { margin-top: 16px; font-size: 21px; line-height: 1.42; color: #5E5E6B; }
-  .url { margin-top: 22px; font-size: 17px; font-weight: 500; color: #9A9AA6; }
-  .url b { color: #8429FF; font-weight: 500; }
-  /* A laptop's browser window, running off the card's foot. */
-  .win { position: absolute; left: 548px; top: 64px; width: 600px; height: 640px; overflow: hidden;
-    border-radius: 16px; border: 1px solid #E3E3EA; background: #FFFFFF;
-    box-shadow: 0 34px 80px rgba(30, 12, 60, 0.17), 0 4px 14px rgba(30, 12, 60, 0.06); }
-  .bar { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-bottom: 1px solid #EEEEF2; background: #FAFAFC; }
-  .bar i { width: 11px; height: 11px; border-radius: 50%; background: #E2E2E9; }
-  .bar span { margin-left: 18px; height: 20px; padding: 0 12px; border-radius: 6px; background: #F0F0F4; font-size: 12px; line-height: 20px; color: #8A8A96; }
+  .badge { align-self: flex-start; display: inline-flex; align-items: center; gap: 9px; margin-top: auto; height: 34px; padding: 0 14px 0 12px;
+    border-radius: 999px; background: rgba(94, 232, 154, 0.14); color: #7BF0AE; font-size: 16px; font-weight: 500; white-space: nowrap; }
+  .badge i { width: 8px; height: 8px; border-radius: 50%; background: #5EE89A; box-shadow: 0 0 0 4px rgba(94, 232, 154, 0.2); }
+  .k { margin-top: auto; font: 500 15px/1 'Geist Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #B794E6; white-space: nowrap; }
+  h1 { margin-top: 20px; font-size: 60px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em; }
+  h1 span { display: block; white-space: nowrap; }
+  h1 span + span { color: #D7B8FF; }
+  p { margin-top: 18px; font-size: 20px; line-height: 1.45; color: #E2CDFE; }
+  .url { margin-top: 22px; font-size: 17px; font-weight: 500; color: #B794E6; }
+  .url b { color: #FFFFFF; font-weight: 500; }
+  /* A browser window, dark like the ground, running off the card's foot. */
+  .win { position: absolute; left: 556px; top: 64px; width: 600px; height: 640px; overflow: hidden;
+    border-radius: 16px; border: 1px solid #5D3097; background: #2C0C55;
+    box-shadow: 0 34px 80px rgba(8, 0, 24, 0.55), 0 4px 14px rgba(8, 0, 24, 0.3); }
+  .bar { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-bottom: 1px solid #4C247F; background: #1E0842; }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: #FF5F57; }
+  .bar i:nth-child(2) { background: #FEBC2E; } .bar i:nth-child(3) { background: #28C840; }
+  .bar span { margin-left: 18px; height: 20px; padding: 0 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); font-size: 12px; line-height: 20px; color: #B794E6; }
   .win img { display: block; width: 100%; }
-  .win .none { height: 100%; display: grid; place-items: center; background: linear-gradient(160deg, #F7F2FF, #FFFFFF 60%); }
+  .win .none { height: 100%; display: grid; place-items: center; }
   .win .none svg { width: 150px; height: 150px; opacity: 0.9; margin-top: -90px; }
 </style></head><body>
-  <div class="glow"></div><div class="dots"></div>
   <div class="left">
-    <div class="brand">${MARK}<span>Ecosystem</span></div>
-    <span class="badge"><i></i>Live data · ${esc(day)}</span>
-    <h1 id="t">${esc(p.name)}</h1>
+    <div class="brand">${MARK}<span>${p.demo ? 'Fusion' : 'Ecosystem'}</span></div>
+    ${line}
+    <h1 id="t"><span>${esc(l1)}</span>${l2 ? `<span>${esc(l2)}</span>` : ''}</h1>
     <p id="d">${esc(p.description)}</p>
-    <div class="url">${esc(host)}<b>${esc(p.path === '/' ? '' : p.path)}</b></div>
+    <div class="url">${esc(h)}<b>${esc(path_)}</b></div>
   </div>
-  <div class="win"><div class="bar"><i></i><i></i><i></i><span>${esc(where)}</span></div>${shot
+  <div class="win"><div class="bar"><i></i><i></i><i></i><span>${esc(h + path_)}</span></div>${shot
     ? `<img alt="" src="data:image/png;base64,${shot.toString('base64')}">`
     : `<div class="none">${MARK}</div>`}</div>
   <script>
-    // The name keeps one line: a long one steps down a size at a time. The
-    // line under it is never cut: past four lines it steps down too.
-    const t = document.getElementById('t'); let s = 64;
-    while (t.scrollWidth > t.parentElement.clientWidth && s > 44) { s -= 2; t.style.fontSize = s + 'px'; }
-    const d = document.getElementById('d'); let z = 21;
-    while (d.getBoundingClientRect().height > 21 * 1.42 * 4 + 1 && z > 16) { z -= 1; d.style.fontSize = z + 'px'; }
+    // Each line of the title keeps one line: a long one steps the size down.
+    // The line under it is never cut: past four lines it steps down too.
+    const t = document.getElementById('t'); let s = 60;
+    const wide = () => Math.max(...[...t.children].map(c => c.scrollWidth));
+    while (wide() > t.parentElement.clientWidth && s > 34) { s -= 2; t.style.fontSize = s + 'px'; }
+    const d = document.getElementById('d'); let z = 20;
+    const lines = t.children.length > 1 ? 3 : 4;
+    while (d.getBoundingClientRect().height > z * 1.45 * lines + 1 && z > 15) { z -= 1; d.style.fontSize = z + 'px'; }
   </script>
 </body></html>`;
 }
@@ -205,7 +223,7 @@ async function draw(p, shot) {
   return file;
 }
 let made = 0, kept = 0, plain = 0;
-for (const p of PAGES) {
+for (const p of PAGES.concat(EXTRA)) {
   if (ONLY && !ONLY.includes(p.card)) continue;
   const t0 = Date.now();
   let shot = null;

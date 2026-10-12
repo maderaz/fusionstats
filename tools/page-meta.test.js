@@ -8,7 +8,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const { PAGES, INDEXED, title, url, cardUrl } = require('./pages.js');
+const { PAGES, EXTRA, INDEXED, title, url, cardUrl } = require('./pages.js');
 const { rewrite, heading, block, BEGIN, END } = require('./page-meta.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -81,9 +81,10 @@ test('every page has the site\'s favicon, once, and nothing of an old icon tag l
   assert.deepStrictEqual(off, []);
 });
 test('descriptions fit a search result (at most 170 characters), and cards have distinct names', () => {
-  const long = PAGES.filter(p => p.description.length > 170).map(p => p.file + ' ' + p.description.length);
+  const all = PAGES.concat(EXTRA);
+  const long = all.filter(p => p.description.length > 170).map(p => p.file + ' ' + p.description.length);
   assert.deepStrictEqual(long, []);
-  assert.strictEqual(new Set(PAGES.map(p => p.card)).size, PAGES.length);
+  assert.strictEqual(new Set(all.map(p => p.card)).size, all.length);
 });
 test('rewrite: a page without a block gets one in its title\'s place, and loses its old description', () => {
   const html = '<head>\n  <meta charset="UTF-8">\n  <title>Old</title>\n  <meta name="description" content="old">\n  <link rel="icon">\n</head>';

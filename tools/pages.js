@@ -41,14 +41,41 @@ const PAGES = [
     description: 'Each Fusion vault\'s share price over a window, and how the rate it earned compares with the rate the IPOR app shows, the widest gaps first.' },
   { path: '/spark', file: 'spark/index.html', name: 'Spark', card: 'spark',
     description: 'The IPOR stETH vault\'s looping position on SparkLend\'s wstETH market, read live: supplied, borrowed, health factor, leverage, and its rank among the market\'s suppliers.' },
-  { path: '/demo/homepage', file: 'demo/homepage/index.html', name: 'Homepage', card: 'demo-homepage',
-    description: 'A concept for a new Fusion homepage, in purple and white, drawn with the live figures: TVL, vaults and networks.' },
-  { path: '/demo/fuses', file: 'demo/fuses/index.html', name: 'Fuses', card: 'demo-fuses',
-    description: 'A concept for Fusion\'s fuse library: every protocol\'s fuses by function or name, with Aave V4 drawn in full, from substrates to risks.' },
-  { path: '/demo/news', file: 'demo/news/index.html', name: 'News', card: 'demo-news',
-    description: 'A concept for Fusion\'s newsroom: partnerships, integrations and milestones, each with a cover drawn in the site\'s purple.' },
-  { path: '/demo/contact', file: 'demo/contact/index.html', name: 'Talk to Us', card: 'demo-contact',
-    description: 'A concept for Fusion\'s contact page: a lean form on the purple ground for launching a vault, allocating or integrating.' },
+  { path: '/demo/homepage', file: 'demo/homepage/index.html', name: 'Homepage', card: 'demo-homepage', demo: true,
+    title: 'Fusion • Vault infrastructure for institutional-grade yield', kicker: 'Onchain vault infrastructure', head: 'Vaults built for|institutional-grade yield.',
+    description: 'Deploy, curate and allocate to onchain vaults: transparent by design, live on six networks, and used by curators, custodians and ETP issuers.' },
+  { path: '/demo/fuses', file: 'demo/fuses/index.html', name: 'Fuses', card: 'demo-fuses', demo: true,
+    title: 'Fuse Library • Fusion', kicker: 'Fuse library', head: 'Every market,|one fuse away.',
+    description: 'Every protocol a Fusion vault can act on, by function or by name, with Aave V4 in full: Hub and Spoke, permissions, checks, a typical flow and the risks.' },
+  { path: '/demo/news', file: 'demo/news/index.html', name: 'News', card: 'demo-news', demo: true,
+    title: 'Newsroom • Fusion', kicker: 'Newsroom', head: 'News from the|Fusion ecosystem.',
+    description: 'Partnerships, integrations and milestones from the institutions, curators and custodians building institutional-grade onchain yield on Fusion.' },
+  { path: '/demo/contact', file: 'demo/contact/index.html', name: 'Talk to Us', card: 'demo-contact', demo: true,
+    title: 'Talk to Us • Fusion', kicker: 'Talk to us', head: 'Let\'s build|your vault.',
+    description: 'Launching a vault, allocating capital or integrating Fusion: tell us what you are building, and the people who build Fusion will get back to you.' },
+];
+
+// Demo pages outside the side menu: reached from the demo site's own menus,
+// with a head and a share card like the rest (no <h1> check: not in nav.js).
+const EXTRA = [
+  { path: '/demo/factory', file: 'demo/factory/index.html', name: 'Vault Factory', card: 'demo-factory', demo: true,
+    title: 'Vault Factory • Fusion', kicker: 'Vault Factory', head: 'Deploy a vault.|No permission needed.',
+    description: 'Create a Plasma Vault and the managers around it in one transaction. Anyone can deploy one; you set the rules it runs by, onchain for all to read.' },
+  { path: '/demo/alpha', file: 'demo/alpha/index.html', name: 'Alpha', card: 'demo-alpha', demo: true,
+    title: 'Alpha • Fusion', kicker: 'Alpha', head: 'Strategy off-chain.|Bounds onchain.',
+    description: 'An Alpha runs a vault\'s strategy: it decides off-chain and acts onchain through fuses, only ever inside the markets the vault has granted.' },
+  { path: '/demo/institutions', file: 'demo/institutions/index.html', name: 'Institutions', card: 'demo-institutions', demo: true,
+    title: 'Fusion for Institutions • MiCA-compliant, with Tesseract', kicker: 'For institutions', head: 'Sovereign vaults|for institutions.',
+    description: 'Onchain yield with the custody, controls and reporting institutions need, and a MiCA-compliant solution with our partner Tesseract.' },
+  { path: '/demo/exchanges', file: 'demo/exchanges/index.html', name: 'Exchanges', card: 'demo-exchanges', demo: true,
+    title: 'Fusion for Exchanges', kicker: 'For exchanges', head: 'Onchain yield,|inside your product.',
+    description: 'Offer curated vault yield to your users through one standard, ERC-4626, without building the strategies or the contracts behind them.' },
+  { path: '/demo/curators', file: 'demo/curators/index.html', name: 'Curators', card: 'demo-curators', demo: true,
+    title: 'Fusion for Curators', kicker: 'For curators', head: 'Launch vaults.|Skip the Solidity.',
+    description: 'Pick fuses, set the parameters and run the strategy with an Alpha. Launch vaults without Solidity and earn fees as an Atomist.' },
+  { path: '/demo/news/cbeth-on-base', file: 'demo/news/cbeth-on-base/index.html', name: 'Fusion Vaults Now Account for ~45% of cbETH on Base', card: 'demo-news-cbeth', demo: true,
+    title: 'Fusion Vaults Now Account for ~45% of cbETH on Base • Fusion', kicker: 'Ecosystem · Jul 15, 2026', head: 'Fusion vaults hold|~45% of cbETH on Base.',
+    description: 'As of 15 July 2026, vaults built on Fusion hold about 30,500 cbETH on Base: roughly 45% of the network\'s cbETH and 19.3% of the circulating supply.' },
 ];
 
 // Whether search engines may list the site. Off for now: every page says
@@ -56,8 +83,11 @@ const PAGES = [
 // their own). Turn it on and run node tools/page-meta.js to be listed.
 const INDEXED = false;
 
-const title = (p) => p.name + ' • ' + SITE_NAME;
+// A demo page is the Fusion site's, not Fusion Stats': its own brand, and a
+// title of its own where the menu's name would not say enough.
+const siteName = (p) => (p.demo ? 'Fusion' : SITE_NAME);
+const title = (p) => p.title || p.name + ' • ' + siteName(p);
 const url = (p) => SITE + p.path;
 const cardUrl = (p) => (CARDS ? CARDS + p.card + '.png' : null);
 
-module.exports = { SITE, SITE_NAME, CARDS, INDEXED, PAGES, title, url, cardUrl };
+module.exports = { SITE, SITE_NAME, CARDS, INDEXED, PAGES, EXTRA, title, siteName, url, cardUrl };
