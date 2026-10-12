@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/data-source.js"></script>
+  <script>window.FusionData && FusionData.preload(['ipor-vaults.json']);</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Fusion Vaults Now Account for ~45% of cbETH on Base • Fusion Ecosystem</title>
+  <meta name="description" content="As of 15 July 2026, vaults built on Fusion hold around 30,500 cbETH on Base: roughly 45% of the network's cbETH and 19.3% of Coinbase's reported circulating supply.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/demo/demo.css">
+  <style>
+    /* An article: the band with its title and byline, then the story in a
+       reading column, its contents at the right. */
+    .ar-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 26px; font: 500 12px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--g-text-3); text-decoration: none; white-space: nowrap; }
+    .ar-back:hover { color: #FFFFFF; }
+    .ar-back svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .ar-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 20px; font-size: 13.5px; color: var(--g-text-3); white-space: nowrap; }
+    .ar-meta b { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); font-weight: 500; color: #FFFFFF; }
+    .ar-meta i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+    .ar-band .hp-h { max-width: 900px; font-size: clamp(32px, 4.6cqi, 56px); }
+    .ar-by { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--g-line); }
+    .ar-who { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+    .ar-who span.av { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #FFFFFF; }
+    .ar-who span.av svg { width: 24px; height: 24px; }
+    .ar-who b { display: block; font-size: 15px; font-weight: 600; }
+    .ar-who small { display: block; margin-top: 3px; font-size: 13px; color: var(--g-text-3); }
+    .ar-share { display: flex; align-items: center; gap: 8px; }
+    .ar-share > span { margin-right: 4px; font-size: 13px; color: var(--g-text-3); white-space: nowrap; }
+    .ar-share a, .ar-share button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--g-line-2); border-radius: 10px; background: transparent; color: var(--g-text-2); cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+    .ar-share a:hover, .ar-share button:hover { background: var(--g-2); color: #FFFFFF; }
+    .ar-share svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .ar-share .f { fill: currentColor; stroke: none; }
+    .ar-share button.done { border-color: #5EE89A; color: #5EE89A; }
+
+    .ar-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 72px; align-items: start; padding-top: 56px; padding-bottom: 112px; }
+    .ar-col { min-width: 0; max-width: 740px; }
+    .ar-col > .nw-cover { margin-bottom: 44px; }
+    .ar-col p, .ar-col li { font-size: 17px; line-height: 1.75; color: var(--ink-2); }
+    .ar-col p { margin: 0 0 20px; }
+    .ar-col p.lede { font-size: 19.5px; line-height: 1.7; color: var(--ink); }
+    .ar-col a { color: var(--p500); text-decoration: underline; text-decoration-color: rgba(132, 41, 255, 0.35); text-underline-offset: 3px; }
+    .ar-col a:hover { text-decoration-color: var(--p500); }
+    .ar-col h2 { margin: 64px 0 18px; font-size: 27px; line-height: 1.2; font-weight: 600; letter-spacing: -0.03em; color: var(--ink); text-transform: none; scroll-margin-top: calc(var(--bar-h) + 92px); }
+    .ar-col ul, .ar-col ol { margin: 0 0 24px; padding: 0 0 0 22px; }
+    .ar-col li { margin-bottom: 10px; padding-left: 4px; }
+    .ar-col li::marker { color: var(--p500); }
+    .ar-col b { color: var(--ink); font-weight: 600; }
+
+    /* Four figures from the story, set out large. */
+    .ar-figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 36px 0 8px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+    .ar-figs div { padding: 22px 18px 22px 0; }
+    .ar-figs div + div { padding-left: 18px; border-left: 1px solid var(--hair); }
+    .ar-figs b { display: block; font-size: clamp(22px, 2.8cqi, 32px); font-weight: 600; letter-spacing: -0.04em; color: var(--p500); white-space: nowrap; }
+    .ar-figs span { display: block; margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--ink-3); }
+
+    .ar-box { margin: 36px 0; padding: 28px 30px 10px; border: 1px solid var(--hair); border-radius: 16px; background: var(--p50); }
+    .ar-box .hp-k { margin-bottom: 16px; }
+    .ar-box li { font-size: 16px; }
+
+    /* The loop, step by step. */
+    .ar-loop { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 28px 0 12px; }
+    .ar-loop div { position: relative; padding: 16px 14px; border: 1px solid var(--hair); border-radius: 12px; background: #FFFFFF; }
+    .ar-loop span { display: block; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; color: var(--p500); }
+    .ar-loop b { display: block; margin-top: 10px; font-size: 15px; line-height: 1.3; }
+    .ar-loop-note { display: flex; align-items: center; gap: 8px; margin: 0 0 28px; font-size: 14px; color: var(--ink-3); }
+    .ar-loop-note svg { width: 16px; height: 16px; fill: none; stroke: var(--p500); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* The strategies, as cards out to the app and the dashboard. */
+    .ar-strats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 8px 0 24px; }
+    .ar-strat { padding: 20px; border: 1px solid var(--hair); border-radius: 14px; background: #FFFFFF; }
+    .ar-strat-top { display: flex; align-items: center; gap: 12px; }
+    .ar-strat-top img { width: 36px; height: 36px; border-radius: 50%; }
+    .ar-strat-top b { display: block; font-size: 15.5px; white-space: nowrap; }
+    .ar-strat-top small { display: block; margin-top: 2px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+    .ar-strat-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; font-size: 14px; font-weight: 600; }
+    .ar-col .ar-strat-links a { text-decoration: none; white-space: nowrap; }
+
+    /* The dashboard figure: the strategy, its figures read live. */
+    .ar-fig { margin: 28px 0 32px; }
+    .ar-dash { padding: 24px; border-radius: 16px; background: radial-gradient(circle, var(--g-dots) 1px, transparent 1.4px) 0 0 / 20px 20px, var(--g); color: #FFFFFF; }
+    .ar-dash-top { display: flex; align-items: center; gap: 12px; }
+    .ar-dash-top img { width: 40px; height: 40px; border-radius: 50%; background: #FFFFFF; }
+    .ar-col .ar-dash b { color: #FFFFFF; }
+    .ar-dash-top b { display: block; font-size: 17px; font-weight: 600; white-space: nowrap; }
+    .ar-dash-top small { display: block; margin-top: 3px; font-size: 13px; color: var(--g-text-3); white-space: nowrap; }
+    .ar-dash-top em { margin-left: auto; padding: 5px 10px; border-radius: 999px; background: rgba(94, 232, 154, 0.14); font: 600 11px/1 var(--sans); font-style: normal; color: #7BF0AE; white-space: nowrap; }
+    .ar-dash-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+    .ar-dash-figs div { padding: 14px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.07); }
+    .ar-dash-figs b { display: block; font-size: 24px; font-weight: 600; letter-spacing: -0.03em; white-space: nowrap; }
+    .ar-dash-figs span { display: block; margin-top: 4px; font-size: 12.5px; color: var(--g-text-3); white-space: nowrap; }
+    .ar-col .ar-dash a { color: var(--g-accent); text-decoration: none; font-size: 14px; font-weight: 600; }
+    .ar-dash-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin-top: 18px; }
+    .ar-fig figcaption { margin-top: 12px; font-size: 13.5px; color: var(--ink-3); text-align: center; }
+
+    /* Where the cbETH sits: a split bar and its rows. */
+    .ar-split { margin: 20px 0 14px; }
+    .ar-bar { display: flex; height: 14px; overflow: hidden; border-radius: 999px; background: var(--p100); }
+    .ar-bar i { display: block; height: 100%; }
+    .ar-rows { margin-top: 14px; }
+    .ar-rows div { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--hair); font-size: 15px; }
+    .ar-rows i { width: 10px; height: 10px; border-radius: 3px; }
+    .ar-rows b { white-space: nowrap; }
+    .ar-rows span { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .ar-rows span.v { min-width: 70px; text-align: right; color: var(--ink); font-weight: 600; }
+    .ar-note { font-size: 13.5px !important; color: var(--ink-3) !important; }
+
+    .ar-call { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 24px 0 8px; }
+    .ar-call div { padding: 22px; border-radius: 14px; background: var(--p50); border: 1px solid var(--hair); }
+    .ar-call b { display: block; font-size: 34px; font-weight: 600; letter-spacing: -0.045em; color: var(--p500); }
+    .ar-call span { display: block; margin-top: 6px; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+
+    .ar-refs li { font-size: 15px; }
+    .ar-about { margin-top: 56px; padding: 28px 30px; border-radius: 16px; background: radial-gradient(circle, var(--g-dots) 1px, transparent 1.4px) 0 0 / 20px 20px, var(--g); }
+    .ar-about .hp-k { margin-bottom: 12px; color: var(--g-text-3); }
+    .ar-col .ar-about p { margin: 0; font-size: 15.5px; color: var(--g-text-2); }
+
+    /* More from the ecosystem. */
+    .ar-more { padding-top: 96px; padding-bottom: 112px; border-top: 1px solid var(--hair); }
+    .ar-more-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 32px; }
+    .ar-more-head h2 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; text-transform: none; }
+    .ar-more-head a { font-size: 14.5px; font-weight: 600; color: var(--p500); text-decoration: none; white-space: nowrap; }
+    .ar-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+    .ar-more-grid a { text-decoration: none; }
+    .ar-more-grid .m { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--ink-3); white-space: nowrap; }
+    .ar-more-grid .m b { font-weight: 600; color: var(--p500); }
+    .ar-more-grid .m i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+    .ar-more-grid h3 { margin: 10px 0 0; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.02em; text-transform: none; color: var(--ink); }
+    .ar-more-grid a:hover h3 { color: var(--p500); }
+    .ar-more-grid p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--ink-2); }
+
+    /* On this page. */
+    .ar-toc { position: sticky; top: calc(var(--bar-h) + 92px); }
+    .ar-toc p { margin: 0 0 10px; font-size: 12.5px; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
+    .ar-toc ol { margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--hair); }
+    .ar-toc a { display: block; margin-left: -1px; padding: 6px 0 6px 14px; border-left: 2px solid transparent; font-size: 13.5px; line-height: 1.35; color: var(--ink-3); text-decoration: none; }
+    .ar-toc a:hover { color: var(--ink); }
+    .ar-toc a.on { border-left-color: var(--p500); color: var(--ink); font-weight: 500; }
+
+    @container (max-width: 1080px) {
+      .ar-body { grid-template-columns: minmax(0, 1fr); }
+      .ar-toc { display: none; }
+      .ar-col { margin: 0 auto; }
+    }
+    @container (max-width: 760px) {
+      .ar-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ar-figs div:nth-child(3) { padding-left: 0; border-left: none; }
+      .ar-figs div:nth-child(n+3) { border-top: 1px solid var(--hair); }
+      .ar-loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ar-strats, .ar-call, .ar-more-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @container (max-width: 520px) {
+      .ar-body { padding-top: 36px; }
+      .ar-col p, .ar-col li { font-size: 16px; }
+      .ar-col p.lede { font-size: 17.5px; }
+      .ar-col h2 { margin-top: 48px; font-size: 23px; }
+      .ar-box { padding: 22px 20px 6px; }
+      .ar-dash { padding: 18px; }
+      .ar-dash-figs { grid-template-columns: minmax(0, 1fr); }
+      .ar-dash-top em { display: none; }
+      .ar-rows div { grid-template-columns: 14px minmax(0, 1fr) auto; }
+      .ar-rows span:not(.v) { display: none; }
+      .ar-share > span { display: none; }
+      .ar-more-head h2 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+<main class="hp" id="top">
+  <h1 class="hp-sr">Fusion Vaults Now Account for ~45% of cbETH on Base</h1>
+
+  <section class="hp-purple">
+    <div class="hp-wrap hp-band ar-band">
+      <a class="ar-back" href="/demo/news"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M11.5 7h-9M6.5 3l-4 4 4 4"/></svg>Newsroom</a>
+      <div class="ar-meta"><b>Ecosystem</b>Jul 15, 2026<i></i>5 min read</div>
+      <h2 class="hp-h">Fusion Vaults Now Account for <em>~45% of cbETH on Base.</em></h2>
+      <div class="ar-by">
+        <div class="ar-who"><span class="av" aria-hidden="true"><svg viewBox="0 0 73 73"><path fill="#8429FF" d="M72.9745 36.4854C72.9745 28.9218 65.2566 22.5 53.6982 19.2763C50.4708 7.71785 44.0491 0 36.4854 0C28.9218 0 22.5 7.71785 19.2763 19.2763C7.71785 22.5037 0 28.9254 0 36.4854C0 44.0454 7.71785 50.4708 19.2763 53.6982C22.5037 65.2566 28.9254 72.9745 36.4854 72.9745C44.0454 72.9745 50.4708 65.2566 53.6982 53.6982C65.2566 50.4708 72.9745 44.0491 72.9745 36.4854ZM26.8656 13.6513C29.5533 8.24658 33.0597 5.14769 36.4744 5.14769C39.889 5.14769 43.4065 8.24658 46.0832 13.6513C46.7734 15.0575 47.3756 16.5042 47.8859 17.9875C40.3223 16.7318 32.6008 16.7318 25.0371 17.9875C25.5475 16.5042 26.1643 15.0759 26.8546 13.6696L26.8656 13.6513ZM50.7792 36.5038C50.7829 39.8156 50.5112 43.1054 50.0008 46.3769L26.5939 22.9553C29.8654 22.4449 33.1736 22.1916 36.4854 22.1989C40.84 22.1842 45.1836 22.6285 49.4464 23.5281C50.346 27.7909 50.7902 32.0978 50.7756 36.4524M22.1953 36.4634C22.1916 33.1515 22.4486 29.8691 22.9553 26.5939L46.3769 50.0192C43.1054 50.5296 39.7973 50.7829 36.4854 50.7756C32.1308 50.7902 27.7872 50.3423 23.5244 49.4464C22.6248 45.1836 22.1806 40.84 22.1953 36.4854V36.4634ZM13.6549 46.0942C8.25025 43.4065 5.15136 39.9001 5.15136 36.4854C5.15136 33.0708 8.25392 29.5533 13.6549 26.8766C15.0612 26.1864 16.5078 25.5842 17.9912 25.0739C16.7355 32.6375 16.7355 40.359 17.9912 47.9227C16.5078 47.4123 15.0832 46.7991 13.677 46.1052L13.6549 46.0942ZM46.1162 59.3342C43.4285 64.7389 39.9221 67.8378 36.5074 67.8378C33.0928 67.8378 29.5753 64.7353 26.8987 59.3342C26.2084 57.928 25.6062 56.4813 25.0959 54.998C28.8704 55.6295 32.6889 55.9453 36.5185 55.9379C40.3443 55.9453 44.1665 55.6295 47.941 54.998C47.4307 56.4813 46.8212 57.9096 46.1309 59.3159L46.1199 59.3342H46.1162ZM59.3379 46.1089C57.9316 46.7991 56.4924 47.416 55.009 47.9227C55.6442 44.1482 55.9563 40.3297 55.9489 36.5001C55.9563 32.6742 55.6405 28.852 55.009 25.0775C56.4924 25.5842 57.939 26.1864 59.3452 26.8803C64.7499 29.568 67.8488 33.0744 67.8488 36.4891C67.8488 39.9037 64.7499 43.4212 59.3452 46.0978H59.3379V46.1089Z"/></svg></span><div><b>Fusion Team</b><small>Jul 15, 2026</small></div></div>
+        <div class="ar-share"><span>Share</span>
+          <a id="arX" href="#" target="_blank" rel="noopener" aria-label="Share on X"><svg viewBox="0 0 16 16"><path class="f" d="M9.3 6.9L14.2 1.3h-1.2L8.8 6.1 5.5 1.3H1.5l5.1 7.4-5.1 5.9h1.2l4.5-5.2 3.6 5.2h4zM7.3 8.1l-.5-.7L2.9 2.2h1.8l3.3 4.7.5.7 4.3 6.1H11z"/></svg></a>
+          <a id="arIn" href="#" target="_blank" rel="noopener" aria-label="Share on LinkedIn"><svg viewBox="0 0 16 16"><path class="f" d="M3.6 5.6H1.3v8.7h2.3zM2.4 1.7a1.35 1.35 0 1 0 0 2.7 1.35 1.35 0 0 0 0-2.7zM14.7 9.4c0-2.3-.5-4-3.1-4-1.3 0-2.1.7-2.5 1.3V5.6H6.9v8.7h2.3V10c0-1.1.2-2.2 1.6-2.2 1.4 0 1.4 1.3 1.4 2.3v4.2h2.3z"/></svg></a>
+          <button type="button" id="arCopy" aria-label="Copy link"><svg viewBox="0 0 16 16"><path d="M6.75 9.25a2.75 2.75 0 0 0 3.9 0l2.1-2.1a2.75 2.75 0 0 0-3.9-3.9l-.75.75"/><path d="M9.25 6.75a2.75 2.75 0 0 0-3.9 0l-2.1 2.1a2.75 2.75 0 0 0 3.9 3.9l.75-.75"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="hp-wrap ar-body">
+    <article class="ar-col" id="arCol">
+      <span class="nw-cover" id="arCover"></span>
+
+      <p class="lede">As of 15 July 2026, vaults built on Fusion infrastructure hold approximately 30,500 cbETH on Base. That is roughly 45% of all cbETH on the network, and 19.3% of the 158,003 cbETH that <a href="https://x.com/coinbase" target="_blank" rel="noopener">Coinbase</a> reports as circulating supply.</p>
+
+      <div class="ar-figs">
+        <div><b>~30,500</b><span>cbETH held on Base</span></div>
+        <div><b>~45%</b><span>of all cbETH on Base</span></div>
+        <div><b>19.3%</b><span>of circulating supply</span></div>
+        <div><b>~$64M</b><span>at current prices</span></div>
+      </div>
+
+      <div class="ar-box">
+        <h2 id="key-takeaways" style="margin:0 0 14px;font-size:20px">Key takeaways</h2>
+        <ul>
+          <li><b>The largest automated cbETH footprint on Base.</b> Fusion vaults hold approximately 30,500 cbETH, roughly 45% of the network's cbETH and 19.3% of Coinbase's reported circulating supply.</li>
+          <li>At current prices the aggregate contribution is worth around $64 million.</li>
+          <li>The strategies are leveraged looping, efficiently automating recursive lending actions within pre-defined onchain boundaries. Those boundaries are set onchain and visible to every participant before capital enters.</li>
+          <li>The demand is two-sided. Fusion supplies most of the cbETH in Aave's Base market and drives close to 38% of the WETH borrowed from the same venue.</li>
+          <li>This activity feeds the <a href="https://x.com/base" target="_blank" rel="noopener">Base</a> and <a href="https://x.com/coinbase" target="_blank" rel="noopener">Coinbase</a> staking economy.</li>
+          <li>Every figure is verifiable onchain. cbETH supply is published by Coinbase and on BaseScan, and vault holdings can be read from the chain, position by position.</li>
+        </ul>
+      </div>
+
+      <h2 id="mechanism">The mechanism behind the growth</h2>
+      <p>These cbETH supply contributions primarily come from automated, leveraged looping strategies. In simple terms: a vault supplies cbETH as collateral, borrows ETH against it, converts that ETH back into cbETH on a DEX, and supplies it again, repeating the cycle up to a fixed leverage ceiling.</p>
+      <div class="ar-loop" aria-label="The loop">
+        <div><span>01</span><b>Supply cbETH as collateral</b></div>
+        <div><span>02</span><b>Borrow ETH against it</b></div>
+        <div><span>03</span><b>Swap the ETH to cbETH on a DEX</b></div>
+        <div><span>04</span><b>Supply it again</b></div>
+      </div>
+      <p class="ar-loop-note"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6a5 5 0 0 1 9 1M12.5 10a5 5 0 0 1-9-1"/><path d="M12.5 3v4h-4M3.5 13V9h4"/></svg>Repeated up to a fixed leverage ceiling.</p>
+      <p>These strategies run within transparent boundaries. The leverage ceiling, the markets a vault may reach, and the actions it may take are all set onchain and visible to every participant before capital enters. The boundaries hold as they are enforced at the contract level.</p>
+      <p>The strategies behind these positions are operated by established curators and institutional capital, and accessed by hundreds of depositors through vaults built on Fusion. The leading strategies behind the headline figure:</p>
+      <div class="ar-strats">
+        <div class="ar-strat">
+          <div class="ar-strat-top"><img src="/icons/operators/tau.png" alt=""><div><b>TAU cbETH Dynamic Looping</b><small>Operated by <a href="https://x.com/628Labs" target="_blank" rel="noopener">TAU Labs</a></small></div></div>
+          <div class="ar-strat-links"><a href="https://app.ipor.io/fusion/base/0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8" target="_blank" rel="noopener">Open in app ↗</a><a href="/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&amp;c=base">Fusion Stats →</a></div>
+        </div>
+        <div class="ar-strat">
+          <div class="ar-strat-top"><img src="/icons/operators/clearstar.png" alt=""><div><b>Base cbETH Loooper</b><small>Operated by <a href="https://x.com/ClearstarLabs" target="_blank" rel="noopener">Clearstar</a></small></div></div>
+          <div class="ar-strat-links"><a href="https://app.ipor.io/fusion/base/0x5900c3b72458f12967dc1bef35b92d271f5cdbc1" target="_blank" rel="noopener">Open in app ↗</a><a href="/explorer/?v=0x5900c3b72458f12967dc1bef35b92d271f5cdbc1&amp;c=base">Fusion Stats →</a></div>
+        </div>
+      </div>
+      <p>with additional cbETH vaults contributing the balance.</p>
+
+      <figure class="ar-fig">
+        <div class="ar-dash">
+          <div class="ar-dash-top"><img src="/icons/operators/clearstar.png" alt=""><div><b>Base cbETH Loooper</b><small>Clearstar · Base</small></div><em>Live</em></div>
+          <div class="ar-dash-figs">
+            <div><b id="arTvl">—</b><span>Vault TVL</span></div>
+            <div><b id="arApy">—</b><span>Current APY</span></div>
+            <div><b>Base</b><span>Network</span></div>
+          </div>
+          <div class="ar-dash-foot"><a href="/explorer/?v=0x5900c3b72458f12967dc1bef35b92d271f5cdbc1&amp;c=base">Full dashboard in Fusion Stats →</a><a href="https://app.ipor.io/fusion/base/0x5900c3b72458f12967dc1bef35b92d271f5cdbc1" target="_blank" rel="noopener">Open in app ↗</a></div>
+        </div>
+        <figcaption>Product dashboard of the Base cbETH Loooper strategy. Figures read live from Fusion Stats.</figcaption>
+      </figure>
+
+      <p>The automation accounts for both the underlying spread and the incentives layered across the Base ecosystem. Fusion-supplied cbETH liquidity across venues:</p>
+      <div class="ar-split">
+        <div class="ar-bar" aria-hidden="true"><i style="width:93.3%;background:#8429FF"></i><i style="width:6.6%;background:#C9B0FF"></i><i style="width:0.4%;background:#2C0C55"></i></div>
+        <div class="ar-rows">
+          <div><i style="background:#8429FF"></i><b><a href="https://x.com/aave" target="_blank" rel="noopener">Aave</a> V3</b><span>28,436.40 cbETH</span><span class="v">≈ $60.7M</span></div>
+          <div><i style="background:#C9B0FF"></i><b><a href="https://x.com/eulerfinance" target="_blank" rel="noopener">Euler</a></b><span>2,042.81 cbETH</span><span class="v">≈ $4.4M</span></div>
+          <div><i style="background:#2C0C55"></i><b>In buffers</b><span>46.73 cbETH</span><span class="v">≈ $0.1M</span></div>
+        </div>
+      </div>
+      <p class="ar-note">Split of supplied cbETH: Aave 93.3%, Euler 6.7%. Dollar figures at $2,133/cbETH. State as of 15 July 2026.</p>
+
+      <h2 id="base-impact">Base ecosystem impact</h2>
+      <p>Fusion's footprint is clearest in the Aave Base markets these strategies use, and the relationship runs both ways.</p>
+      <div class="ar-call">
+        <div><b>~68%</b><span>of all cbETH supplied to Aave's Base cbETH market comes from vaults built on Fusion.</span></div>
+        <div><b>~38%</b><span>of the WETH borrowed from Aave's Base WETH market, demand that accrues to WETH lenders as yield.</span></div>
+      </div>
+      <p>That demand has marked the market itself. As the positions grew, Aave raised the cbETH supply cap on its Base market to accommodate them.</p>
+      <p>The Fusion ecosystem's share of cbETH has grown alongside it, <a href="https://x.com/ipor_io/status/2069374709695742326" target="_blank" rel="noopener">from roughly 11.72% of the circulating supply on 23 June</a> to 19.3% on 15 July.</p>
+
+      <h2 id="coinbase-impact">Coinbase Inc impact</h2>
+      <p>cbETH is Coinbase's liquid staking token. Its value grows as Ethereum staking rewards accrue, and Coinbase takes a 25% commission on those rewards. Every cbETH the Fusion ecosystem holds is staked ETH earning that yield, so demand at this scale supports Coinbase's staking business directly.</p>
+
+      <h2 id="builders">For teams building their own automated strategies</h2>
+      <p>The tooling behind automated strategies is open to any team. Fusion vault infrastructure and its open-source modules for Aave V3 and V4, Euler, and other leading venues are live today, ready to replicate an existing looping strategy framework or build a new one.</p>
+      <ul>
+        <li>Build an automated vault with Fusion by IPOR Labs: <a href="https://docs.ipor.io/build-on-fusion/developer-guide/quick-start-guide" target="_blank" rel="noopener">quick-start guide</a>.</li>
+        <li>Explore <a href="https://github.com/IPOR-Labs/ipor-fusion/tree/main/contracts/fuses" target="_blank" rel="noopener">40+ plug-and-play protocol modules</a>, or browse them in the <a href="/demo/fuses">fuse library</a>.</li>
+      </ul>
+
+      <h2 id="institutions">For institutional capital</h2>
+      <p>Institutional capital reaches these strategies through a regulated partner. Allocators need mandates, KYC, and verifiable access points, and a Fusion vault is exactly that: a contained, auditable structure with defined permissions.</p>
+      <p>That access is already live. Through <a href="https://x.com/tesseractcrypto" target="_blank" rel="noopener">Tesseract</a>'s Dedicated Client Vaults, run under Tesseract's MiCA authorisation and built on Fusion vault infrastructure, regulated institutions reach these markets from inside their own regulated perimeter.</p>
+
+      <h2 id="references">References</h2>
+      <ol class="ar-refs">
+        <li>cbETH circulating supply and conversion rate: <a href="https://api-public.sandbox.exchange.coinbase.com/wrapped-assets/CBETH/" target="_blank" rel="noopener">Coinbase cbETH API</a></li>
+        <li>cbETH supply on Base: <a href="https://basescan.org/token/0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22" target="_blank" rel="noopener">BaseScan, cbETH Base contract</a></li>
+        <li>Aave Base <a href="https://app.aave.com/reserve-overview/?underlyingAsset=0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22&amp;marketName=proto_base_v3" target="_blank" rel="noopener">cbETH</a> and <a href="https://app.aave.com/reserve-overview/?underlyingAsset=0x4200000000000000000000000000000000000006&amp;marketName=proto_base_v3" target="_blank" rel="noopener">WETH</a> markets</li>
+        <li>Fusion vaults <a href="/explorer/?v=0x5900c3b72458f12967dc1bef35b92d271f5cdbc1&amp;c=base">0x5900…dbc1</a>, <a href="/explorer/?v=0xe883426b4fc84a7f5cc86415cabbef43e73a4cc8&amp;c=base">0xe883…4cc8</a>, <a href="/explorer/?v=0x3e212f136244465d8e524fb658e6daa1fb0593bf&amp;c=base">0x3e21…93bf</a></li>
+      </ol>
+
+      <div class="ar-about">
+        <h2 id="about" class="hp-k" style="margin:0 0 12px;font:500 12px/1 var(--mono);letter-spacing:0.12em;text-transform:uppercase;color:var(--g-text-3)">About Fusion</h2>
+        <p>Developed by IPOR Labs AG (Zug, Switzerland), Fusion is the onchain vault infrastructure for institutional-grade yield strategies. Its compliance-friendly vault stack is accessed by leading curators and regulated institutions, including Fortune 500 custodian BitGo (NYSE: BTGO) and leading ETP issuer 21Shares, with vault isolation and verifiable, deterministic risk controls.</p>
+      </div>
+    </article>
+
+    <nav class="ar-toc" id="arToc" aria-label="On this page"></nav>
+  </div>
+
+  <section class="hp-wrap ar-more">
+    <div class="ar-more-head"><h2>More from the ecosystem</h2><a href="/demo/news">View all →</a></div>
+    <div class="ar-more-grid" id="arMore"></div>
+  </section>
+</main>
+<script src="/demo/demo.js"></script>
+<script src="/demo/news/stories.js"></script>
+<script>
+// The article: its cover from the newsroom's own drawing, the Loooper's
+// figures read live, sharing, and the contents that follow the reading.
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const { S, cover, when, esc } = window.FusionNews;
+  const me = S.find(s => s.href === '/demo/news/cbeth-on-base');
+  $('arCover').innerHTML = cover(me);
+
+  // The dashboard figure: the Base cbETH Loooper as Fusion Stats has it now.
+  const usd = (v) => (v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : '$' + Math.round(v / 1e3) + 'K');
+  fetch('/ipor-vaults.json').then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => {
+    const v = j && (j.vaults || []).find(x => String(x.address).toLowerCase() === '0x5900c3b72458f12967dc1bef35b92d271f5cdbc1');
+    if (!v) return;
+    $('arTvl').textContent = usd(v.tvl);
+    if (Number.isFinite(Number(v.apy)) && v.apy !== null) $('arApy').textContent = Number(v.apy).toFixed(2) + '%';
+  });
+
+  // Share: X, LinkedIn, or the link itself.
+  const url = location.href.split('#')[0], title = me.t;
+  $('arX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(title) + '&url=' + encodeURIComponent(url);
+  $('arIn').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url);
+  $('arCopy').addEventListener('click', () => {
+    const done = () => { $('arCopy').classList.add('done'); setTimeout(() => $('arCopy').classList.remove('done'), 1500); };
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(done, done);
+  });
+
+  // More from the ecosystem: the two newest other stories.
+  const more = S.filter(s => s !== me).slice(0, 2);
+  const to = (s) => s.href && s.href.startsWith('/') ? `href="${s.href}"` : `href="${s.href || 'https://www.ipor.io/news'}" target="_blank" rel="noopener"`;
+  $('arMore').innerHTML = more.map(s => `<a ${to(s)}><span class="nw-cover">${cover(s)}</span><span class="m"><b>${s.cat}</b><i></i>${when(s.d)}<i></i>${s.min} min read</span><h3>${esc(s.t)}</h3><p>${esc(s.x)}</p></a>`).join('');
+
+  // On this page: the article's headings, the one being read marked.
+  const heads = [...$('arCol').querySelectorAll('h2[id]')];
+  $('arToc').innerHTML = '<p>On this page</p><ol>' + heads.map(h => `<li><a href="#${h.id}" data-to="${h.id}">${h.textContent}</a></li>`).join('') + '</ol>';
+  const links = [...$('arToc').querySelectorAll('a')];
+  const mark = () => {
+    const line = document.getElementById('hpNav').getBoundingClientRect().bottom + 90;
+    let at = heads[0];
+    heads.forEach(h => { if (h.getBoundingClientRect().top < line) at = h; });
+    links.forEach(a => a.classList.toggle('on', a.dataset.to === at.id));
+  };
+  addEventListener('scroll', mark, { passive: true }); mark();
+  $('arToc').addEventListener('click', (e) => {
+    const a = e.target.closest('a'); if (!a) return; e.preventDefault();
+    const h = $(a.dataset.to);
+    scrollTo({ top: h.getBoundingClientRect().top + scrollY - document.getElementById('hpNav').getBoundingClientRect().bottom - 24, behavior: 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
