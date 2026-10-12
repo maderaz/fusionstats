@@ -73,7 +73,7 @@ const EXTRA = [
   { path: '/demo/curators', file: 'demo/curators/index.html', name: 'Curators', card: 'demo-curators', demo: true,
     title: 'Fusion for Curators', kicker: 'For curators', head: 'Launch vaults.|Skip the Solidity.',
     description: 'Pick fuses, set the parameters and run the strategy with an Alpha. Launch vaults without Solidity and earn fees as an Atomist.' },
-  { path: '/demo/news/cbeth-on-base', file: 'demo/news/cbeth-on-base/index.html', name: 'Fusion Vaults Now Account for ~45% of cbETH on Base', card: 'demo-news-cbeth', demo: true,
+  { path: '/demo/news/cbeth-on-base', file: 'demo/news/cbeth-on-base/index.html', name: 'Fusion Vaults Now Account for ~45% of cbETH on Base', card: 'demo-news-cbeth', demo: true, story: true,
     title: 'Fusion Vaults Now Account for ~45% of cbETH on Base • Fusion', kicker: 'Ecosystem · Jul 15, 2026', head: 'Fusion vaults hold|~45% of cbETH on Base.',
     description: 'As of 15 July 2026, vaults built on Fusion hold about 30,500 cbETH on Base: roughly 45% of the network\'s cbETH and 19.3% of the circulating supply.' },
 ];

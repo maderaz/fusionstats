@@ -9,7 +9,8 @@
 // address; at the right the page itself in its purple theme, in a browser
 // window that runs off the card's foot. Only the figures and the charts: the
 // page's own title, tips (ⓘ), notes, methodology and export buttons are left
-// out, as is a demo page's own browser bar.
+// out, as is a demo page's own browser bar. A story (an article) gets its
+// own cover instead, full bleed (storyHtml).
 //
 // No card shows an error. A page that shows one (a source that didn't
 // answer), or is still loading, keeps its card from the day before (--prev);
@@ -209,12 +210,59 @@ function cardHtml(p, shot, day) {
 </body></html>`;
 }
 
+// A story's card (pages marked story: the newsroom's articles): no window and
+// no screenshot. The story in the newsroom's own look (demo/news/stories.js):
+// the mark at the top left, the topic at the top right, the headline in white
+// then lavender at the left, the story's motif at the right, and the
+// newsroom's address at the foot.
+function storyHtml(p) {
+  return `<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; }
+  body { position: relative; overflow: hidden; color: #FFFFFF; font-family: Geist, -apple-system, 'Segoe UI', sans-serif;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.4px) 0 0 / 20px 20px, #2C0C55; }
+  .brand { position: absolute; left: 64px; top: 56px; display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
+  .brand svg { width: 40px; height: 40px; }
+  .topic { position: absolute; right: 64px; top: 62px; padding: 9px 16px; border: 1px solid #5D3097; border-radius: 999px;
+    font: 500 17px/1 'Geist Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #D7B8FF; }
+  h1 { position: absolute; left: 64px; top: 50%; transform: translateY(-50%); width: 720px; font-size: 76px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em; }
+  h1 span { display: block; white-space: nowrap; }
+  h1 span + span { color: #D7B8FF; }
+  #m { position: absolute; right: 56px; top: 50%; transform: translateY(-50%); width: 330px; height: 330px; }
+  #m svg { width: 100%; height: 100%; display: block; }
+  .url { position: absolute; left: 64px; bottom: 52px; display: flex; align-items: center; gap: 8px; font: 500 19px/1 'Geist Mono', monospace; color: #B794E6; }
+  .url b { font-weight: 500; color: #FFFFFF; }
+  .url svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+</style></head><body>
+  <div class="brand">${MARK}<span>Fusion</span></div>
+  <span class="topic" id="k"></span>
+  <h1 id="t"></h1>
+  <div id="m"></div>
+  <div class="url"><span>fusion.app<b>/news</b></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8.5 4l4 4-4 4"/></svg></div>
+  <script src="${ORIGIN}/demo/news/stories.js"></script>
+  <script>
+    const N = window.FusionNews, s = N.S.find(x => x.href === ${JSON.stringify(p.path)});
+    if (s) {
+      document.getElementById('k').textContent = s.cat;
+      document.getElementById('t').innerHTML = '<span>' + N.esc(s.big) + '</span><span>' + N.esc(s.sub) + '.</span>';
+      // The motif as the cover draws it, framed on its own.
+      document.getElementById('m').innerHTML = '<svg viewBox="740 90 460 460" fill="none">' + N.MOTIF[s.motif](N.rnd(s.t)) + '</svg>';
+      // The headline keeps each line whole, stepping down a size until it fits.
+      const t = document.getElementById('t'); let z = 76;
+      while (Math.max(...[...t.children].map(c => c.scrollWidth)) > t.clientWidth && z > 44) { z -= 2; t.style.fontSize = z + 'px'; }
+    }
+  </script>
+</body></html>`;
+}
+
 fs.mkdirSync(OUT, { recursive: true });
 const day = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const cardCtx = await browser.newContext({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
 async function draw(p, shot) {
   const page = await cardCtx.newPage();
-  await page.setContent(cardHtml(p, shot, day), { waitUntil: 'networkidle' });
+  await page.setContent(p.story ? storyHtml(p) : cardHtml(p, shot, day), { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(200);
   const file = path.join(OUT, p.card + '.png');
@@ -227,6 +275,7 @@ for (const p of PAGES.concat(EXTRA)) {
   if (ONLY && !ONLY.includes(p.card)) continue;
   const t0 = Date.now();
   let shot = null;
+  if (p.story) { const file = await draw(p, null); made++; console.log(`${p.card.padEnd(18)} ${(fs.statSync(file).size / 1024).toFixed(0).padStart(5)} KB  the story's cover`); continue; }
   try { shot = await screenshot(p); }
   catch (e) {
     // Yesterday's card, or one without the screenshot: never an error.

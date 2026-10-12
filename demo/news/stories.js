@@ -75,5 +75,5 @@
       + `</svg>`;
   }
 
-  window.FusionNews = { S, cover, when, esc };
+  window.FusionNews = { S, cover, when, esc, MOTIF, rnd };
 })();
