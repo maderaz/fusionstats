@@ -552,8 +552,9 @@
             // accurate, and USD is forward-filled across the gap downstream.
             const series = (v.snapshots || [])
               .filter(s => s.day != null && typeof s.assets === 'number')
-              .map(s => ({ day: s.day, tvlUsd: (typeof s.tvlUsd === 'number' ? s.tvlUsd : null), assets: s.assets, sharePrice: (typeof s.sharePrice === 'number' ? s.sharePrice : null) }))
-              .sort((a, b) => a.day - b.day);
+              .map(s => ({ day: s.day, ts: s.timestamp || 0, tvlUsd: (typeof s.tvlUsd === 'number' ? s.tvlUsd : null), assets: s.assets,
+                priceUsd: (typeof s.priceUsd === 'number' ? s.priceUsd : null), sharePrice: (typeof s.sharePrice === 'number' ? s.sharePrice : null) }))
+              .sort((a, b) => a.day - b.day || a.ts - b.ts);
             if (series.length) {
               window.tvlSnapshotsByAddr[addr.toLowerCase()] = { symbol: v.symbol || null, series };
             }
@@ -1136,6 +1137,33 @@
     window.addEventListener('fusion:theme', redrawAll);
     FusionChart.onChange(redrawAll);
 
+    // A vault's TVL now, from its last snapshot rolled forward: the snapshots
+    // are taken a few times a day, so deposits and withdrawals made since the
+    // last one are added to its assets and priced at the latest price known
+    // (the newest event's, else the snapshot's). Without this a big deposit
+    // made after the last snapshot showed in the flows but not in the TVL
+    // (a vault with $850K in that read $50K). Null when nothing happened
+    // since the last snapshot, or it has no usable reading.
+    function rolledTvl(addr) {
+      const snap = (window.tvlSnapshotsByAddr || {})[addr.toLowerCase()];
+      if (!snap || !snap.series || !snap.series.length) return null;
+      const last = snap.series[snap.series.length - 1];
+      if (typeof last.assets !== 'number' || !last.ts) return null;
+      const later = (window.allEvents || []).filter(e => !e.synthetic && e.vault && e.vault.toLowerCase() === addr.toLowerCase()
+        && typeof e.timestamp === 'number' && e.timestamp > last.ts && typeof e.assets === 'number');
+      if (!later.length) return null;
+      let assets = last.assets, newest = later[0];
+      for (const e of later) {
+        assets += (e.type === 'deposit' ? 1 : e.type === 'withdraw' ? -1 : 0) * e.assets;
+        if (e.timestamp > newest.timestamp) newest = e;
+      }
+      assets = Math.max(0, assets);
+      const priced = later.filter(e => typeof e.usdPrice === 'number' && e.usdPrice > 0).sort((a, b) => b.timestamp - a.timestamp)[0];
+      const price = priced ? priced.usdPrice : last.priceUsd;
+      if (!(price > 0)) return null;
+      return { assets, tvlUsd: assets * price, day: Math.floor(newest.timestamp / 86400) };
+    }
+
     // Per-vault TVL bar chart (Plotly, rounded corners). Anchored on the right
     // edge to vaultInfo.tvl at the ipor-vaults.json snapshot time, walked
     // backward by daily net flow (deposits − withdrawals in USD, synthetic
@@ -1214,6 +1242,14 @@
           if (known.has(d)) last = known.get(d);
           if (last.tvlUsd != null) lastUsd = last.tvlUsd;
           pts.push({ day: d, tvlUsd: lastUsd, assets: last.assets });
+        }
+        // Today's bar from the last snapshot rolled forward with later flows.
+        const now = rolledTvl(addr);
+        if (now) {
+          let lastPt = pts[pts.length - 1];
+          for (let d = lastPt.day + 1; d <= now.day; d++) pts.push({ day: d, tvlUsd: lastPt.tvlUsd, assets: lastPt.assets });
+          lastPt = pts[pts.length - 1];
+          if (lastPt.day === now.day) { lastPt.tvlUsd = now.tvlUsd; lastPt.assets = now.assets; }
         }
         pts = prependLeadBars(pts, deployIso);
         return { pts, anchorDay, minDay: pts[0].day, hasAssets: true, symbol: snap.symbol };
@@ -2088,6 +2124,9 @@
         if (snap && snap.series && snap.series.length) {
           const lastUsd = [...snap.series].reverse().find(p => typeof p.tvlUsd === 'number');
           if (lastUsd) tvl = lastUsd.tvlUsd;
+          // Flows since the last snapshot count too (rolledTvl).
+          const now = rolledTvl(addr);
+          if (now) tvl = now.tvlUsd;
         }
         // Strategy P&L (since inception) = TVL − cumulative net deposits across
         // ALL non-synthetic events on this vault: what depositors put in against
