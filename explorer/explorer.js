@@ -799,7 +799,27 @@
     const d = file && file.days;
     if (view === 'tvl' || view === 'assets') {
       const t = series(d && (view === 'assets' ? d.assets : d.tvl));
-      return t ? t.v.map((v, i) => [t.from + i, v]) : [];
+      if (!t) return [];
+      const pts = t.v.map((v, i) => [t.from + i, v]);
+      // Today ends at the TVL the page shows above (IPOR's, read minutes
+      // ago): the daily series comes from snapshots taken a few times a day,
+      // and a deposit made since the last one would otherwise leave the line
+      // ending far below the figure. In the asset, at the last day's price.
+      const today = Math.floor(Date.now() / 864e5);
+      const lastDay = pts.length ? pts[pts.length - 1][0] : null;
+      if (cur && cur.tvl > 0 && lastDay != null && today >= lastDay && today - lastDay <= 3) {
+        let nowV = cur.tvl;
+        if (view === 'assets') {
+          const tv = series(d.tvl), av = series(d.assets);
+          const lt = tv && tv.v[tv.v.length - 1], la = av && av.v[av.v.length - 1];
+          nowV = lt > 0 && la > 0 ? cur.tvl / (lt / la) : null;
+        }
+        if (nowV != null) {
+          for (let day = lastDay + 1; day <= today; day++) pts.push([day, pts[pts.length - 1][1]]);
+          pts[pts.length - 1][1] = nowV;
+        }
+      }
+      return pts;
     }
     const sp = series(d && d.sharePrice);
     if (!sp) return [];
