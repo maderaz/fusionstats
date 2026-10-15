@@ -2780,18 +2780,17 @@
         : 0;
       const footLegH = inHeader ? 0 : legH;
       // The contracts the chart covers, in small monospace at the foot: each
-      // vault's name and its full address, so the figures can be checked.
+      // vault's full address, so the figures can be checked.
       const addrSize = Math.round(w / 100);
       const addrLH = Math.round(addrSize * 1.55);
       probe.font = '500 ' + addrSize + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
       const vaults = (meta && meta.vaults) || [];
       const chains = new Set(vaults.map(v => v.chain));
-      // A heading, then one vault a line, names padded so the addresses line
-      // up; two columns where they fit.
-      const nameW = Math.max(0, ...vaults.map(v => v.name.length));
-      const rows = vaults.map(v => v.name.padEnd(nameW) + '  ' + v.address);
+      // A heading, then the raw addresses only (no vault names), in as many
+      // columns as fit.
+      const rows = vaults.map(v => v.address);
       const colW = rows.length ? Math.max(...rows.map(r => probe.measureText(r).width)) : 0;
-      const cols = rows.length > 1 && colW * 2 + pad <= maxW ? 2 : 1;
+      const cols = Math.max(1, Math.min(rows.length, Math.floor((maxW + pad) / (colW + pad))));
       const addrHead = vaults.length ? (vaults.length === 1 ? 'Vault' : 'Vaults')
         + (chains.size === 1 ? ' on ' + ([...chains][0] || 'base').replace(/^./, ch => ch.toUpperCase()) : '') : '';
       const addrLines = vaults.length ? [addrHead] : [];
