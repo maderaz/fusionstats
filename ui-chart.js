@@ -876,6 +876,156 @@
     }, 'image/png'));
   }
 
+  // ---- A table as an image ----------------------------------------------------
+  // Any table on the page, drawn in the chart exports' look: the title and its
+  // line, IPOR Fusion at the top right, then the table as it stands (header,
+  // rows with their logos, figures right-aligned, "none" dimmed, the total in
+  // bold), a small bar at each percentage's left showing its share, and at the
+  // foot the details, the addresses it covers (raw, in small monospace) and
+  // the time. Reads the table's own cells: <th class="n"> and <td class="n">
+  // are figures, a .lg span is the wide label, td.dim is dimmed, tr.total is
+  // the total row.
+  //   FusionChart.tablePng(tableEl, { title, subtitle, details, addresses: { head, list }, filename })
+  async function tablePng(table, { width = 760, title = '', subtitle = '', details = '', addresses = null, filename = 'table.png' } = {}) {
+    if (!table) return;
+    const scale = 2;
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* draw anyway */ } }
+    const ink = themeInk();
+    const accent = cssVar('--accent', '#8429FF');
+    const rule = ink.dark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(11, 11, 15, 0.08)';
+    const ruleStrong = ink.dark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(11, 11, 15, 0.18)';
+    const label = (el) => ((el.querySelector('.lg') || el).textContent || '').replace(/\s+/g, ' ').trim();
+    const head = [...table.tHead.rows[0].cells].map(th => ({ text: label(th), right: th.classList.contains('n') }));
+    const rows = [...table.tBodies[0].rows].filter(r => !r.classList.contains('ui-loading-row')).map(r => ({
+      total: r.classList.contains('total'),
+      cells: [...r.cells].map(td => ({ text: label(td), right: td.classList.contains('n'), dim: td.classList.contains('dim'),
+        img: (td.querySelector('img') || {}).src || null })),
+    }));
+    const imgs = {};
+    await Promise.all(rows.flatMap(r => r.cells).filter(c => c.img && !(c.img in imgs)).map(c => {
+      imgs[c.img] = null;
+      return new Promise((res) => { const i = new Image(); i.onload = () => { imgs[c.img] = i; res(); }; i.onerror = res; i.src = c.img; });
+    }));
+
+    // Measure: the fonts, each column's need, the rows' height.
+    const probe = document.createElement('canvas').getContext('2d');
+    const F = { head: '500 12.5px ' + SANS, body: '400 15px ' + SANS, total: '600 15px ' + SANS };
+    const ICON = 22, ICON_GAP = 10, COL_GAP = 32, ROW_H = 46, HEAD_H = 36, BAR_W = 56, BAR_GAP = 12;
+    const isPct = (cell) => cell.right && /^-?\d+(?:\.\d+)?%$/.test(cell.text);
+    const need = head.map((h, i) => {
+      probe.font = F.head; let w = probe.measureText(h.text).width;
+      rows.forEach(r => { const c = r.cells[i]; if (!c) return; probe.font = r.total ? F.total : F.body;
+        w = Math.max(w, probe.measureText(c.text).width + (c.img ? ICON + ICON_GAP : 0) + (isPct(c) ? BAR_W + BAR_GAP : 0)); });
+      return Math.ceil(w);
+    });
+    // Each column's widest percentage, so its bars all start at one edge.
+    const pctW = head.map((h, i) => Math.max(0, ...rows.map(r => { const cl = r.cells[i]; if (!cl || !isPct(cl)) return 0;
+      probe.font = r.total ? F.total : F.body; return probe.measureText(cl.text).width; })));
+    const pad0 = Math.round(width * 0.042);
+    width = Math.max(width, need.reduce((a, b) => a + b, 0) + COL_GAP * (need.length - 1) + pad0 * 2);
+    const { pad, tSize, sSize, fSize, tLines, sLines, head: headH } = pngHead(width, 10000, title, subtitle);
+    const inner = width - pad * 2;
+    const widths = need.slice();
+    widths[0] += inner - (need.reduce((a, b) => a + b, 0) + COL_GAP * (need.length - 1));   // the first column takes the slack
+    const xs = []; widths.reduce((x, w, i) => { xs[i] = x; return x + w + COL_GAP; }, pad);
+
+    probe.font = '400 ' + fSize + 'px ' + SANS;
+    const when = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }) + ' UTC';
+    const dLines = details ? wrapLines(probe, details, inner) : [];
+    const aSize = Math.max(10, Math.round(fSize * 0.9)), aFont = '500 ' + aSize + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+    probe.font = aFont;
+    const aList = (addresses && addresses.list) || [];
+    const aColW = aList.length ? Math.max(...aList.map(a => probe.measureText(a).width)) : 0;
+    const aCols = Math.max(1, Math.min(aList.length, Math.floor((inner + pad * 0.6) / (aColW + pad * 0.6))));
+    const aRows = Math.ceil(aList.length / aCols) + (aList.length && addresses.head ? 1 : 0);
+    const tableH = HEAD_H + rows.length * ROW_H;
+    const footH = Math.round(pad * 0.7 + dLines.length * fSize * 1.5 + (aRows ? pad * 0.65 + aRows * aSize * 1.6 : 0) + fSize * 1.5 + pad * 0.7);
+    const H = headH + tableH + footH;
+
+    const cv = document.createElement('canvas');
+    cv.width = width * scale; cv.height = H * scale;
+    const c = cv.getContext('2d');
+    c.scale(scale, scale);
+    c.fillStyle = ink.bg; c.fillRect(0, 0, width, H);
+    // Title, its line, the brand.
+    let y = pad;
+    c.textBaseline = 'alphabetic';
+    c.fillStyle = ink.text; c.font = '600 ' + tSize + 'px ' + SANS;
+    tLines.forEach((l) => { y += tSize; c.fillText(l, pad, y); y += tSize * 0.22; });
+    if (sLines.length) {
+      y += 6; c.fillStyle = ink.text2; c.font = '400 ' + sSize + 'px ' + SANS;
+      sLines.forEach((l) => { y += sSize * 1.1; c.fillText(l, pad, y); y += sSize * 0.35; });
+    }
+    await drawBrand(c, width - pad, pad + Math.round((tSize - brandM(tSize).mark) / 2) + 2, tSize, ink);
+
+    // The table.
+    const cellX = (i, w, right) => (right ? xs[i] + widths[i] - w : xs[i]);
+    let ty = headH;
+    c.textBaseline = 'middle';
+    c.font = F.head; c.fillStyle = ink.text3;
+    head.forEach((h, i) => c.fillText(h.text, cellX(i, c.measureText(h.text).width, h.right), ty + HEAD_H / 2));
+    c.fillStyle = ruleStrong; c.fillRect(pad, ty + HEAD_H - 1, inner, 1);
+    ty += HEAD_H;
+    rows.forEach((r, ri) => {
+      const mid = ty + ROW_H / 2;
+      if (r.total) { c.fillStyle = ruleStrong; c.fillRect(pad, ty, inner, 1); }
+      r.cells.forEach((cell, i) => {
+        if (i >= widths.length) return;
+        c.font = r.total ? F.total : F.body;
+        const tw = c.measureText(cell.text).width;
+        // A percentage gets a small bar at its left: a faint track, filled
+        // as far as its share.
+        if (isPct(cell)) {
+          const share = Math.max(0, Math.min(1, parseFloat(cell.text) / 100));
+          const bx = xs[i] + widths[i] - pctW[i] - BAR_GAP - BAR_W;
+          c.fillStyle = rule; roundRect(c, bx, mid - 3, BAR_W, 6, 3); c.fill();
+          if (share > 0) { c.fillStyle = accent; c.globalAlpha = cell.dim ? 0.4 : 1; roundRect(c, bx, mid - 3, Math.max(6, BAR_W * share), 6, 3); c.fill(); c.globalAlpha = 1; }
+        }
+        let x = cellX(i, tw + (cell.img ? ICON + ICON_GAP : 0), cell.right);
+        const im = cell.img && imgs[cell.img];
+        if (cell.img) {
+          if (im) { c.save(); c.beginPath(); c.arc(x + ICON / 2, mid, ICON / 2, 0, Math.PI * 2); c.clip(); c.drawImage(im, x, mid - ICON / 2, ICON, ICON); c.restore(); }
+          x += ICON + ICON_GAP;
+        }
+        c.fillStyle = cell.dim ? ink.text3 : (i === 0 || r.total ? ink.text : ink.text2);
+        c.fillText(cell.text, x, mid + 1);
+      });
+      ty += ROW_H;
+      if (ri < rows.length - 1 && !rows[ri + 1].total) { c.fillStyle = rule; c.fillRect(pad, ty - 1, inner, 1); }
+    });
+
+    // The foot: details, addresses, the time.
+    c.textBaseline = 'alphabetic';
+    let fy = headH + tableH + pad * 0.7;
+    c.fillStyle = ink.text3; c.font = '400 ' + fSize + 'px ' + SANS;
+    dLines.forEach((l) => { fy += fSize * 1.15; c.fillText(l, pad, fy); fy += fSize * 0.35; });
+    if (aList.length) {
+      fy += pad * 0.35;
+      c.font = aFont;
+      if (addresses.head) { fy += aSize * 1.6; c.fillText(addresses.head, pad, fy); }
+      for (let i = 0; i < aList.length; i += aCols) {
+        fy += aSize * 1.6;
+        aList.slice(i, i + aCols).forEach((a, j) => c.fillText(a, pad + j * (aColW + pad * 0.6), fy));
+      }
+    }
+    c.font = '400 ' + fSize + 'px ' + SANS;
+    fy += fSize * 1.5 + (aList.length ? pad * 0.3 : 0); c.fillText('Exported ' + when, pad, fy);
+
+    await new Promise((resolve) => cv.toBlob((blob) => {
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 0);
+      resolve();
+    }, 'image/png'));
+  }
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
   // ---- Marks in the bars -----------------------------------------------------
   // A bar trace that names its mark (meta: { mark: an icon's URL }) shows it
   // inside its part of every bar with room for it: the mark (14px, 12px on a
@@ -962,5 +1112,5 @@
       fill: 'tozeroy', fillcolor: 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',0.1)' });
   }
   window.FusionChart = { fit, compact, growth, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks,
-    themeInk, drawMark, drawBrand, brandWidth, exportDetails, inked, tight };
+    themeInk, drawMark, drawBrand, brandWidth, exportDetails, inked, tight, tablePng };
 })();

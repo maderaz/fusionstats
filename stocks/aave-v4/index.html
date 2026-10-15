@@ -134,7 +134,18 @@
       </section>
 
       <section class="ui-section">
-        <div class="ui-head"><h2>Markets</h2></div>
+        <div class="ui-head">
+          <h2>Markets</h2>
+          <details class="ui-export">
+            <summary class="ui-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.75 7l3.25 3.25L11.25 7M3 12.75h10"/></svg>Export</summary>
+            <div class="ui-menu">
+              <div class="ui-menu-actions">
+                <button type="button" class="ui-btn primary" id="tablePngBtn">Download PNG</button>
+                <button type="button" class="ui-btn" id="tableCsvBtn" title="The table as it stands: each market's Aave V4 total, Fusion's supply, its share and what is borrowed">Download CSV</button>
+              </div>
+            </div>
+          </details>
+        </div>
         <div class="ui-table-wrap">
           <table class="ui-table" id="markets">
             <thead><tr><th>Market</th><th class="n"><span class="lg">Aave V4 total</span><span class="sm">Aave</span></th><th class="n"><span class="lg">Fusion supplied</span><span class="sm">Fusion</span></th><th class="n"><span class="lg">Fusion share</span><span class="sm">Share</span></th><th class="n"><span class="lg">Fusion USDC debt</span><span class="sm">Debt</span></th></tr></thead>
@@ -327,6 +338,27 @@
       UI.csv('fusion-aave-v4-' + range + '-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
     }
 
+    // The markets table as an image (ui-chart.js tablePng) or a CSV, as it
+    // stands. The image's foot names the Aave V4 spoke and every Fusion vault
+    // supplying to it.
+    async function tablePng() {
+      const addrs = [data.spoke].concat(...data.markets.map(m => (m.vaults || []).filter(v => v.supplied > 0).map(v => v.address)))
+        .filter((a, i, all) => a && all.indexOf(a) === i);
+      const at = data.updatedAt ? new Date(data.updatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }) + ' UTC' : '';
+      await FusionChart.tablePng($('markets'), {
+        title: 'Fusion Stock Vaults on Aave V4',
+        subtitle: 'Each tokenized-stock market on Aave V4, what IPOR Fusion vaults supply to it, and their share',
+        details: 'Read on-chain on Base' + (at ? ', ' + at : '') + ' · in US dollars at each stock\'s price',
+        addresses: { head: 'Aave V4 spoke, then the Fusion vaults supplying to it', list: addrs },
+        filename: 'fusion-aave-v4-markets-' + new Date().toISOString().slice(0, 10) + '.png',
+      });
+    }
+    function tableCsv() {
+      const t = $('markets'), txt = (el) => ((el.querySelector('.lg') || el).textContent || '').replace(/\s+/g, ' ').trim();
+      const rows = [[...t.tHead.rows[0].cells].map(txt)].concat([...t.tBodies[0].rows].filter(r => !r.classList.contains('ui-loading-row')).map(r => [...r.cells].map(txt)));
+      UI.csv('fusion-aave-v4-markets-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+    }
+
     // ---- Figures, table, notes, scenario ------------------------------------
     function render() {
       const ms = data.markets;
@@ -413,6 +445,8 @@
     seg('range', (v) => { range = v; draw(); });
     seg('pngSize', (v) => { size = v; });
     $('pngBtn').addEventListener('click', png);
+    $('tablePngBtn').addEventListener('click', () => { $('tablePngBtn').closest('details').open = false; tablePng(); });
+    $('tableCsvBtn').addEventListener('click', () => { $('tableCsvBtn').closest('details').open = false; tableCsv(); });
     $('csvBtn').addEventListener('click', csv);
     window.addEventListener('fusion:theme', () => { if (data) draw(); });
     FusionChart.onChange(() => { if (data) draw(); });
