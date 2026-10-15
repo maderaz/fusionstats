@@ -755,11 +755,13 @@
     const fSize = Math.round(Math.max(10.5, sSize * 0.86) * 2) / 2;
     const probe = document.createElement('canvas').getContext('2d');
     probe.font = '600 ' + tSize + 'px ' + SANS;
-    const tLines = title ? wrapLines(probe, title, width - pad * 2) : [];
+    const tLines = title ? wrapLines(probe, title, width - pad * 2 - brandWidth(tSize) - 16) : [];
     probe.font = '400 ' + sSize + 'px ' + SANS;
     const sLines = subtitle ? wrapLines(probe, subtitle, width - pad * 2) : [];
-    const head = tLines.length || sLines.length
-      ? Math.round(pad + tLines.length * tSize * 1.22 + (sLines.length ? 6 + sLines.length * sSize * 1.45 : 0) + pad * 0.35) : 0;
+    // At least a row for the brand at the top right, title or not.
+    const head = Math.max(Math.round(pad + brandM(tSize).mark + pad * 0.6),
+      tLines.length || sLines.length
+        ? Math.round(pad + tLines.length * tSize * 1.22 + (sLines.length ? 6 + sLines.length * sSize * 1.45 : 0) + pad * 0.35) : 0);
     const foot = Math.round(pad * 0.4 + 3 * fSize * 1.5 + pad * 0.7);
     return { pad, tSize, sSize, fSize, tLines, sLines, head, foot, chartH: Math.max(160, height - head - foot) };
   }
@@ -774,6 +776,38 @@
     const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(c.outerHTML);
     return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
   }
+  // The brand at the image's top right: the side menu's mark and "IPOR
+  // Fusion", sized from the title's size. brandWidth measures it, so a title
+  // wraps short of it.
+  const BRAND = 'IPOR Fusion';
+  const brandM = (tSize) => { const mark = Math.round(tSize * 1.05); return { mark, font: '600 ' + Math.round(tSize * 0.72) + 'px ' + SANS, gap: Math.round(mark * 0.32) }; };
+  function brandWidth(tSize) {
+    const b = brandM(tSize), probe = document.createElement('canvas').getContext('2d');
+    probe.font = b.font;
+    return b.mark + b.gap + Math.ceil(probe.measureText(BRAND).width);
+  }
+  async function drawBrand(c, right, top, tSize, ink) {
+    const b = brandM(tSize);
+    const mark = await markImage('#8429FF');
+    const w = brandWidth(tSize), x = right - w;
+    c.save();
+    if (mark) c.drawImage(mark, x, top, b.mark, b.mark);
+    c.font = b.font;
+    c.fillStyle = ink.text;
+    c.textBaseline = 'middle';
+    c.fillText(BRAND, x + b.mark + b.gap, top + b.mark / 2 + 1);
+    c.restore();
+  }
+  // An exported chart's layout with the bare minimum of margin: a little safe
+  // padding at the sides (side, in the image's pixels), the axes taking just
+  // the room their labels need.
+  function tight(layout, side = 8) {
+    const l = Object.assign({}, layout, { margin: { l: side, r: side + 6, t: 10, b: 8, pad: 4 } });
+    Object.keys(l).filter(k => /^[xy]axis\d*$/.test(k)).forEach(k => { l[k] = Object.assign({}, l[k], { automargin: true }); });
+    if (!l.xaxis) l.xaxis = { automargin: true };
+    if (!l.yaxis) l.yaxis = { automargin: true };
+    return l;
+  }
   async function png(fig, { width, height, title = '', subtitle = '', details = '', dots = true, filename = 'chart.png' }) {
     const scale = 2;
     if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (e) { /* draw anyway */ } }
@@ -785,12 +819,15 @@
     const probe = document.createElement('canvas').getContext('2d');
     probe.font = '400 ' + fSize + 'px ' + SANS;
     const fLines = [[].concat(details || []).filter(Boolean).join(' · '), described(fig), chosen(),
-      'Exported ' + when + ' · fusionecosystem.xyz' + location.pathname.replace(/\/$/, '') + location.search]
+      'Exported ' + when]
       .filter(Boolean).flatMap(t => wrapLines(probe, t, width - pad * 2));
     const foot = Math.round(pad * 0.4 + fLines.length * fSize * 1.5 + pad * 0.7);
     // Display size and scale 2, not twice the size at scale 1: Plotly keeps
     // the layout's font sizes, and the labels would come out half-size.
-    const url = await Plotly.toImage({ data: fig.data, layout: inked(fig.layout || {}, ink) }, { format: 'png', width, height: chartH, scale });
+    // The chart drawn a little narrower and set in by a safe padding at each
+    // side, so its labels never touch the image's edge.
+    const inset = Math.round(pad * 0.5);
+    const url = await Plotly.toImage({ data: fig.data, layout: tight(inked(fig.layout || {}, ink)) }, { format: 'png', width: width - inset * 2, height: chartH, scale });
     const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
     if (!img) return;
     const H = head + chartH + foot;
@@ -821,9 +858,10 @@
     }
     // The mark: its own violet on light and dark, white on purple (violet on
     // violet would not show); faint, under the data.
-    const m = Math.round(Math.min(chartH, width) * 0.34);
+    const m = Math.round(Math.min(chartH, width) * 0.17);
     await drawMark(c, (width - m) / 2, head + (chartH - m) / 2, m, ink);
-    c.drawImage(img, 0, head, width, chartH);
+    await drawBrand(c, width - pad, pad + Math.round((tSize - brandM(tSize).mark) / 2) + 2, tSize, ink);
+    c.drawImage(img, inset, head, width - inset * 2, chartH);
     c.fillStyle = ink.text3;
     c.font = '400 ' + fSize + 'px ' + SANS;
     let fy = head + chartH + pad * 0.4;
@@ -924,5 +962,5 @@
       fill: 'tozeroy', fillcolor: 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',0.1)' });
   }
   window.FusionChart = { fit, compact, growth, onChange, quiet, soft, slot, hairline, glide, touch, frame, when, row, cssVar, png, pngHead, inLight, markBars, barMarks,
-    themeInk, drawMark, exportDetails, inked };
+    themeInk, drawMark, drawBrand, brandWidth, exportDetails, inked, tight };
 })();
