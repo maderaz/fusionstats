@@ -2464,6 +2464,16 @@
 
     // What the headline says about each chart, read from live state so it can
     // never disagree with what is actually plotted.
+    // The vaults a chart covers, for the addresses printed under its export:
+    // the one picked, or every stock vault (the returns chart: those it draws).
+    function scopeVaults(id) {
+      const pick = (sel) => (sel && sel !== '__all__' ? S.vaults.filter(v => v.address === sel) : S.vaults);
+      if (id === 'tvlPlot') return pick(S.tvlVault);
+      if (id === 'flowPlot') return pick(S.flowVault);
+      if (id === 'retPlot') return returnSeries(S.retRange).map(r => r.vault);
+      if (id === 'routePie') return S.vaults;
+      return pick(S.walVault);
+    }
     function chartMeta(id) {
       if (id === 'tvlPlot') {
         // Headline and subheading swap with the denomination. Whichever measure
@@ -2769,15 +2779,36 @@
           + headLegH + Math.round(pad * 0.3)
         : 0;
       const footLegH = inHeader ? 0 : legH;
+      // The contracts the chart covers, in small monospace at the foot: each
+      // vault's name and its full address, so the figures can be checked.
+      const addrSize = Math.round(w / 100);
+      const addrLH = Math.round(addrSize * 1.55);
+      probe.font = '500 ' + addrSize + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+      const vaults = (meta && meta.vaults) || [];
+      const chains = new Set(vaults.map(v => v.chain));
+      // A heading, then one vault a line, names padded so the addresses line
+      // up; two columns where they fit.
+      const nameW = Math.max(0, ...vaults.map(v => v.name.length));
+      const rows = vaults.map(v => v.name.padEnd(nameW) + '  ' + v.address);
+      const colW = rows.length ? Math.max(...rows.map(r => probe.measureText(r).width)) : 0;
+      const cols = rows.length > 1 && colW * 2 + pad <= maxW ? 2 : 1;
+      const addrHead = vaults.length ? (vaults.length === 1 ? 'Vault' : 'Vaults')
+        + (chains.size === 1 ? ' on ' + ([...chains][0] || 'base').replace(/^./, ch => ch.toUpperCase()) : '') : '';
+      const addrLines = vaults.length ? [addrHead] : [];
+      for (let i = 0; i < rows.length; i += cols) addrLines.push(rows.slice(i, i + cols));
+      const addrH = addrLines.length ? Math.round(pad * 0.5) + addrLines.length * addrLH : 0;
       // Scope is caption material — which vaults, which range, which day —
       // so it sits under the chart with the note rather than wedged between
       // the headline and the plot, where it was crowding both.
       const scopeH = hasHeader ? Math.round(scopeSize * 2.4) + detailLines.length * Math.round(scopeSize * 1.5) : 0;
       const footH = scopeH
-        + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH;
+        + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH + addrH;
 
       if (fit) h = Math.max(Math.round(w / 5), h - headH - footH);
-      const img = await loadImage(await render(h));
+      // The chart drawn a little narrower and set in by a safe padding at each
+      // side, so its labels never touch the image's edge.
+      const inset = Math.round(pad * 0.5);
+      const img = await loadImage(await render(h, w - inset * 2));
       if (!img) return;
 
       const cv = document.createElement('canvas');
@@ -2787,7 +2818,7 @@
       if (opaque) { c.fillStyle = ink.bg; c.fillRect(0, 0, cv.width, cv.height); }
       if (S.exportDots) paintDots(c, 0, headH, w, h);
       { const m = Math.round(Math.min(w, h) * 0.17); await FusionChart.drawMark(c, (w - m) / 2, headH + (h - m) / 2, m, ink); }
-      c.drawImage(img, 0, headH, w, h);
+      c.drawImage(img, inset, headH, w - inset * 2, h);
       // The brand at the top right: level with the headline, or in the chart's corner without one.
       await FusionChart.drawBrand(c, w - pad, hasHeader ? pad + Math.round((titleSize - brandSize * 1.05) / 2) : pad, brandSize, ink);
 
@@ -2911,6 +2942,13 @@
       };
 
       drawLegend(inHeader ? headLegendY : headH + h + Math.round(pad * 0.5));
+      if (addrLines.length) {
+        c.textBaseline = 'top';
+        c.fillStyle = ink.text3;
+        c.font = '500 ' + addrSize + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+        const top = headH + h + footH - addrH + Math.round(pad * 0.3);
+        addrLines.forEach((ln, i) => [].concat(ln).forEach((cell, j) => c.fillText(cell, pad + j * (colW + pad), top + i * addrLH)));
+      }
 
       await new Promise((resolve) => cv.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
@@ -2945,9 +2983,10 @@
       // the layout font sizes and labels come out half-size.
       // The image is in the page's theme, as the chart on screen is.
       const fig = gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : { data: gd.data, layout: gd.layout };
-      const inked = { data: fig.data, layout: FusionChart.inked(fig.layout || {}, FusionChart.themeInk()) };
-      await composeExport((ch) => Plotly.toImage(inked, { format: 'png', width: w, height: Math.round(ch / scale), scale }),
-                          w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png', chartMeta(id),
+      const inked = { data: fig.data, layout: FusionChart.tight(FusionChart.inked(fig.layout || {}, FusionChart.themeInk())) };
+      await composeExport((ch, cw) => Plotly.toImage(inked, { format: 'png', width: Math.round((cw || w * scale) / scale), height: Math.round(ch / scale), scale }),
+                          w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png',
+                          Object.assign({}, chartMeta(id), { vaults: scopeVaults(id) }),
                           !!(size || shape), FusionChart.exportDetails(fig, false));
     }
 
