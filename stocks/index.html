@@ -2671,6 +2671,12 @@
       // In the page's theme (light, dark or purple), the Fusion mark faint in
       // the middle, and under the chart what it shows and the choices made.
       const ink = FusionChart.themeInk(), accent = cssVar('--accent') || '#8429FF';
+      // Poppins is only loaded once something draws in it: measured before
+      // then, the headline was read in a narrower fallback and ran into the
+      // brand at the top right. Load the weights the image uses first.
+      if (document.fonts && document.fonts.load) {
+        try { await Promise.all(['400', '500', '600'].map(wt => document.fonts.load(wt + ' 40px Poppins'))); await document.fonts.ready; } catch (e) { /* draw anyway */ }
+      }
       if (meta && meta.legend) {
         const marks = await Promise.all(meta.legend.map(l => loadImage(l.icon)));
         meta.legend.forEach((l, i) => { l.mark = marks[i]; });
@@ -2697,7 +2703,7 @@
       probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
       // The brand (IPOR Fusion) sits at the top right; the headline wraps short of it.
       const brandSize = Math.round(titleSize * 0.7);
-      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW - FusionChart.brandWidth(brandSize) - Math.round(pad / 2)) : [];
+      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW - FusionChart.brandWidth(brandSize) - pad * 1.5) : [];
       probe.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
       const detailLines = hasHeader && details ? wrapText(probe, details, maxW) : [];
       // Under the headline: the range, and what one bar or point stands for.
