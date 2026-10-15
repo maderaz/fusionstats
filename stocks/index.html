@@ -2685,7 +2685,9 @@
       const probe = document.createElement('canvas').getContext('2d');
       const maxW = w - pad * 2;
       probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW) : [];
+      // The brand (IPOR Fusion) sits at the top right; the headline wraps short of it.
+      const brandSize = Math.round(titleSize * 0.7);
+      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW - FusionChart.brandWidth(brandSize) - Math.round(pad / 2)) : [];
       probe.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
       const detailLines = hasHeader && details ? wrapText(probe, details, maxW) : [];
       // Under the headline: the range, and what one bar or point stands for.
@@ -2784,8 +2786,10 @@
 
       if (opaque) { c.fillStyle = ink.bg; c.fillRect(0, 0, cv.width, cv.height); }
       if (S.exportDots) paintDots(c, 0, headH, w, h);
-      { const m = Math.round(Math.min(w, h) * 0.34); await FusionChart.drawMark(c, (w - m) / 2, headH + (h - m) / 2, m, ink); }
+      { const m = Math.round(Math.min(w, h) * 0.17); await FusionChart.drawMark(c, (w - m) / 2, headH + (h - m) / 2, m, ink); }
       c.drawImage(img, 0, headH, w, h);
+      // The brand at the top right: level with the headline, or in the chart's corner without one.
+      await FusionChart.drawBrand(c, w - pad, hasHeader ? pad + Math.round((titleSize - brandSize * 1.05) / 2) : pad, brandSize, ink);
 
       let headLegendY = null;
       if (hasHeader) {
