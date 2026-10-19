@@ -660,7 +660,7 @@
     <section class="chart-card">
       <div class="card-head">
         <h2 class="chart-section-title">Wallets</h2>
-        <div class="xport" data-png="walPng"></div>
+        <div class="xport" data-png="walPng" data-csv="walCsv" data-csv-label="Wallet counts as CSV"></div>
       </div>
       <div class="chart-toolbar" id="walToolbar">
         <div class="filters">
@@ -3343,6 +3343,16 @@
       window.addEventListener('fusion:theme', (e) => { S.theme = e.detail.theme; repaintAll(); });
 
       // ---- CSV for every new dataset ----
+      // Wallets: both measures a point at a time (the chart draws one), in
+      // the vaults and range picked.
+      document.getElementById('walCsv').addEventListener('click', () => {
+        const cum = walletSeries(S.walVault, S.walRange, 'cumulative'), act = walletSeries(S.walVault, S.walRange, 'active');
+        const actBy = new Map(act.map(p => [p.ts, p.v]));
+        const scope = S.walVault === '__all__' ? 'all' : S.walVault;
+        downloadCsv('fusion-stocks-wallets-' + (scope === 'all' ? 'all' : scope.slice(0, 10)) + '-' + S.walRange + 'd',
+          [['time_utc', 'wallets_ever_deposited', 'wallets_active', 'vaults']].concat(
+            cum.map(p => [new Date(p.ts * 1000).toISOString().replace('.000Z', 'Z'), p.v, actBy.get(p.ts) ?? 0, scope])));
+      });
       document.getElementById('flowCsv').addEventListener('click', () => {
         const pts = flowSeries(S.flowVault, S.flowRange);
         downloadCsv('fusion-stocks-activity', [['date', 'inflow_usd', 'exit_usd', 'net_usd'],
