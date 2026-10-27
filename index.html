@@ -1097,7 +1097,7 @@
         </div>
         <div class="ov-half">
           <div class="figs figs-3" id="statsRow"></div>
-          <span hidden id="flowTip"><span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
+          <span hidden id="flowTip"><span class="info-tip" tabindex="0" data-tip="Deposits minus withdrawals over the 24 hours, 7 and 30 days to the last scan (synthetic flow excluded), re-priced at today's per-symbol price so the headline tracks USD-denominated TVL change instead of drifting with intra-window ETH/BTC moves.">&#9432;</span></span>
         </div>
       </div>
       <div id="tvlWeekly" class="flow-chart combo-chart">
@@ -1333,9 +1333,14 @@
           evs.forEach(e => { e.synthetic = true; e.syntheticReason = 'atomic'; });
         }
       }
-      // TVL-ratio
+      // TVL-ratio. Only where the backend gave no verdict: it measures each
+      // event against the vault's TVL around its day as well as today's
+      // (collect-activity.js), and this cruder check against today's TVL
+      // alone overrode it. A real exit that emptied a vault (Tesseract USDC
+      // Lending Optimizer, $858K out on Oct 27, $2.7K left) read as 300×
+      // its TVL and dropped out of Net 24h.
       events.forEach(e => {
-        if (e.synthetic) return;
+        if (e.synthetic !== undefined) return;
         const v = vaultsByAddr[e.vault];
         const tvl = v?.tvl || 0;
         if (tvl <= 0) return;
@@ -1663,11 +1668,18 @@
         // TVL never realized, and the headline diverges from the official
         // TVL series. If a symbol has no recent priced sample we fall back
         // to the event's stored usdValue.
+        // The window ends where the data does (the last scan, data.updatedAt),
+        // not at the viewer's clock: the scans run a few times a day, and a
+        // window counted back from now covered only part of its 24 hours and
+        // dropped the start of it. On Oct 27 that hid a $1.62M deposit made
+        // 21 hours before the last scan, and Net 24h read +$365K where the
+        // 24 hours to the scan held +$1.79M.
+        const dataEnd = Math.min(Math.floor(Date.now() / 1000), Math.floor((Date.parse(data.updatedAt) || Date.now()) / 1000));
         function netFlowUsd(evts, seconds) {
-          const cutoff = Math.floor(Date.now() / 1000) - seconds;
+          const cutoff = dataEnd - seconds;
           let net = 0;
           evts.forEach(e => {
-            if (e.synthetic || (e.timestamp || 0) <= cutoff) return;
+            if (e.synthetic || (e.timestamp || 0) <= cutoff || (e.timestamp || 0) > dataEnd) return;
             let usd = null;
             if (e.assets > 0 && e.symbol && priceBySymbol[e.symbol]) {
               usd = e.assets * priceBySymbol[e.symbol];
