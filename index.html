@@ -804,6 +804,13 @@
       vertical-align: middle;
       cursor: help;
     }
+    /* The protocol behind an automated manager's row: a quiet chip. */
+    .mgr-tag {
+      display: inline-flex; align-items: center; flex: none; height: 18px; margin-left: 8px; padding: 0 6px;
+      border-radius: 5px; background: var(--accent-bg); color: var(--accent);
+      font: 500 11px/1 var(--sans); white-space: nowrap; vertical-align: middle;
+    }
+    .user-cell { white-space: nowrap; }
     tr.row-synthetic td, .mobile-event.row-synthetic { opacity: 0.6; }
     tr.row-synthetic:hover td, .mobile-event.row-synthetic:hover { opacity: 1; }
 
@@ -926,6 +933,8 @@
     .mobile-event .ev-dir { display: flex; align-items: center; justify-content: center; }
     .mobile-event .dir { width: 18px; height: 18px; }
     .mobile-event .dir::before { width: 8px; height: 8px; }
+    .mobile-event-name { display: flex; align-items: center; min-width: 0; }
+    .mobile-event-name .mgr-tag { margin-left: 6px; height: 16px; padding: 0 6px; font-size: 10px; }
     .mobile-event-product {
       min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       font-size: 12.5px; font-weight: 500; color: var(--text);
@@ -1172,6 +1181,10 @@
           <option value="only">Stocks only</option>
           <option value="exclude">Exclude stocks</option>
         </select>
+        <select id="filterManagers" hidden aria-hidden="true" tabindex="-1">
+          <option value="show" selected>Show</option>
+          <option value="hide">Hide</option>
+        </select>
         <select id="filterSynthetic" hidden aria-hidden="true" tabindex="-1">
           <option value="hide" selected>Hide</option>
           <option value="show">Show</option>
@@ -1199,6 +1212,15 @@
             <button type="button" data-v="hide">Hide</button>
             <button type="button" data-v="show">Show</button>
             <button type="button" data-v="only">Only</button>
+          </div>
+        </div>
+        <div class="more-sec">
+          <div class="more-k">Automated managers
+            <span class="info-tip" tabindex="0" data-tip="Deposits and withdrawals made by a known protocol's contract holding the shares itself: yield agents and aggregators such as Zyfi and Harvest, which move money in and out on their own schedule. Real money, so the net-flow figures and charts always count them; this only hides their rows from the list.">&#9432;</span>
+          </div>
+          <div class="seg more-seg" data-for="filterManagers" role="group" aria-label="Automated managers">
+            <button type="button" data-v="show">Show</button>
+            <button type="button" data-v="hide">Hide</button>
           </div>
         </div>
         <button type="button" class="more-reset" hidden>Reset to defaults</button>
@@ -1290,6 +1312,21 @@
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
     const FILTER_SYNTHETIC_KEY = 'fusionstats_filter_synthetic';
+    const FILTER_MANAGERS_KEY = 'fusionstats_filter_managers';
+    // Automated managers: contracts of a known protocol (router-identity.json)
+    // that hold the shares themselves, so an event's owner is the protocol,
+    // not a person (Zyfi's adapter, Harvest's strategies, another Fusion
+    // vault). Their flows are real and stay in every figure; the list names
+    // them and can hide them.
+    let MANAGERS = {};
+    const managerOf = (e) => MANAGERS[(e.owner || '').toLowerCase()] || null;
+    fetch('router-identity.json').then(r => (r.ok ? r.json() : null)).then(ri => {
+      if (!ri) return;
+      const m = {};
+      for (const [a, v] of Object.entries(ri)) if (v && v.isContract && v.protocol) m[a.toLowerCase()] = v.protocol === 'IPOR' ? 'Fusion' : v.protocol;
+      MANAGERS = m;
+      if (typeof allEvents !== 'undefined' && allEvents && allEvents.length) applyFilters({ resetPage: false });
+    }).catch(() => {});
 
     // Per-symbol USD price taken from the MOST RECENT priced event of that
     // symbol (by timestamp). Used to value events the price API hasn't filled
@@ -1369,7 +1406,9 @@
       const chain = document.getElementById('filterChain').value;
       const syntheticMode = document.getElementById('filterSynthetic').value || 'hide';
       const stocksMode = document.getElementById('filterStocks').value || '';
+      const managersMode = document.getElementById('filterManagers').value || 'show';
       localStorage.setItem(FILTER_STOCKS_KEY, stocksMode);
+      localStorage.setItem(FILTER_MANAGERS_KEY, managersMode);
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
       localStorage.setItem(FILTER_PRODUCT_KEY, product);
       localStorage.setItem(FILTER_SYNTHETIC_KEY, syntheticMode);
@@ -1380,6 +1419,7 @@
         if (stocksMode === 'exclude' && isStockEvent(e)) return false;
         if (syntheticMode === 'hide' && e.synthetic) return false;
         if (syntheticMode === 'only' && !e.synthetic) return false;
+        if (managersMode === 'hide' && managerOf(e)) return false;
         if (type && e.type !== type) return false;
         if (chain && (e.chain || 'ethereum') !== chain) return false;
         if (minAmount > 0) {
@@ -1737,6 +1777,9 @@
           }
         }
 
+        const storedManagers = localStorage.getItem(FILTER_MANAGERS_KEY);
+        if (storedManagers === 'hide' || storedManagers === 'show') document.getElementById('filterManagers').value = storedManagers;
+
         const storedSynthetic = localStorage.getItem(FILTER_SYNTHETIC_KEY);
         if (storedSynthetic) {
           const synthSel = document.getElementById('filterSynthetic');
@@ -2049,6 +2092,8 @@
         const usdMobile = estUsd != null ? `${estPrefix}${fmtUsdAmt(estUsd)}` : '';
         const synthBadge = e.synthetic ? `<span class="synth-badge" title="Auto-detected as synthetic flow (${e.syntheticReason}) — not a genuine user deposit/withdraw">${e.syntheticReason}</span>` : '';
         const nameAttr = String(name).replace(/"/g, '&quot;');
+        const mgr = managerOf(e);
+        const mgrTag = mgr ? `<span class="mgr-tag" title="Moved by ${mgr}'s contract, an automated manager holding the shares itself">${mgr}</span>` : '';
         // A dollar stablecoin's amount reads the same as its USD value: the
         // symbol alone says which coin it was (the amount is in its title).
         const pegged = estUsd != null && e.assets > 0 && Math.abs(estUsd / e.assets - 1) < 0.005;
@@ -2068,7 +2113,7 @@
           <td class="col-num usd-cell">${usd || '—'}</td>
           <td class="num-bold col-num amount-cell">${amount}</td>
           <td class="vault-name"><a href="/address/?a=${e.vault}" class="product-link" title="${nameAttr}">${name}</a></td>
-          <td><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a></td>
+          <td class="user-cell"><a href="${scan}/address/${e.owner}" target="_blank" rel="noopener" class="addr-link">${shortAddr(e.owner)}</a>${mgrTag}</td>
           <td class="col-profile">${debank}</td>
         </tr>`;
         // The phone's line: the arrow alone says which way (its title the
@@ -2079,7 +2124,7 @@
           : `<span class="ev-dir ${badgeClass}" title="${dirTitle}" aria-label="${dirTitle}"><i class="dir" aria-hidden="true"></i></span>`;
         mobileRows += `<div class="mobile-event event-row${e.synthetic ? ' row-synthetic' : ''}">`
           + `<span class="mobile-event-when">${String(time).replace(/ ago$/, '')}</span>${dirMark}`
-          + `<a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>`
+          + `<span class="mobile-event-name"><a href="/address/?a=${e.vault}" class="mobile-event-product product-link" title="${nameAttr}">${name}</a>${mgrTag}</span>`
           + `<span class="mobile-event-usd" title="${amountText(e, whole)} ${sym}">${usdMobile || '—'}</span></div>`;
       });
 
@@ -2274,7 +2319,7 @@
     // source of truth: the buttons write to them, and paintMore() repaints
     // from them after every filter, whoever set them (a stored choice, a
     // ?stocks= link).
-    const MORE_DEFAULTS = { filterStocks: '', filterSynthetic: 'hide' };
+    const MORE_DEFAULTS = { filterStocks: '', filterSynthetic: 'hide', filterManagers: 'show' };
     function paintMore() {
       const btn = document.getElementById('moreBtn');
       const panel = document.getElementById('morePanel');
@@ -2447,6 +2492,7 @@
     document.getElementById('filterProduct').addEventListener('change', () => applyFilters());
     document.getElementById('filterSynthetic').addEventListener('change', () => applyFilters());
     document.getElementById('filterStocks').addEventListener('change', () => applyFilters());
+    document.getElementById('filterManagers').addEventListener('change', () => applyFilters());
 
     // Pager and retry, delegated: the list is re-rendered on every change.
     document.getElementById('activityContent').addEventListener('click', (e) => {
