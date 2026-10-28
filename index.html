@@ -1182,8 +1182,8 @@
           <option value="exclude">Exclude stocks</option>
         </select>
         <select id="filterManagers" hidden aria-hidden="true" tabindex="-1">
-          <option value="show" selected>Show</option>
-          <option value="hide">Hide</option>
+          <option value="hide" selected>Hide</option>
+          <option value="show">Show</option>
         </select>
         <select id="filterSynthetic" hidden aria-hidden="true" tabindex="-1">
           <option value="hide" selected>Hide</option>
@@ -1216,11 +1216,11 @@
         </div>
         <div class="more-sec">
           <div class="more-k">Automated managers
-            <span class="info-tip" tabindex="0" data-tip="Deposits and withdrawals made by a known protocol's contract holding the shares itself: yield agents and aggregators such as Zyfi and Harvest, which move money in and out on their own schedule. Real money, so the net-flow figures and charts always count them; this only hides their rows from the list.">&#9432;</span>
+            <span class="info-tip" tabindex="0" data-tip="Deposits and withdrawals made by a known protocol's contract holding the shares itself: yield agents and aggregators such as Zyfi and Harvest, which move money in and out on their own schedule. Real money, so the net-flow figures and charts always count them; their rows are hidden from the list by default.">&#9432;</span>
           </div>
           <div class="seg more-seg" data-for="filterManagers" role="group" aria-label="Automated managers">
-            <button type="button" data-v="show">Show</button>
             <button type="button" data-v="hide">Hide</button>
+            <button type="button" data-v="show">Show</button>
           </div>
         </div>
         <button type="button" class="more-reset" hidden>Reset to defaults</button>
@@ -1312,7 +1312,8 @@
     const FILTER_PRODUCT_KEY = 'fusionstats_filter_product';
     const FILTER_STOCKS_KEY = 'fusionstats_filter_stocks';
     const FILTER_SYNTHETIC_KEY = 'fusionstats_filter_synthetic';
-    const FILTER_MANAGERS_KEY = 'fusionstats_filter_managers';
+    // v2: Hide became the default, and every visit had stored Show till then.
+    const FILTER_MANAGERS_KEY = 'fusionstats_filter_managers_v2';
     // Automated managers: contracts of a known protocol (router-identity.json)
     // that hold the shares themselves, so an event's owner is the protocol,
     // not a person (Zyfi's adapter, Harvest's strategies, another Fusion
@@ -1406,7 +1407,7 @@
       const chain = document.getElementById('filterChain').value;
       const syntheticMode = document.getElementById('filterSynthetic').value || 'hide';
       const stocksMode = document.getElementById('filterStocks').value || '';
-      const managersMode = document.getElementById('filterManagers').value || 'show';
+      const managersMode = document.getElementById('filterManagers').value || 'hide';
       localStorage.setItem(FILTER_STOCKS_KEY, stocksMode);
       localStorage.setItem(FILTER_MANAGERS_KEY, managersMode);
       localStorage.setItem(FILTER_AMOUNT_KEY, String(minAmount));
@@ -2319,7 +2320,7 @@
     // source of truth: the buttons write to them, and paintMore() repaints
     // from them after every filter, whoever set them (a stored choice, a
     // ?stocks= link).
-    const MORE_DEFAULTS = { filterStocks: '', filterSynthetic: 'hide', filterManagers: 'show' };
+    const MORE_DEFAULTS = { filterStocks: '', filterSynthetic: 'hide', filterManagers: 'hide' };
     function paintMore() {
       const btn = document.getElementById('moreBtn');
       const panel = document.getElementById('morePanel');
