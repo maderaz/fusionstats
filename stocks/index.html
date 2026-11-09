@@ -3031,9 +3031,33 @@
         const rule = ink.dark ? 'rgba(255,255,255,0.16)' : 'rgba(11,11,15,0.12)';
         const tf = (a) => Object.assign({}, a && a.tickfont, { color: chartInk, size: 11 });
         layout.xaxis = Object.assign({}, layout.xaxis, { tickfont: tf(layout.xaxis), linecolor: rule, showline: true });
-        layout.yaxis = Object.assign({}, layout.yaxis, { tickfont: tf(layout.yaxis), ticklabelposition: 'inside', ticks: '',
-          showline: false, automargin: false, ticklabelstandoff: 6 });
-        layout.margin = { l: 4, r: 12, t: 14, b: 8, pad: 0 };
+        // Labels inside the plot where the series rise from zero and leave the
+        // left side clear; the returns lines start at 100 against the left edge.
+        const inside = id !== 'retPlot';
+        layout.yaxis = Object.assign({}, layout.yaxis, inside
+          ? { tickfont: tf(layout.yaxis), ticklabelposition: 'inside', ticks: '', showline: false, automargin: false, ticklabelstandoff: 6 }
+          : { tickfont: tf(layout.yaxis) });
+        // A fixed foot for the two-line first date ("Aug 23 / 2026"): with
+        // automargin the image's single layout pass drops that label.
+        if (inside) {
+          layout.margin = { l: 4, r: 12, t: 14, b: 46, pad: 0 };
+          layout.xaxis.automargin = false;
+        }
+        // Plotly pads a date axis by ~6% each side when a trace has markers
+        // (the end dots). The export keeps a little more on the left, where
+        // the first date label must clear the inside y labels (Plotly hides
+        // one that overlaps them), and half of it on the right.
+        if (data.some(t => t.mode === 'markers')) {
+          const ms = (v) => (v instanceof Date ? v.getTime() : typeof v === 'number' ? v
+            : new Date(String(v).replace(' ', 'T') + (/T|\s/.test(String(v)) && !/[zZ]$/.test(String(v)) ? 'Z' : '')).getTime());
+          let lo = Infinity, hi = -Infinity;
+          data.forEach(t => (t.x || []).forEach(x => { const v = ms(x); if (isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
+          if (isFinite(lo) && hi > lo && (gd._fullLayout.xaxis || {}).type === 'date') {
+            const padL = (hi - lo) * 0.08, padR = (hi - lo) * 0.03;
+            const iso = (v) => new Date(v).toISOString().replace('T', ' ').replace('Z', '');
+            layout.xaxis = Object.assign({}, layout.xaxis, { range: [iso(lo - padL), iso(hi + padR)], autorange: false });
+          }
+        }
         data = data.map(t => (t.mode === 'markers' && t.marker
           ? Object.assign({}, t, { marker: Object.assign({}, t.marker, { size: 9, line: { color: '#FFFFFF', width: 2 } }) })
           : t));
