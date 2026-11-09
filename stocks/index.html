@@ -2496,7 +2496,7 @@
         let sub = '';
         if (fig) {
           sub = usdMode
-            ? fNum(fig.units, 4) + ' ' + (ticker || 'tokenized stock') + ' units'
+            ? Math.round(fig.units).toLocaleString('en-US') + ' ' + (ticker || 'tokenized stock') + ' units'
             : 'TVL: ' + fUsd(fig.usd);
         }
 
@@ -2504,7 +2504,7 @@
         // about which equities make it up. With "Stock units (all)" the export
         // trades the TVL counterweight — a dollar figure under a chart that is
         // not drawing dollars — for the split the line is actually a sum of.
-        let legend = null, legendTotal = null;
+        let legend = null, legendTotal = null, b_totU = 0;
         if (S.tvlUnit === 'units') {
           const b = unitsBreakdown();
           if (b.rows.length) {
@@ -2528,6 +2528,7 @@
                 color: seriesColor(i),
               }));
             }
+            b_totU = b.totU;
             legendTotal = {
               value: fNum(b.totU, 4),
               label: 'tokenized units held across Fusion ecosystem vaults',
@@ -2535,8 +2536,14 @@
           }
         }
 
+        // In the export the figure the chart draws leads the headline, in the
+        // accent and without decimals: the units total, or the TVL in dollars.
+        // No "Last 90 days" line under it; the breakdown row (or the units
+        // counterweight) follows the headline directly.
+        const lead = legendTotal ? Math.round(b_totU).toLocaleString('en-US')
+          : (usdMode && fig ? fUsd(fig.usd) : '');
         return {
-          title, sub, legend, legendTotal, legendRow: !!legendTotal,
+          title, sub, lead, legend, legendTotal: null, legendRow: !!legendTotal, noWhat: true,
           what: rangeWhat(S.tvlRange, (S.tvlType === 'bar' ? 'each bar is ' : 'each point is ')
                   + perStep(S.tvlRange) + (usdMode ? ' TVL' : ' units held')),
           scope: [selLabel('tvlVault', 'All stock vaults'),
@@ -2622,6 +2629,23 @@
       };
     }
 
+    // Wrapped as wrapText would, but a two-line result breaks where its lines
+    // come out most even ("Tokenized Stock Units / Across Fusion Vaults"),
+    // not as late as the width allows.
+    function balancedWrap(c, text, maxWidth) {
+      const greedy = wrapText(c, text, maxWidth);
+      if (greedy.length !== 2) return greedy;
+      const words = String(text).split(/\s+/).filter(Boolean);
+      let best = greedy, bestW = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const a = words.slice(0, i).join(' '), b = words.slice(i).join(' ');
+        const wa = c.measureText(a).width, wb = c.measureText(b).width;
+        if (wa > maxWidth || wb > maxWidth) continue;
+        const worst = Math.max(wa, wb);
+        if (worst < bestW) { bestW = worst; best = [a, b]; }
+      }
+      return best;
+    }
     function wrapText(c, text, maxWidth) {
       const out = [];
       for (const para of String(text).split('\n')) {
@@ -2636,15 +2660,16 @@
       return out;
     }
 
+    // The page's dot grid: its 16px pitch and dot at the image's 2x scale,
+    // a touch stronger than on screen (no card behind it).
     function paintDots(c, x, y, w, h) {
-      const pitch = Math.max(14, Math.round(w / 96));
-      // The theme's dot colour, stronger than on screen: no card behind it.
+      const pitch = 32, r = 1.9;
       const ink = FusionChart.themeInk();
       c.fillStyle = ink.dark ? '#FFFFFF' : '#191717';
-      c.globalAlpha = ink.dark ? 0.12 : 0.18;
+      c.globalAlpha = ink.dark ? 0.16 : 0.22;
       for (let yy = y + h - pitch / 2; yy > y; yy -= pitch) {
         for (let xx = x + pitch / 2; xx < x + w; xx += pitch) {
-          c.beginPath(); c.arc(xx, yy, Math.max(1, pitch / 14), 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.arc(xx, yy, r, 0, Math.PI * 2); c.fill();
         }
       }
       c.globalAlpha = 1;
@@ -2703,12 +2728,17 @@
       probe.font = '600 ' + titleSize + 'px Poppins, sans-serif';
       // The brand (IPOR Fusion) sits at the top right; the headline wraps short of it.
       const brandSize = Math.round(titleSize * 0.7);
-      const titleLines = hasHeader ? wrapText(probe, meta.title, maxW - FusionChart.brandWidth(brandSize) - pad * 1.5) : [];
+      // The headline, its lead figure (if any) first, broken where the two
+      // lines come out most even rather than as late as possible.
+      const headText = hasHeader ? ((meta.lead ? meta.lead + ' ' : '') + meta.title) : '';
+      const titleLines = hasHeader ? balancedWrap(probe, headText, maxW - FusionChart.brandWidth(brandSize) - pad * 1.5) : [];
       probe.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
       const detailLines = hasHeader && details ? wrapText(probe, details, maxW) : [];
       // Under the headline: the range, and what one bar or point stands for.
       probe.font = '400 ' + whatSize + 'px Poppins, sans-serif';
-      const whatLines = hasHeader && meta.what ? wrapText(probe, meta.what, maxW) : [];
+      // A breakdown row under the headline is the subheading: no line of
+      // its own above it.
+      const whatLines = hasHeader && meta.what && !meta.noWhat && !(meta.legendRow && meta.legend) ? wrapText(probe, meta.what, maxW) : [];
       const whatLH = Math.round(whatSize * 1.45);
       probe.font = '400 ' + noteSize + 'px Poppins, sans-serif';
       const noteLines = hasHeader && meta.note ? wrapText(probe, meta.note, maxW) : [];
@@ -2796,18 +2826,23 @@
       // columns as fit.
       const rows = vaults.map(v => v.address);
       const colW = rows.length ? Math.max(...rows.map(r => probe.measureText(r).width)) : 0;
-      const cols = Math.max(1, Math.min(rows.length, Math.floor((maxW + pad) / (colW + pad))));
-      const addrHead = vaults.length ? (vaults.length === 1 ? 'Vault' : 'Vaults')
-        + (chains.size === 1 ? ' on ' + ([...chains][0] || 'base').replace(/^./, ch => ch.toUpperCase()) : '') : '';
-      const addrLines = vaults.length ? [addrHead] : [];
+      const colGap = pad * 1.4;
+      const cols = Math.max(1, Math.min(rows.length, Math.floor((maxW + colGap) / (colW + colGap))));
+      // The snapshot the figures come from, then the vaults they cover.
+      const snapAt = S.updatedAt ? new Date(S.updatedAt) : new Date();
+      const snapText = 'Snapshot ' + snapAt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }) + ' UTC';
+      const addrHead = snapText + (vaults.length ? '  ·  ' + (vaults.length === 1 ? 'Vault' : vaults.length + ' vaults')
+        + (chains.size === 1 ? ' on ' + ([...chains][0] || 'base').replace(/^./, ch => ch.toUpperCase()) : '') : '');
+      const addrLines = hasHeader || vaults.length ? [addrHead] : [];
       for (let i = 0; i < rows.length; i += cols) addrLines.push(rows.slice(i, i + cols));
-      const addrH = addrLines.length ? Math.round(pad * 0.5) + addrLines.length * addrLH : 0;
+      const addrLH2 = Math.round(addrSize * 2.1);   // roomier rows than before
+      const addrH = addrLines.length ? Math.round(pad * 0.8) + addrLines.length * addrLH2 + Math.round(pad * 0.4) : 0;
       // Scope is caption material — which vaults, which range, which day —
       // so it sits under the chart with the note rather than wedged between
       // the headline and the plot, where it was crowding both.
-      const scopeH = hasHeader ? Math.round(scopeSize * 2.4) + detailLines.length * Math.round(scopeSize * 1.5) : 0;
-      const footH = scopeH
-        + (noteLines.length ? Math.round(noteSize * 1.5) * noteLines.length + pad : 0) + footLegH + addrH;
+      // The foot is the snapshot and the vaults only: the scope, details and
+      // notes stay on the page.
+      const footH = footLegH + addrH;
 
       if (fit) h = Math.max(Math.round(w / 5), h - headH - footH);
       // The chart drawn a little narrower and set in by a safe padding at each
@@ -2833,7 +2868,15 @@
         let y = pad;
         c.fillStyle = ink.text;
         c.font = '600 ' + titleSize + 'px Poppins, sans-serif';
-        titleLines.forEach((ln) => { c.fillText(ln, pad, y); y += titleLH; });
+        titleLines.forEach((ln, i) => {
+          // The lead figure, in the accent, opens the first line.
+          if (i === 0 && meta.lead && ln.startsWith(meta.lead)) {
+            c.fillStyle = accent; c.fillText(meta.lead, pad, y);
+            const lw = c.measureText(meta.lead + ' ').width;
+            c.fillStyle = ink.text; c.fillText(ln.slice(meta.lead.length + 1), pad + lw, y);
+          } else c.fillText(ln, pad, y);
+          y += titleLH;
+        });
         if (whatLines.length) {
           y += Math.round(whatSize * 0.3);
           c.fillStyle = ink.text2;
@@ -2851,18 +2894,6 @@
         // helpers exist, below. Only the position is decided at this point.
         if (inHeader) { headLegendY = y + Math.round(legSize * 0.2); y += headLegH; }
 
-        c.fillStyle = ink.text3;
-        c.font = '400 ' + scopeSize + 'px Poppins, sans-serif';
-        c.fillText(meta.scope + '  ·  ' + new Date().toISOString().slice(0, 10),
-                   pad, headH + h + footLegH + Math.round(scopeSize * 0.9));
-        detailLines.forEach((ln, i) => c.fillText(ln, pad, headH + h + footLegH + Math.round(scopeSize * 2.4) + i * Math.round(scopeSize * 1.5)));
-        if (noteLines.length) {
-          c.fillStyle = ink.text3;
-          c.font = '400 ' + noteSize + 'px Poppins, sans-serif';
-          const lh = Math.round(noteSize * 1.5);
-          noteLines.forEach((ln, i) =>
-            c.fillText(ln, pad, headH + h + footLegH + scopeH + Math.round(pad * 0.3) + i * lh));
-        }
       }
 
       // The mark if the file decoded, the series dot if it did not — the
@@ -2951,8 +2982,8 @@
         c.textBaseline = 'top';
         c.fillStyle = ink.text3;
         c.font = '500 ' + addrSize + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
-        const top = headH + h + footH - addrH + Math.round(pad * 0.3);
-        addrLines.forEach((ln, i) => [].concat(ln).forEach((cell, j) => c.fillText(cell, pad + j * (colW + pad), top + i * addrLH)));
+        const top = headH + h + footLegH + Math.round(pad * 0.8);
+        addrLines.forEach((ln, i) => [].concat(ln).forEach((cell, j) => c.fillText(cell, pad + j * (colW + colGap), top + i * addrLH2)));
       }
 
       await new Promise((resolve) => cv.toBlob((blob) => {
@@ -2988,7 +3019,50 @@
       // the layout font sizes and labels come out half-size.
       // The image is in the page's theme, as the chart on screen is.
       const fig = gd.__wideLayout ? { data: gd.data, layout: gd.__wideLayout } : { data: gd.data, layout: gd.layout };
-      const inked = { data: fig.data, layout: FusionChart.tight(FusionChart.inked(fig.layout || {}, FusionChart.themeInk())) };
+      // The chart as the page draws it: its axes in the series' ink (as the
+      // page's CSS paints them), small; the y labels inside the plot so it
+      // runs nearly full width; the end dots small, on a white ring.
+      const ink = FusionChart.themeInk();
+      const chartInk = (getComputedStyle(gd).getPropertyValue('--chart-ink') || '').trim() || cssVar('--accent') || '#8429FF';
+      const layout = FusionChart.tight(FusionChart.inked(fig.layout || {}, ink));
+      const isPie = (fig.data || []).some(t => t.type === 'pie');
+      let data = fig.data;
+      if (!isPie) {
+        const rule = ink.dark ? 'rgba(255,255,255,0.16)' : 'rgba(11,11,15,0.12)';
+        const tf = (a) => Object.assign({}, a && a.tickfont, { color: chartInk, size: 11 });
+        layout.xaxis = Object.assign({}, layout.xaxis, { tickfont: tf(layout.xaxis), linecolor: rule, showline: true });
+        // Labels inside the plot where the series rise from zero and leave the
+        // left side clear; the returns lines start at 100 against the left edge.
+        const inside = id !== 'retPlot';
+        layout.yaxis = Object.assign({}, layout.yaxis, inside
+          ? { tickfont: tf(layout.yaxis), ticklabelposition: 'inside', ticks: '', showline: false, automargin: false, ticklabelstandoff: 6 }
+          : { tickfont: tf(layout.yaxis) });
+        // A fixed foot for the two-line first date ("Aug 23 / 2026"): with
+        // automargin the image's single layout pass drops that label.
+        if (inside) {
+          layout.margin = { l: 4, r: 12, t: 14, b: 46, pad: 0 };
+          layout.xaxis.automargin = false;
+        }
+        // Plotly pads a date axis by ~6% each side when a trace has markers
+        // (the end dots). The export keeps a little more on the left, where
+        // the first date label must clear the inside y labels (Plotly hides
+        // one that overlaps them), and half of it on the right.
+        if (data.some(t => t.mode === 'markers')) {
+          const ms = (v) => (v instanceof Date ? v.getTime() : typeof v === 'number' ? v
+            : new Date(String(v).replace(' ', 'T') + (/T|\s/.test(String(v)) && !/[zZ]$/.test(String(v)) ? 'Z' : '')).getTime());
+          let lo = Infinity, hi = -Infinity;
+          data.forEach(t => (t.x || []).forEach(x => { const v = ms(x); if (isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } }));
+          if (isFinite(lo) && hi > lo && (gd._fullLayout.xaxis || {}).type === 'date') {
+            const padL = (hi - lo) * 0.08, padR = (hi - lo) * 0.03;
+            const iso = (v) => new Date(v).toISOString().replace('T', ' ').replace('Z', '');
+            layout.xaxis = Object.assign({}, layout.xaxis, { range: [iso(lo - padL), iso(hi + padR)], autorange: false });
+          }
+        }
+        data = data.map(t => (t.mode === 'markers' && t.marker
+          ? Object.assign({}, t, { marker: Object.assign({}, t.marker, { size: 9, line: { color: '#FFFFFF', width: 2 } }) })
+          : t));
+      }
+      const inked = { data, layout };
       await composeExport((ch, cw) => Plotly.toImage(inked, { format: 'png', width: Math.round((cw || w * scale) / scale), height: Math.round(ch / scale), scale }),
                           w * scale, h * scale, 'fusion-stocks-' + slug + '-' + stamp + '.png',
                           Object.assign({}, chartMeta(id), { vaults: scopeVaults(id) }),
