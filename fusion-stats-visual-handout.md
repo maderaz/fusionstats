@@ -408,6 +408,171 @@ A headline export is laid out top to bottom:
 
 ---
 
+## 4b. Chart areas, built piece by piece
+
+A "chart area" is one full section around a chart: its head, toolbar, plot, key and note. This is the anatomy the Stocks page uses for every chart section (TVL, Wallets, Daily flows, Performance). Build each chart section this way.
+
+```
+┌ section.chart-card ─────────────────────────────────────────────────────┐
+│ ─ hairline (border-top) ─                                              │
+│ [TVL ⓘ]                                                     [⤓ Export] │  .card-head
+│ ┌ filters ───────────────────────────────────────┐ ┌ range ───────────┐ │  .chart-toolbar
+│ │ Vault           │ Unit  │ Chart │ Scale ⓘ     │ │7d 30d [90d] 180d All│
+│ │ All stock vaults│ USD ⌄ │ Line ⌄│ Linear ⌄    │ └──────────────────┘ │
+│ └────────────────────────────────────────────────┘                     │
+│ · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·  │  .plot (340px)
+│ $4M· · · · · · · · · · · · · · · · · · · · · · ·╭──────────────● · · ·  │  dots only inside
+│ · · · · · · · · · · · · · · · ╭───────────────╯ · · · · · · · · · · ·  │  the plot's square
+│ $2M· · · ●───────────────────╯ · · · · · · · · · · · · · · · · · · · ·  │
+│   Aug 23        Sep 12        Oct 2        Oct 22        Nov 10        │  5 HTML dates
+│ (key: logos · ticker · value)                                          │  .bar-key (bars only)
+│ (note: 12.5px muted caption)                                           │  .chart-note
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Section shell
+
+- `.chart-card { padding: 36px 0 28px; border-top: 1px solid var(--line); }`. There is no box: the hairline is the only divider.
+- **Head row** (`.card-head`): `display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px`.
+  - On the left is the title, `18px/600`, -0.02em, with an optional ⓘ 7px after it.
+  - On the right is the Export button, pushed over with `margin-left:auto`.
+- **Toolbar** (`.chart-toolbar`): `display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:18px`. It holds the filter bar, then the timeframe selector.
+- **After the plot** comes an optional key, then a note: `12.5px`, `--text-3`, `padding-top:12px`. The note is hidden when empty.
+
+### Dotted background (on screen)
+
+- The dots sit only inside the plot rectangle, never under the axis labels or the dates.
+- **Dot:** `radial-gradient(circle, DOT 1px, transparent 1.5px)` tiled at **20×20px**, anchored at `0 0` of the plot box.
+- **Dot colour** on Stocks (`--tint-strong`):
+
+  | Theme | Value |
+  |---|---|
+  | Light | `rgba(25,23,23,.13)` |
+  | Dark | `rgba(255,255,255,.14)` |
+  | Purple | `rgba(255,255,255,.16)` |
+
+  The other pages use `--dots`: `.14` black, or `.09` white in the dark themes.
+- **Clipping:** four `linear-gradient(var(--bg),var(--bg))` bands are painted *over* the dots: the top margin, the bottom margin (where the dates go), the left gutter (y labels) and the right margin.
+  - Their sizes are CSS variables, `--plot-t / --plot-b / --plot-l / --plot-r`.
+  - After every draw and resize, JS sets them from Plotly's real plot rectangle (`gd._fullLayout._size`). The defaults are 20 / 50 / 65 / 10.
+- **Pie or donut:** no dots (`background:none`). The ring gets `drop-shadow(0 4px 8px rgba(16,16,24,.12))` instead.
+- **Plot height:** 340px; 240px at ≤640px; a pie is 360px (300px on a phone).
+- **The dots are the only grid.** Plotly runs with `showgrid:false`, `zeroline:false` and no axis lines.
+
+### Filter bar (left side of the toolbar)
+
+- It is one joined box of labelled cells, each a `<label>` holding a small label and a full-cell `<select>`.
+- **The box:** `border:1px solid --line-strong; radius:14px; background:--bg; box-shadow:0 1px 2px rgba(16,16,24,.04)`.
+- **Each cell:**
+  - `flex:1 1 0; min-width:118px; height:54px; padding:9px 14px 0`, with a `--line` rule on its left;
+  - the outer corners are 13px;
+  - the **Vault** cell grows ×2, with a minimum of 190px.
+- **Label:** `11.5px/500`, `--text-2`, with an optional ⓘ.
+- **Value:** `500 14px`, `--text`.
+  - The select is absolutely positioned over the whole cell with `padding: 21px 28px 0 14px`, so the whole cell is clickable.
+  - A 12px chevron sits 12px from the right.
+- **States:** hover or focus gives `--bg-subtle`; keyboard focus gives `inset 0 0 0 2px --accent`.
+- **Dropdown list:** a custom popover (`fusion-select.js`), not the native list. A vault option carries its stock's logo.
+- **The TVL filters:**
+  - Vault: All stock vaults, or one vault, with its logo.
+  - Unit: USD, Stock units (all), or one ticker's units. Picking a ticker also scopes the chart to that ticker's vault.
+  - Chart: Line or Bars.
+  - Scale: Linear or Log. This control is page-wide. Charts that cross zero (flows) stay linear.
+
+### Timeframe selector (right side of the toolbar)
+
+- A segmented control with ranges in days: `7d · 30d · 90d · 180d · All`. Daily flows and Performance have no 180d. The **default is 90d**.
+- **Track:** `padding:3px; border:1px solid --line; radius:12px; background:--bg-subtle`.
+- **Buttons:**
+  - **46px tall**, so they line up with the 54px filter bar, with padding `0 16px`, `500 13.5px` and radius 9px;
+  - at rest: `--text-2`, transparent;
+  - hover: `--text`;
+  - active: `background:--bg; color:--text; box-shadow:0 1px 2px rgba(16,16,24,.08), 0 0 0 1px --line`.
+- **Small variant** (`.seg-sm`), used beside a sub-heading (the pie's "Gross in / Still here"): 30px tall, `0 12px`, 13px, radius 8px.
+- **Behaviour:**
+  - Each chart has its own range state. Clicking a range re-cuts the data and redraws.
+  - **7d draws hourly points.** Every other range draws daily points.
+  - A series gets a blank 14-day lead-in of nulls when its data starts inside the window, so the line doesn't begin hard against the axis.
+  - The x axis always runs from the first real point to the last, with no padding.
+- **Narrow layouts:**
+  - When the column is ≤860px, the filter bar and the range control each take a full row, and the range buttons share the width equally at 38px tall.
+  - When the column is ≤560px, the filters become a 2×N grid. Its cells are 49px with square inner corners and hairlines only between cells. An odd last cell spans both columns.
+
+### Export button and menu
+
+**Button** (`.xport-btn`), in the head row:
+
+- `height:34px; padding:0 13px 0 11px; border:1px solid --line; radius:10px; background:--bg; color:--text-2; 500 13px`;
+- a 14px download icon (1.6px stroke) with a 7px gap, then the word "Export";
+- hover or open: `--text` on `--bg-subtle` with a `--line-strong` border;
+- when the column is ≤560px it becomes a 34px icon-only square (the word stays for screen readers).
+
+**Menu** (`.xport-menu`):
+
+- a popover anchored to the button's right edge, 6px below it;
+- `width:268px; padding:14px; border:1px solid --line-strong; radius:14px; background:--bg; box-shadow:0 16px 40px rgba(16,16,24,.14)`;
+- it closes on an outside click, on Escape and after any download, and only one menu is open at a time.
+
+The menu holds, top to bottom:
+
+1. **Image size.** A small heading (`11.5px/500 --text-2`), then a full-width segmented control: `Page · 16:9 · 4:3 · 1:1`. Its buttons are 30px tall at 12.5px, radius 8px.
+
+   | Option | Canvas (display px; the file is rendered at 2×) |
+   |---|---|
+   | Page | the chart's on-screen size, with the file growing around it |
+   | 16:9 | 960 × 540 |
+   | 4:3 (default) | 680 × 510 |
+   | 1:1 | 480 × 480 |
+
+   The pie export has a fixed size and doesn't show this row.
+
+2. **Style.** Three radio rows (`min-height:32px; padding:0 8px; radius:8px; 13px`, `--bg-subtle` on hover, `accent-color:--accent`):
+
+   | Option | What you get |
+   |---|---|
+   | Transparent, chart only | only the plot, on a transparent background |
+   | Transparent + headline | headline, legend, chart and footer on a transparent background |
+   | **Solid + headline** (default) | the same, on the theme's solid background colour |
+
+3. **Dotted background,** a checkbox, on by default. It paints the dot grid behind the exported plot.
+4. **Download PNG,** the primary button: full width, 36px, radius 10px, inverted (`--text` background, `--bg` text), 0.88 opacity on hover.
+5. A hairline separator, running edge to edge (`margin:12px -14px`).
+6. **Download … as CSV,** the secondary button: full width, 36px, `1px --line-strong`, `--bg`. Its label names the content, e.g. "Download datapoints as CSV", "Download wallet counts as CSV", "Download daily flows as CSV".
+
+**Shared memory:** size, style and dots are page-wide. Every Export menu shows the same choices, and they persist in `localStorage`:
+
+- `fusionstats_stocks_layout_v2`;
+- `stocks_png_style_v2`;
+- `stocks_png_dots_v2`.
+
+### What the PNG looks like
+
+- **Theme:** the image follows the page's current theme (light, dark or purple).
+- **Ink:** the axes and labels are in the series ink (the accent), 11px.
+- **Chart:**
+  - y labels sit *inside* the plot, so the chart runs nearly full width. The Performance chart keeps its labels outside, because its lines start at the left edge.
+  - x axis: a faint rule (`rgba(11,11,15,.12)` light, `rgba(255,255,255,.16)` dark). A two-line first date is allowed ("Aug 23 / 2026").
+  - Start and end points get a 9px dot with a 2px white ring.
+- **Headline styles** add the following around the chart:
+  - **Lead figure:** large, in the accent colour, e.g. `1,284` units (no decimals) or `$4.74M`.
+  - **Title:** wrapped into two balanced lines, sitting just above the legend.
+  - **Legend:** a row of stock logos, each with its ticker and share. It sits in the empty band above the chart's peak and may overlap the top of the plot. No dots are drawn behind it.
+  - **Footer:** small type. The first line is "Snapshot <date> · N vaults on Base", then the vault addresses in evenly spaced columns.
+  - **Brand:** the Fusion mark and wordmark.
+- **Dots in the export:**
+  - The pitch scales with the image (`max(16, width/42)` px) and the radius is `max(1.2, pitch × 0.06)`.
+  - On a solid background they are white or near-black at 16–22% alpha.
+  - On a **transparent** background they are **solid grey**: `#BDBDC6` for light, `#5E5E6B` for dark. Faint alpha dots vanish once the PNG is placed on another background.
+- **File name:** `fusion-stocks-<chart>-<date>.png`.
+
+### CSV contents
+
+- One row per plotted point (padding rows dropped), for the current vault and range.
+- The TVL columns are `date_utc, unix, tvl_usd, units, plotted_value, plotted_unit`. Both measures are in every row, whichever one is on screen.
+- File name: `fusion-stocks-tvl-<vault|all-stock-vaults>-<range>d.csv`.
+
+---
+
 ## 5. Minimal page skeleton
 
 ```html
